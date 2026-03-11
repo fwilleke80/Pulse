@@ -38,6 +38,7 @@ $router->Get('/', function () use ($auth, $session, $view, $config): string
 		'appName' => $config['name'],
 		'user' => $user,
 		'flash' => $flash,
+		'isAuthenticated' => true,
 	]);
 });
 
@@ -95,10 +96,11 @@ $router->Get('/health', function () use ($db): void
 	echo $db->CanConnect() ? 'OK' : 'ERROR';
 });
 
-$router->Get('/imprint', function () use ($view, $config): string
+$router->Get('/imprint', function () use ($view, $config, $auth): string
 {
 	return $view->Render('static.imprint', [
 		'appName' => $config['name'],
+		'isAuthenticated' => $auth->IsAuthenticated(),
 	]);
 });
 

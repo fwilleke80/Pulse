@@ -17,6 +17,16 @@ declare(strict_types=1);
 	<h1><a href="/"><?= htmlspecialchars($appName, ENT_QUOTES, 'UTF-8') ?></a></h1>
 </header>
 
+<?php if (!empty($isAuthenticated)): ?>
+<nav class="main-nav">
+	<a href="/">Dashboard</a>
+	<a href="/contacts">Contacts</a>
+	<a href="/periods">Grace Periods</a>
+	<a href="/profile">Profile</a>
+	<a href="/logout">Logout</a>
+</nav>
+<?php endif; ?>
+
 <main>
 	<?= $content ?>
 </main>
