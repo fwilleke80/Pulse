@@ -66,3 +66,22 @@ button
 	margin-top: 1rem;
 	padding: 0.75rem 1rem;
 }
+
+footer
+{
+	margin-top: 3rem;
+	padding-top: 1rem;
+	font-size: 0.9rem;
+	color: #666;
+}
+
+footer a
+{
+	color: #444;
+	text-decoration: none;
+}
+
+footer a:hover
+{
+	text-decoration: underline;
+}
