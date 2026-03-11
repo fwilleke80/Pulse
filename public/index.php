@@ -95,6 +95,13 @@ $router->Get('/health', function () use ($db): void
 	echo $db->CanConnect() ? 'OK' : 'ERROR';
 });
 
+$router->Get('/imprint', function () use ($view, $config): string
+{
+	return $view->Render('static.imprint', [
+		'appName' => $config['name'],
+	]);
+});
+
 $requestMethod = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $requestUri = $_SERVER['REQUEST_URI'] ?? '/';
 $requestPath = parse_url($requestUri, PHP_URL_PATH);
