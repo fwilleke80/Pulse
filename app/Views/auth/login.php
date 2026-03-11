@@ -7,64 +7,7 @@ declare(strict_types=1);
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>Login - <?= htmlspecialchars($appName, ENT_QUOTES, 'UTF-8') ?></title>
-	<style>
-		body
-		{
-			font-family: Arial, sans-serif;
-			margin: 2rem;
-			background: #f7f7f7;
-			color: #222;
-		}
-
-		.card
-		{
-			max-width: 460px;
-			background: #fff;
-			padding: 1.5rem;
-			border-radius: 10px;
-			box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-		}
-
-		label
-		{
-			display: block;
-			margin-top: 1rem;
-			font-weight: bold;
-		}
-
-		input
-		{
-			width: 100%;
-			padding: 0.7rem;
-			margin-top: 0.35rem;
-			box-sizing: border-box;
-		}
-
-		button
-		{
-			margin-top: 1rem;
-			padding: 0.75rem 1rem;
-		}
-
-		.flash
-		{
-			padding: 0.75rem 1rem;
-			border-radius: 6px;
-			margin-bottom: 1rem;
-		}
-
-		.flash-error
-		{
-			background: #fce8e8;
-			color: #8f1f1f;
-		}
-
-		.flash-success
-		{
-			background: #e7f6ea;
-			color: #146c2e;
-		}
-	</style>
+	<link rel="stylesheet" href="/assets/style.css">
 </head>
 <body>
 	<div class="card">
