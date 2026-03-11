@@ -32,7 +32,7 @@ declare(strict_types=1);
 </main>
 
 <footer>
-	<div class="card">
+	<div class="cardsmall">
 		<p>&copy; <?= date('Y') ?> <?= htmlspecialchars($appName, ENT_QUOTES, 'UTF-8') ?>. All rights reserved. <a href="/imprint">Imprint</a></p>
 	</div>
 </footer>
