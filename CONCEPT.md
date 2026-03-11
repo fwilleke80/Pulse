@@ -1,4 +1,4 @@
-# Pulse - Emergency Notifier App
+# Emergency Notifier App
 
 ## Stack
 
@@ -33,19 +33,19 @@ Use a simple structure:
 
 ```text
 /app
-	/Controllers
-	/Models
-	/Services
-	/Views
-	/Repositories
-	/Mail
-	/Security
-	/Support
+  /Controllers
+  /Models
+  /Services
+  /Views
+  /Repositories
+  /Mail
+/Security
+  /Support
 /public
 /storage
-	/uploads
-	/logs
-	/tmp
+  /uploads
+  /logs
+  /tmp
 /config
 /bin
 /database
@@ -101,3 +101,17 @@ Possible later channels:
 8. Implement cron worker
 9. Implement document delivery
 10. Add test mode and event log
+
+## Generated Database Files
+
+Initial database files will live in:
+
+```text
+/database
+  /schema.sql
+  /seed.sql
+  /DATABASE.md
+  /migrations
+```
+
+These files define the initial Pulse schema, optional seed data, and future migration structure.
