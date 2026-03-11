@@ -14,7 +14,7 @@ declare(strict_types=1);
 <body>
 
 <header>
-	<h1><?= htmlspecialchars($appName, ENT_QUOTES, 'UTF-8') ?></h1>
+	<h1><a href="/"><?= htmlspecialchars($appName, ENT_QUOTES, 'UTF-8') ?></a></h1>
 </header>
 
 <main>
@@ -23,8 +23,7 @@ declare(strict_types=1);
 
 <footer>
 	<div class="card">
-		<p><a href="/imprint">Imprint</a></p>
-		<p>&copy; <?= date('Y') ?> <?= htmlspecialchars($appName, ENT_QUOTES, 'UTF-8') ?>. All rights reserved.</p>
+		<p>&copy; <?= date('Y') ?> <?= htmlspecialchars($appName, ENT_QUOTES, 'UTF-8') ?>. All rights reserved. <a href="/imprint">Imprint</a></p>
 	</div>
 </footer>
 
