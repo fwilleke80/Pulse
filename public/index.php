@@ -124,9 +124,3 @@ catch (RuntimeException)
 		'appName' => $config['name'],
 	]);
 }
-catch (Throwable)
-{
-	http_response_code(500);
-	header('Content-Type: text/plain; charset=utf-8');
-	echo 'Internal Server Error';
-}

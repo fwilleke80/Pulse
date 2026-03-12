@@ -13,6 +13,9 @@ class View
 {
 	private string $_viewsPath;
 
+	/** @var array<string, mixed> */
+	private array $_globals;
+
 	/**
 	 * @brief Constructs the view service.
 	 * @param string $viewsPath Absolute path to the views directory.
@@ -20,6 +23,16 @@ class View
 	public function __construct(string $viewsPath)
 	{
 		$this->_viewsPath = rtrim($viewsPath, '/');
+		$this->_globals = [];
+	}
+
+	/**
+	 * @brief Sets global variables available in every view.
+	 * @param array<string, mixed> $globals Global variables.
+	 */
+	public function SetGlobals(array $globals): void
+	{
+		$this->_globals = $globals;
 	}
 
 	/**
@@ -37,7 +50,8 @@ class View
 			throw new RuntimeException('View not found: ' . $view);
 		}
 
-		extract($data, EXTR_SKIP);
+		$variables = array_merge($this->_globals, $data);
+		extract($variables, EXTR_SKIP);
 
 		ob_start();
 		require $viewFile;
