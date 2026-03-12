@@ -92,6 +92,27 @@ class Session
 	}
 
 	/**
+	 * @brief Stores a session value.
+	 * @param string $key Session key.
+	 * @param mixed $value Value to store.
+	 */
+	public function Set(string $key, mixed $value): void
+	{
+		$_SESSION[$key] = $value;
+	}
+
+	/**
+	 * @brief Returns a session value.
+	 * @param string $key Session key.
+	 * @param mixed $default Default value if key does not exist.
+	 * @return mixed
+	 */
+	public function Get(string $key, mixed $default = null): mixed
+	{
+		return $_SESSION[$key] ?? $default;
+	}
+
+	/**
 	 * @brief Stores a flash message.
 	 * @param string $type Message type.
 	 * @param string $message Message text.
