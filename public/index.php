@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Pulse\Controllers\HomeController;
 use Pulse\Controllers\AuthController;
+use Pulse\Controllers\ContactController;
 use Pulse\Core\NotFoundException;
 
 // Load dependencies and initialize services
@@ -37,127 +38,16 @@ $view->SetGlobals([
 // ----- Initialize controllers -----
 $homeController = new HomeController($view, $session, $auth, $db, $config);
 $authController = new AuthController($view, $session, $auth);
+$contactController = new ContactController($view, $session, $auth, $contactRepository);
 
 // ----- Standard route -----
 $router->Get('/', fn (): string => $homeController->Dashboard());
 
 // ----- Contact management routes -----
-$router->Get('/contacts', function () use ($auth, $session, $view, $contactRepository): string
-{
-	if (!$auth->IsAuthenticated())
-	{
-		header('Location: /login');
-		exit;
-	}
-
-	$user = $auth->GetCurrentUser();
-
-	if (!is_array($user))
-	{
-		header('Location: /login');
-		exit;
-	}
-
-	$contacts = $contactRepository->FindAllByUserId((int)$user['id']);
-
-	return $view->Render('contacts.index', [
-		'contacts' => $contacts,
-		'user' => $user,
-	]);
-});
-
-$router->Get('/contacts/new', function () use ($auth, $session, $view, $contactRepository): string
-{
-	if (!$auth->IsAuthenticated())
-	{
-		header('Location: /login');
-		exit;
-	}
-
-	$user = $auth->GetCurrentUser();
-	$contacts = $contactRepository->FindAllByUserId((int)$user['id']);
-
-	return $view->Render('contacts.new', [
-		'contacts' => $contacts,
-		'user' => $user,
-	]);
-});
-
-$router->Post('/contacts/create', function () use ($auth, $session, $contactRepository): void
-{
-	if (!$auth->IsAuthenticated())
-	{
-		header('Location: /login');
-		exit;
-	}
-
-	$user = $auth->GetCurrentUser();
-
-	if (!is_array($user))
-	{
-		header('Location: /login');
-		exit;
-	}
-
-	$name = trim((string)($_POST['name'] ?? ''));
-	$email = trim((string)($_POST['email'] ?? ''));
-	$cellPhone = trim((string)($_POST['cell_phone'] ?? ''));
-	$notes = trim((string)($_POST['notes'] ?? ''));
-
-	if ($name === '' || $email === '')
-	{
-		$session->SetFlash('error', 'Name and email are required.');
-		header('Location: /contacts/new');
-		exit;
-	}
-
-	if (!filter_var($email, FILTER_VALIDATE_EMAIL))
-	{
-		$session->SetFlash('error', 'Please enter a valid email address.');
-		header('Location: /contacts/new');
-		exit;
-	}
-
-	$contactRepository->CreateForUser(
-		(int)$user['id'],
-		$name,
-		$email,
-		$cellPhone !== '' ? $cellPhone : null,
-		$notes !== '' ? $notes : null
-	);
-
-	$session->SetFlash('success', 'Contact created.');
-	header('Location: /contacts');
-	exit;
-});
-
-$router->Post('/contacts/delete', function () use ($auth, $session, $contactRepository): void
-{
-	if (!$auth->IsAuthenticated())
-	{
-		header('Location: /login');
-		exit;
-	}
-
-	$user = $auth->GetCurrentUser();
-
-	if (!is_array($user))
-	{
-		header('Location: /login');
-		exit;
-	}
-
-	$contactId = (int)($_POST['id'] ?? 0);
-
-	if ($contactId > 0)
-	{
-		$contactRepository->DeleteForUser($contactId, (int)$user['id']);
-		$session->SetFlash('success', 'Contact deleted.');
-	}
-
-	header('Location: /contacts');
-	exit;
-});
+$router->Get('/contacts', fn (): string => $contactController->Index());
+$router->Get('/contacts/new', fn (): string => $contactController->New());
+$router->Post('/contacts/create', fn () => $contactController->Create());
+$router->Post('/contacts/delete', fn () => $contactController->Delete());
 
 // ----- Authentication routes -----
 $router->Get('/login', fn (): string => $authController->ShowLogin());

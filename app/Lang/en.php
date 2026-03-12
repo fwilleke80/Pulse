@@ -23,6 +23,7 @@ return [
 	'contacts.index.table.cell_phone' => 'Cell phone',
 	'contacts.index.table.notes' => 'Notes',
 	'contacts.index.table.buttons.delete' => 'Delete',
+	'contacts.index.flash.deleted' => 'Contact deleted.',
 
 	'contacts.add.title' => 'Add contact',
 	'contacts.add.heading' => 'Add contact',
@@ -31,6 +32,9 @@ return [
 	'contacts.add.cell_phone' => 'Cell phone',
 	'contacts.add.notes' => 'Notes',
 	'contacts.add.submit' => 'Create contact',
+	'contacts.add.flash.created' => 'Contact created.',
+	'contacts.add.flash.required' => 'Name and email are required.',
+	'contacts.add.flash.invalidemail' => 'Please enter a valid email address.',
 
 	'imprint.title' => 'Imprint',
 	'imprint.heading' => 'Imprint',
