@@ -80,7 +80,6 @@ class AuthService
 		$this->_logger->Info('User logged out', [
 			'user_id' => $userId,
 		]);
-		$this->_logger->Info('User logged out');
 		$this->_session->Logout();
 	}
 
