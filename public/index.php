@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use RuntimeException;
 
+// Load dependencies and initialize services
 $container = require dirname(__DIR__) . '/bootstrap.php';
 
 /** @var Pulse\Core\Database $db */
@@ -23,6 +24,9 @@ $auth = $container['auth'];
 
 $config = $container['config'];
 
+// ----- Define routes and dispatch request -----
+
+// ----- Standard route -----
 $router->Get('/', function () use ($auth, $session, $view, $config): string
 {
 	if (!$auth->IsAuthenticated())
@@ -42,6 +46,7 @@ $router->Get('/', function () use ($auth, $session, $view, $config): string
 	]);
 });
 
+// ----- Authentication routes -----
 $router->Get('/login', function () use ($auth, $session, $view, $config): string
 {
 	if ($auth->IsAuthenticated())
@@ -65,19 +70,19 @@ $router->Post('/login', function () use ($auth, $session): void
 
 	if ($email === '' || $password === '')
 	{
-		$session->SetFlash('error', 'Please enter your email address and password.');
+		$session->SetFlash('error', e__('flash.login.required'));
 		header('Location: /login');
 		exit;
 	}
 
 	if (!$auth->Login($email, $password))
 	{
-		$session->SetFlash('error', 'Login failed.');
+		$session->SetFlash('error', e__('flash.login.failed'));
 		header('Location: /login');
 		exit;
 	}
 
-	$session->SetFlash('success', 'Login successful.');
+	$session->SetFlash('success', e__('flash.login.successful'));
 	header('Location: /');
 	exit;
 });
@@ -89,6 +94,7 @@ $router->Get('/logout', function () use ($auth): void
 	exit;
 });
 
+// ----- Health check route -----
 $router->Get('/health', function () use ($db): void
 {
 	http_response_code($db->CanConnect() ? 200 : 500);
@@ -96,6 +102,7 @@ $router->Get('/health', function () use ($db): void
 	echo $db->CanConnect() ? 'OK' : 'ERROR';
 });
 
+// ----- Static imprint page -----
 $router->Get('/imprint', function () use ($view, $config, $auth): string
 {
 	return $view->Render('static.imprint', [
@@ -104,6 +111,24 @@ $router->Get('/imprint', function () use ($view, $config, $auth): string
 	]);
 });
 
+// ----- Language switcher route -----
+$router->Get('/language/set', function () use ($config, $session): void
+{
+	$locale = isset($_GET['locale']) ? (string)$_GET['locale'] : '';
+	$availableLocales = $config['available_locales'] ?? [];
+
+	if (in_array($locale, $availableLocales, true))
+	{
+		$_SESSION['pulse_locale'] = $locale;
+	}
+
+	$session->SetFlash('success', e__('flash.languageswitched') . ' ' . htmlspecialchars($locale, ENT_QUOTES, 'UTF-8'));
+	$redirect = $_SERVER['HTTP_REFERER'] ?? '/';
+	header('Location: ' . $redirect);
+	exit;
+});
+
+// ----- Dispatch request -----
 $requestMethod = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $requestUri = $_SERVER['REQUEST_URI'] ?? '/';
 $requestPath = parse_url($requestUri, PHP_URL_PATH);

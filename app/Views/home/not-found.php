@@ -4,13 +4,13 @@ declare(strict_types=1);
 ob_start();
 ?>
 <div class="card">
-	<h1>404</h1>
-	<p>The requested page was not found.</p>
-	<p><a href="/">Back to <?= htmlspecialchars($appName, ENT_QUOTES, 'UTF-8') ?></a></p>
+	<h1><?= e__('404.heading') ?></h1>
+	<p><?= e__('404.message') ?></p>
+	<p><a href="/"><?= e__('nav.backto') . ' ' . e__('home.heading') ?></a></p>
 </div>
 
 <?php
 $content = ob_get_clean();
-$title = 'Not found';
+$title = e__('404.title');
 
 require __DIR__ . '/../layouts/main.php';

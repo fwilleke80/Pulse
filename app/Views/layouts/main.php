@@ -19,11 +19,11 @@ declare(strict_types=1);
 
 <?php if (!empty($isAuthenticated)): ?>
 <nav class="main-nav">
-	<a href="/">Dashboard</a>
-	<a href="/contacts">Contacts</a>
-	<a href="/periods">Grace Periods</a>
-	<a href="/profile">Profile</a>
-	<a href="/logout">Logout</a>
+	<a href="/"><?= e__('nav.dashboard') ?></a>
+	<a href="/contacts"><?= e__('nav.contacts') ?></a>
+	<a href="/periods"><?= e__('nav.periods') ?></a>
+	<a href="/profile"><?= e__('nav.profile') ?></a>
+	<a href="/logout"><?= e__('nav.logout') ?></a>
 </nav>
 <?php endif; ?>
 
@@ -32,10 +32,13 @@ declare(strict_types=1);
 </main>
 
 <footer>
-	<div class="cardsmall">
-		<p><a href="/imprint">Imprint</a></p>
-		<p>&copy; <?= date('Y') ?> <?= htmlspecialchars($appName, ENT_QUOTES, 'UTF-8') ?>. All rights reserved.</p>
-	</div>
+	<nav class="footer-nav">
+		<a href="/imprint"><?= e__('footer.imprint') ?></a>
+		<span>
+			<?= e__('footer.language') ?> [ <a href="/language/set?locale=en"><?= e__('footer.language.en') ?></a> | <a href="/language/set?locale=de"><?= e__('footer.language.de') ?></a> ]
+		</span>
+	</nav>
+	<p><?= htmlspecialchars($appName) ?> v<?= htmlspecialchars($appVersion) ?> &copy; <?= date('Y') ?> <?= htmlspecialchars($appName, ENT_QUOTES, 'UTF-8') ?>. <?= e__('footer.allrightsreserved') ?></p>
 </footer>
 
 </body>

@@ -8,8 +8,11 @@ use Pulse\Core\Session;
 use Pulse\Core\View;
 use Pulse\Repositories\UserRepository;
 use Pulse\Services\AuthService;
+use Pulse\Core\Translator;
 use ErrorException;
 
+
+// ----- Autoload classes using PSR-4 standard -----
 spl_autoload_register(function (string $class): void
 {
 	$prefix = 'Pulse\\';
@@ -29,9 +32,14 @@ spl_autoload_register(function (string $class): void
 	}
 });
 
+// ----- Load helper functions -----
+require_once __DIR__ . '/app/Core/helpers.php';
+
+// ----- Load configuration -----
 $appConfig = require __DIR__ . '/config/app.php';
 $dbConfig = require __DIR__ . '/config/database.php';
 
+// ----- Set up error handling -----
 if ($appConfig['debug'] === true)
 {
 	error_reporting(E_ALL);
@@ -137,8 +145,10 @@ else
 	ini_set('display_errors', '0');
 }
 
+// ----- Set default timezone -----
 date_default_timezone_set($appConfig['timezone']);
 
+// ----- Initialize services -----
 $database = new Database($dbConfig);
 $router = new Router();
 $view = new View(__DIR__ . '/app/Views');
@@ -146,12 +156,30 @@ $session = new Session();
 $userRepository = new UserRepository($database);
 $auth = new AuthService($userRepository, $session);
 
-$view->SetGlobals([
-	'appName' => $appConfig['name'],
-]);
-
+// ----- Start session -----
 $session->Start();
 
+// ----- Set up translator -----
+$defaultLocale = (string)$appConfig['locale'];
+$availableLocales = $appConfig['available_locales'];
+
+$locale = $_SESSION['pulse_locale'] ?? $defaultLocale;
+
+if (!in_array($locale, $availableLocales, true))
+{
+	$locale = $defaultLocale;
+}
+
+$translator = new Translator(__DIR__ . '/app/Lang', $locale);
+setTranslator($translator);
+
+// ----- Set global variables for views -----
+$view->SetGlobals([
+	'appName' => $appConfig['name'],
+	'appVersion' => $appConfig['version'],
+]);
+
+// ----- Return all services in an array for easy access -----
 return [
 	'config' => $appConfig,
 	'db' => $database,
@@ -160,4 +188,5 @@ return [
 	'session' => $session,
 	'userRepository' => $userRepository,
 	'auth' => $auth,
+	'translator' => $translator,
 ];

@@ -11,15 +11,15 @@ ob_start();
 		</div>
 	<?php endif; ?>
 
-	<h1>Dashboard</h1>
+	<h1><?= e__('dashboard.heading') ?></h1>
 
-	<p>Welcome<?= is_array($user) ? ', ' . htmlspecialchars((string)$user['display_name'], ENT_QUOTES, 'UTF-8') : '' ?>.</p>
+	<p><?= e__('dashboard.message.1') ?><?= is_array($user) ? ', ' . htmlspecialchars((string)$user['display_name'], ENT_QUOTES, 'UTF-8') : '' ?>.</p>
 
-	<p>This is the initial Pulse dashboard.</p>
+	<p><?= e__('dashboard.message.2') ?></p>
 </div>
 
 <?php
 $content = ob_get_clean();
-$title = 'Dashboard';
+$title = e__('dashboard.title');
 
 require __DIR__ . '/../layouts/main.php';

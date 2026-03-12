@@ -7,7 +7,9 @@ ob_start();
 
 <div class="card">
 
-	<p>Please log in.</p>
+	<h1><?= e__('login.heading') ?></h1>
+
+	<p><?= e__('login.message') ?></p>
 
 	<?php if (is_array($flash)): ?>
 		<div class="flash flash-<?= htmlspecialchars((string)$flash['type'], ENT_QUOTES, 'UTF-8') ?>">
@@ -17,13 +19,13 @@ ob_start();
 
 	<form method="post" action="/login">
 
-		<label for="email">Email</label>
+		<label for="email"><?= e__('login.email') ?></label>
 		<input type="email" id="email" name="email" required>
 
-		<label for="password">Password</label>
+		<label for="password"><?= e__('login.password') ?></label>
 		<input type="password" id="password" name="password" required>
 
-		<button type="submit">Log in</button>
+		<button type="submit"><?= e__('login.submit') ?></button>
 
 	</form>
 
@@ -32,6 +34,6 @@ ob_start();
 <?php
 
 $content = ob_get_clean();
-$title = 'Login';
+$title = e__('login.title');
 
 require __DIR__ . '/../layouts/main.php';
