@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Pulse\Controllers\HomeController;
 use Pulse\Controllers\AuthController;
 use Pulse\Controllers\ContactController;
+use Pulse\Controllers\LanguageController;
 use Pulse\Core\NotFoundException;
 
 // Load dependencies and initialize services
@@ -28,6 +29,9 @@ $auth = $container['auth'];
 /** @var Pulse\Repositories\ContactRepository $contactRepository */
 $contactRepository = $container['contactRepository'];
 
+/** @var Pulse\Core\Translator $translator */
+$translator = $container['translator'];
+
 $config = $container['config'];
 
 // ----- Set global variables for views -----
@@ -39,6 +43,7 @@ $view->SetGlobals([
 $homeController = new HomeController($view, $session, $auth, $db, $config);
 $authController = new AuthController($view, $session, $auth);
 $contactController = new ContactController($view, $session, $auth, $contactRepository);
+$languageController = new LanguageController($view, $session, $auth, $translator, $config['supported_locales'] ?? ['en', 'de']);
 
 // ----- Standard route -----
 $router->Get('/', fn (): string => $homeController->Dashboard());
@@ -61,21 +66,7 @@ $router->Get('/health', fn () => $homeController->Health());
 $router->Get('/imprint', fn (): string => $homeController->Imprint());
 
 // ----- Language switcher route -----
-$router->Get('/language/set', function () use ($config, $session): void
-{
-	$locale = isset($_GET['locale']) ? (string)$_GET['locale'] : '';
-	$availableLocales = $config['available_locales'] ?? [];
-
-	if (in_array($locale, $availableLocales, true))
-	{
-		$_SESSION['pulse_locale'] = $locale;
-	}
-
-	$session->SetFlash('success', e__('flash.languageswitched') . ' ' . htmlspecialchars($locale, ENT_QUOTES, 'UTF-8'));
-	$redirect = $_SERVER['HTTP_REFERER'] ?? '/';
-	header('Location: ' . $redirect);
-	exit;
-});
+$router->Get('/language/set', fn () => $languageController->Set());
 
 // ----- Dispatch request -----
 $requestMethod = $_SERVER['REQUEST_METHOD'] ?? 'GET';
