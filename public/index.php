@@ -28,6 +28,10 @@ $contactRepository = $container['contactRepository'];
 
 $config = $container['config'];
 
+// ----- Set global variables for views -----
+$view->SetGlobals([
+	'flash' => $session->PullFlash(),
+], true);
 
 // ----- Define routes and dispatch request -----
 
@@ -41,12 +45,9 @@ $router->Get('/', function () use ($auth, $session, $view, $config): string
 	}
 
 	$user = $auth->GetCurrentUser();
-	$flash = $session->PullFlash();
 
 	return $view->Render('home.dashboard', [
 		'user' => $user,
-		'flash' => $flash,
-		'isAuthenticated' => true,
 	]);
 });
 
@@ -68,13 +69,10 @@ $router->Get('/contacts', function () use ($auth, $session, $view, $contactRepos
 	}
 
 	$contacts = $contactRepository->FindAllByUserId((int)$user['id']);
-	$flash = $session->PullFlash();
 
 	return $view->Render('contacts.index', [
 		'contacts' => $contacts,
 		'user' => $user,
-		'flash' => $flash,
-		'isAuthenticated' => true,
 	]);
 });
 
@@ -88,62 +86,11 @@ $router->Get('/contacts/new', function () use ($auth, $session, $view, $contactR
 
 	$user = $auth->GetCurrentUser();
 	$contacts = $contactRepository->FindAllByUserId((int)$user['id']);
-	$flash = $session->PullFlash();
 
 	return $view->Render('contacts.new', [
 		'contacts' => $contacts,
 		'user' => $user,
-		'flash' => $flash,
-		'isAuthenticated' => true,
 	]);
-});
-
-$router->Post('/contacts/create', function () use ($auth, $session, $contactRepository): void
-{
-	if (!$auth->IsAuthenticated())
-	{
-		header('Location: /login');
-		exit;
-	}
-
-	$user = $auth->GetCurrentUser();
-
-	if (!is_array($user))
-	{
-		header('Location: /login');
-		exit;
-	}
-
-	$name = trim((string)($_POST['name'] ?? ''));
-	$email = trim((string)($_POST['email'] ?? ''));
-	$cellPhone = trim((string)($_POST['cell_phone'] ?? ''));
-	$notes = trim((string)($_POST['notes'] ?? ''));
-
-	if ($name === '' || $email === '')
-	{
-		$session->SetFlash('error', 'Name and email are required.');
-		header('Location: /contacts/new');
-		exit;
-	}
-
-	if (!filter_var($email, FILTER_VALIDATE_EMAIL))
-	{
-		$session->SetFlash('error', 'Please enter a valid email address.');
-		header('Location: /contacts/new');
-		exit;
-	}
-
-	$contactRepository->CreateForUser(
-		(int)$user['id'],
-		$name,
-		$email,
-		$cellPhone !== '' ? $cellPhone : null,
-		$notes !== '' ? $notes : null
-	);
-
-	$session->SetFlash('success', 'Contact created.');
-	header('Location: /contacts');
-	exit;
 });
 
 $router->Post('/contacts/create', function () use ($auth, $session, $contactRepository): void
@@ -231,11 +178,7 @@ $router->Get('/login', function () use ($auth, $session, $view, $config): string
 		exit;
 	}
 
-	$flash = $session->PullFlash();
-
-	return $view->Render('auth.login', [
-		'flash' => $flash,
-	]);
+	return $view->Render('auth.login');
 });
 
 $router->Post('/login', function () use ($auth, $session): void

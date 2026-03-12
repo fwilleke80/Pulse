@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 return [
-
 	'app.name' => 'Pulse',
 
 	'home.title' => 'Startseite',
@@ -14,6 +13,32 @@ return [
 	'dashboard.heading' => 'Dashboard',
 	'dashboard.message.1' => 'Willkommen, {name}!',
 	'dashboard.message.2' => 'Dies ist das Pulse-Dashboard.',
+
+	'contacts.index.title' => 'Kontakte',
+	'contacts.index.heading' => 'Kontakte',
+	'contacts.index.add' => 'Kontakt hinzufügen',
+	'contacts.index.no_contacts' => 'Keine Kontakte vorhanden.',
+	'contacts.index.table.name' => 'Name',
+	'contacts.index.table.email' => 'E-Mail',
+	'contacts.index.table.cell_phone' => 'Handy',
+	'contacts.index.table.notes' => 'Notizen',
+	'contacts.index.table.buttons.delete' => 'Löschen',
+
+	'contacts.add.title' => 'Kontakt hinzufügen',
+	'contacts.add.heading' => 'Kontakt hinzufügen',
+	'contacts.add.name' => 'Name',
+	'contacts.add.email' => 'E-Mail',
+	'contacts.add.cell_phone' => 'Handy',
+	'contacts.add.notes' => 'Notizen',
+	'contacts.add.submit' => 'Kontakt erstellen',
+
+	'imprint.title' => 'Impressum',
+	'imprint.heading' => 'Impressum',
+	'imprint.about.heading' => 'Über Pulse',
+	'imprint.about.message.1' => 'Pulse ist ein Notfall-Benachrichtigungs-System.',
+	'imprint.about.message.2' => 'Es ermöglicht Benutzern, im Falle eines Notfalls oder gar Unglücks automatisch eine Nachricht an vordefinierte Kontakte zu senden.',
+	'imprint.contact.heading' => 'Kontaktinformationen',
+	'imprint.contact.message' => 'Frank Willeke<br><u>frank[at]frankwilleke[dot]de</u>',
 
 	'nav.dashboard' => 'Übersicht',
 	'nav.contacts' => 'Kontakte',

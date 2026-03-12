@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 return [
-
 	'app.name' => 'Pulse',
 
 	'home.title' => 'Home',
@@ -14,6 +13,32 @@ return [
 	'dashboard.heading' => 'Dashboard',
 	'dashboard.message.1' => 'Welcome, {name}!',
 	'dashboard.message.2' => 'This is the initial Pulse dashboard.',
+
+	'contacts.index.title' => 'Contacts',
+	'contacts.index.heading' => 'Contacts',
+	'contacts.index.add' => 'Add contact',
+	'contacts.index.no_contacts' => 'No contacts yet.',
+	'contacts.index.table.name' => 'Name',
+	'contacts.index.table.email' => 'Email',
+	'contacts.index.table.cell_phone' => 'Cell phone',
+	'contacts.index.table.notes' => 'Notes',
+	'contacts.index.table.buttons.delete' => 'Delete',
+
+	'contacts.add.title' => 'Add contact',
+	'contacts.add.heading' => 'Add contact',
+	'contacts.add.name' => 'Name',
+	'contacts.add.email' => 'Email',
+	'contacts.add.cell_phone' => 'Cell phone',
+	'contacts.add.notes' => 'Notes',
+	'contacts.add.submit' => 'Create contact',
+
+	'imprint.title' => 'Imprint',
+	'imprint.heading' => 'Imprint',
+	'imprint.about.heading' => 'About Pulse',
+	'imprint.about.message.1' => 'Pulse is an emergency notification system.',
+	'imprint.about.message.2' => 'It allows users to automatically send a message to predefined contacts in case of an emergency or even an accident.',
+	'imprint.contact.heading' => 'Contact Information',
+	'imprint.contact.message' => 'Frank Willeke<br><u>frank[at]frankwilleke[dot]de</u>',
 
 	'nav.dashboard' => 'Dashboard',
 	'nav.contacts' => 'Contacts',

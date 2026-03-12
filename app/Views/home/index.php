@@ -4,18 +4,17 @@ declare(strict_types=1);
 
 ob_start();
 ?>
-<div class="card">
-	<h1><?= e__('home.heading') ?></h1>
-	<p><?= e__('home.message') ?></p>
-	<p>
-		Database status:
-		<span class="<?= $databaseOk ? 'status-ok' : 'status-fail' ?>">
-			<?= $databaseOk ? 'connected' : 'not connected' ?>
-		</span>
-	</p>
-	<p>PHP version: <?= htmlspecialchars($phpVersion, ENT_QUOTES, 'UTF-8') ?></p>
-	<p><a href="/login"><?= e__('login.title') ?></a> | <a href="/health">Health check</a></p>
-</div>
+
+<h1><?= e__('home.heading') ?></h1>
+<p><?= e__('home.message') ?></p>
+<p>
+	Database status:
+	<span class="<?= $databaseOk ? 'status-ok' : 'status-fail' ?>">
+		<?= $databaseOk ? 'connected' : 'not connected' ?>
+	</span>
+</p>
+<p>PHP version: <?= htmlspecialchars($phpVersion, ENT_QUOTES, 'UTF-8') ?></p>
+<p><a href="/login"><?= e__('login.title') ?></a> | <a href="/health">Health check</a></p>
 
 <?php
 $content = ob_get_clean();
