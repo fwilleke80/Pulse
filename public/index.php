@@ -2,7 +2,8 @@
 
 declare(strict_types=1);
 
-use RuntimeException;
+use Pulse\Controllers\HomeController;
+use Pulse\Controllers\AuthController;
 use Pulse\Core\NotFoundException;
 
 // Load dependencies and initialize services
@@ -33,23 +34,12 @@ $view->SetGlobals([
 	'flash' => $session->PullFlash(),
 ], true);
 
-// ----- Define routes and dispatch request -----
+// ----- Initialize controllers -----
+$homeController = new HomeController($view, $session, $auth, $db, $config);
+$authController = new AuthController($view, $session, $auth);
 
 // ----- Standard route -----
-$router->Get('/', function () use ($auth, $session, $view, $config): string
-{
-	if (!$auth->IsAuthenticated())
-	{
-		header('Location: /login');
-		exit;
-	}
-
-	$user = $auth->GetCurrentUser();
-
-	return $view->Render('home.dashboard', [
-		'user' => $user,
-	]);
-});
+$router->Get('/', fn (): string => $homeController->Dashboard());
 
 // ----- Contact management routes -----
 $router->Get('/contacts', function () use ($auth, $session, $view, $contactRepository): string
@@ -170,102 +160,15 @@ $router->Post('/contacts/delete', function () use ($auth, $session, $contactRepo
 });
 
 // ----- Authentication routes -----
-$router->Get('/login', function () use ($auth, $session, $view, $config): string
-{
-	if ($auth->IsAuthenticated())
-	{
-		header('Location: /');
-		exit;
-	}
-
-	return $view->Render('auth.login');
-});
-
-$router->Post('/login', function () use ($auth, $session): void
-{
-	$email = isset($_POST['email']) ? trim((string)$_POST['email']) : '';
-	$password = isset($_POST['password']) ? (string)$_POST['password'] : '';
-
-	if ($email === '' || $password === '')
-	{
-		$session->SetFlash('error', e__('flash.login.required'));
-		header('Location: /login');
-		exit;
-	}
-
-	if (!$auth->Login($email, $password))
-	{
-		$session->SetFlash('error', e__('flash.login.failed'));
-		header('Location: /login');
-		exit;
-	}
-
-	$session->SetFlash('success', e__('flash.login.successful'));
-	header('Location: /');
-	exit;
-});
-
-$router->Get('/logout', function () use ($auth): void
-{
-	$auth->Logout();
-	header('Location: /login');
-	exit;
-});
+$router->Get('/login', fn (): string => $authController->ShowLogin());
+$router->Post('/login', fn () => $authController->Login());
+$router->Get('/logout', fn () => $authController->Logout());
 
 // ----- Health check route -----
-$router->Get('/health', function () use ($db, $config): void
-{
-	$databaseOk = $db->CanConnect();
-
-	$configOk =
-		isset($config['name']) &&
-		isset($config['timezone']);
-
-	$storageDirs = [
-		'storage' => dirname(__DIR__) . '/storage',
-		'logs' => dirname(__DIR__) . '/storage/logs',
-		'uploads' => dirname(__DIR__) . '/storage/uploads',
-		'tmp' => dirname(__DIR__) . '/storage/tmp',
-	];
-
-	$directories = [];
-
-	foreach ($storageDirs as $name => $path)
-	{
-		$directories[$name] = is_dir($path) && is_writable($path);
-	}
-
-	$directoriesOk = !in_array(false, $directories, true);
-
-	$status = ($databaseOk && $directoriesOk && $configOk) ? 'ok' : 'error';
-
-	http_response_code($status === 'ok' ? 200 : 500);
-
-	header('Content-Type: application/json; charset=utf-8');
-
-	echo json_encode(
-		[
-			'status' => $status,
-			'checks' => [
-				'liveness' => 'ok',
-				'config' => $configOk ? 'ok' : 'error',
-				'database' => $databaseOk ? 'ok' : 'error',
-				'directories' => $directories,
-			],
-			'php' => PHP_VERSION,
-			'time' => gmdate('c'),
-		],
-		JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
-	);
-});
+$router->Get('/health', fn () => $homeController->Health());
 
 // ----- Static imprint page -----
-$router->Get('/imprint', function () use ($view, $config, $auth): string
-{
-	return $view->Render('static.imprint', [
-		'isAuthenticated' => $auth->IsAuthenticated(),
-	]);
-});
+$router->Get('/imprint', fn (): string => $homeController->Imprint());
 
 // ----- Language switcher route -----
 $router->Get('/language/set', function () use ($config, $session): void
