@@ -6,6 +6,7 @@ namespace Pulse\Core;
 
 use Closure;
 use RuntimeException;
+use Pulse\Core\NotFoundException;
 
 /**
  * @brief Minimal HTTP router.
@@ -53,7 +54,7 @@ class Router
 
 		if (!isset($this->_routes[$normalizedMethod][$normalizedPath]))
 		{
-			throw new RuntimeException('Route not found.');
+			throw new NotFoundException('Route not found.');
 		}
 
 		return ($this->_routes[$normalizedMethod][$normalizedPath])();

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use RuntimeException;
+use Pulse\Core\NotFoundException;
 
 // Load dependencies and initialize services
 $container = require dirname(__DIR__) . '/bootstrap.php';
@@ -39,7 +40,6 @@ $router->Get('/', function () use ($auth, $session, $view, $config): string
 	$flash = $session->PullFlash();
 
 	return $view->Render('home.dashboard', [
-		'appName' => $config['name'],
 		'user' => $user,
 		'flash' => $flash,
 		'isAuthenticated' => true,
@@ -58,7 +58,6 @@ $router->Get('/login', function () use ($auth, $session, $view, $config): string
 	$flash = $session->PullFlash();
 
 	return $view->Render('auth.login', [
-		'appName' => $config['name'],
 		'flash' => $flash,
 	]);
 });
@@ -106,7 +105,6 @@ $router->Get('/health', function () use ($db): void
 $router->Get('/imprint', function () use ($view, $config, $auth): string
 {
 	return $view->Render('static.imprint', [
-		'appName' => $config['name'],
 		'isAuthenticated' => $auth->IsAuthenticated(),
 	]);
 });
@@ -142,10 +140,8 @@ try
 {
 	echo $router->Dispatch($requestMethod, $requestPath);
 }
-catch (RuntimeException)
+catch (NotFoundException)
 {
 	http_response_code(404);
-	echo $view->Render('home.not-found', [
-		'appName' => $config['name'],
-	]);
+	echo $view->Render('home.not-found');
 }
