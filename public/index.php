@@ -94,11 +94,50 @@ $router->Get('/logout', function () use ($auth): void
 });
 
 // ----- Health check route -----
-$router->Get('/health', function () use ($db): void
+$router->Get('/health', function () use ($db, $config): void
 {
-	http_response_code($db->CanConnect() ? 200 : 500);
-	header('Content-Type: text/plain; charset=utf-8');
-	echo $db->CanConnect() ? 'OK' : 'ERROR';
+	$databaseOk = $db->CanConnect();
+
+	$configOk =
+		isset($config['name']) &&
+		isset($config['timezone']);
+
+	$storageDirs = [
+		'storage' => dirname(__DIR__) . '/storage',
+		'logs' => dirname(__DIR__) . '/storage/logs',
+		'uploads' => dirname(__DIR__) . '/storage/uploads',
+		'tmp' => dirname(__DIR__) . '/storage/tmp',
+	];
+
+	$directories = [];
+
+	foreach ($storageDirs as $name => $path)
+	{
+		$directories[$name] = is_dir($path) && is_writable($path);
+	}
+
+	$directoriesOk = !in_array(false, $directories, true);
+
+	$status = ($databaseOk && $directoriesOk && $configOk) ? 'ok' : 'error';
+
+	http_response_code($status === 'ok' ? 200 : 500);
+
+	header('Content-Type: application/json; charset=utf-8');
+
+	echo json_encode(
+		[
+			'status' => $status,
+			'checks' => [
+				'liveness' => 'ok',
+				'config' => $configOk ? 'ok' : 'error',
+				'database' => $databaseOk ? 'ok' : 'error',
+				'directories' => $directories,
+			],
+			'php' => PHP_VERSION,
+			'time' => gmdate('c'),
+		],
+		JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
+	);
 });
 
 // ----- Static imprint page -----
