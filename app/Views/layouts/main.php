@@ -7,7 +7,7 @@ declare(strict_types=1);
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 
-	<title><?= htmlspecialchars($title ?? $appName, ENT_QUOTES, 'UTF-8') ?></title>
+	<title><?= htmlspecialchars((isset($title) ? ($title . " :: ") : "") . $appName, ENT_QUOTES, 'UTF-8') ?></title>
 
 	<link rel="stylesheet" href="/assets/style.css">
 </head>
