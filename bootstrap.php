@@ -6,9 +6,10 @@ use Pulse\Core\Database;
 use Pulse\Core\Router;
 use Pulse\Core\Session;
 use Pulse\Core\View;
+use Pulse\Core\Translator;
+use Pulse\Core\Logger;
 use Pulse\Repositories\UserRepository;
 use Pulse\Services\AuthService;
-use Pulse\Core\Translator;
 use ErrorException;
 
 
@@ -39,6 +40,26 @@ require_once __DIR__ . '/app/Core/helpers.php';
 $appConfig = require __DIR__ . '/config/app.php';
 $dbConfig = require __DIR__ . '/config/database.php';
 
+// ----- Set up logging -----
+$logFile = __DIR__ . '/storage/logs/app.log';
+$writeBootstrapLog = function (string $level, string $message, array $context = []) use ($logFile): void
+{
+	$timestamp = date('c');
+	$contextJson = $context !== []
+		? ' ' . json_encode($context, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
+		: '';
+
+	$line = sprintf(
+		"%s [%s] %s%s\n",
+		$timestamp,
+		$level,
+		$message,
+		$contextJson
+	);
+
+	@file_put_contents($logFile, $line, FILE_APPEND | LOCK_EX);
+};
+
 // ----- Set up error handling -----
 if ($appConfig['debug'] === true)
 {
@@ -56,8 +77,15 @@ if ($appConfig['debug'] === true)
 		throw new ErrorException($message, 0, $severity, $file, $line);
 	});
 
-	set_exception_handler(function (Throwable $throwable): void
+	set_exception_handler(function (Throwable $throwable) use ($writeBootstrapLog, $appConfig): void
 	{
+		$writeBootstrapLog('ERROR', 'Unhandled exception', [
+			'message' => $throwable->getMessage(),
+			'file' => $throwable->getFile(),
+			'line' => $throwable->getLine(),
+			'trace' => $throwable->getTraceAsString(),
+		]);
+
 		http_response_code(500);
 		header('Content-Type: text/html; charset=utf-8');
 
@@ -90,7 +118,7 @@ if ($appConfig['debug'] === true)
 		echo '</div></body></html>';
 	});
 
-	register_shutdown_function(function (): void
+	register_shutdown_function(function () use ($writeBootstrapLog, $appConfig): void
 	{
 		$error = error_get_last();
 
@@ -111,6 +139,13 @@ if ($appConfig['debug'] === true)
 		{
 			return;
 		}
+
+		$writeBootstrapLog('ERROR', 'Fatal shutdown error', [
+			'message' => (string)$error['message'],
+			'file' => (string)$error['file'],
+			'line' => (int)$error['line'],
+			'type' => (int)$error['type'],
+		]);
 
 		http_response_code(500);
 		header('Content-Type: text/html; charset=utf-8');
@@ -149,12 +184,13 @@ else
 date_default_timezone_set($appConfig['timezone']);
 
 // ----- Initialize services -----
+$logger = new Logger(__DIR__ . '/storage/logs/app.log');
 $database = new Database($dbConfig);
 $router = new Router();
 $view = new View(__DIR__ . '/app/Views');
 $session = new Session();
 $userRepository = new UserRepository($database);
-$auth = new AuthService($userRepository, $session);
+$auth = new AuthService($userRepository, $session, $logger);
 
 // ----- Start session -----
 $session->Start();
@@ -189,4 +225,5 @@ return [
 	'userRepository' => $userRepository,
 	'auth' => $auth,
 	'translator' => $translator,
+	'logger' => $logger,
 ];

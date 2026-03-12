@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Pulse\Services;
 
 use Pulse\Core\Session;
+use Pulse\Core\Logger;
 use Pulse\Repositories\UserRepository;
 
 /**
@@ -14,16 +15,18 @@ class AuthService
 {
 	private UserRepository $_userRepository;
 	private Session $_session;
+	private Logger $_logger;
 
 	/**
 	 * @brief Constructs the authentication service.
 	 * @param UserRepository $userRepository User repository.
 	 * @param Session $session Session service.
 	 */
-	public function __construct(UserRepository $userRepository, Session $session)
+	public function __construct(UserRepository $userRepository, Session $session, Logger $logger)
 	{
 		$this->_userRepository = $userRepository;
 		$this->_session = $session;
+		$this->_logger = $logger;
 	}
 
 	/**
@@ -50,6 +53,9 @@ class AuthService
 
 		if (!password_verify($password, $passwordHash))
 		{
+			$this->_logger->Warning('Login failed', [
+				'email' => $email,
+			]);
 			return false;
 		}
 
@@ -58,6 +64,10 @@ class AuthService
 		$this->_session->LoginUser($userId);
 		$this->_userRepository->UpdateLastLoginAt($userId);
 
+		$this->_logger->Info('Login successful', [
+			'user_id' => $userId,
+			'email' => $email,
+		]);
 		return true;
 	}
 
@@ -66,6 +76,11 @@ class AuthService
 	 */
 	public function Logout(): void
 	{
+		$userId = $this->_session->GetUserId();
+		$this->_logger->Info('User logged out', [
+			'user_id' => $userId,
+		]);
+		$this->_logger->Info('User logged out');
 		$this->_session->Logout();
 	}
 
