@@ -30,9 +30,16 @@ class View
 	 * @brief Sets global variables available in every view.
 	 * @param array<string, mixed> $globals Global variables.
 	 */
-	public function SetGlobals(array $globals): void
+	public function SetGlobals(array $globals, bool $merge = false): void
 	{
-		$this->_globals = $globals;
+		if ($merge)
+		{
+			$this->_globals = array_merge($this->_globals, $globals);
+		}
+		else
+		{
+			$this->_globals = $globals;
+		}
 	}
 
 	/**
