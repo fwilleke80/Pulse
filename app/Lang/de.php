@@ -12,7 +12,7 @@ return [
 
 	'dashboard.title' => 'Dashboard',
 	'dashboard.heading' => 'Dashboard',
-	'dashboard.message.1' => 'Willkommen',
+	'dashboard.message.1' => 'Willkommen, {name}!',
 	'dashboard.message.2' => 'Dies ist das Pulse-Dashboard.',
 
 	'nav.dashboard' => 'Übersicht',

@@ -13,7 +13,7 @@ ob_start();
 
 	<h1><?= e__('dashboard.heading') ?></h1>
 
-	<p><?= e__('dashboard.message.1') ?><?= is_array($user) ? ', ' . htmlspecialchars((string)$user['display_name'], ENT_QUOTES, 'UTF-8') : '' ?>.</p>
+	<p><?= e__('dashboard.message.1', ['name' => $user['display_name']]) ?></p>
 
 	<p><?= e__('dashboard.message.2') ?></p>
 </div>

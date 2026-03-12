@@ -19,7 +19,7 @@ function setTranslator(Translator $translator): void
 /**
  * Raw translation.
  */
-function __(string $key): string
+function __(string $key, array $params = []): string
 {
 	global $__pulseTranslator;
 
@@ -28,16 +28,30 @@ function __(string $key): string
 		return $key;
 	}
 
-	return $__pulseTranslator->Translate($key);
+	$text = $__pulseTranslator->Translate($key);
+
+	if ($params !== [])
+	{
+		foreach ($params as $name => $value)
+		{
+			$text = str_replace(
+				'{' . $name . '}',
+				(string)$value,
+				$text
+			);
+		}
+	}
+
+	return $text;
 }
 
 /**
  * HTML-escaped translation.
  */
-function e__(string $key): string
+function e__(string $key, array $params = []): string
 {
 	return htmlspecialchars(
-		__( $key ),
+		__( $key, $params ),
 		ENT_QUOTES,
 		'UTF-8'
 	);
