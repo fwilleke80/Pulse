@@ -9,6 +9,7 @@ use Pulse\Core\View;
 use Pulse\Core\Translator;
 use Pulse\Core\Logger;
 use Pulse\Repositories\UserRepository;
+use Pulse\Repositories\ContactRepository;
 use Pulse\Services\AuthService;
 use ErrorException;
 
@@ -191,6 +192,7 @@ $view = new View(__DIR__ . '/app/Views');
 $session = new Session();
 $userRepository = new UserRepository($database);
 $auth = new AuthService($userRepository, $session, $logger);
+$contactRepository = new ContactRepository($database);
 
 // ----- Start session -----
 $session->Start();
@@ -226,4 +228,5 @@ return [
 	'auth' => $auth,
 	'translator' => $translator,
 	'logger' => $logger,
+	'contactRepository' => $contactRepository,
 ];

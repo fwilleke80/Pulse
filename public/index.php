@@ -23,7 +23,11 @@ $session = $container['session'];
 /** @var Pulse\Services\AuthService $auth */
 $auth = $container['auth'];
 
+/** @var Pulse\Repositories\ContactRepository $contactRepository */
+$contactRepository = $container['contactRepository'];
+
 $config = $container['config'];
+
 
 // ----- Define routes and dispatch request -----
 
@@ -44,6 +48,178 @@ $router->Get('/', function () use ($auth, $session, $view, $config): string
 		'flash' => $flash,
 		'isAuthenticated' => true,
 	]);
+});
+
+// ----- Contact management routes -----
+$router->Get('/contacts', function () use ($auth, $session, $view, $contactRepository): string
+{
+	if (!$auth->IsAuthenticated())
+	{
+		header('Location: /login');
+		exit;
+	}
+
+	$user = $auth->GetCurrentUser();
+
+	if (!is_array($user))
+	{
+		header('Location: /login');
+		exit;
+	}
+
+	$contacts = $contactRepository->FindAllByUserId((int)$user['id']);
+	$flash = $session->PullFlash();
+
+	return $view->Render('contacts.index', [
+		'contacts' => $contacts,
+		'user' => $user,
+		'flash' => $flash,
+		'isAuthenticated' => true,
+	]);
+});
+
+$router->Get('/contacts/new', function () use ($auth, $session, $view, $contactRepository): string
+{
+	if (!$auth->IsAuthenticated())
+	{
+		header('Location: /login');
+		exit;
+	}
+
+	$user = $auth->GetCurrentUser();
+	$contacts = $contactRepository->FindAllByUserId((int)$user['id']);
+	$flash = $session->PullFlash();
+
+	return $view->Render('contacts.new', [
+		'contacts' => $contacts,
+		'user' => $user,
+		'flash' => $flash,
+		'isAuthenticated' => true,
+	]);
+});
+
+$router->Post('/contacts/create', function () use ($auth, $session, $contactRepository): void
+{
+	if (!$auth->IsAuthenticated())
+	{
+		header('Location: /login');
+		exit;
+	}
+
+	$user = $auth->GetCurrentUser();
+
+	if (!is_array($user))
+	{
+		header('Location: /login');
+		exit;
+	}
+
+	$name = trim((string)($_POST['name'] ?? ''));
+	$email = trim((string)($_POST['email'] ?? ''));
+	$cellPhone = trim((string)($_POST['cell_phone'] ?? ''));
+	$notes = trim((string)($_POST['notes'] ?? ''));
+
+	if ($name === '' || $email === '')
+	{
+		$session->SetFlash('error', 'Name and email are required.');
+		header('Location: /contacts/new');
+		exit;
+	}
+
+	if (!filter_var($email, FILTER_VALIDATE_EMAIL))
+	{
+		$session->SetFlash('error', 'Please enter a valid email address.');
+		header('Location: /contacts/new');
+		exit;
+	}
+
+	$contactRepository->CreateForUser(
+		(int)$user['id'],
+		$name,
+		$email,
+		$cellPhone !== '' ? $cellPhone : null,
+		$notes !== '' ? $notes : null
+	);
+
+	$session->SetFlash('success', 'Contact created.');
+	header('Location: /contacts');
+	exit;
+});
+
+$router->Post('/contacts/create', function () use ($auth, $session, $contactRepository): void
+{
+	if (!$auth->IsAuthenticated())
+	{
+		header('Location: /login');
+		exit;
+	}
+
+	$user = $auth->GetCurrentUser();
+
+	if (!is_array($user))
+	{
+		header('Location: /login');
+		exit;
+	}
+
+	$name = trim((string)($_POST['name'] ?? ''));
+	$email = trim((string)($_POST['email'] ?? ''));
+	$cellPhone = trim((string)($_POST['cell_phone'] ?? ''));
+	$notes = trim((string)($_POST['notes'] ?? ''));
+
+	if ($name === '' || $email === '')
+	{
+		$session->SetFlash('error', 'Name and email are required.');
+		header('Location: /contacts/new');
+		exit;
+	}
+
+	if (!filter_var($email, FILTER_VALIDATE_EMAIL))
+	{
+		$session->SetFlash('error', 'Please enter a valid email address.');
+		header('Location: /contacts/new');
+		exit;
+	}
+
+	$contactRepository->CreateForUser(
+		(int)$user['id'],
+		$name,
+		$email,
+		$cellPhone !== '' ? $cellPhone : null,
+		$notes !== '' ? $notes : null
+	);
+
+	$session->SetFlash('success', 'Contact created.');
+	header('Location: /contacts');
+	exit;
+});
+
+$router->Post('/contacts/delete', function () use ($auth, $session, $contactRepository): void
+{
+	if (!$auth->IsAuthenticated())
+	{
+		header('Location: /login');
+		exit;
+	}
+
+	$user = $auth->GetCurrentUser();
+
+	if (!is_array($user))
+	{
+		header('Location: /login');
+		exit;
+	}
+
+	$contactId = (int)($_POST['id'] ?? 0);
+
+	if ($contactId > 0)
+	{
+		$contactRepository->DeleteForUser($contactId, (int)$user['id']);
+		$session->SetFlash('success', 'Contact deleted.');
+	}
+
+	header('Location: /contacts');
+	exit;
 });
 
 // ----- Authentication routes -----
