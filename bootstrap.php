@@ -215,6 +215,8 @@ setTranslator($translator);
 $view->SetGlobals([
 	'appName' => $appConfig['name'],
 	'appVersion' => $appConfig['version'],
+	'isAuthenticated' => $auth->IsAuthenticated(),
+	'currentUser' => $auth->GetCurrentUser(),
 ]);
 
 // ----- Return all services in an array for easy access -----
