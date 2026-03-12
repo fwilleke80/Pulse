@@ -6,21 +6,16 @@ ob_start();
 ?>
 
 <div class="card">
-	<h2>Imprint</h2>
+	<h1>Impressum</h1>
 
-	<p>
-		This website is operated by:
-	</p>
+	<h2>Über Pulse</h2>
+	<p>Pulse ist ein Notfall-Benachrichtigungs-System.</p>
+	<p>Es ermöglicht Benutzern, im Falle eines Notfalls oder gar Unglücks automatisch eine Nachricht an vordefinierte Kontakte zu senden.</p>
 
+	<h2>Kontaktinformationen</h2>
 	<p>
 		Frank Willeke<br>
-		[Your postal address here]<br>
-		[City, postal code]<br>
-		Germany
-	</p>
-
-	<p>
-		Email: [your email address here]
+		<u>frank[at]frankwilleke[dot]de</u>
 	</p>
 </div>
 
