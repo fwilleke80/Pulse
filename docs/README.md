@@ -80,12 +80,39 @@ No external frameworks are required.
 /pulse
   /app
     Application code
+    /Controllers
+      Controllers
+    /Core
+      Core framework components
+    /Lang
+      Translations
+    /Repositories
+      Repositories
+    /Services
+      Services
+    /Views
+      /auth
+        Login view
+      /contacts
+        Contacts views
+      /home
+        Home views
+      /layouts
+        Layout template
+      /profile
+        Profile view
+      /static
+        Static pages
   /config
     Configuration
   /database
     SQL schema and migrations
   /public
     Web entry point
+    /assets
+      CSS files and image files
+    /secret0410
+      Test files (don't publish them!)
   /storage
     Runtime data
   /bootstrap.php
