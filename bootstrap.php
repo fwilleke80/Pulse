@@ -218,6 +218,7 @@ $view->SetGlobals([
 	'isAuthenticated' => $auth->IsAuthenticated(),
 	'currentUser' => $auth->GetCurrentUser(),
 	'locale' => $locale,
+	'base_url' => $appConfig['base_url'],
 ]);
 
 // ----- Return all services in an array for easy access -----
