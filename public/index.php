@@ -45,8 +45,7 @@ $authController = new AuthController($view, $session, $auth);
 $contactController = new ContactController($view, $session, $auth, $contactRepository);
 $languageController = new LanguageController($view, $session, $auth, $translator, $config['supported_locales'] ?? ['en', 'de']);
 
-// ----- Standard route -----
-// $router->Get('/', fn (): string => $homeController->Dashboard());
+// ----- Home routes -----
 $router->Get('/', [$homeController, 'Dashboard']);
 $router->Get('/imprint', [$homeController, 'Imprint']);
 $router->Get('/health', [$homeController, 'Health']);
@@ -61,12 +60,6 @@ $router->Post('/contacts/delete', [$contactController, 'Delete']);
 $router->Get('/login', [$authController, 'ShowLogin']);
 $router->Post('/login', [$authController, 'Login']);
 $router->Get('/logout', [$authController, 'Logout']);
-
-// ----- Health check route -----
-// $router->Get('/health', fn () => $homeController->Health());
-
-// ----- Static imprint page -----
-// $router->Get('/imprint', fn (): string => $homeController->Imprint());
 
 // ----- Language switcher route -----
 $router->Get('/language/set', [$languageController, 'Set']);
