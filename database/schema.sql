@@ -29,7 +29,7 @@ CREATE TABLE contacts
 	FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE grace_periods
+CREATE TABLE pulses
 (
 	id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
 	user_id BIGINT UNSIGNED NOT NULL,
@@ -48,25 +48,25 @@ CREATE TABLE grace_periods
 	FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE grace_period_contacts
+CREATE TABLE pulse_contacts
 (
 	id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-	grace_period_id BIGINT UNSIGNED NOT NULL,
+	pulse_id BIGINT UNSIGNED NOT NULL,
 	contact_id BIGINT UNSIGNED NOT NULL,
 	sort_order INT DEFAULT 1,
-	FOREIGN KEY (grace_period_id) REFERENCES grace_periods(id) ON DELETE CASCADE,
+	FOREIGN KEY (pulse_id) REFERENCES pulses(id) ON DELETE CASCADE,
 	FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE,
-	UNIQUE(grace_period_id, contact_id)
+	UNIQUE(pulse_id, contact_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE contact_messages
 (
 	id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-	grace_period_contact_id BIGINT UNSIGNED NOT NULL,
+	pulse_contact_id BIGINT UNSIGNED NOT NULL,
 	subject VARCHAR(255) NOT NULL,
 	body_text LONGTEXT NOT NULL,
-	FOREIGN KEY (grace_period_contact_id)
-		REFERENCES grace_period_contacts(id)
+	FOREIGN KEY (pulse_contact_id)
+		REFERENCES pulse_contacts(id)
 		ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -74,7 +74,7 @@ CREATE TABLE documents
 (
 	id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
 	user_id BIGINT UNSIGNED NOT NULL,
-	grace_period_contact_id BIGINT UNSIGNED NOT NULL,
+	pulse_id BIGINT UNSIGNED NOT NULL,
 	title VARCHAR(255) NOT NULL,
 	storage_type ENUM('text','file') NOT NULL,
 	text_content LONGTEXT NULL,
@@ -83,23 +83,21 @@ CREATE TABLE documents
 	file_size_bytes BIGINT NULL,
 	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-	FOREIGN KEY (grace_period_contact_id)
-		REFERENCES grace_period_contacts(id)
-		ON DELETE CASCADE
+	FOREIGN KEY (pulse_id) REFERENCES pulses(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE check_cycles
 (
 	id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-	grace_period_id BIGINT UNSIGNED NOT NULL,
+	pulse_id BIGINT UNSIGNED NOT NULL,
 	status ENUM('pending','confirmed','escalated') DEFAULT 'pending',
 	started_at DATETIME NOT NULL,
 	expires_at DATETIME NOT NULL,
 	reminders_sent INT DEFAULT 0,
 	confirmed_at DATETIME NULL,
 	escalated_at DATETIME NULL,
-	FOREIGN KEY (grace_period_id)
-		REFERENCES grace_periods(id)
+	FOREIGN KEY (pulse_id)
+		REFERENCES pulses(id)
 		ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
