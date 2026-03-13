@@ -29,7 +29,7 @@ CREATE TABLE contacts
 	FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE pulses
+CREATE TABLE monitors
 (
 	id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
 	user_id BIGINT UNSIGNED NOT NULL,
@@ -48,25 +48,25 @@ CREATE TABLE pulses
 	FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE pulse_contacts
+CREATE TABLE monitor_contacts
 (
 	id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-	pulse_id BIGINT UNSIGNED NOT NULL,
+	monitor_id BIGINT UNSIGNED NOT NULL,
 	contact_id BIGINT UNSIGNED NOT NULL,
 	sort_order INT DEFAULT 1,
-	FOREIGN KEY (pulse_id) REFERENCES pulses(id) ON DELETE CASCADE,
+	FOREIGN KEY (monitor_id) REFERENCES monitors(id) ON DELETE CASCADE,
 	FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE,
-	UNIQUE(pulse_id, contact_id)
+	UNIQUE(monitor_id, contact_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE contact_messages
 (
 	id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-	pulse_contact_id BIGINT UNSIGNED NOT NULL,
+	monitor_contact_id BIGINT UNSIGNED NOT NULL,
 	subject VARCHAR(255) NOT NULL,
 	body_text LONGTEXT NOT NULL,
-	FOREIGN KEY (pulse_contact_id)
-		REFERENCES pulse_contacts(id)
+	FOREIGN KEY (monitor_contact_id)
+		REFERENCES monitor_contacts(id)
 		ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -74,7 +74,7 @@ CREATE TABLE documents
 (
 	id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
 	user_id BIGINT UNSIGNED NOT NULL,
-	pulse_id BIGINT UNSIGNED NOT NULL,
+	monitor_id BIGINT UNSIGNED NOT NULL,
 	title VARCHAR(255) NOT NULL,
 	storage_type ENUM('text','file') NOT NULL,
 	text_content LONGTEXT NULL,
@@ -83,21 +83,21 @@ CREATE TABLE documents
 	file_size_bytes BIGINT NULL,
 	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-	FOREIGN KEY (pulse_id) REFERENCES pulses(id) ON DELETE CASCADE
+	FOREIGN KEY (monitor_id) REFERENCES monitors(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE check_cycles
 (
 	id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-	pulse_id BIGINT UNSIGNED NOT NULL,
+	monitor_id BIGINT UNSIGNED NOT NULL,
 	status ENUM('pending','confirmed','escalated') DEFAULT 'pending',
 	started_at DATETIME NOT NULL,
 	expires_at DATETIME NOT NULL,
 	reminders_sent INT DEFAULT 0,
 	confirmed_at DATETIME NULL,
 	escalated_at DATETIME NULL,
-	FOREIGN KEY (pulse_id)
-		REFERENCES pulses(id)
+	FOREIGN KEY (monitor_id)
+		REFERENCES monitors(id)
 		ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
