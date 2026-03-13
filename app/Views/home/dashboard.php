@@ -13,9 +13,9 @@ ob_start();
 		<div class="dashboard-stat-title"><?= e__('dashboard.stats.contacts') ?></div>
 		<div class="dashboard-stat-value"><?= (int)$contactCount ?></div>
 	</a>
-	<a href="#" class="dashboard-stat">
+	<a href="<?= e($base_url) ?>/monitors" class="dashboard-stat">
 		<div class="dashboard-stat-title"><?= e__('dashboard.stats.monitors') ?></div>
-		<div class="dashboard-stat-value">0</div>
+		<div class="dashboard-stat-value"><?= (int)$monitorCount ?></div>
 	</a>
 </div>
 

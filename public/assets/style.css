@@ -131,6 +131,27 @@ button.btn-table-inline
 	text-decoration: none;
 }
 
+.checkbox-row
+{
+	margin-top: 1rem;
+}
+
+.checkbox-row label
+{
+	display: inline-flex;
+	align-items: center;
+	gap: 0.45rem;
+	margin-top: 0;
+	font-weight: normal;
+}
+
+.checkbox-row input[type="checkbox"]
+{
+	width: auto;
+	margin-top: 0;
+	padding: 0;
+}
+
 nav.main-nav
 {
 	margin: 1rem 0 2rem 0;

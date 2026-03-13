@@ -17,6 +17,7 @@ class HomeController extends BaseController
 	private array $_config;
 
 	private \Pulse\Repositories\ContactRepository $_contactRepository;
+	private \Pulse\Repositories\MonitorRepository $_monitorRepository;
 
 	/**
 	 * @brief Constructs the home controller.
@@ -32,13 +33,15 @@ class HomeController extends BaseController
 		\Pulse\Services\AuthService $auth,
 		Database $db,
 		array $config,
-		\Pulse\Repositories\ContactRepository $contactRepository
+		\Pulse\Repositories\ContactRepository $contactRepository,
+		\Pulse\Repositories\MonitorRepository $monitorRepository
 	)
 	{
 		parent::__construct($view, $session, $auth);
 		$this->_db = $db;
 		$this->_config = $config;
 		$this->_contactRepository = $contactRepository;
+		$this->_monitorRepository = $monitorRepository;
 	}
 
 	/**
@@ -49,10 +52,12 @@ class HomeController extends BaseController
 	{
 		$user = $this->RequireUser();
 		$contactCount = $this->_contactRepository->CountByUserId((int)$user['id']);
+		$monitorCount = $this->_monitorRepository->CountByUserId((int)$user['id']);
 
 		return $this->_view->Render('home.dashboard', [
 			'user' => $user,
 			'contactCount' => $contactCount,
+			'monitorCount' => $monitorCount,
 		]);
 	}
 

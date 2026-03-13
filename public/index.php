@@ -7,6 +7,7 @@ use Pulse\Controllers\AuthController;
 use Pulse\Controllers\ContactController;
 use Pulse\Controllers\LanguageController;
 use Pulse\Controllers\ProfileController;
+use Pulse\Controllers\MonitorController;
 use Pulse\Core\NotFoundException;
 
 // Load dependencies and initialize services
@@ -30,6 +31,9 @@ $auth = $container['auth'];
 /** @var Pulse\Repositories\ContactRepository $contactRepository */
 $contactRepository = $container['contactRepository'];
 
+/** @var Pulse\Repositories\MonitorRepository $monitorRepository */
+$monitorRepository = $container['monitorRepository'];
+
 /** @var Pulse\Core\Translator $translator */
 $translator = $container['translator'];
 
@@ -44,11 +48,12 @@ $view->SetGlobals([
 ], true);
 
 // ----- Initialize controllers -----
-$homeController = new HomeController($view, $session, $auth, $db, $config, $contactRepository);
+$homeController = new HomeController($view, $session, $auth, $db, $config, $contactRepository, $monitorRepository);
 $authController = new AuthController($view, $session, $auth);
 $contactController = new ContactController($view, $session, $auth, $contactRepository);
 $languageController = new LanguageController($view, $session, $auth, $translator, $config['supported_locales'] ?? ['en', 'de']);
 $profileController = new ProfileController($view, $session, $auth, $userRepository);
+$monitorController = new MonitorController($view, $session, $auth, $monitorRepository);
 
 // ----- Home routes -----
 $router->Get('/', [$homeController, 'Dashboard']);
@@ -67,6 +72,14 @@ $router->Post('/profile/update', [$profileController, 'Update']);
 $router->Post('/profile/password', [$profileController, 'ChangePassword']);
 $router->Get('/contacts/edit', [$contactController, 'Edit']);
 $router->Post('/contacts/update', [$contactController, 'Update']);
+
+// ----- Monitor management routes -----
+$router->Get('/monitors', [$monitorController, 'Index']);
+$router->Get('/monitors/new', [$monitorController, 'New']);
+$router->Post('/monitors/create', [$monitorController, 'Create']);
+$router->Get('/monitors/edit', [$monitorController, 'Edit']);
+$router->Post('/monitors/update', [$monitorController, 'Update']);
+$router->Post('/monitors/delete', [$monitorController, 'Delete']);
 
 // ----- Authentication routes -----
 $router->Get('/login', [$authController, 'ShowLogin']);
