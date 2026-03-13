@@ -13,9 +13,9 @@ return [
 	'dashboard.heading' => 'Dashboard',
 	'dashboard.message.1' => 'Willkommen, {name}!',
 	'dashboard.message.2' => 'Dies ist das Pulse-Dashboard.',
-	'dashboard.contacts.none' => 'Sie haben keine Kontakte.',
-	'dashboard.contacts.one' => 'Sie haben 1 Kontakt.',
-	'dashboard.contacts.many' => 'Sie haben {count} Kontakte.',
+	'dashboard.stats.contacts' => 'Kontakte',
+	'dashboard.stats.grace_periods' => 'Kulanzfristen',
+	'dashboard.stats.documents' => 'Dokumente',
 
 	'contacts.index.title' => 'Kontakte',
 	'contacts.index.heading' => 'Kontakte',

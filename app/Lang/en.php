@@ -13,9 +13,9 @@ return [
 	'dashboard.heading' => 'Dashboard',
 	'dashboard.message.1' => 'Welcome, {name}!',
 	'dashboard.message.2' => 'This is the initial Pulse dashboard.',
-	'dashboard.contacts.none' => 'You have no contacts.',
-	'dashboard.contacts.one' => 'You have 1 contact.',
-	'dashboard.contacts.many' => 'You have {count} contacts.',
+	'dashboard.stats.contacts' => 'Contacts',
+	'dashboard.stats.grace_periods' => 'Grace periods',
+	'dashboard.stats.documents' => 'Documents',
 
 	'contacts.index.title' => 'Contacts',
 	'contacts.index.heading' => 'Contacts',
