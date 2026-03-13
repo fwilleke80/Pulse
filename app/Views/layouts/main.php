@@ -45,7 +45,7 @@ declare(strict_types=1);
 		</span>
 		<a href="<?= e($base_url) ?>/imprint"><?= e__('footer.imprint') ?></a>
 	</nav>
-	<p><?= htmlspecialchars($appName) ?> v<?= htmlspecialchars($appVersion) ?> &copy; <?= date('Y') ?> <?= htmlspecialchars($appName, ENT_QUOTES, 'UTF-8') ?>. <?= e__('footer.allrightsreserved') ?></p>
+	<p><?= htmlspecialchars($appName) ?> v<?= e((string)$appVersion) ?><br/>&copy; <?= date('Y') ?> <?= htmlspecialchars($appName, ENT_QUOTES, 'UTF-8') ?>. <?= e__('footer.allrightsreserved') ?></p>
 </footer>
 
 </body>
