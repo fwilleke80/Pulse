@@ -6,6 +6,7 @@ namespace Pulse\Controllers;
 
 use Pulse\Core\Session;
 use Pulse\Core\View;
+use Pulse\Core\Logger;
 use Pulse\Repositories\UserRepository;
 use Pulse\Services\AuthService;
 
@@ -27,10 +28,11 @@ class ProfileController extends BaseController
 		View $view,
 		Session $session,
 		AuthService $auth,
+		Logger $logger,
 		UserRepository $userRepository
 	)
 	{
-		parent::__construct($view, $session, $auth);
+		parent::__construct($view, $session, $auth, $logger);
 		$this->_userRepository = $userRepository;
 	}
 

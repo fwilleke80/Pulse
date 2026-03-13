@@ -40,6 +40,10 @@ $translator = $container['translator'];
 /** @var Pulse\Repositories\UserRepository $userRepository */
 $userRepository = $container['userRepository'];
 
+/** @var Pulse\Core\Logger $logger */
+$logger = $container['logger'];
+
+/* @var array<string, mixed> $config */
 $config = $container['config'];
 
 // ----- Set global variables for views -----
@@ -48,12 +52,12 @@ $view->SetGlobals([
 ], true);
 
 // ----- Initialize controllers -----
-$homeController = new HomeController($view, $session, $auth, $db, $config, $contactRepository, $monitorRepository);
-$authController = new AuthController($view, $session, $auth);
-$contactController = new ContactController($view, $session, $auth, $contactRepository);
-$languageController = new LanguageController($view, $session, $auth, $translator, $config['supported_locales'] ?? ['en', 'de']);
-$profileController = new ProfileController($view, $session, $auth, $userRepository);
-$monitorController = new MonitorController($view, $session, $auth, $monitorRepository, $contactRepository);
+$homeController = new HomeController($view, $session, $auth, $logger, $db, $config, $contactRepository, $monitorRepository);
+$authController = new AuthController($view, $session, $auth, $logger);
+$contactController = new ContactController($view, $session, $auth, $logger, $contactRepository);
+$languageController = new LanguageController($view, $session, $auth, $logger, $translator, $config['supported_locales'] ?? ['en', 'de']);
+$profileController = new ProfileController($view, $session, $auth, $logger, $userRepository);
+$monitorController = new MonitorController($view, $session, $auth, $logger, $monitorRepository, $contactRepository);
 
 // ----- Home routes -----
 $router->Get('/', [$homeController, 'Dashboard']);

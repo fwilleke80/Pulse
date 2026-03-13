@@ -26,11 +26,12 @@ class MonitorController extends BaseController
 		\Pulse\Core\View $view,
 		\Pulse\Core\Session $session,
 		\Pulse\Services\AuthService $auth,
+		\Pulse\Core\Logger $logger,
 		MonitorRepository $monitorRepository,
 		ContactRepository $contactRepository
 	)
 	{
-		parent::__construct($view, $session, $auth);
+		parent::__construct($view, $session, $auth, $logger);
 		$this->_monitorRepository = $monitorRepository;
 		$this->_contactRepository = $contactRepository;
 	}

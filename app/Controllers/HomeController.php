@@ -31,13 +31,14 @@ class HomeController extends BaseController
 		\Pulse\Core\View $view,
 		\Pulse\Core\Session $session,
 		\Pulse\Services\AuthService $auth,
+		\Pulse\Core\Logger $logger,
 		Database $db,
 		array $config,
 		\Pulse\Repositories\ContactRepository $contactRepository,
 		\Pulse\Repositories\MonitorRepository $monitorRepository
 	)
 	{
-		parent::__construct($view, $session, $auth);
+		parent::__construct($view, $session, $auth, $logger);
 		$this->_db = $db;
 		$this->_config = $config;
 		$this->_contactRepository = $contactRepository;
