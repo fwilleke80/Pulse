@@ -15,7 +15,6 @@ return [
 	'dashboard.message.2' => 'This is the initial Pulse dashboard.',
 	'dashboard.stats.contacts' => 'Contacts',
 	'dashboard.stats.monitors' => 'Monitors',
-	'dashboard.stats.documents' => 'Documents',
 
 	'contacts.index.title' => 'Contacts',
 	'contacts.index.heading' => 'Contacts',

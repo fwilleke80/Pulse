@@ -15,7 +15,6 @@ return [
 	'dashboard.message.2' => 'Dies ist das Pulse-Dashboard.',
 	'dashboard.stats.contacts' => 'Kontakte',
 	'dashboard.stats.monitors' => 'Monitore',
-	'dashboard.stats.documents' => 'Dokumente',
 
 	'contacts.index.title' => 'Kontakte',
 	'contacts.index.heading' => 'Kontakte',
