@@ -24,6 +24,7 @@ return [
 	'contacts.index.table.notes' => 'Notes',
 	'contacts.index.table.buttons.delete' => 'Delete',
 	'contacts.index.flash.deleted' => 'Contact deleted.',
+	'contacts.index.table.buttons.edit' => 'Edit',
 
 	'contacts.add.title' => 'Add contact',
 	'contacts.add.heading' => 'Add contact',
@@ -35,6 +36,20 @@ return [
 	'contacts.add.flash.created' => 'Contact created.',
 	'contacts.add.flash.required' => 'Name and email are required.',
 	'contacts.add.flash.invalidemail' => 'Please enter a valid email address.',
+
+	'contacts.edit.title' => 'Edit contact',
+	'contacts.edit.heading' => 'Edit contact',
+	'contacts.edit.name' => 'Name',
+	'contacts.edit.email' => 'Email',
+	'contacts.edit.cell_phone' => 'Cell phone',
+	'contacts.edit.notes' => 'Notes',
+	'contacts.edit.submit' => 'Save changes',
+	'contacts.edit.back' => 'Back to contacts',
+
+	'contacts.edit.flash.notfound' => 'Contact not found.',
+	'contacts.edit.flash.required' => 'Name and email are required.',
+	'contacts.edit.flash.invalidemail' => 'Please enter a valid email address.',
+	'contacts.edit.flash.updated' => 'Contact updated.',
 
 	'profile.title' => 'Profile',
 	'profile.heading' => 'Profile',

@@ -65,6 +65,8 @@ $router->Post('/contacts/delete', [$contactController, 'Delete']);
 $router->Get('/profile', [$profileController, 'Index']);
 $router->Post('/profile/update', [$profileController, 'Update']);
 $router->Post('/profile/password', [$profileController, 'ChangePassword']);
+$router->Get('/contacts/edit', [$contactController, 'Edit']);
+$router->Post('/contacts/update', [$contactController, 'Update']);
 
 // ----- Authentication routes -----
 $router->Get('/login', [$authController, 'ShowLogin']);

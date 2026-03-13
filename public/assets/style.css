@@ -139,6 +139,8 @@ button.btn-table-inline
 	margin: 0;
 	padding: 0.25rem 0.5rem;
 	font-size: 0.875rem;
+	display: inline-block;
+	text-decoration: none;
 }
 
 nav.main-nav
@@ -196,6 +198,13 @@ table
 	width: 100%;
 	border-collapse: collapse;
 	margin-top: 1rem;
+}
+
+.table-actions
+{
+	display: flex;
+	gap: 0.5rem;
+	align-items: center;
 }
 
 th,

@@ -112,4 +112,85 @@ class ContactController extends BaseController
 
 		$this->Redirect('/contacts');
 	}
+
+	/**
+	 * @brief Displays the form for editing an existing contact.
+	 * @return string
+	 */
+	public function Edit(): string
+	{
+		$user = $this->RequireUser();
+		$contactId = (int)($_GET['id'] ?? 0);
+
+		if ($contactId <= 0)
+		{
+			$this->Flash('error', e__('contacts.edit.flash.notfound'));
+			$this->Redirect('/contacts');
+		}
+
+		$contact = $this->_contactRepository->FindByIdForUser($contactId, (int)$user['id']);
+
+		if ($contact === null)
+		{
+			$this->Flash('error', e__('contacts.edit.flash.notfound'));
+			$this->Redirect('/contacts');
+		}
+
+		return $this->_view->Render('contacts.edit', [
+			'user' => $user,
+			'contact' => $contact,
+		]);
+	}
+
+	/**
+	 * @brief Updates an existing contact for the current user.
+	 */
+	public function Update(): void
+	{
+		$user = $this->RequireUser();
+
+		$contactId = (int)($_POST['id'] ?? 0);
+		$name = trim((string)($_POST['name'] ?? ''));
+		$email = trim((string)($_POST['email'] ?? ''));
+		$cellPhone = trim((string)($_POST['cell_phone'] ?? ''));
+		$notes = trim((string)($_POST['notes'] ?? ''));
+
+		if ($contactId <= 0)
+		{
+			$this->Flash('error', e__('contacts.edit.flash.notfound'));
+			$this->Redirect('/contacts');
+		}
+
+		$existingContact = $this->_contactRepository->FindByIdForUser($contactId, (int)$user['id']);
+
+		if ($existingContact === null)
+		{
+			$this->Flash('error', e__('contacts.edit.flash.notfound'));
+			$this->Redirect('/contacts');
+		}
+
+		if ($name === '' || $email === '')
+		{
+			$this->Flash('error', e__('contacts.edit.flash.required'));
+			$this->Redirect('/contacts/edit?id=' . $contactId);
+		}
+
+		if (!filter_var($email, FILTER_VALIDATE_EMAIL))
+		{
+			$this->Flash('error', e__('contacts.edit.flash.invalidemail'));
+			$this->Redirect('/contacts/edit?id=' . $contactId);
+		}
+
+		$this->_contactRepository->UpdateForUser(
+			$contactId,
+			(int)$user['id'],
+			$name,
+			$email,
+			$cellPhone !== '' ? $cellPhone : null,
+			$notes !== '' ? $notes : null
+		);
+
+		$this->Flash('success', e__('contacts.edit.flash.updated'));
+		$this->Redirect('/contacts');
+	}
 }

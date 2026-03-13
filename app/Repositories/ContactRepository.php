@@ -121,4 +121,78 @@ class ContactRepository
 			'user_id' => $userId,
 		]);
 	}
+
+	/**
+	 * @brief Finds a contact by ID for a specific user.
+	 * @param int $contactId Contact ID.
+	 * @param int $userId User ID.
+	 * @return array<string, mixed>|null Contact row or null.
+	 */
+	public function FindByIdForUser(int $contactId, int $userId): ?array
+	{
+		$sql = '
+			SELECT
+				id,
+				name,
+				email,
+				cell_phone,
+				notes,
+				created_at,
+				updated_at
+			FROM contacts
+			WHERE id = :id
+			  AND user_id = :user_id
+			LIMIT 1
+		';
+
+		$statement = $this->_database->GetConnection()->prepare($sql);
+		$statement->execute([
+			'id' => $contactId,
+			'user_id' => $userId,
+		]);
+
+		$row = $statement->fetch(PDO::FETCH_ASSOC);
+		return is_array($row) ? $row : null;
+	}
+
+	/**
+	 * @brief Updates a contact belonging to a user.
+	 * @param int $contactId Contact ID.
+	 * @param int $userId User ID.
+	 * @param string $name Contact name.
+	 * @param string $email Contact email.
+	 * @param string|null $cellPhone Optional cell phone.
+	 * @param string|null $notes Optional notes.
+	 */
+	public function UpdateForUser(
+		int $contactId,
+		int $userId,
+		string $name,
+		string $email,
+		?string $cellPhone,
+		?string $notes
+	): void
+	{
+		$sql = '
+			UPDATE contacts
+			SET
+				name = :name,
+				email = :email,
+				cell_phone = :cell_phone,
+				notes = :notes,
+				updated_at = NOW()
+			WHERE id = :id
+			  AND user_id = :user_id
+		';
+
+		$statement = $this->_database->GetConnection()->prepare($sql);
+		$statement->execute([
+			'id' => $contactId,
+			'user_id' => $userId,
+			'name' => $name,
+			'email' => $email,
+			'cell_phone' => $cellPhone,
+			'notes' => $notes,
+		]);
+	}
 }
