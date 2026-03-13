@@ -28,10 +28,17 @@ ob_start();
 					<td><?= htmlspecialchars((string)($contact['cell_phone'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
 					<td><?= htmlspecialchars((string)($contact['notes'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
 					<td>
-						<form method="post" action="<?= e($base_url) ?>/contacts/delete" onsubmit="return confirm('Delete this contact?');">
-							<input type="hidden" name="id" value="<?= (int)$contact['id'] ?>">
-							<button type="submit" class="btn-table-inline"><?= e__('contacts.index.table.buttons.delete') ?></button>
-						</form>
+						<div class="table-actions">
+							<a
+								href="<?= e($base_url) ?>/contacts/edit?id=<?= (int)$contact['id'] ?>"
+								class="btn-table-inline"
+							><?= e__('contacts.index.table.buttons.edit') ?></a>
+
+							<form method="post" action="<?= e($base_url) ?>/contacts/delete" onsubmit="return confirm('Delete this contact?');">
+								<input type="hidden" name="id" value="<?= (int)$contact['id'] ?>">
+								<button type="submit" class="btn-table-inline"><?= e__('contacts.index.table.buttons.delete') ?></button>
+							</form>
+						</div>
 					</td>
 				</tr>
 			<?php endforeach; ?>
