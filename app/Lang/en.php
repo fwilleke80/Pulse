@@ -27,9 +27,10 @@ return [
 	'contacts.index.table.email' => 'Email',
 	'contacts.index.table.cell_phone' => 'Cell phone',
 	'contacts.index.table.notes' => 'Notes',
+	'contacts.index.table.buttons.edit' => 'Edit',
 	'contacts.index.table.buttons.delete' => 'Delete',
 	'contacts.index.flash.deleted' => 'Contact deleted: {name}.',
-	'contacts.index.table.buttons.edit' => 'Edit',
+	'contacts.index.flash.delete_confirm' => 'Are you sure you want to delete {name}?',
 
 	'contacts.add.title' => 'Add contact',
 	'contacts.add.heading' => 'Add contact',

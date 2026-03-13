@@ -27,9 +27,10 @@ return [
 	'contacts.index.table.email' => 'E-Mail',
 	'contacts.index.table.cell_phone' => 'Handy',
 	'contacts.index.table.notes' => 'Notizen',
+	'contacts.index.table.buttons.edit' => 'Bearbeiten',
 	'contacts.index.table.buttons.delete' => 'Löschen',
 	'contacts.index.flash.deleted' => 'Kontakt gelöscht: {name}.',
-	'contacts.index.table.buttons.edit' => 'Bearbeiten',
+	'contacts.index.flash.delete_confirm' => 'Sind Sie sicher, dass Sie {name} löschen möchten?',
 
 	'contacts.add.title' => 'Kontakt hinzufügen',
 	'contacts.add.heading' => 'Kontakt hinzufügen',
