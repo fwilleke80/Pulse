@@ -6,6 +6,7 @@ ob_start();
 ?>
 
 <h1><?= e__('contacts.index.heading') ?></h1>
+<p><?= e__('contacts.index.message') ?></p>
 <p><a href="<?= e($base_url) ?>/contacts/new"><?= e__('contacts.index.add') ?></a></p>
 <?php if ($contacts === []): ?>
 	<p><?= e__('contacts.index.no_contacts') ?></p>

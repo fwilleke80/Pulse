@@ -21,6 +21,7 @@ return [
 
 	'contacts.index.title' => 'Contacts',
 	'contacts.index.heading' => 'Contacts',
+	'contacts.index.message' => 'Here you can manage your emergency contacts.',
 	'contacts.index.add' => 'Add contact',
 	'contacts.index.no_contacts' => 'No contacts yet.',
 	'contacts.index.table.name' => 'Name',
@@ -58,6 +59,7 @@ return [
 
 	'monitors.index.title' => 'Monitors',
 	'monitors.index.heading' => 'Monitors',
+	'monitors.index.message' => 'Here you can manage your monitors.',
 	'monitors.index.add' => 'Add monitor',
 	'monitors.index.no_monitors' => 'No monitors yet.',
 	'monitors.index.table.name' => 'Name',

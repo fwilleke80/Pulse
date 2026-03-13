@@ -21,6 +21,7 @@ return [
 
 	'contacts.index.title' => 'Kontakte',
 	'contacts.index.heading' => 'Kontakte',
+	'contacts.index.message' => 'Hier können Sie Ihre Notfallkontakte verwalten.',
 	'contacts.index.add' => 'Kontakt hinzufügen',
 	'contacts.index.no_contacts' => 'Keine Kontakte vorhanden.',
 	'contacts.index.table.name' => 'Name',
@@ -58,6 +59,7 @@ return [
 
 	'monitors.index.title' => 'Monitore',
 	'monitors.index.heading' => 'Monitore',
+	'monitors.index.message' => 'Hier können Sie Ihre Monitore verwalten.',
 	'monitors.index.add' => 'Monitor hinzufügen',
 	'monitors.index.no_monitors' => 'Noch keine Monitore vorhanden.',
 	'monitors.index.table.name' => 'Name',
