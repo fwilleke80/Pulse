@@ -41,6 +41,47 @@ header h1
 	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
 }
 
+.stack > * + *
+{
+	margin-top: 1rem;
+}
+
+.password-toggle
+{
+	display: flex;
+	justify-content: flex-end;
+}
+
+.password-toggle label
+{
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4rem;
+	margin-top: 0;
+	font-weight: normal;
+}
+
+.password-toggle input[type="checkbox"]
+{
+	width: auto;
+	margin-top: 0;
+	padding: 0;
+	box-sizing: content-box;
+}
+
+.password-error
+{
+	border: 2px solid #c62828;
+	background-color: #fff5f5;
+}
+
+.password-warning
+{
+	color: #c62828;
+	font-size: 0.9rem;
+	margin-top: 0.4rem;
+}
+
 .status-ok
 {
 	color: #0a7a2f;

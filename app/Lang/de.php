@@ -36,6 +36,33 @@ return [
 	'contacts.add.flash.required' => 'Name und E-Mail sind erforderlich.',
 	'contacts.add.flash.invalidemail' => 'Bitte geben Sie eine gültige E-Mail-Adresse ein.',
 
+	'profile.title' => 'Profil',
+	'profile.heading' => 'Profil',
+
+	'profile.data.heading' => 'Profildaten',
+	'profile.data.display_name' => 'Anzeigename',
+	'profile.data.email' => 'E-Mail',
+	'profile.data.submit' => 'Profil speichern',
+
+	'profile.password.heading' => 'Passwort ändern',
+	'profile.password.current' => 'Aktuelles Passwort',
+	'profile.password.new' => 'Neues Passwort',
+	'profile.password.confirm' => 'Neues Passwort bestätigen',
+	'profile.password.submit' => 'Passwort ändern',
+	'profile.password.show' => 'Passwörter anzeigen',
+	'profile.password.mismatch_warning' => 'Die Passwörter stimmen nicht überein.',
+
+	'profile.flash.update.required' => 'Anzeigename und E-Mail sind erforderlich.',
+	'profile.flash.update.invalid_email' => 'Bitte gib eine gültige E-Mail-Adresse ein.',
+	'profile.flash.update.email_taken' => 'Diese E-Mail-Adresse wird bereits verwendet.',
+	'profile.flash.update.success' => 'Profil aktualisiert.',
+
+	'profile.flash.password.required' => 'Bitte fülle alle Passwortfelder aus.',
+	'profile.flash.password.current_invalid' => 'Das aktuelle Passwort ist falsch.',
+	'profile.flash.password.confirm_mismatch' => 'Die neuen Passwörter stimmen nicht überein.',
+	'profile.flash.password.too_short' => 'Das neue Passwort muss mindestens 8 Zeichen lang sein.',
+	'profile.flash.password.success' => 'Passwort erfolgreich geändert.',
+
 	'imprint.title' => 'Impressum',
 	'imprint.heading' => 'Impressum',
 	'imprint.about.heading' => 'Über Pulse',

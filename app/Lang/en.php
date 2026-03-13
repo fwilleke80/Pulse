@@ -36,6 +36,33 @@ return [
 	'contacts.add.flash.required' => 'Name and email are required.',
 	'contacts.add.flash.invalidemail' => 'Please enter a valid email address.',
 
+	'profile.title' => 'Profile',
+	'profile.heading' => 'Profile',
+
+	'profile.data.heading' => 'Profile data',
+	'profile.data.display_name' => 'Display name',
+	'profile.data.email' => 'Email',
+	'profile.data.submit' => 'Save profile',
+
+	'profile.password.heading' => 'Change password',
+	'profile.password.current' => 'Current password',
+	'profile.password.new' => 'New password',
+	'profile.password.confirm' => 'Confirm new password',
+	'profile.password.submit' => 'Change password',
+	'profile.password.show' => 'Show passwords',
+	'profile.password.mismatch_warning' => 'The passwords do not match.',
+
+	'profile.flash.update.required' => 'Display name and email are required.',
+	'profile.flash.update.invalid_email' => 'Please enter a valid email address.',
+	'profile.flash.update.email_taken' => 'That email address is already in use.',
+	'profile.flash.update.success' => 'Profile updated.',
+
+	'profile.flash.password.required' => 'Please fill in all password fields.',
+	'profile.flash.password.current_invalid' => 'The current password is incorrect.',
+	'profile.flash.password.confirm_mismatch' => 'The new passwords do not match.',
+	'profile.flash.password.too_short' => 'The new password must be at least 8 characters long.',
+	'profile.flash.password.success' => 'Password changed successfully.',
+
 	'imprint.title' => 'Imprint',
 	'imprint.heading' => 'Imprint',
 	'imprint.about.heading' => 'About Pulse',

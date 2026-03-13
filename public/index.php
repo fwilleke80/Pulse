@@ -6,6 +6,7 @@ use Pulse\Controllers\HomeController;
 use Pulse\Controllers\AuthController;
 use Pulse\Controllers\ContactController;
 use Pulse\Controllers\LanguageController;
+use Pulse\Controllers\ProfileController;
 use Pulse\Core\NotFoundException;
 
 // Load dependencies and initialize services
@@ -32,6 +33,9 @@ $contactRepository = $container['contactRepository'];
 /** @var Pulse\Core\Translator $translator */
 $translator = $container['translator'];
 
+/** @var Pulse\Repositories\UserRepository $userRepository */
+$userRepository = $container['userRepository'];
+
 $config = $container['config'];
 
 // ----- Set global variables for views -----
@@ -44,6 +48,7 @@ $homeController = new HomeController($view, $session, $auth, $db, $config);
 $authController = new AuthController($view, $session, $auth);
 $contactController = new ContactController($view, $session, $auth, $contactRepository);
 $languageController = new LanguageController($view, $session, $auth, $translator, $config['supported_locales'] ?? ['en', 'de']);
+$profileController = new ProfileController($view, $session, $auth, $userRepository);
 
 // ----- Home routes -----
 $router->Get('/', [$homeController, 'Dashboard']);
@@ -55,6 +60,11 @@ $router->Get('/contacts', [$contactController, 'Index']);
 $router->Get('/contacts/new', [$contactController, 'New']);
 $router->Post('/contacts/create', [$contactController, 'Create']);
 $router->Post('/contacts/delete', [$contactController, 'Delete']);
+
+// ----- Profile routes -----
+$router->Get('/profile', [$profileController, 'Index']);
+$router->Post('/profile/update', [$profileController, 'Update']);
+$router->Post('/profile/password', [$profileController, 'ChangePassword']);
 
 // ----- Authentication routes -----
 $router->Get('/login', [$authController, 'ShowLogin']);
