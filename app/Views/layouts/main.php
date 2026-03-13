@@ -40,10 +40,10 @@ declare(strict_types=1);
 
 <footer>
 	<nav class="footer-nav">
-		<a href="<?= e($base_url) ?>/imprint"><?= e__('footer.imprint') ?></a>
 		<span>
-			<?= e__('footer.language') ?> [ <a href="<?= e($base_url) ?>/language/set?locale=en"><?= e__('footer.language.en') ?></a> | <a href="/language/set?locale=de"><?= e__('footer.language.de') ?></a> ]
+			<?= e__('footer.language') ?> [ <a href="<?= e($base_url) ?>/language/set?locale=en&redirect=<?= urlencode($_SERVER['REQUEST_URI'] ?? '/') ?>"><?= e__('footer.language.en') ?></a> | <a href="<?= e($base_url) ?>/language/set?locale=de&redirect=<?= urlencode($_SERVER['REQUEST_URI'] ?? '/') ?>"><?= e__('footer.language.de') ?></a> ]
 		</span>
+		<a href="<?= e($base_url) ?>/imprint"><?= e__('footer.imprint') ?></a>
 	</nav>
 	<p><?= htmlspecialchars($appName) ?> v<?= htmlspecialchars($appVersion) ?> &copy; <?= date('Y') ?> <?= htmlspecialchars($appName, ENT_QUOTES, 'UTF-8') ?>. <?= e__('footer.allrightsreserved') ?></p>
 </footer>

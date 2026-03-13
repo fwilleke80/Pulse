@@ -1,4 +1,7 @@
 <?php
+/**
+ * @brief German translations for Pulse.
+ */
 
 declare(strict_types=1);
 
@@ -160,7 +163,7 @@ return [
 	'login.password' => 'Passwort',
 	'login.submit' => 'Anmelden',
 
-	'flash.languageswitched' => 'Sprache gewechselt zu:',
+	'flash.languageswitched' => 'Sprache gewechselt zu: {locale}.',
 	'flash.login.successful' => 'Anmeldung erfolgreich.',
 	'flash.login.failed' => 'Anmeldung fehlgeschlagen.',
 	'flash.login.required' => 'Bitte geben Sie Ihre E-Mail-Adresse und Ihr Passwort ein.',

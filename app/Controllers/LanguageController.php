@@ -1,4 +1,8 @@
 <?php
+/**
+ * @file LanguageController.php
+ * @brief Controller for language switching.
+ */
 
 declare(strict_types=1);
 
@@ -54,7 +58,7 @@ class LanguageController extends BaseController
 		}
 
 		$this->_session->Set('locale', $locale);
-
+		$this->Flash('success', e__('flash.languageswitched', ['locale' => $locale]));
 		$this->Redirect($this->GetRedirectTarget());
 	}
 
@@ -64,18 +68,6 @@ class LanguageController extends BaseController
 	 */
 	private function GetRedirectTarget(): string
 	{
-		$redirect = trim((string)($_GET['redirect'] ?? ''));
-
-		if ($redirect === '' || str_starts_with($redirect, 'http://') || str_starts_with($redirect, 'https://'))
-		{
-			return '/';
-		}
-
-		if ($redirect[0] !== '/')
-		{
-			return '/';
-		}
-
-		return $redirect;
+		return trim((string)($_GET['redirect'] ?? ((string)($_SERVER['HTTP_REFERER'] ?? '/'))));
 	}
 }
