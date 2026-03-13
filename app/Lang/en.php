@@ -14,7 +14,7 @@ return [
 	'dashboard.message.1' => 'Welcome, {name}!',
 	'dashboard.message.2' => 'This is the initial Pulse dashboard.',
 	'dashboard.stats.contacts' => 'Contacts',
-	'dashboard.stats.grace_periods' => 'Grace periods',
+	'dashboard.stats.pulses' => 'Pulses',
 	'dashboard.stats.documents' => 'Documents',
 
 	'contacts.index.title' => 'Contacts',
@@ -91,7 +91,7 @@ return [
 
 	'nav.dashboard' => 'Dashboard',
 	'nav.contacts' => 'Contacts',
-	'nav.periods' => 'Grace Periods',
+	'nav.pulses' => 'Pulses',
 	'nav.profile' => 'Profile',
 	'nav.logout' => 'Logout',
 	'nav.backto' => 'Back to',

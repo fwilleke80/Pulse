@@ -14,7 +14,7 @@ return [
 	'dashboard.message.1' => 'Willkommen, {name}!',
 	'dashboard.message.2' => 'Dies ist das Pulse-Dashboard.',
 	'dashboard.stats.contacts' => 'Kontakte',
-	'dashboard.stats.grace_periods' => 'Kulanzfristen',
+	'dashboard.stats.pulses' => 'Pulse',
 	'dashboard.stats.documents' => 'Dokumente',
 
 	'contacts.index.title' => 'Kontakte',
@@ -91,7 +91,7 @@ return [
 
 	'nav.dashboard' => 'Übersicht',
 	'nav.contacts' => 'Kontakte',
-	'nav.periods' => 'Zeitintervalle',
+	'nav.pulses' => 'Pulse',
 	'nav.profile' => 'Profil',
 	'nav.logout' => 'Abmelden',
 	'nav.backto' => 'Zurück zu',
