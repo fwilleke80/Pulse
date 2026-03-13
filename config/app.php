@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 return [
 	'name' => 'Pulse',
-	'version' => '0.2.5',
+	'version' => '0.2.6',
 	'env' => 'production',
 	'debug' => true,
 	'base_url' => 'https://pulse.frankwilleke.de',
