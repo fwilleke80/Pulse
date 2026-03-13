@@ -13,6 +13,7 @@ return [
 	'dashboard.heading' => 'Dashboard',
 	'dashboard.message.1' => 'Willkommen, {name}!',
 	'dashboard.message.2' => 'Dies ist das Pulse-Dashboard.',
+	'dashboard.contacts.count' => 'Sie haben {count} Kontakte.',
 
 	'contacts.index.title' => 'Kontakte',
 	'contacts.index.heading' => 'Kontakte',

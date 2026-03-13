@@ -13,6 +13,7 @@ return [
 	'dashboard.heading' => 'Dashboard',
 	'dashboard.message.1' => 'Welcome, {name}!',
 	'dashboard.message.2' => 'This is the initial Pulse dashboard.',
+	'dashboard.contacts.count' => 'You have {count} contacts.',
 
 	'contacts.index.title' => 'Contacts',
 	'contacts.index.heading' => 'Contacts',

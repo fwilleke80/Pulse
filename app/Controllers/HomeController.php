@@ -16,6 +16,8 @@ class HomeController extends BaseController
 	/** @var array<string, mixed> */
 	private array $_config;
 
+	private \Pulse\Repositories\ContactRepository $_contactRepository;
+
 	/**
 	 * @brief Constructs the home controller.
 	 * @param \Pulse\Core\View $view View renderer.
@@ -29,12 +31,14 @@ class HomeController extends BaseController
 		\Pulse\Core\Session $session,
 		\Pulse\Services\AuthService $auth,
 		Database $db,
-		array $config
+		array $config,
+		\Pulse\Repositories\ContactRepository $contactRepository
 	)
 	{
 		parent::__construct($view, $session, $auth);
 		$this->_db = $db;
 		$this->_config = $config;
+		$this->_contactRepository = $contactRepository;
 	}
 
 	/**
@@ -44,9 +48,11 @@ class HomeController extends BaseController
 	public function Dashboard(): string
 	{
 		$user = $this->RequireUser();
+		$contactCount = $this->_contactRepository->CountByUserId((int)$user['id']);
 
 		return $this->_view->Render('home.dashboard', [
 			'user' => $user,
+			'contactCount' => $contactCount,
 		]);
 	}
 

@@ -195,4 +195,27 @@ class ContactRepository
 			'notes' => $notes,
 		]);
 	}
+
+	/**
+	 * @brief Returns the number of contacts for a user.
+	 * @param int $userId User ID.
+	 * @return int
+	 */
+	public function CountByUserId(int $userId): int
+	{
+		$sql = '
+			SELECT COUNT(*) AS contact_count
+			FROM contacts
+			WHERE user_id = :user_id
+		';
+
+		$statement = $this->_database->GetConnection()->prepare($sql);
+		$statement->execute([
+			'user_id' => $userId,
+		]);
+
+		$value = $statement->fetchColumn();
+
+		return is_numeric($value) ? (int)$value : 0;
+	}
 }

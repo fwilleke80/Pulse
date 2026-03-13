@@ -44,7 +44,7 @@ $view->SetGlobals([
 ], true);
 
 // ----- Initialize controllers -----
-$homeController = new HomeController($view, $session, $auth, $db, $config);
+$homeController = new HomeController($view, $session, $auth, $db, $config, $contactRepository);
 $authController = new AuthController($view, $session, $auth);
 $contactController = new ContactController($view, $session, $auth, $contactRepository);
 $languageController = new LanguageController($view, $session, $auth, $translator, $config['supported_locales'] ?? ['en', 'de']);
@@ -88,7 +88,12 @@ if (!is_string($requestPath) || $requestPath === '')
 
 try
 {
-	echo $router->Dispatch($requestMethod, $requestPath);
+	$response = $router->Dispatch($requestMethod, $requestPath);
+
+	if (is_string($response))
+	{
+		echo $response;
+	}
 }
 catch (NotFoundException)
 {
