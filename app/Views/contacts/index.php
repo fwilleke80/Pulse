@@ -24,8 +24,8 @@ ob_start();
 			<?php foreach ($contacts as $contact): ?>
 				<tr>
 					<td><?= htmlspecialchars((string)$contact['name'], ENT_QUOTES, 'UTF-8') ?></td>
-					<td><?= htmlspecialchars((string)$contact['email'], ENT_QUOTES, 'UTF-8') ?></td>
-					<td><?= htmlspecialchars((string)($contact['cell_phone'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
+					<td><a href="mailto:<?= htmlspecialchars((string)$contact['email'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars((string)$contact['email'], ENT_QUOTES, 'UTF-8') ?></a></td>
+					<td><a href="tel:<?= htmlspecialchars((string)($contact['cell_phone'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars((string)($contact['cell_phone'] ?? ''), ENT_QUOTES, 'UTF-8') ?></a></td>
 					<td><?= htmlspecialchars((string)($contact['notes'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
 					<td>
 						<div class="table-actions">
