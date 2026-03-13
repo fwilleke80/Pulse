@@ -7,7 +7,7 @@ from pathlib import Path
 def GetVersionString() -> str:
 	try:
 		result = subprocess.run(
-			["git", "describe", "--tags", "--always", "--dirty"],
+			["git", "describe", "--tags", "--long", "--dirty"],
 			check=True,
 			capture_output=True,
 			text=True,
