@@ -217,6 +217,7 @@ $view->SetGlobals([
 	'appVersion' => $appConfig['version'],
 	'isAuthenticated' => $auth->IsAuthenticated(),
 	'currentUser' => $auth->GetCurrentUser(),
+	'locale' => $locale,
 ]);
 
 // ----- Return all services in an array for easy access -----
