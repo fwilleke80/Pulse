@@ -38,13 +38,6 @@ ob_start();
 		</label>
 	</div>
 
-	<div class="checkbox-row">
-		<label>
-			<input type="checkbox" name="is_test_mode" <?= !empty($monitor['is_test_mode']) ? 'checked' : '' ?>>
-			<?= e__('monitors.edit.is_test_mode') ?>
-		</label>
-	</div>
-
 	<div class="assignment-box">
 		<h2><?= e__('monitors.contacts.heading') ?></h2>
 		<p class="form-hint"><?= e__('monitors.contacts.hint') ?></p>

@@ -79,7 +79,6 @@ class MonitorController extends BaseController
 		$reminderIntervalDays = (int)($_POST['reminder_interval_days'] ?? 0);
 		$maxReminders = (int)($_POST['max_reminders'] ?? 0);
 		$isPaused = isset($_POST['is_paused']);
-		$isTestMode = isset($_POST['is_test_mode']);
 		$contactIds = isset($_POST['contact_ids']) && is_array($_POST['contact_ids'])
 			? array_map('intval', $_POST['contact_ids'])
 			: [];
@@ -120,13 +119,12 @@ class MonitorController extends BaseController
 			$responseWindowDays,
 			$reminderIntervalDays,
 			$maxReminders,
-			$isPaused,
-			$isTestMode
+			$isPaused
 		);
 
 		$this->_monitorRepository->ReplaceContactsForMonitor($monitorId, $contactIds);
 
-		$this->Flash('success', e__('monitors.add.flash.created'));
+		$this->Flash('success', e__('monitors.add.flash.created', ['name' => $name]));
 		$this->Redirect('/monitors');
 	}
 
@@ -179,7 +177,6 @@ class MonitorController extends BaseController
 		$reminderIntervalDays = (int)($_POST['reminder_interval_days'] ?? 0);
 		$maxReminders = (int)($_POST['max_reminders'] ?? 0);
 		$isPaused = isset($_POST['is_paused']);
-		$isTestMode = isset($_POST['is_test_mode']);
 		$contactIds = isset($_POST['contact_ids']) && is_array($_POST['contact_ids'])
 			? array_map('intval', $_POST['contact_ids'])
 			: [];
@@ -235,13 +232,12 @@ class MonitorController extends BaseController
 			$responseWindowDays,
 			$reminderIntervalDays,
 			$maxReminders,
-			$isPaused,
-			$isTestMode
+			$isPaused
 		);
 
 		$this->_monitorRepository->ReplaceContactsForMonitor($monitorId, $contactIds);
 
-		$this->Flash('success', e__('monitors.edit.flash.updated'));
+		$this->Flash('success', e__('monitors.edit.flash.updated', ['name' => $name]));
 		$this->Redirect('/monitors');
 	}
 
@@ -255,8 +251,10 @@ class MonitorController extends BaseController
 
 		if ($monitorId > 0)
 		{
+			$existingMonitor = $this->_monitorRepository->FindByIdForUser($monitorId, (int)$user['id']);
+			
 			$this->_monitorRepository->DeleteForUser($monitorId, (int)$user['id']);
-			$this->Flash('success', e__('monitors.index.flash.deleted'));
+			$this->Flash('success', e__('monitors.index.flash.deleted', ['name' => $existingMonitor ? (string)$existingMonitor['name'] : ''])); // Use monitor name if available
 		}
 
 		$this->Redirect('/monitors');

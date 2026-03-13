@@ -33,13 +33,6 @@ ob_start();
 		</label>
 	</div>
 
-	<div class="checkbox-row">
-		<label>
-			<input type="checkbox" name="is_test_mode">
-			<?= e__('monitors.add.is_test_mode') ?>
-		</label>
-	</div>
-
 	<div class="assignment-box">
 		<h2><?= e__('monitors.contacts.heading') ?></h2>
 		<p class="form-hint"><?= e__('monitors.contacts.hint') ?></p>
@@ -50,11 +43,7 @@ ob_start();
 			<div class="assignment-list">
 				<?php foreach ($contacts as $contact): ?>
 					<label class="assignment-item">
-						<input
-							type="checkbox"
-							name="contact_ids[]"
-							value="<?= (int)$contact['id'] ?>"
-						>
+						<input type="checkbox" name="contact_ids[]" value="<?= (int)$contact['id'] ?>">
 						<span>
 							<strong><?= htmlspecialchars((string)$contact['name'], ENT_QUOTES, 'UTF-8') ?></strong>
 							<?php if (!empty($contact['email'])): ?>

@@ -21,7 +21,6 @@ ob_start();
 				<th><?= e__('monitors.index.table.reminder_interval_days') ?></th>
 				<th><?= e__('monitors.index.table.max_reminders') ?></th>
 				<th><?= e__('monitors.index.table.is_paused') ?></th>
-				<th><?= e__('monitors.index.table.is_test_mode') ?></th>
 				<th></th>
 			</tr>
 		</thead>
@@ -35,7 +34,6 @@ ob_start();
 					<td><?= (int)$monitor['reminder_interval_days'] ?></td>
 					<td><?= (int)$monitor['max_reminders'] ?></td>
 					<td><?= !empty($monitor['is_paused']) ? e__('common.yes') : e__('common.no') ?></td>
-					<td><?= !empty($monitor['is_test_mode']) ? e__('common.yes') : e__('common.no') ?></td>
 					<td>
 						<div class="table-actions">
 							<form method="get" action="<?= e($base_url) ?>/monitors/edit">
