@@ -21,7 +21,7 @@ declare(strict_types=1);
 <nav class="main-nav">
 	<a href="<?= e($base_url) ?>/"><?= e__('nav.dashboard') ?></a>
 	<a href="<?= e($base_url) ?>/contacts"><?= e__('nav.contacts') ?></a>
-	<a href="<?= e($base_url) ?>/pulses"><?= e__('nav.pulses') ?></a>
+	<a href="<?= e($base_url) ?>/monitors"><?= e__('nav.monitors') ?></a>
 	<a href="<?= e($base_url) ?>/profile"><?= e__('nav.profile') ?></a>
 	<a href="<?= e($base_url) ?>/logout"><?= e__('nav.logout') ?></a>
 </nav>

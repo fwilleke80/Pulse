@@ -16,7 +16,7 @@ ob_start();
 	</a>
 
 	<a href="#" class="dashboard-stat">
-		<div class="dashboard-stat-title"><?= e__('dashboard.stats.pulses') ?></div>
+		<div class="dashboard-stat-title"><?= e__('dashboard.stats.monitors') ?></div>
 		<div class="dashboard-stat-value">0</div>
 	</a>
 

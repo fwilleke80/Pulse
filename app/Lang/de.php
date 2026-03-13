@@ -14,7 +14,7 @@ return [
 	'dashboard.message.1' => 'Willkommen, {name}!',
 	'dashboard.message.2' => 'Dies ist das Pulse-Dashboard.',
 	'dashboard.stats.contacts' => 'Kontakte',
-	'dashboard.stats.pulses' => 'Pulse',
+	'dashboard.stats.monitors' => 'Monitore',
 	'dashboard.stats.documents' => 'Dokumente',
 
 	'contacts.index.title' => 'Kontakte',
@@ -91,7 +91,7 @@ return [
 
 	'nav.dashboard' => 'Übersicht',
 	'nav.contacts' => 'Kontakte',
-	'nav.pulses' => 'Pulse',
+	'nav.monitors' => 'Monitore',
 	'nav.profile' => 'Profil',
 	'nav.logout' => 'Abmelden',
 	'nav.backto' => 'Zurück zu',
