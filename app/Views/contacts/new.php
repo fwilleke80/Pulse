@@ -6,7 +6,7 @@ ob_start();
 ?>
 
 <h1><?= e__('contacts.add.heading') ?></h1>
-<form method="post" action="/contacts/create">
+<form method="post" action="<?= e($base_url) ?>/contacts/create">
 	<label for="name"><?= e__('contacts.add.name') ?></label>
 	<input type="text" id="name" name="name" required>
 	<label for="email"><?= e__('contacts.add.email') ?></label>

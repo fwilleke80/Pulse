@@ -13,17 +13,17 @@ declare(strict_types=1);
 
 <header class="main-header">
 	<a href="/" class="app-title">
-		<img src="/assets/logo.png" alt="<?= htmlspecialchars($appName) ?>" class="app-logo">
+		<img src="<?= e($base_url) ?>/assets/logo.png" alt="<?= htmlspecialchars($appName) ?>" class="app-logo">
 	</a>
 </header>
 
 <?php if (!empty($isAuthenticated)): ?>
 <nav class="main-nav">
-	<a href="/"><?= e__('nav.dashboard') ?></a>
-	<a href="/contacts"><?= e__('nav.contacts') ?></a>
-	<a href="/periods"><?= e__('nav.periods') ?></a>
-	<a href="/profile"><?= e__('nav.profile') ?></a>
-	<a href="/logout"><?= e__('nav.logout') ?></a>
+	<a href="<?= e($base_url) ?>/"><?= e__('nav.dashboard') ?></a>
+	<a href="<?= e($base_url) ?>/contacts"><?= e__('nav.contacts') ?></a>
+	<a href="<?= e($base_url) ?>/periods"><?= e__('nav.periods') ?></a>
+	<a href="<?= e($base_url) ?>/profile"><?= e__('nav.profile') ?></a>
+	<a href="<?= e($base_url) ?>/logout"><?= e__('nav.logout') ?></a>
 </nav>
 <?php endif; ?>
 
@@ -40,9 +40,9 @@ declare(strict_types=1);
 
 <footer>
 	<nav class="footer-nav">
-		<a href="/imprint"><?= e__('footer.imprint') ?></a>
+		<a href="<?= e($base_url) ?>/imprint"><?= e__('footer.imprint') ?></a>
 		<span>
-			<?= e__('footer.language') ?> [ <a href="/language/set?locale=en"><?= e__('footer.language.en') ?></a> | <a href="/language/set?locale=de"><?= e__('footer.language.de') ?></a> ]
+			<?= e__('footer.language') ?> [ <a href="<?= e($base_url) ?>/language/set?locale=en"><?= e__('footer.language.en') ?></a> | <a href="/language/set?locale=de"><?= e__('footer.language.de') ?></a> ]
 		</span>
 	</nav>
 	<p><?= htmlspecialchars($appName) ?> v<?= htmlspecialchars($appVersion) ?> &copy; <?= date('Y') ?> <?= htmlspecialchars($appName, ENT_QUOTES, 'UTF-8') ?>. <?= e__('footer.allrightsreserved') ?></p>

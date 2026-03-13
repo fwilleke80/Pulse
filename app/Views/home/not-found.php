@@ -5,7 +5,7 @@ ob_start();
 ?>
 <h1><?= e__('404.heading') ?></h1>
 <p><?= e__('404.message') ?></p>
-<p><a href="/"><?= e__('nav.backto') . ' ' . e__('home.heading') ?></a></p>
+<p><a href="<?= e($base_url) ?>/"><?= e__('nav.backto') . ' ' . e__('home.heading') ?></a></p>
 
 <?php
 $content = ob_get_clean();

@@ -14,7 +14,7 @@ ob_start();
 	</span>
 </p>
 <p>PHP version: <?= htmlspecialchars($phpVersion, ENT_QUOTES, 'UTF-8') ?></p>
-<p><a href="/login"><?= e__('login.title') ?></a> | <a href="/health">Health check</a></p>
+<p><a href="<?= e($base_url) ?>/login"><?= e__('login.title') ?></a> | <a href="<?= e($base_url) ?>/health">Health check</a></p>
 
 <?php
 $content = ob_get_clean();
