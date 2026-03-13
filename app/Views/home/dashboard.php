@@ -12,5 +12,4 @@ ob_start();
 <?php
 $content = ob_get_clean();
 $title = e__('dashboard.title');
-
 require __DIR__ . '/../layouts/main.php';

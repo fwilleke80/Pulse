@@ -42,5 +42,4 @@ ob_start();
 <?php
 $content = ob_get_clean();
 $title = e__('contacts.index.title');
-
 require __DIR__ . '/../layouts/main.php';

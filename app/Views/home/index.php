@@ -19,5 +19,4 @@ ob_start();
 <?php
 $content = ob_get_clean();
 $title = e__('home.title');
-
 require __DIR__ . '/../layouts/main.php';

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 /** @var array<string, mixed> $user */
 
-$title = __('profile.title');
 ob_start();
 ?>
 
@@ -164,4 +163,5 @@ ob_start();
 
 <?php
 $content = ob_get_clean();
+$title = __('profile.title');
 require dirname(__DIR__) . '/layouts/main.php';
