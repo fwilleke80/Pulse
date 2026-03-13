@@ -101,6 +101,10 @@ return [
 	'monitors.edit.flash.invalidnumbers' => 'Bitte gib gültige Zeitwerte für den Monitor ein.',
 	'monitors.edit.flash.updated' => 'Monitor aktualisiert.',
 
+	'monitors.contacts.heading' => 'Zugeordnete Kontakte',
+	'monitors.contacts.hint' => 'Wähle die Kontakte aus, die für diesen Monitor benachrichtigt werden sollen.',
+	'monitors.contacts.none' => 'Keine Kontakte vorhanden. Lege zuerst Kontakte an.',
+
 	'profile.title' => 'Profil',
 	'profile.heading' => 'Profil',
 

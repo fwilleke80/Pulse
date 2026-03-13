@@ -101,6 +101,10 @@ return [
 	'monitors.edit.flash.invalidnumbers' => 'Please enter valid monitor timing values.',
 	'monitors.edit.flash.updated' => 'Monitor updated.',
 
+	'monitors.contacts.heading' => 'Assigned contacts',
+	'monitors.contacts.hint' => 'Select the contacts that should be notified for this monitor.',
+	'monitors.contacts.none' => 'No contacts available. Create contacts first.',
+
 	'profile.title' => 'Profile',
 	'profile.heading' => 'Profile',
 

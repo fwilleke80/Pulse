@@ -53,7 +53,7 @@ $authController = new AuthController($view, $session, $auth);
 $contactController = new ContactController($view, $session, $auth, $contactRepository);
 $languageController = new LanguageController($view, $session, $auth, $translator, $config['supported_locales'] ?? ['en', 'de']);
 $profileController = new ProfileController($view, $session, $auth, $userRepository);
-$monitorController = new MonitorController($view, $session, $auth, $monitorRepository);
+$monitorController = new MonitorController($view, $session, $auth, $monitorRepository, $contactRepository);
 
 // ----- Home routes -----
 $router->Get('/', [$homeController, 'Dashboard']);

@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+/** @var array<int, array<string, mixed>> $contacts */
+/** @var array<int> $assignedContactIds */
+
 ob_start();
 ?>
 
@@ -41,6 +44,36 @@ ob_start();
 			<?= e__('monitors.edit.is_test_mode') ?>
 		</label>
 	</div>
+
+	<div class="assignment-box">
+		<h2><?= e__('monitors.contacts.heading') ?></h2>
+		<p class="form-hint"><?= e__('monitors.contacts.hint') ?></p>
+
+		<?php if ($contacts === []): ?>
+			<p><?= e__('monitors.contacts.none') ?></p>
+		<?php else: ?>
+			<div class="assignment-list">
+				<?php foreach ($contacts as $contact): ?>
+					<?php $contactId = (int)$contact['id']; ?>
+					<label class="assignment-item">
+						<input
+							type="checkbox"
+							name="contact_ids[]"
+							value="<?= $contactId ?>"
+							<?= in_array($contactId, $assignedContactIds, true) ? 'checked' : '' ?>
+						>
+						<span>
+							<strong><?= htmlspecialchars((string)$contact['name'], ENT_QUOTES, 'UTF-8') ?></strong>
+							<?php if (!empty($contact['email'])): ?>
+								<br><small><?= htmlspecialchars((string)$contact['email'], ENT_QUOTES, 'UTF-8') ?></small>
+							<?php endif; ?>
+						</span>
+					</label>
+				<?php endforeach; ?>
+			</div>
+		<?php endif; ?>
+	</div>
+
 	<button type="submit"><?= e__('monitors.edit.submit') ?></button>
 </form>
 
