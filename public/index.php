@@ -46,27 +46,30 @@ $contactController = new ContactController($view, $session, $auth, $contactRepos
 $languageController = new LanguageController($view, $session, $auth, $translator, $config['supported_locales'] ?? ['en', 'de']);
 
 // ----- Standard route -----
-$router->Get('/', fn (): string => $homeController->Dashboard());
+// $router->Get('/', fn (): string => $homeController->Dashboard());
+$router->Get('/', [$homeController, 'Dashboard']);
+$router->Get('/imprint', [$homeController, 'Imprint']);
+$router->Get('/health', [$homeController, 'Health']);
 
 // ----- Contact management routes -----
-$router->Get('/contacts', fn (): string => $contactController->Index());
-$router->Get('/contacts/new', fn (): string => $contactController->New());
-$router->Post('/contacts/create', fn () => $contactController->Create());
-$router->Post('/contacts/delete', fn () => $contactController->Delete());
+$router->Get('/contacts', [$contactController, 'Index']);
+$router->Get('/contacts/new', [$contactController, 'New']);
+$router->Post('/contacts/create', [$contactController, 'Create']);
+$router->Post('/contacts/delete', [$contactController, 'Delete']);
 
 // ----- Authentication routes -----
-$router->Get('/login', fn (): string => $authController->ShowLogin());
-$router->Post('/login', fn () => $authController->Login());
-$router->Get('/logout', fn () => $authController->Logout());
+$router->Get('/login', [$authController, 'ShowLogin']);
+$router->Post('/login', [$authController, 'Login']);
+$router->Get('/logout', [$authController, 'Logout']);
 
 // ----- Health check route -----
-$router->Get('/health', fn () => $homeController->Health());
+// $router->Get('/health', fn () => $homeController->Health());
 
 // ----- Static imprint page -----
-$router->Get('/imprint', fn (): string => $homeController->Imprint());
+// $router->Get('/imprint', fn (): string => $homeController->Imprint());
 
 // ----- Language switcher route -----
-$router->Get('/language/set', fn () => $languageController->Set());
+$router->Get('/language/set', [$languageController, 'Set']);
 
 // ----- Dispatch request -----
 $requestMethod = $_SERVER['REQUEST_METHOD'] ?? 'GET';

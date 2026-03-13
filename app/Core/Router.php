@@ -5,88 +5,59 @@ declare(strict_types=1);
 namespace Pulse\Core;
 
 use Closure;
-use RuntimeException;
-use Pulse\Core\NotFoundException;
 
 /**
- * @brief Minimal HTTP router.
+ * @brief Very small router for exact GET and POST route matching.
  */
 class Router
 {
-	/** @var array<string, array<string, Closure>> */
-	private array $_routes;
+	/** @var array<string, callable> */
+	private array $_getRoutes = [];
 
-	public function __construct()
-	{
-		$this->_routes = [];
-	}
+	/** @var array<string, callable> */
+	private array $_postRoutes = [];
 
 	/**
 	 * @brief Registers a GET route.
-	 * @param string $path URL path.
-	 * @param Closure $handler Route handler.
+	 * @param string $path Route path.
+	 * @param callable $handler Route handler.
 	 */
-	public function Get(string $path, Closure $handler): void
+	public function Get(string $path, callable $handler): void
 	{
-		$this->AddRoute('GET', $path, $handler);
+		$this->_getRoutes[$path] = $handler;
 	}
 
 	/**
 	 * @brief Registers a POST route.
-	 * @param string $path URL path.
-	 * @param Closure $handler Route handler.
+	 * @param string $path Route path.
+	 * @param callable $handler Route handler.
 	 */
-	public function Post(string $path, Closure $handler): void
+	public function Post(string $path, callable $handler): void
 	{
-		$this->AddRoute('POST', $path, $handler);
+		$this->_postRoutes[$path] = $handler;
 	}
 
 	/**
-	 * @brief Dispatches the current request.
-	 * @param string $method HTTP method.
+	 * @brief Dispatches the request to the matching route handler.
+	 * @param string $method HTTP request method.
 	 * @param string $path Request path.
-	 * @return mixed Route result.
+	 * @return mixed
+	 * @throws NotFoundException
 	 */
 	public function Dispatch(string $method, string $path): mixed
 	{
-		$normalizedMethod = strtoupper($method);
-		$normalizedPath = $this->NormalizePath($path);
-
-		if (!isset($this->_routes[$normalizedMethod][$normalizedPath]))
+		$routes = match (strtoupper($method))
 		{
-			throw new NotFoundException('Route not found.');
+			'GET' => $this->_getRoutes,
+			'POST' => $this->_postRoutes,
+			default => [],
+		};
+
+		if (!isset($routes[$path]))
+		{
+			throw new NotFoundException('Route not found: ' . $method . ' ' . $path);
 		}
 
-		return ($this->_routes[$normalizedMethod][$normalizedPath])();
-	}
-
-	/**
-	 * @brief Adds a route entry.
-	 * @param string $method HTTP method.
-	 * @param string $path URL path.
-	 * @param Closure $handler Route handler.
-	 */
-	private function AddRoute(string $method, string $path, Closure $handler): void
-	{
-		$normalizedMethod = strtoupper($method);
-		$normalizedPath = $this->NormalizePath($path);
-		$this->_routes[$normalizedMethod][$normalizedPath] = $handler;
-	}
-
-	/**
-	 * @brief Normalizes a URL path.
-	 * @param string $path Raw path.
-	 * @return string Normalized path.
-	 */
-	private function NormalizePath(string $path): string
-	{
-		$trimmedPath = trim($path);
-
-		if ($trimmedPath === '' || $trimmedPath === '/')
-		{
-			return '/';
-		}
-
-		return '/' . trim($trimmedPath, '/');
+		return ($routes[$path])();
 	}
 }
