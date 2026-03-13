@@ -29,11 +29,10 @@ ob_start();
 					<td><?= htmlspecialchars((string)($contact['notes'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
 					<td>
 						<div class="table-actions">
-							<a
-								href="<?= e($base_url) ?>/contacts/edit?id=<?= (int)$contact['id'] ?>"
-								class="btn-table-inline"
-							><?= e__('contacts.index.table.buttons.edit') ?></a>
-
+							<form method="get" action="<?= e($base_url) ?>/contacts/edit">
+								<input type="hidden" name="id" value="<?= (int)$contact['id'] ?>">
+								<button type="submit" class="btn-table-inline"><?= e__('contacts.index.table.buttons.edit') ?></button>
+							</form>
 							<form method="post" action="<?= e($base_url) ?>/contacts/delete" onsubmit="return confirm('Delete this contact?');">
 								<input type="hidden" name="id" value="<?= (int)$contact['id'] ?>">
 								<button type="submit" class="btn-table-inline"><?= e__('contacts.index.table.buttons.delete') ?></button>
