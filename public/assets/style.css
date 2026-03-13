@@ -22,21 +22,9 @@ header h1
 
 .card
 {
-	max-width: 700px;
+	max-width: 960px;
 	background: #fff;
 	padding: 1.5rem;
-	border-radius: 10px;
-	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-}
-
-.cardsmall
-{
-	max-width: 700px;
-	background: #fff;
-	padding-left: 1.5rem;
-	padding-right: 1.5rem;
-	padding-top: 0.5rem;
-	padding-bottom: 0.5rem;
 	border-radius: 10px;
 	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
 }
