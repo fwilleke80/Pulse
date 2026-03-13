@@ -28,7 +28,7 @@ return [
 	'contacts.index.table.cell_phone' => 'Cell phone',
 	'contacts.index.table.notes' => 'Notes',
 	'contacts.index.table.buttons.delete' => 'Delete',
-	'contacts.index.flash.deleted' => 'Contact deleted.',
+	'contacts.index.flash.deleted' => 'Contact deleted: {name}.',
 	'contacts.index.table.buttons.edit' => 'Edit',
 
 	'contacts.add.title' => 'Add contact',
@@ -38,7 +38,7 @@ return [
 	'contacts.add.cell_phone' => 'Cell phone',
 	'contacts.add.notes' => 'Notes',
 	'contacts.add.submit' => 'Create contact',
-	'contacts.add.flash.created' => 'Contact created.',
+	'contacts.add.flash.created' => 'Contact created: {name}.',
 	'contacts.add.flash.required' => 'Name and email are required.',
 	'contacts.add.flash.invalidemail' => 'Please enter a valid email address.',
 
@@ -50,11 +50,10 @@ return [
 	'contacts.edit.notes' => 'Notes',
 	'contacts.edit.submit' => 'Save changes',
 	'contacts.edit.back' => 'Back to contacts',
-
-	'contacts.edit.flash.notfound' => 'Contact not found.',
+	'contacts.edit.flash.notfound' => 'Contact not found: {id}.',
 	'contacts.edit.flash.required' => 'Name and email are required.',
 	'contacts.edit.flash.invalidemail' => 'Please enter a valid email address.',
-	'contacts.edit.flash.updated' => 'Contact updated.',
+	'contacts.edit.flash.updated' => 'Contact updated: {name}.',
 
 	'monitors.index.title' => 'Monitors',
 	'monitors.index.heading' => 'Monitors',

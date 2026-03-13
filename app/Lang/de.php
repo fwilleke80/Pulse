@@ -28,7 +28,7 @@ return [
 	'contacts.index.table.cell_phone' => 'Handy',
 	'contacts.index.table.notes' => 'Notizen',
 	'contacts.index.table.buttons.delete' => 'Löschen',
-	'contacts.index.flash.deleted' => 'Kontakt gelöscht.',
+	'contacts.index.flash.deleted' => 'Kontakt gelöscht: {name}.',
 	'contacts.index.table.buttons.edit' => 'Bearbeiten',
 
 	'contacts.add.title' => 'Kontakt hinzufügen',
@@ -38,7 +38,7 @@ return [
 	'contacts.add.cell_phone' => 'Handy',
 	'contacts.add.notes' => 'Notizen',
 	'contacts.add.submit' => 'Kontakt erstellen',
-	'contacts.add.flash.created' => 'Kontakt erstellt.',
+	'contacts.add.flash.created' => 'Kontakt erstellt: {name}.',
 	'contacts.add.flash.required' => 'Name und E-Mail sind erforderlich.',
 	'contacts.add.flash.invalidemail' => 'Bitte geben Sie eine gültige E-Mail-Adresse ein.',
 
@@ -50,11 +50,10 @@ return [
 	'contacts.edit.notes' => 'Notizen',
 	'contacts.edit.submit' => 'Änderungen speichern',
 	'contacts.edit.back' => 'Zurück zu den Kontakten',
-
-	'contacts.edit.flash.notfound' => 'Kontakt nicht gefunden.',
+	'contacts.edit.flash.notfound' => 'Kontakt nicht gefunden: {id}.',
 	'contacts.edit.flash.required' => 'Name und E-Mail sind erforderlich.',
 	'contacts.edit.flash.invalidemail' => 'Bitte geben Sie eine gültige E-Mail-Adresse ein.',
-	'contacts.edit.flash.updated' => 'Kontakt aktualisiert.',
+	'contacts.edit.flash.updated' => 'Kontakt aktualisiert: {name}.',
 
 	'monitors.index.title' => 'Monitore',
 	'monitors.index.heading' => 'Monitore',

@@ -93,7 +93,7 @@ class ContactController extends BaseController
 			$notes !== '' ? $notes : null
 		);
 
-		$this->Flash('success', e__('contacts.add.flash.created'));
+		$this->Flash('success', e__('contacts.add.flash.created', ['name' => $name]));
 		$this->Redirect('/contacts');
 	}
 
@@ -107,8 +107,9 @@ class ContactController extends BaseController
 
 		if ($contactId > 0)
 		{
+			$contact = $this->_contactRepository->FindByIdForUser($contactId, (int)$user['id']) ?? null;
 			$this->_contactRepository->DeleteForUser($contactId, (int)$user['id']);
-			$this->Flash('success', e__('contacts.index.flash.deleted'));
+			$this->Flash('success', e__('contacts.index.flash.deleted', ['name' => $contact['name'] ?? '']));
 		}
 
 		$this->Redirect('/contacts');
@@ -125,7 +126,7 @@ class ContactController extends BaseController
 
 		if ($contactId <= 0)
 		{
-			$this->Flash('error', e__('contacts.edit.flash.notfound'));
+			$this->Flash('error', e__('contacts.edit.flash.notfound', ['id' => $contactId]));
 			$this->Redirect('/contacts');
 		}
 
@@ -133,7 +134,7 @@ class ContactController extends BaseController
 
 		if ($contact === null)
 		{
-			$this->Flash('error', e__('contacts.edit.flash.notfound'));
+			$this->Flash('error', e__('contacts.edit.flash.notfound', ['id' => $contactId]));
 			$this->Redirect('/contacts');
 		}
 
@@ -158,7 +159,7 @@ class ContactController extends BaseController
 
 		if ($contactId <= 0)
 		{
-			$this->Flash('error', e__('contacts.edit.flash.notfound'));
+			$this->Flash('error', e__('contacts.edit.flash.notfound', ['id' => $contactId]));
 			$this->Redirect('/contacts');
 		}
 
@@ -166,7 +167,7 @@ class ContactController extends BaseController
 
 		if ($existingContact === null)
 		{
-			$this->Flash('error', e__('contacts.edit.flash.notfound'));
+			$this->Flash('error', e__('contacts.edit.flash.notfound', ['id' => $contactId]));
 			$this->Redirect('/contacts');
 		}
 
@@ -191,7 +192,7 @@ class ContactController extends BaseController
 			$notes !== '' ? $notes : null
 		);
 
-		$this->Flash('success', e__('contacts.edit.flash.updated'));
+		$this->Flash('success', e__('contacts.edit.flash.updated', ['name' => $name]));
 		$this->Redirect('/contacts');
 	}
 }
