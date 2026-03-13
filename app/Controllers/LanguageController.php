@@ -53,7 +53,7 @@ class LanguageController extends BaseController
 			$this->Redirect($this->GetRedirectTarget());
 		}
 
-		$this->_session->Set('pulse_locale', $locale);
+		$this->_session->Set('locale', $locale);
 
 		$this->Redirect($this->GetRedirectTarget());
 	}

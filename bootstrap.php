@@ -201,7 +201,7 @@ $session->Start();
 $defaultLocale = (string)$appConfig['locale'];
 $availableLocales = $appConfig['available_locales'];
 
-$locale = $_SESSION['pulse_locale'] ?? $defaultLocale;
+$locale = $_SESSION['locale'] ?? $defaultLocale;
 
 if (!in_array($locale, $availableLocales, true))
 {
