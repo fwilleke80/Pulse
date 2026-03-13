@@ -107,7 +107,7 @@ class ContactController extends BaseController
 		if ($contactId > 0)
 		{
 			$this->_contactRepository->DeleteForUser($contactId, (int)$user['id']);
-			$this->Flash('success', e__('contacts.flash.deleted'));
+			$this->Flash('success', e__('contacts.index.flash.deleted'));
 		}
 
 		$this->Redirect('/contacts');
