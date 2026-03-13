@@ -164,4 +164,4 @@ ob_start();
 <?php
 $content = ob_get_clean();
 $title = __('profile.title');
-require dirname(__DIR__) . '/../layouts/main.php';
+require __DIR__ . '/../layouts/main.php';
