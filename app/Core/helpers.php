@@ -7,6 +7,14 @@ use Pulse\Core\Translator;
 $__pulseTranslator = null;
 
 /**
+ * Escapes a string for safe output in HTML.
+ */
+function e(string $value): string
+{
+	return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
+}
+
+/**
  * Registers the global translator.
  */
 function setTranslator(Translator $translator): void
