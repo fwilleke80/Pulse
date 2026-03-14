@@ -68,6 +68,15 @@ class HomeController extends BaseController
 	 * @brief Displays the imprint page.
 	 * @return string
 	 */
+	public function About(): string
+	{
+		return $this->_view->Render('static.about');
+	}
+
+	/**
+	 * @brief Displays the imprint page.
+	 * @return string
+	 */
 	public function Imprint(): string
 	{
 		return $this->_view->Render('static.imprint');

@@ -61,6 +61,7 @@ $monitorController = new MonitorController($view, $session, $auth, $logger, $mon
 
 // ----- Home routes -----
 $router->Get('/', [$homeController, 'Dashboard']);
+$router->Get('/about', [$homeController, 'About']);
 $router->Get('/imprint', [$homeController, 'Imprint']);
 $router->Get('/health', [$homeController, 'Health']);
 

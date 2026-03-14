@@ -43,9 +43,10 @@ declare(strict_types=1);
 		<span>
 			<?= e__('footer.language') ?> [ <a href="<?= e($base_url) ?>/language/set?locale=en&redirect=<?= urlencode($_SERVER['REQUEST_URI'] ?? '/') ?>"><?= e__('footer.language.en') ?></a> | <a href="<?= e($base_url) ?>/language/set?locale=de&redirect=<?= urlencode($_SERVER['REQUEST_URI'] ?? '/') ?>"><?= e__('footer.language.de') ?></a> ]
 		</span>
+		<a href="<?= e($base_url) ?>/about"><?= e__('footer.about') ?></a>
 		<a href="<?= e($base_url) ?>/imprint"><?= e__('footer.imprint') ?></a>
 	</nav>
-	<p><?= htmlspecialchars($appName) ?> v<?= e((string)$appVersion) ?><br/>&copy; <?= date('Y') ?> <?= htmlspecialchars($appName, ENT_QUOTES, 'UTF-8') ?>. <?= e__('footer.allrightsreserved') ?></p>
+	<p><?= htmlspecialchars($appName) ?> v<?= e((string)$appVersion) ?><br/>&copy; <?= date('Y') ?> <a href="https://frankwilleke.de" target="_blank">frankwilleke.de</a>. <?= e__('footer.allrightsreserved') ?></p>
 </footer>
 
 </body>

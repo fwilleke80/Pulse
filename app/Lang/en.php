@@ -134,11 +134,13 @@ return [
 	'profile.flash.password.too_short' => 'The new password must be at least 8 characters long.',
 	'profile.flash.password.success' => 'Password changed successfully.',
 
+	'about.title' => 'About',
+	'about.heading' => 'About Pulse',
+	'about.message.1' => 'Pulse is an emergency notification system.',
+	'about.message.2' => 'It allows users to automatically send a message to predefined contacts in case of an emergency or even an accident.',
+
 	'imprint.title' => 'Imprint',
 	'imprint.heading' => 'Imprint',
-	'imprint.about.heading' => 'About Pulse',
-	'imprint.about.message.1' => 'Pulse is an emergency notification system.',
-	'imprint.about.message.2' => 'It allows users to automatically send a message to predefined contacts in case of an emergency or even an accident.',
 	'imprint.contact.heading' => 'Contact Information',
 	'imprint.contact.message' => 'Frank Willeke<br><u>frank[at]frankwilleke[dot]de</u>',
 
@@ -149,6 +151,7 @@ return [
 	'nav.logout' => 'Logout',
 	'nav.backto' => 'Back to',
 
+	'footer.about' => 'About',
 	'footer.imprint' => 'Imprint',
 	'footer.language' => 'Language',
 	'footer.language.en' => 'English',
@@ -162,7 +165,7 @@ return [
 	'login.password' => 'Password',
 	'login.submit' => 'Login',
 
-	'flash.languageswitched' => 'Language switched to: {locale}.',
+	'flash.languageswitched' => 'Sprache gewechselt zu: {locale}.', // German on purpose, as this message is loaded while the old language is still active.
 	'flash.login.successful' => 'Login successful.',
 	'flash.login.failed' => 'Login failed.',
 	'flash.login.required' => 'Please enter your email address and password.',
