@@ -58,9 +58,28 @@ function __(string $key, array $params = []): string
  */
 function e__(string $key, array $params = []): string
 {
-	return htmlspecialchars(
-		__( $key, $params ),
-		ENT_QUOTES,
-		'UTF-8'
-	);
+	return e(__( $key, $params ));
+}
+
+/**
+ * @brief Abbreviates a string to a maximum length and appends "...".
+ * @param string $text The input string.
+ * @param int $maxLength Maximum allowed length.
+ * @return string
+ */
+function abbrev(string $text, int $maxLength): string
+{
+	$text = trim($text);
+
+	if ($text === '')
+	{
+		return '';
+	}
+
+	if (mb_strlen($text) <= $maxLength)
+	{
+		return $text;
+	}
+
+	return mb_substr($text, 0, $maxLength - 3) . '...';
 }
