@@ -28,7 +28,6 @@ def main() -> None:
 
 	project_root: Path = Path(__file__).resolve().parent.parent
 	output_file: Path = project_root / "config" / "version.php"
-
 	content: str = (
 		"<?php\n\n"
 		"declare(strict_types=1);\n\n"
