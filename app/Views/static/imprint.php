@@ -6,7 +6,6 @@ ob_start();
 ?>
 
 <h1><?= e__('imprint.heading') ?></h1>
-<h2><?= e__('imprint.contact.heading') ?></h2>
 <p><?= __('imprint.contact.message') ?></p>
 
 <?php

@@ -141,7 +141,6 @@ return [
 
 	'imprint.title' => 'Imprint',
 	'imprint.heading' => 'Imprint',
-	'imprint.contact.heading' => 'Contact Information',
 	'imprint.contact.message' => 'Frank Willeke<br><u>frank[at]frankwilleke[dot]de</u>',
 
 	'nav.dashboard' => 'Dashboard',

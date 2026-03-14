@@ -141,7 +141,6 @@ return [
 
 	'imprint.title' => 'Impressum',
 	'imprint.heading' => 'Impressum',
-	'imprint.contact.heading' => 'Kontaktinformationen',
 	'imprint.contact.message' => 'Frank Willeke<br><u>frank[at]frankwilleke[dot]de</u>',
 	
 	'nav.dashboard' => 'Übersicht',
