@@ -18,7 +18,8 @@ def GetVersionString() -> str:
 			return "dev"
 
 		return version
-	except Exception:
+	except Exception as e:
+		print(f"Error occurred while fetching version: {e}")
 		return "dev"
 
 
