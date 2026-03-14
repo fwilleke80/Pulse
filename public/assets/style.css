@@ -174,8 +174,10 @@ nav.main-nav a:hover
 
 nav.footer-nav
 {
-	margin: 1rem 0 0 0;
-	padding: 0;
+	margin-top: 1rem;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
 }
 
 nav.footer-nav a
@@ -188,10 +190,11 @@ nav.footer-nav a:hover
 	text-decoration: underline;
 }
 
-nav.footer-nav > * + *::before
+nav.footer-nav > * + *
 {
-	content: " | ";
-	color: #777;
+	margin-left: 0.5rem;
+	padding-left: 0.5rem;
+	border-left: 1px solid #777;
 }
 
 footer
