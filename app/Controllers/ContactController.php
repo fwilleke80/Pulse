@@ -24,10 +24,11 @@ class ContactController extends BaseController
 		\Pulse\Core\View $view,
 		\Pulse\Core\Session $session,
 		\Pulse\Services\AuthService $auth,
+		\Pulse\Core\Logger $logger,
 		ContactRepository $contactRepository
 	)
 	{
-		parent::__construct($view, $session, $auth);
+		parent::__construct($view, $session, $auth, $logger);
 		$this->_contactRepository = $contactRepository;
 	}
 
@@ -92,6 +93,7 @@ class ContactController extends BaseController
 			$notes !== '' ? $notes : null
 		);
 
+		$this->_logger->Info('Created new contact for user ID ' . $user['id'] . ': ' . $name . ' (' . $email . ')');
 		$this->Flash('success', e__('contacts.add.flash.created'));
 		$this->Redirect('/contacts');
 	}
@@ -107,6 +109,7 @@ class ContactController extends BaseController
 		if ($contactId > 0)
 		{
 			$this->_contactRepository->DeleteForUser($contactId, (int)$user['id']);
+			$this->_logger->Info('Deleted contact with ID ' . $contactId . ' for user ID ' . $user['id']);
 			$this->Flash('success', e__('contacts.index.flash.deleted'));
 		}
 
@@ -157,6 +160,7 @@ class ContactController extends BaseController
 
 		if ($contactId <= 0)
 		{
+			$this->_logger->Warning('User ID ' . $user['id'] . ' attempted to update contact with invalid ID: ' . $contactId);
 			$this->Flash('error', e__('contacts.edit.flash.notfound'));
 			$this->Redirect('/contacts');
 		}
@@ -165,18 +169,21 @@ class ContactController extends BaseController
 
 		if ($existingContact === null)
 		{
+			$this->_logger->Warning('User ID ' . $user['id'] . ' attempted to update contact ID ' . $contactId . ' which does not exist');
 			$this->Flash('error', e__('contacts.edit.flash.notfound'));
 			$this->Redirect('/contacts');
 		}
 
 		if ($name === '' || $email === '')
 		{
+			$this->_logger->Warning('User ID ' . $user['id'] . ' attempted to update contact ID ' . $contactId . ' with missing required fields');
 			$this->Flash('error', e__('contacts.edit.flash.required'));
 			$this->Redirect('/contacts/edit?id=' . $contactId);
 		}
 
 		if (!filter_var($email, FILTER_VALIDATE_EMAIL))
 		{
+			$this->_logger->Warning('User ID ' . $user['id'] . ' attempted to update contact ID ' . $contactId . ' with invalid email: ' . $email);
 			$this->Flash('error', e__('contacts.edit.flash.invalidemail'));
 			$this->Redirect('/contacts/edit?id=' . $contactId);
 		}
@@ -190,6 +197,7 @@ class ContactController extends BaseController
 			$notes !== '' ? $notes : null
 		);
 
+		$this->_logger->Info('Updated contact with ID ' . $contactId . ' for user ID ' . $user['id'] . ': ' . $name . ' (' . $email . ')');
 		$this->Flash('success', e__('contacts.edit.flash.updated'));
 		$this->Redirect('/contacts');
 	}

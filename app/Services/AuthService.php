@@ -77,7 +77,7 @@ class AuthService
 	public function Logout(): void
 	{
 		$userId = $this->_session->GetUserId();
-		$this->_logger->Info('User logged out', [
+		$this->_logger->Info('User with id logged out', [
 			'user_id' => $userId,
 		]);
 		$this->_session->Logout();

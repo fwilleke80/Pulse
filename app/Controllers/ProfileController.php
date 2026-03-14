@@ -6,6 +6,7 @@ namespace Pulse\Controllers;
 
 use Pulse\Core\Session;
 use Pulse\Core\View;
+use Pulse\Core\Logger;
 use Pulse\Repositories\UserRepository;
 use Pulse\Services\AuthService;
 
@@ -27,10 +28,11 @@ class ProfileController extends BaseController
 		View $view,
 		Session $session,
 		AuthService $auth,
+		Logger $logger,
 		UserRepository $userRepository
 	)
 	{
-		parent::__construct($view, $session, $auth);
+		parent::__construct($view, $session, $auth, $logger);
 		$this->_userRepository = $userRepository;
 	}
 
@@ -60,12 +62,14 @@ class ProfileController extends BaseController
 
 		if ($displayName === '' || $email === '')
 		{
+			$this->_logger->Warning('Profile update failed due to missing fields', ['user_id' => $userId]);
 			$this->Flash('error', __('profile.flash.update.required'));
 			$this->Redirect('/profile');
 		}
 
 		if (!filter_var($email, FILTER_VALIDATE_EMAIL))
 		{
+			$this->_logger->Warning('Profile update failed due to invalid email format', ['user_id' => $userId, 'email' => $email]);
 			$this->Flash('error', __('profile.flash.update.invalid_email'));
 			$this->Redirect('/profile');
 		}
@@ -74,12 +78,14 @@ class ProfileController extends BaseController
 
 		if ($existingUser !== null)
 		{
+			$this->_logger->Warning('Profile update failed due to email already taken', ['user_id' => $userId, 'email' => $email]);
 			$this->Flash('error', __('profile.flash.update.email_taken'));
 			$this->Redirect('/profile');
 		}
 
 		$this->_userRepository->UpdateProfile($userId, $displayName, $email);
 
+		$this->_logger->Info('Profile updated successfully', ['user_id' => $userId]);
 		$this->Flash('success', __('profile.flash.update.success'));
 		$this->Redirect('/profile');
 	}
@@ -98,6 +104,7 @@ class ProfileController extends BaseController
 
 		if ($currentPassword === '' || $newPassword === '' || $confirmPassword === '')
 		{
+			$this->_logger->Warning('Password change failed due to missing fields', ['user_id' => $userId]);
 			$this->Flash('error', __('profile.flash.password.required'));
 			$this->Redirect('/profile');
 		}
@@ -106,18 +113,21 @@ class ProfileController extends BaseController
 
 		if (!password_verify($currentPassword, $passwordHash))
 		{
+			$this->_logger->Warning('Password change failed due to incorrect current password', ['user_id' => $userId]);
 			$this->Flash('error', __('profile.flash.password.current_invalid'));
 			$this->Redirect('/profile');
 		}
 
 		if ($newPassword !== $confirmPassword)
 		{
+			$this->_logger->Warning('Password change failed due to password confirmation mismatch', ['user_id' => $userId]);
 			$this->Flash('error', __('profile.flash.password.confirm_mismatch'));
 			$this->Redirect('/profile');
 		}
 
 		if (strlen($newPassword) < 8)
 		{
+			$this->_logger->Warning('Password change failed due to new password being too short', ['user_id' => $userId]);
 			$this->Flash('error', __('profile.flash.password.too_short'));
 			$this->Redirect('/profile');
 		}
@@ -125,6 +135,7 @@ class ProfileController extends BaseController
 		$newPasswordHash = password_hash($newPassword, PASSWORD_DEFAULT);
 		$this->_userRepository->UpdatePasswordHash($userId, $newPasswordHash);
 
+		$this->_logger->Info('Password changed successfully', ['user_id' => $userId]);
 		$this->Flash('success', __('profile.flash.password.success'));
 		$this->Redirect('/profile');
 	}

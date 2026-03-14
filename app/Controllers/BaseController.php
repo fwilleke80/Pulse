@@ -6,6 +6,7 @@ namespace Pulse\Controllers;
 
 use Pulse\Core\Session;
 use Pulse\Core\View;
+use Pulse\Core\Logger;
 use Pulse\Services\AuthService;
 
 /**
@@ -17,6 +18,8 @@ abstract class BaseController
 	protected Session $_session;
 	protected AuthService $_auth;
 
+	protected Logger $_logger;
+
 	/**
 	 * @brief Constructs the base controller.
 	 * @param View $view View renderer.
@@ -26,12 +29,14 @@ abstract class BaseController
 	public function __construct(
 		View $view,
 		Session $session,
-		AuthService $auth
+		AuthService $auth,
+		Logger $logger
 	)
 	{
 		$this->_view = $view;
 		$this->_session = $session;
 		$this->_auth = $auth;
+		$this->_logger = $logger;
 	}
 
 	/**

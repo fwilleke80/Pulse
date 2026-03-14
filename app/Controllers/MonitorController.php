@@ -24,10 +24,11 @@ class MonitorController extends BaseController
 		\Pulse\Core\View $view,
 		\Pulse\Core\Session $session,
 		\Pulse\Services\AuthService $auth,
+		\Pulse\Core\Logger $logger,
 		MonitorRepository $monitorRepository
 	)
 	{
-		parent::__construct($view, $session, $auth);
+		parent::__construct($view, $session, $auth, $logger);
 		$this->_monitorRepository = $monitorRepository;
 	}
 
@@ -77,6 +78,7 @@ class MonitorController extends BaseController
 
 		if ($name === '')
 		{
+			$this->_logger->Warning('Monitor creation failed: name is required', ['user_id' => $user['id']]);
 			$this->Flash('error', e__('monitors.add.flash.required'));
 			$this->Redirect('/monitors/new');
 		}
@@ -88,6 +90,7 @@ class MonitorController extends BaseController
 			$maxReminders < 0
 		)
 		{
+			$this->_logger->Warning('Monitor creation failed: invalid numeric values', ['user_id' => $user['id']]);
 			$this->Flash('error', e__('monitors.add.flash.invalidnumbers'));
 			$this->Redirect('/monitors/new');
 		}
@@ -104,6 +107,7 @@ class MonitorController extends BaseController
 			$isTestMode
 		);
 
+		$this->_logger->Info('Monitor created successfully', ['user_id' => $user['id'], 'monitor_name' => $name]);
 		$this->Flash('success', e__('monitors.add.flash.created'));
 		$this->Redirect('/monitors');
 	}
@@ -119,6 +123,7 @@ class MonitorController extends BaseController
 
 		if ($monitorId <= 0)
 		{
+			$this->_logger->Warning('Monitor edit failed: invalid monitor ID', ['user_id' => $user['id'], 'monitor_id' => $monitorId]);
 			$this->Flash('error', e__('monitors.edit.flash.notfound'));
 			$this->Redirect('/monitors');
 		}
@@ -127,9 +132,12 @@ class MonitorController extends BaseController
 
 		if ($monitor === null)
 		{
+			$this->_logger->Warning('Monitor edit failed: monitor not found', ['user_id' => $user['id'], 'monitor_id' => $monitorId]);
 			$this->Flash('error', e__('monitors.edit.flash.notfound'));
 			$this->Redirect('/monitors');
 		}
+
+		$this->_logger->Info('Editing monitor', ['user_id' => $user['id'], 'monitor_id' => $monitorId]);
 
 		return $this->_view->Render('monitors.edit', [
 			'user' => $user,
@@ -156,6 +164,7 @@ class MonitorController extends BaseController
 
 		if ($monitorId <= 0)
 		{
+			$this->_logger->Warning('Monitor update failed: invalid monitor ID', ['user_id' => $user['id'], 'monitor_id' => $monitorId]);
 			$this->Flash('error', e__('monitors.edit.flash.notfound'));
 			$this->Redirect('/monitors');
 		}
@@ -164,12 +173,14 @@ class MonitorController extends BaseController
 
 		if ($existingMonitor === null)
 		{
+			$this->_logger->Warning('Monitor update failed: monitor not found', ['user_id' => $user['id'], 'monitor_id' => $monitorId]);
 			$this->Flash('error', e__('monitors.edit.flash.notfound'));
 			$this->Redirect('/monitors');
 		}
 
 		if ($name === '')
 		{
+			$this->_logger->Warning('Monitor update failed: name is required', ['user_id' => $user['id'], 'monitor_id' => $monitorId]);
 			$this->Flash('error', e__('monitors.edit.flash.required'));
 			$this->Redirect('/monitors/edit?id=' . $monitorId);
 		}
@@ -181,6 +192,7 @@ class MonitorController extends BaseController
 			$maxReminders < 0
 		)
 		{
+			$this->_logger->Warning('Monitor update failed: invalid numeric values', ['user_id' => $user['id'], 'monitor_id' => $monitorId]);
 			$this->Flash('error', e__('monitors.edit.flash.invalidnumbers'));
 			$this->Redirect('/monitors/edit?id=' . $monitorId);
 		}
@@ -198,6 +210,7 @@ class MonitorController extends BaseController
 			$isTestMode
 		);
 
+		$this->_logger->Info('Monitor updated successfully', ['user_id' => $user['id'], 'monitor_id' => $monitorId]);
 		$this->Flash('success', e__('monitors.edit.flash.updated'));
 		$this->Redirect('/monitors');
 	}
@@ -213,6 +226,7 @@ class MonitorController extends BaseController
 		if ($monitorId > 0)
 		{
 			$this->_monitorRepository->DeleteForUser($monitorId, (int)$user['id']);
+			$this->_logger->Info('Monitor deleted successfully', ['user_id' => $user['id'], 'monitor_id' => $monitorId]);
 			$this->Flash('success', e__('monitors.index.flash.deleted'));
 		}
 

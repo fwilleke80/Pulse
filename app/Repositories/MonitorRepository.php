@@ -40,7 +40,6 @@ class MonitorRepository
 				reminder_interval_days,
 				max_reminders,
 				is_paused,
-				is_test_mode,
 				last_confirmed_at,
 				next_check_due_at,
 				created_at,

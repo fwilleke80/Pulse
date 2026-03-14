@@ -31,13 +31,14 @@ class HomeController extends BaseController
 		\Pulse\Core\View $view,
 		\Pulse\Core\Session $session,
 		\Pulse\Services\AuthService $auth,
+		\Pulse\Core\Logger $logger,
 		Database $db,
 		array $config,
 		\Pulse\Repositories\ContactRepository $contactRepository,
 		\Pulse\Repositories\MonitorRepository $monitorRepository
 	)
 	{
-		parent::__construct($view, $session, $auth);
+		parent::__construct($view, $session, $auth, $logger);
 		$this->_db = $db;
 		$this->_config = $config;
 		$this->_contactRepository = $contactRepository;
@@ -53,6 +54,8 @@ class HomeController extends BaseController
 		$user = $this->RequireUser();
 		$contactCount = $this->_contactRepository->CountByUserId((int)$user['id']);
 		$monitorCount = $this->_monitorRepository->CountByUserId((int)$user['id']);
+
+		$this->_logger->Info('User ID ' . $user['id'] . ' accessed dashboard');
 
 		return $this->_view->Render('home.dashboard', [
 			'user' => $user,
@@ -94,6 +97,12 @@ class HomeController extends BaseController
 		{
 			$directories[$name] = is_dir($path) && is_writable($path);
 		}
+
+		$this->_logger->Info('Health check performed', [
+			'database' => $databaseOk ? 'ok' : 'error',
+			'config' => $configOk ? 'ok' : 'error',
+			'directories' => $directories,
+		]);
 
 		$directoriesOk = !in_array(false, $directories, true);
 		$status = ($databaseOk && $directoriesOk && $configOk) ? 'ok' : 'error';

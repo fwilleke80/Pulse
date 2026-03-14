@@ -7,6 +7,7 @@ namespace Pulse\Controllers;
 use Pulse\Core\Session;
 use Pulse\Core\Translator;
 use Pulse\Core\View;
+use Pulse\Core\Logger;
 use Pulse\Services\AuthService;
 
 /**
@@ -31,11 +32,12 @@ class LanguageController extends BaseController
 		View $view,
 		Session $session,
 		AuthService $auth,
+		Logger $logger,
 		Translator $translator,
 		array $supportedLocales
 	)
 	{
-		parent::__construct($view, $session, $auth);
+		parent::__construct($view, $session, $auth, $logger);
 		$this->_translator = $translator;
 		$this->_supportedLocales = $supportedLocales;
 	}
@@ -53,8 +55,8 @@ class LanguageController extends BaseController
 			$this->Redirect($this->GetRedirectTarget());
 		}
 
+		$this->_logger->Info('Changing language', ['locale' => $locale]);
 		$this->_session->Set('locale', $locale);
-
 		$this->Redirect($this->GetRedirectTarget());
 	}
 
