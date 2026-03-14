@@ -17,7 +17,6 @@ abstract class BaseController
 	protected View $_view;
 	protected Session $_session;
 	protected AuthService $_auth;
-
 	protected Logger $_logger;
 
 	/**

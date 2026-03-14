@@ -1,4 +1,7 @@
 <?php
+/**
+ * @brief English translations for Pulse.
+ */
 
 declare(strict_types=1);
 
@@ -18,15 +21,17 @@ return [
 
 	'contacts.index.title' => 'Contacts',
 	'contacts.index.heading' => 'Contacts',
+	'contacts.index.message' => 'Here you can manage your emergency contacts.',
 	'contacts.index.add' => 'Add contact',
 	'contacts.index.no_contacts' => 'No contacts yet.',
 	'contacts.index.table.name' => 'Name',
 	'contacts.index.table.email' => 'Email',
 	'contacts.index.table.cell_phone' => 'Cell phone',
 	'contacts.index.table.notes' => 'Notes',
-	'contacts.index.table.buttons.delete' => 'Delete',
-	'contacts.index.flash.deleted' => 'Contact deleted.',
 	'contacts.index.table.buttons.edit' => 'Edit',
+	'contacts.index.table.buttons.delete' => 'Delete',
+	'contacts.index.flash.deleted' => 'Contact deleted: {name}.',
+	'contacts.index.flash.delete_confirm' => 'Are you sure you want to delete {name}?',
 
 	'contacts.add.title' => 'Add contact',
 	'contacts.add.heading' => 'Add contact',
@@ -35,7 +40,7 @@ return [
 	'contacts.add.cell_phone' => 'Cell phone',
 	'contacts.add.notes' => 'Notes',
 	'contacts.add.submit' => 'Create contact',
-	'contacts.add.flash.created' => 'Contact created.',
+	'contacts.add.flash.created' => 'Contact created: {name}.',
 	'contacts.add.flash.required' => 'Name and email are required.',
 	'contacts.add.flash.invalidemail' => 'Please enter a valid email address.',
 
@@ -47,14 +52,14 @@ return [
 	'contacts.edit.notes' => 'Notes',
 	'contacts.edit.submit' => 'Save changes',
 	'contacts.edit.back' => 'Back to contacts',
-
-	'contacts.edit.flash.notfound' => 'Contact not found.',
+	'contacts.edit.flash.notfound' => 'Contact not found: {id}.',
 	'contacts.edit.flash.required' => 'Name and email are required.',
 	'contacts.edit.flash.invalidemail' => 'Please enter a valid email address.',
-	'contacts.edit.flash.updated' => 'Contact updated.',
+	'contacts.edit.flash.updated' => 'Contact updated: {name}.',
 
 	'monitors.index.title' => 'Monitors',
 	'monitors.index.heading' => 'Monitors',
+	'monitors.index.message' => 'Here you can manage your monitors.',
 	'monitors.index.add' => 'Add monitor',
 	'monitors.index.no_monitors' => 'No monitors yet.',
 	'monitors.index.table.name' => 'Name',
@@ -64,10 +69,9 @@ return [
 	'monitors.index.table.reminder_interval_days' => 'Reminder interval',
 	'monitors.index.table.max_reminders' => 'Max reminders',
 	'monitors.index.table.is_paused' => 'Paused',
-	'monitors.index.table.is_test_mode' => 'Test mode',
 	'monitors.index.table.buttons.edit' => 'Edit',
 	'monitors.index.table.buttons.delete' => 'Delete',
-	'monitors.index.flash.deleted' => 'Monitor deleted.',
+	'monitors.index.flash.deleted' => 'Monitor {name} deleted.',
 
 	'monitors.add.title' => 'Add monitor',
 	'monitors.add.heading' => 'Add monitor',
@@ -78,9 +82,8 @@ return [
 	'monitors.add.reminder_interval_days' => 'Reminder interval (days)',
 	'monitors.add.max_reminders' => 'Maximum reminders',
 	'monitors.add.is_paused' => 'Paused',
-	'monitors.add.is_test_mode' => 'Test mode',
 	'monitors.add.submit' => 'Create monitor',
-	'monitors.add.flash.created' => 'Monitor created.',
+	'monitors.add.flash.created' => 'Monitor {name} created.',
 	'monitors.add.flash.required' => 'Name is required.',
 	'monitors.add.flash.invalidnumbers' => 'Please enter valid monitor timing values.',
 
@@ -93,13 +96,16 @@ return [
 	'monitors.edit.reminder_interval_days' => 'Reminder interval (days)',
 	'monitors.edit.max_reminders' => 'Maximum reminders',
 	'monitors.edit.is_paused' => 'Paused',
-	'monitors.edit.is_test_mode' => 'Test mode',
 	'monitors.edit.submit' => 'Save changes',
 	'monitors.edit.back' => 'Back to monitors',
 	'monitors.edit.flash.notfound' => 'Monitor not found.',
 	'monitors.edit.flash.required' => 'Name is required.',
 	'monitors.edit.flash.invalidnumbers' => 'Please enter valid monitor timing values.',
-	'monitors.edit.flash.updated' => 'Monitor updated.',
+	'monitors.edit.flash.updated' => 'Monitor {name} updated.',
+
+	'monitors.contacts.heading' => 'Assigned contacts',
+	'monitors.contacts.hint' => 'Select the contacts that should be notified for this monitor.',
+	'monitors.contacts.none' => 'No contacts available. Create contacts first.',
 
 	'profile.title' => 'Profile',
 	'profile.heading' => 'Profile',
@@ -156,7 +162,7 @@ return [
 	'login.password' => 'Password',
 	'login.submit' => 'Login',
 
-	'flash.languageswitched' => 'Language switched to:',
+	'flash.languageswitched' => 'Language switched to: {locale}.',
 	'flash.login.successful' => 'Login successful.',
 	'flash.login.failed' => 'Login failed.',
 	'flash.login.required' => 'Please enter your email address and password.',

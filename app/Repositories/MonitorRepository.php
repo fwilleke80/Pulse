@@ -76,7 +76,6 @@ class MonitorRepository
 				reminder_interval_days,
 				max_reminders,
 				is_paused,
-				is_test_mode,
 				last_confirmed_at,
 				next_check_due_at,
 				created_at,
@@ -98,6 +97,35 @@ class MonitorRepository
 	}
 
 	/**
+	 * @brief Returns the assigned contact IDs for a monitor.
+	 * @param int $monitorId Monitor ID.
+	 * @return array<int>
+	 */
+	public function FindContactIdsByMonitorId(int $monitorId): array
+	{
+		$sql = '
+			SELECT contact_id
+			FROM monitor_contacts
+			WHERE monitor_id = :monitor_id
+			ORDER BY sort_order ASC, id ASC
+		';
+
+		$statement = $this->_database->GetConnection()->prepare($sql);
+		$statement->execute([
+			'monitor_id' => $monitorId,
+		]);
+
+		$rows = $statement->fetchAll(PDO::FETCH_COLUMN);
+
+		if (!is_array($rows))
+		{
+			return [];
+		}
+
+		return array_map('intval', $rows);
+	}
+
+	/**
 	 * @brief Creates a monitor for a user.
 	 * @param int $userId User ID.
 	 * @param string $name Monitor name.
@@ -107,7 +135,6 @@ class MonitorRepository
 	 * @param int $reminderIntervalDays Days between reminders.
 	 * @param int $maxReminders Maximum number of reminders.
 	 * @param bool $isPaused Whether the monitor is paused.
-	 * @param bool $isTestMode Whether the monitor is in test mode.
 	 */
 	public function CreateForUser(
 		int $userId,
@@ -118,8 +145,7 @@ class MonitorRepository
 		int $reminderIntervalDays,
 		int $maxReminders,
 		bool $isPaused,
-		bool $isTestMode
-	): void
+	): int
 	{
 		$sql = '
 			INSERT INTO monitors
@@ -132,7 +158,6 @@ class MonitorRepository
 				reminder_interval_days,
 				max_reminders,
 				is_paused,
-				is_test_mode,
 				created_at,
 				updated_at
 			)
@@ -146,7 +171,6 @@ class MonitorRepository
 				:reminder_interval_days,
 				:max_reminders,
 				:is_paused,
-				:is_test_mode,
 				NOW(),
 				NOW()
 			)
@@ -162,10 +186,74 @@ class MonitorRepository
 			'reminder_interval_days' => $reminderIntervalDays,
 			'max_reminders' => $maxReminders,
 			'is_paused' => $isPaused ? 1 : 0,
-			'is_test_mode' => $isTestMode ? 1 : 0,
 		]);
+
+		return (int)$this->_database->GetConnection()->lastInsertId();
 	}
 
+	/**
+	 * @brief Replaces all assigned contacts for a monitor.
+	 * @param int $monitorId Monitor ID.
+	 * @param array<int> $contactIds Contact IDs.
+	 */
+	public function ReplaceContactsForMonitor(int $monitorId, array $contactIds): void
+	{
+		$connection = $this->_database->GetConnection();
+		$connection->beginTransaction();
+
+		try
+		{
+			$deleteSql = '
+				DELETE FROM monitor_contacts
+				WHERE monitor_id = :monitor_id
+			';
+
+			$deleteStatement = $connection->prepare($deleteSql);
+			$deleteStatement->execute([
+				'monitor_id' => $monitorId,
+			]);
+
+			if ($contactIds !== [])
+			{
+				$insertSql = '
+					INSERT INTO monitor_contacts
+					(
+						monitor_id,
+						contact_id,
+						sort_order
+					)
+					VALUES
+					(
+						:monitor_id,
+						:contact_id,
+						:sort_order
+					)
+				';
+
+				$insertStatement = $connection->prepare($insertSql);
+
+				$sortOrder = 1;
+
+				foreach ($contactIds as $contactId)
+				{
+					$insertStatement->execute([
+						'monitor_id' => $monitorId,
+						'contact_id' => $contactId,
+						'sort_order' => $sortOrder,
+					]);
+
+					++$sortOrder;
+				}
+			}
+
+			$connection->commit();
+		}
+		catch (\Throwable $throwable)
+		{
+			$connection->rollBack();
+			throw $throwable;
+		}
+	}
 	/**
 	 * @brief Updates a monitor belonging to a user.
 	 * @param int $monitorId Monitor ID.
@@ -177,7 +265,6 @@ class MonitorRepository
 	 * @param int $reminderIntervalDays Days between reminders.
 	 * @param int $maxReminders Maximum number of reminders.
 	 * @param bool $isPaused Whether the monitor is paused.
-	 * @param bool $isTestMode Whether the monitor is in test mode.
 	 */
 	public function UpdateForUser(
 		int $monitorId,
@@ -188,8 +275,7 @@ class MonitorRepository
 		int $responseWindowDays,
 		int $reminderIntervalDays,
 		int $maxReminders,
-		bool $isPaused,
-		bool $isTestMode
+		bool $isPaused
 	): void
 	{
 		$sql = '
@@ -202,7 +288,6 @@ class MonitorRepository
 				reminder_interval_days = :reminder_interval_days,
 				max_reminders = :max_reminders,
 				is_paused = :is_paused,
-				is_test_mode = :is_test_mode,
 				updated_at = NOW()
 			WHERE id = :id
 			  AND user_id = :user_id
@@ -219,7 +304,6 @@ class MonitorRepository
 			'reminder_interval_days' => $reminderIntervalDays,
 			'max_reminders' => $maxReminders,
 			'is_paused' => $isPaused ? 1 : 0,
-			'is_test_mode' => $isTestMode ? 1 : 0,
 		]);
 	}
 

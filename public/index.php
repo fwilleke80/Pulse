@@ -43,6 +43,7 @@ $userRepository = $container['userRepository'];
 /** @var Pulse\Core\Logger $logger */
 $logger = $container['logger'];
 
+/* @var array<string, mixed> $config */
 $config = $container['config'];
 
 // ----- Set global variables for views -----
@@ -56,7 +57,7 @@ $authController = new AuthController($view, $session, $auth, $logger);
 $contactController = new ContactController($view, $session, $auth, $logger, $contactRepository);
 $languageController = new LanguageController($view, $session, $auth, $logger, $translator, $config['supported_locales'] ?? ['en', 'de']);
 $profileController = new ProfileController($view, $session, $auth, $logger, $userRepository);
-$monitorController = new MonitorController($view, $session, $auth, $logger, $monitorRepository);
+$monitorController = new MonitorController($view, $session, $auth, $logger, $monitorRepository, $contactRepository);
 
 // ----- Home routes -----
 $router->Get('/', [$homeController, 'Dashboard']);

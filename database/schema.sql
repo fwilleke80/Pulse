@@ -40,7 +40,6 @@ CREATE TABLE monitors
 	reminder_interval_days INT NOT NULL,
 	max_reminders INT NOT NULL DEFAULT 0,
 	is_paused TINYINT(1) NOT NULL DEFAULT 0,
-	is_test_mode TINYINT(1) NOT NULL DEFAULT 0,
 	last_confirmed_at DATETIME NULL,
 	next_check_due_at DATETIME NULL,
 	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,

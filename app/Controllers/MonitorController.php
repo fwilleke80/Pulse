@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Pulse\Controllers;
 
 use Pulse\Repositories\MonitorRepository;
+use Pulse\Repositories\ContactRepository;
 
 /**
  * @brief Controller for monitor management.
@@ -12,6 +13,7 @@ use Pulse\Repositories\MonitorRepository;
 class MonitorController extends BaseController
 {
 	private MonitorRepository $_monitorRepository;
+	private ContactRepository $_contactRepository;
 
 	/**
 	 * @brief Constructs the monitor controller.
@@ -25,11 +27,13 @@ class MonitorController extends BaseController
 		\Pulse\Core\Session $session,
 		\Pulse\Services\AuthService $auth,
 		\Pulse\Core\Logger $logger,
-		MonitorRepository $monitorRepository
+		MonitorRepository $monitorRepository,
+		ContactRepository $contactRepository
 	)
 	{
 		parent::__construct($view, $session, $auth, $logger);
 		$this->_monitorRepository = $monitorRepository;
+		$this->_contactRepository = $contactRepository;
 	}
 
 	/**
@@ -54,9 +58,11 @@ class MonitorController extends BaseController
 	public function New(): string
 	{
 		$user = $this->RequireUser();
+		$contacts = $this->_contactRepository->FindAllByUserId((int)$user['id']);
 
 		return $this->_view->Render('monitors.new', [
 			'user' => $user,
+			'contacts' => $contacts,
 		]);
 	}
 
@@ -74,7 +80,9 @@ class MonitorController extends BaseController
 		$reminderIntervalDays = (int)($_POST['reminder_interval_days'] ?? 0);
 		$maxReminders = (int)($_POST['max_reminders'] ?? 0);
 		$isPaused = isset($_POST['is_paused']);
-		$isTestMode = isset($_POST['is_test_mode']);
+		$contactIds = isset($_POST['contact_ids']) && is_array($_POST['contact_ids'])
+			? array_map('intval', $_POST['contact_ids'])
+			: [];
 
 		if ($name === '')
 		{
@@ -95,7 +103,18 @@ class MonitorController extends BaseController
 			$this->Redirect('/monitors/new');
 		}
 
-		$this->_monitorRepository->CreateForUser(
+		$allowedContacts = $this->_contactRepository->FindAllByUserId((int)$user['id']);
+		$allowedContactIds = array_map(
+			static fn (array $contact): int => (int)$contact['id'],
+			$allowedContacts
+		);
+
+		$contactIds = array_values(array_unique(array_filter(
+			$contactIds,
+			static fn (int $contactId): bool => in_array($contactId, $allowedContactIds, true)
+		)));
+
+		$monitorId = $this->_monitorRepository->CreateForUser(
 			(int)$user['id'],
 			$name,
 			$description !== '' ? $description : null,
@@ -103,12 +122,12 @@ class MonitorController extends BaseController
 			$responseWindowDays,
 			$reminderIntervalDays,
 			$maxReminders,
-			$isPaused,
-			$isTestMode
+			$isPaused
 		);
 
 		$this->_logger->Info('Monitor created successfully', ['user_id' => $user['id'], 'monitor_name' => $name]);
-		$this->Flash('success', e__('monitors.add.flash.created'));
+		$this->_monitorRepository->ReplaceContactsForMonitor($monitorId, $contactIds);
+		$this->Flash('success', e__('monitors.add.flash.created', ['name' => $name]));
 		$this->Redirect('/monitors');
 	}
 
@@ -138,10 +157,14 @@ class MonitorController extends BaseController
 		}
 
 		$this->_logger->Info('Editing monitor', ['user_id' => $user['id'], 'monitor_id' => $monitorId]);
+		$contacts = $this->_contactRepository->FindAllByUserId((int)$user['id']);
+		$assignedContactIds = $this->_monitorRepository->FindContactIdsByMonitorId($monitorId);
 
 		return $this->_view->Render('monitors.edit', [
 			'user' => $user,
 			'monitor' => $monitor,
+			'contacts' => $contacts,
+			'assignedContactIds' => $assignedContactIds,
 		]);
 	}
 
@@ -160,7 +183,9 @@ class MonitorController extends BaseController
 		$reminderIntervalDays = (int)($_POST['reminder_interval_days'] ?? 0);
 		$maxReminders = (int)($_POST['max_reminders'] ?? 0);
 		$isPaused = isset($_POST['is_paused']);
-		$isTestMode = isset($_POST['is_test_mode']);
+		$contactIds = isset($_POST['contact_ids']) && is_array($_POST['contact_ids'])
+			? array_map('intval', $_POST['contact_ids'])
+			: [];
 
 		if ($monitorId <= 0)
 		{
@@ -197,6 +222,17 @@ class MonitorController extends BaseController
 			$this->Redirect('/monitors/edit?id=' . $monitorId);
 		}
 
+		$allowedContacts = $this->_contactRepository->FindAllByUserId((int)$user['id']);
+		$allowedContactIds = array_map(
+			static fn (array $contact): int => (int)$contact['id'],
+			$allowedContacts
+		);
+
+		$contactIds = array_values(array_unique(array_filter(
+			$contactIds,
+			static fn (int $contactId): bool => in_array($contactId, $allowedContactIds, true)
+		)));
+
 		$this->_monitorRepository->UpdateForUser(
 			$monitorId,
 			(int)$user['id'],
@@ -206,12 +242,12 @@ class MonitorController extends BaseController
 			$responseWindowDays,
 			$reminderIntervalDays,
 			$maxReminders,
-			$isPaused,
-			$isTestMode
+			$isPaused
 		);
 
+		$this->_monitorRepository->ReplaceContactsForMonitor($monitorId, $contactIds);
 		$this->_logger->Info('Monitor updated successfully', ['user_id' => $user['id'], 'monitor_id' => $monitorId]);
-		$this->Flash('success', e__('monitors.edit.flash.updated'));
+		$this->Flash('success', e__('monitors.edit.flash.updated', ['name' => $name]));
 		$this->Redirect('/monitors');
 	}
 
@@ -225,9 +261,11 @@ class MonitorController extends BaseController
 
 		if ($monitorId > 0)
 		{
+			$existingMonitor = $this->_monitorRepository->FindByIdForUser($monitorId, (int)$user['id']);
+			
 			$this->_monitorRepository->DeleteForUser($monitorId, (int)$user['id']);
 			$this->_logger->Info('Monitor deleted successfully', ['user_id' => $user['id'], 'monitor_id' => $monitorId]);
-			$this->Flash('success', e__('monitors.index.flash.deleted'));
+			$this->Flash('success', e__('monitors.index.flash.deleted', ['name' => $existingMonitor ? (string)$existingMonitor['name'] : ''])); // Use monitor name if available
 		}
 
 		$this->Redirect('/monitors');

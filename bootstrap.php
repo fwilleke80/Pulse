@@ -42,6 +42,10 @@ require_once __DIR__ . '/app/Core/helpers.php';
 $appConfig = require __DIR__ . '/config/app.php';
 $dbConfig = require __DIR__ . '/config/database.php';
 
+// ----- Load version -----
+$versionFile = __DIR__ . '/config/version.php';
+$appVersion = is_file($versionFile) ? require $versionFile : 'dev';
+
 // ----- Set up logging -----
 $logFile = __DIR__ . '/storage/logs/app.log';
 $writeBootstrapLog = function (string $level, string $message, array $context = []) use ($logFile): void
@@ -216,7 +220,7 @@ setTranslator($translator);
 // ----- Set global variables for views -----
 $view->SetGlobals([
 	'appName' => $appConfig['name'],
-	'appVersion' => $appConfig['version'],
+	'appVersion' => $appVersion,
 	'isAuthenticated' => $auth->IsAuthenticated(),
 	'currentUser' => $auth->GetCurrentUser(),
 	'locale' => $locale,

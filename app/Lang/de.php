@@ -1,4 +1,7 @@
 <?php
+/**
+ * @brief German translations for Pulse.
+ */
 
 declare(strict_types=1);
 
@@ -18,15 +21,17 @@ return [
 
 	'contacts.index.title' => 'Kontakte',
 	'contacts.index.heading' => 'Kontakte',
+	'contacts.index.message' => 'Hier können Sie Ihre Notfallkontakte verwalten.',
 	'contacts.index.add' => 'Kontakt hinzufügen',
 	'contacts.index.no_contacts' => 'Keine Kontakte vorhanden.',
 	'contacts.index.table.name' => 'Name',
 	'contacts.index.table.email' => 'E-Mail',
 	'contacts.index.table.cell_phone' => 'Handy',
 	'contacts.index.table.notes' => 'Notizen',
-	'contacts.index.table.buttons.delete' => 'Löschen',
-	'contacts.index.flash.deleted' => 'Kontakt gelöscht.',
 	'contacts.index.table.buttons.edit' => 'Bearbeiten',
+	'contacts.index.table.buttons.delete' => 'Löschen',
+	'contacts.index.flash.deleted' => 'Kontakt gelöscht: {name}.',
+	'contacts.index.flash.delete_confirm' => 'Sind Sie sicher, dass Sie {name} löschen möchten?',
 
 	'contacts.add.title' => 'Kontakt hinzufügen',
 	'contacts.add.heading' => 'Kontakt hinzufügen',
@@ -35,7 +40,7 @@ return [
 	'contacts.add.cell_phone' => 'Handy',
 	'contacts.add.notes' => 'Notizen',
 	'contacts.add.submit' => 'Kontakt erstellen',
-	'contacts.add.flash.created' => 'Kontakt erstellt.',
+	'contacts.add.flash.created' => 'Kontakt erstellt: {name}.',
 	'contacts.add.flash.required' => 'Name und E-Mail sind erforderlich.',
 	'contacts.add.flash.invalidemail' => 'Bitte geben Sie eine gültige E-Mail-Adresse ein.',
 
@@ -47,14 +52,14 @@ return [
 	'contacts.edit.notes' => 'Notizen',
 	'contacts.edit.submit' => 'Änderungen speichern',
 	'contacts.edit.back' => 'Zurück zu den Kontakten',
-
-	'contacts.edit.flash.notfound' => 'Kontakt nicht gefunden.',
+	'contacts.edit.flash.notfound' => 'Kontakt nicht gefunden: {id}.',
 	'contacts.edit.flash.required' => 'Name und E-Mail sind erforderlich.',
 	'contacts.edit.flash.invalidemail' => 'Bitte geben Sie eine gültige E-Mail-Adresse ein.',
-	'contacts.edit.flash.updated' => 'Kontakt aktualisiert.',
+	'contacts.edit.flash.updated' => 'Kontakt aktualisiert: {name}.',
 
 	'monitors.index.title' => 'Monitore',
 	'monitors.index.heading' => 'Monitore',
+	'monitors.index.message' => 'Hier können Sie Ihre Monitore verwalten.',
 	'monitors.index.add' => 'Monitor hinzufügen',
 	'monitors.index.no_monitors' => 'Noch keine Monitore vorhanden.',
 	'monitors.index.table.name' => 'Name',
@@ -64,10 +69,9 @@ return [
 	'monitors.index.table.reminder_interval_days' => 'Erinnerungsintervall',
 	'monitors.index.table.max_reminders' => 'Max. Erinnerungen',
 	'monitors.index.table.is_paused' => 'Pausiert',
-	'monitors.index.table.is_test_mode' => 'Testmodus',
 	'monitors.index.table.buttons.edit' => 'Bearbeiten',
 	'monitors.index.table.buttons.delete' => 'Löschen',
-	'monitors.index.flash.deleted' => 'Monitor gelöscht.',
+	'monitors.index.flash.deleted' => 'Monitor {name} gelöscht.',
 
 	'monitors.add.title' => 'Monitor hinzufügen',
 	'monitors.add.heading' => 'Monitor hinzufügen',
@@ -78,9 +82,8 @@ return [
 	'monitors.add.reminder_interval_days' => 'Erinnerungsintervall (Tage)',
 	'monitors.add.max_reminders' => 'Maximale Erinnerungen',
 	'monitors.add.is_paused' => 'Pausiert',
-	'monitors.add.is_test_mode' => 'Testmodus',
 	'monitors.add.submit' => 'Monitor erstellen',
-	'monitors.add.flash.created' => 'Monitor erstellt.',
+	'monitors.add.flash.created' => 'Monitor {name} erstellt.',
 	'monitors.add.flash.required' => 'Name ist erforderlich.',
 	'monitors.add.flash.invalidnumbers' => 'Bitte gib gültige Zeitwerte für den Monitor ein.',
 
@@ -93,13 +96,16 @@ return [
 	'monitors.edit.reminder_interval_days' => 'Erinnerungsintervall (Tage)',
 	'monitors.edit.max_reminders' => 'Maximale Erinnerungen',
 	'monitors.edit.is_paused' => 'Pausiert',
-	'monitors.edit.is_test_mode' => 'Testmodus',
 	'monitors.edit.submit' => 'Änderungen speichern',
 	'monitors.edit.back' => 'Zurück zu den Monitoren',
 	'monitors.edit.flash.notfound' => 'Monitor nicht gefunden.',
 	'monitors.edit.flash.required' => 'Name ist erforderlich.',
 	'monitors.edit.flash.invalidnumbers' => 'Bitte gib gültige Zeitwerte für den Monitor ein.',
-	'monitors.edit.flash.updated' => 'Monitor aktualisiert.',
+	'monitors.edit.flash.updated' => 'Monitor {name} aktualisiert.',
+
+	'monitors.contacts.heading' => 'Zugeordnete Kontakte',
+	'monitors.contacts.hint' => 'Wähle die Kontakte aus, die für diesen Monitor benachrichtigt werden sollen.',
+	'monitors.contacts.none' => 'Keine Kontakte vorhanden. Lege zuerst Kontakte an.',
 
 	'profile.title' => 'Profil',
 	'profile.heading' => 'Profil',
@@ -156,7 +162,7 @@ return [
 	'login.password' => 'Passwort',
 	'login.submit' => 'Anmelden',
 
-	'flash.languageswitched' => 'Sprache gewechselt zu:',
+	'flash.languageswitched' => 'Sprache gewechselt zu: {locale}.',
 	'flash.login.successful' => 'Anmeldung erfolgreich.',
 	'flash.login.failed' => 'Anmeldung fehlgeschlagen.',
 	'flash.login.required' => 'Bitte geben Sie Ihre E-Mail-Adresse und Ihr Passwort ein.',

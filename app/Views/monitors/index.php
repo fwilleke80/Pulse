@@ -6,8 +6,8 @@ ob_start();
 ?>
 
 <h1><?= e__('monitors.index.heading') ?></h1>
+<p><?= e__('monitors.index.message') ?></p>
 <p><a href="<?= e($base_url) ?>/monitors/new"><?= e__('monitors.index.add') ?></a></p>
-
 <?php if ($monitors === []): ?>
 	<p><?= e__('monitors.index.no_monitors') ?></p>
 <?php else: ?>
@@ -21,7 +21,6 @@ ob_start();
 				<th><?= e__('monitors.index.table.reminder_interval_days') ?></th>
 				<th><?= e__('monitors.index.table.max_reminders') ?></th>
 				<th><?= e__('monitors.index.table.is_paused') ?></th>
-				<th><?= e__('monitors.index.table.is_test_mode') ?></th>
 				<th></th>
 			</tr>
 		</thead>
@@ -35,7 +34,6 @@ ob_start();
 					<td><?= (int)$monitor['reminder_interval_days'] ?></td>
 					<td><?= (int)$monitor['max_reminders'] ?></td>
 					<td><?= !empty($monitor['is_paused']) ? e__('common.yes') : e__('common.no') ?></td>
-					<td><?= !empty($monitor['is_test_mode']) ? e__('common.yes') : e__('common.no') ?></td>
 					<td>
 						<div class="table-actions">
 							<form method="get" action="<?= e($base_url) ?>/monitors/edit">
