@@ -11,6 +11,7 @@ use Pulse\Core\Logger;
 use Pulse\Repositories\UserRepository;
 use Pulse\Repositories\ContactRepository;
 use Pulse\Repositories\MonitorRepository;
+use Pulse\Repositories\DocumentRepository;
 use Pulse\Services\AuthService;
 use ErrorException;
 
@@ -199,6 +200,7 @@ $userRepository = new UserRepository($database);
 $auth = new AuthService($userRepository, $session, $logger);
 $contactRepository = new ContactRepository($database);
 $monitorRepository = new MonitorRepository($database);
+$documentRepository = new DocumentRepository($database);
 
 // ----- Start session -----
 $session->Start();
@@ -240,4 +242,5 @@ return [
 	'logger' => $logger,
 	'contactRepository' => $contactRepository,
 	'monitorRepository' => $monitorRepository,
+	'documentRepository' => $documentRepository,
 ];

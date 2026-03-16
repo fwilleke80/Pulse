@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * @file MonitorRepository.php
+ * @brief Repository for user monitors.
+ * @author Frank Willeke
+ */
+
 declare(strict_types=1);
 
 namespace Pulse\Repositories;
@@ -348,5 +354,43 @@ class MonitorRepository
 		$value = $statement->fetchColumn();
 
 		return is_numeric($value) ? (int)$value : 0;
+	}
+
+	/**
+	 * @brief Returns all monitor-contact assignments for a monitor owned by a user.
+	 * @param int $monitorId Monitor ID.
+	 * @param int $userId User ID.
+	 * @return array<int, array<string, mixed>>
+	 */
+	public function FindMonitorContactsByMonitorIdForUser(int $monitorId, int $userId): array
+	{
+		$sql = '
+			SELECT
+				mc.id,
+				mc.monitor_id,
+				mc.contact_id,
+				mc.sort_order,
+				c.name,
+				c.email,
+				c.cell_phone,
+				c.notes
+			FROM monitor_contacts mc
+			INNER JOIN monitors m
+				ON m.id = mc.monitor_id
+			INNER JOIN contacts c
+				ON c.id = mc.contact_id
+			WHERE mc.monitor_id = :monitor_id
+			  AND m.user_id = :user_id
+			ORDER BY mc.sort_order ASC, c.name ASC
+		';
+
+		$statement = $this->_database->GetConnection()->prepare($sql);
+		$statement->execute([
+			'monitor_id' => $monitorId,
+			'user_id' => $userId,
+		]);
+
+		$rows = $statement->fetchAll(PDO::FETCH_ASSOC);
+		return is_array($rows) ? $rows : [];
 	}
 }

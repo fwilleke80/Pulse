@@ -107,6 +107,32 @@ return [
 	'monitors.contacts.hint' => 'Select the contacts that should be notified for this monitor.',
 	'monitors.contacts.none' => 'No contacts available. Create contacts first.',
 
+	'monitors.documents.heading' => 'Documents',
+	'monitors.documents.hint' => 'Upload documents for this monitor and choose which assigned contacts should receive them.',
+	'monitors.documents.none' => 'No documents uploaded yet.',
+
+	'monitors.documents.upload.title' => 'Document title',
+	'monitors.documents.upload.file' => 'File',
+	'monitors.documents.upload.submit' => 'Upload document',
+
+	'monitors.documents.recipients.heading' => 'Recipients',
+	'monitors.documents.recipients.none' => 'No assigned contacts available.',
+	'monitors.documents.recipients.submit' => 'Save recipients',
+
+	'monitors.documents.table.original_filename' => 'Original filename',
+	'monitors.documents.table.mime_type' => 'MIME type',
+	'monitors.documents.table.file_size' => 'File size',
+
+	'monitors.documents.delete.submit' => 'Delete document',
+
+	'monitors.documents.flash.monitor_not_found' => 'Monitor not found.',
+	'monitors.documents.flash.document_not_found' => 'Document not found.',
+	'monitors.documents.flash.file_required' => 'Please select a file to upload.',
+	'monitors.documents.flash.upload_failed' => 'The document could not be uploaded.',
+	'monitors.documents.flash.uploaded' => 'Document "{name}" uploaded.',
+	'monitors.documents.flash.recipients_updated' => 'Document recipients updated.',
+	'monitors.documents.flash.deleted' => 'Document deleted.',
+
 	'profile.title' => 'Profile',
 	'profile.heading' => 'Profile',
 

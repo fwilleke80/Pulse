@@ -34,6 +34,9 @@ $contactRepository = $container['contactRepository'];
 /** @var Pulse\Repositories\MonitorRepository $monitorRepository */
 $monitorRepository = $container['monitorRepository'];
 
+/** @var Pulse\Repositories\DocumentRepository $documentRepository */
+$documentRepository = $container['documentRepository'];
+
 /** @var Pulse\Core\Translator $translator */
 $translator = $container['translator'];
 
@@ -57,7 +60,7 @@ $authController = new AuthController($view, $session, $auth, $logger);
 $contactController = new ContactController($view, $session, $auth, $logger, $contactRepository);
 $languageController = new LanguageController($view, $session, $auth, $logger, $translator, $config['supported_locales'] ?? ['en', 'de']);
 $profileController = new ProfileController($view, $session, $auth, $logger, $userRepository);
-$monitorController = new MonitorController($view, $session, $auth, $logger, $monitorRepository, $contactRepository);
+$monitorController = new MonitorController($view, $session, $auth, $logger, $monitorRepository, $contactRepository, $documentRepository);
 
 // ----- Home routes -----
 $router->Get('/', [$homeController, 'Dashboard']);
@@ -85,6 +88,9 @@ $router->Post('/monitors/create', [$monitorController, 'Create']);
 $router->Get('/monitors/edit', [$monitorController, 'Edit']);
 $router->Post('/monitors/update', [$monitorController, 'Update']);
 $router->Post('/monitors/delete', [$monitorController, 'Delete']);
+$router->Post('/monitors/documents/upload', [$monitorController, 'UploadDocument']);
+$router->Post('/monitors/documents/recipients', [$monitorController, 'UpdateDocumentRecipients']);
+$router->Post('/monitors/documents/delete', [$monitorController, 'DeleteDocument']);
 
 // ----- Authentication routes -----
 $router->Get('/login', [$authController, 'ShowLogin']);

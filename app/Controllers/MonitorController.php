@@ -6,6 +6,7 @@ namespace Pulse\Controllers;
 
 use Pulse\Repositories\MonitorRepository;
 use Pulse\Repositories\ContactRepository;
+use Pulse\Repositories\DocumentRepository;
 
 /**
  * @brief Controller for monitor management.
@@ -14,6 +15,7 @@ class MonitorController extends BaseController
 {
 	private MonitorRepository $_monitorRepository;
 	private ContactRepository $_contactRepository;
+	private DocumentRepository $_documentRepository;
 
 	/**
 	 * @brief Constructs the monitor controller.
@@ -28,12 +30,14 @@ class MonitorController extends BaseController
 		\Pulse\Services\AuthService $auth,
 		\Pulse\Core\Logger $logger,
 		MonitorRepository $monitorRepository,
-		ContactRepository $contactRepository
+		ContactRepository $contactRepository,
+		DocumentRepository $documentRepository
 	)
 	{
 		parent::__construct($view, $session, $auth, $logger);
 		$this->_monitorRepository = $monitorRepository;
 		$this->_contactRepository = $contactRepository;
+		$this->_documentRepository = $documentRepository;
 	}
 
 	/**
@@ -160,11 +164,22 @@ class MonitorController extends BaseController
 		$contacts = $this->_contactRepository->FindAllByUserId((int)$user['id']);
 		$assignedContactIds = $this->_monitorRepository->FindContactIdsByMonitorId($monitorId);
 
+		$monitorContacts = $this->_monitorRepository->FindMonitorContactsByMonitorIdForUser($monitorId, (int)$user['id']);
+		$documents = $this->_documentRepository->FindAllByMonitorIdForUser($monitorId, (int)$user['id']);
+
+		foreach ($documents as &$document)
+		{
+			$document['assigned_monitor_contact_ids'] = $this->_documentRepository->FindAssignedMonitorContactIds((int)$document['id']);
+		}
+		unset($document);
+
 		return $this->_view->Render('monitors.edit', [
 			'user' => $user,
 			'monitor' => $monitor,
 			'contacts' => $contacts,
 			'assignedContactIds' => $assignedContactIds,
+			'monitorContacts' => $monitorContacts,
+			'documents' => $documents,
 		]);
 	}
 
@@ -269,5 +284,254 @@ class MonitorController extends BaseController
 		}
 
 		$this->Redirect('/monitors');
+	}
+
+	/**
+	 * @brief Generates a unique stored filename for an uploaded file.
+	 * @param string $originalFilename Original uploaded filename.
+	 * @return string
+	 */
+	private function GenerateStoredFilename(string $originalFilename): string
+	{
+		$extension = pathinfo($originalFilename, PATHINFO_EXTENSION);
+		$randomName = bin2hex(random_bytes(16));
+
+		if ($extension === '')
+		{
+			return $randomName;
+		}
+
+		return $randomName . '.' . strtolower($extension);
+	}
+
+	/**
+	 * @brief Uploads a file document for a monitor and assigns recipients.
+	 */
+	public function UploadDocument(): void
+	{
+		$user = $this->RequireUser();
+
+		$monitorId = (int)($_POST['monitor_id'] ?? 0);
+		$title = trim((string)($_POST['title'] ?? ''));
+		$assignedMonitorContactIds = isset($_POST['document_monitor_contact_ids']) && is_array($_POST['document_monitor_contact_ids'])
+			? array_map('intval', $_POST['document_monitor_contact_ids'])
+			: [];
+
+		if ($monitorId <= 0)
+		{
+			$this->Flash('error', e__('monitors.documents.flash.monitor_not_found'));
+			$this->Redirect('/monitors');
+		}
+
+		$monitor = $this->_monitorRepository->FindByIdForUser($monitorId, (int)$user['id']);
+
+		if ($monitor === null)
+		{
+			$this->_logger->Warning('Document upload failed: monitor not found', ['user_id' => $user['id'], 'monitor_id' => $monitorId]);
+			$this->Flash('error', e__('monitors.documents.flash.monitor_not_found'));
+			$this->Redirect('/monitors');
+		}
+
+		if (!isset($_FILES['document_file']) || !is_array($_FILES['document_file']))
+		{
+			$this->_logger->Warning('Document upload failed: no uploaded file', ['user_id' => $user['id'], 'monitor_id' => $monitorId]);
+			$this->Flash('error', e__('monitors.documents.flash.file_required'));
+			$this->Redirect('/monitors/edit?id=' . $monitorId);
+		}
+
+		$file = $_FILES['document_file'];
+
+		if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK)
+		{
+			$this->_logger->Warning('Document upload failed: upload error', [
+				'user_id' => $user['id'],
+				'monitor_id' => $monitorId,
+				'upload_error' => $file['error'] ?? null,
+			]);
+			$this->Flash('error', e__('monitors.documents.flash.upload_failed'));
+			$this->Redirect('/monitors/edit?id=' . $monitorId);
+		}
+
+		$originalFilename = (string)($file['name'] ?? '');
+		$tmpName = (string)($file['tmp_name'] ?? '');
+		$fileSizeBytes = (int)($file['size'] ?? 0);
+
+		if ($originalFilename === '' || $tmpName === '')
+		{
+			$this->Flash('error', e__('monitors.documents.flash.upload_failed'));
+			$this->Redirect('/monitors/edit?id=' . $monitorId);
+		}
+
+		if ($title === '')
+		{
+			$title = $originalFilename;
+		}
+
+		$monitorContacts = $this->_monitorRepository->FindMonitorContactsByMonitorIdForUser($monitorId, (int)$user['id']);
+		$allowedMonitorContactIds = array_map(
+			static fn (array $monitorContact): int => (int)$monitorContact['id'],
+			$monitorContacts
+		);
+
+		$assignedMonitorContactIds = array_values(array_unique(array_filter(
+			$assignedMonitorContactIds,
+			static fn (int $monitorContactId): bool => in_array($monitorContactId, $allowedMonitorContactIds, true)
+		)));
+
+		$mimeType = (string)mime_content_type($tmpName);
+		$storedFilename = $this->GenerateStoredFilename($originalFilename);
+
+		$targetDirectory = dirname(__DIR__, 2) . '/storage/uploads/monitor-documents';
+
+		if (!is_dir($targetDirectory))
+		{
+			mkdir($targetDirectory, 0775, true);
+		}
+
+		$targetPath = $targetDirectory . '/' . $storedFilename;
+
+		if (!move_uploaded_file($tmpName, $targetPath))
+		{
+			$this->_logger->Error('Document upload failed: move_uploaded_file failed', [
+				'user_id' => $user['id'],
+				'monitor_id' => $monitorId,
+				'stored_filename' => $storedFilename,
+			]);
+			$this->Flash('error', e__('monitors.documents.flash.upload_failed'));
+			$this->Redirect('/monitors/edit?id=' . $monitorId);
+		}
+
+		$documentId = $this->_documentRepository->CreateFileDocumentForMonitor(
+			$monitorId,
+			$title,
+			$storedFilename,
+			$originalFilename,
+			$mimeType,
+			$fileSizeBytes
+		);
+
+		$this->_documentRepository->ReplaceRecipientsForDocument($documentId, $assignedMonitorContactIds);
+
+		$this->_logger->Info('Document uploaded successfully', [
+			'user_id' => $user['id'],
+			'monitor_id' => $monitorId,
+			'document_id' => $documentId,
+			'original_filename' => $originalFilename,
+			'stored_filename' => $storedFilename,
+		]);
+
+		$this->Flash('success', e__('monitors.documents.flash.uploaded', [
+			'name' => $title,
+		]));
+		$this->Redirect('/monitors/edit?id=' . $monitorId);
+	}
+
+	/**
+	 * @brief Updates recipient assignments for a monitor document.
+	 */
+	public function UpdateDocumentRecipients(): void
+	{
+		$user = $this->RequireUser();
+
+		$monitorId = (int)($_POST['monitor_id'] ?? 0);
+		$documentId = (int)($_POST['document_id'] ?? 0);
+		$assignedMonitorContactIds = isset($_POST['document_monitor_contact_ids']) && is_array($_POST['document_monitor_contact_ids'])
+			? array_map('intval', $_POST['document_monitor_contact_ids'])
+			: [];
+
+		if ($monitorId <= 0 || $documentId <= 0)
+		{
+			$this->Flash('error', e__('monitors.documents.flash.document_not_found'));
+			$this->Redirect('/monitors');
+		}
+
+		$document = $this->_documentRepository->FindByIdForMonitorAndUser($documentId, $monitorId, (int)$user['id']);
+
+		if ($document === null)
+		{
+			$this->_logger->Warning('Document recipient update failed: document not found', [
+				'user_id' => $user['id'],
+				'monitor_id' => $monitorId,
+				'document_id' => $documentId,
+			]);
+			$this->Flash('error', e__('monitors.documents.flash.document_not_found'));
+			$this->Redirect('/monitors/edit?id=' . $monitorId);
+		}
+
+		$monitorContacts = $this->_monitorRepository->FindMonitorContactsByMonitorIdForUser($monitorId, (int)$user['id']);
+		$allowedMonitorContactIds = array_map(
+			static fn (array $monitorContact): int => (int)$monitorContact['id'],
+			$monitorContacts
+		);
+
+		$assignedMonitorContactIds = array_values(array_unique(array_filter(
+			$assignedMonitorContactIds,
+			static fn (int $monitorContactId): bool => in_array($monitorContactId, $allowedMonitorContactIds, true)
+		)));
+
+		$this->_documentRepository->ReplaceRecipientsForDocument($documentId, $assignedMonitorContactIds);
+
+		$this->_logger->Info('Document recipients updated successfully', [
+			'user_id' => $user['id'],
+			'monitor_id' => $monitorId,
+			'document_id' => $documentId,
+		]);
+
+		$this->Flash('success', e__('monitors.documents.flash.recipients_updated'));
+		$this->Redirect('/monitors/edit?id=' . $monitorId);
+	}
+
+	/**
+	 * @brief Deletes a monitor document and its stored file.
+	 */
+	public function DeleteDocument(): void
+	{
+		$user = $this->RequireUser();
+
+		$monitorId = (int)($_POST['monitor_id'] ?? 0);
+		$documentId = (int)($_POST['document_id'] ?? 0);
+
+		if ($monitorId <= 0 || $documentId <= 0)
+		{
+			$this->Flash('error', e__('monitors.documents.flash.document_not_found'));
+			$this->Redirect('/monitors');
+		}
+
+		$document = $this->_documentRepository->FindByIdForMonitorAndUser($documentId, $monitorId, (int)$user['id']);
+
+		if ($document === null)
+		{
+			$this->_logger->Warning('Document deletion failed: document not found', [
+				'user_id' => $user['id'],
+				'monitor_id' => $monitorId,
+				'document_id' => $documentId,
+			]);
+			$this->Flash('error', e__('monitors.documents.flash.document_not_found'));
+			$this->Redirect('/monitors/edit?id=' . $monitorId);
+		}
+
+		if (
+			(string)$document['storage_type'] === 'file' &&
+			!empty($document['stored_filename'])
+		)
+		{
+			$filePath = dirname(__DIR__, 2) . '/storage/uploads/monitor-documents/' . (string)$document['stored_filename'];
+
+			if (is_file($filePath))
+			{
+				@unlink($filePath);
+			}
+		}
+
+		$this->_documentRepository->DeleteById($documentId);
+
+		$this->_logger->Info('Document deleted successfully', [
+			'user_id' => $user['id'],
+			'monitor_id' => $monitorId,
+			'document_id' => $documentId,
+		]);
+
+		$this->Flash('success', e__('monitors.documents.flash.deleted'));
+		$this->Redirect('/monitors/edit?id=' . $monitorId);
 	}
 }

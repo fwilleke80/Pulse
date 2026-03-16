@@ -107,6 +107,32 @@ return [
 	'monitors.contacts.hint' => 'Wähle die Kontakte aus, die für diesen Monitor benachrichtigt werden sollen.',
 	'monitors.contacts.none' => 'Keine Kontakte vorhanden. Lege zuerst Kontakte an.',
 
+	'monitors.documents.heading' => 'Dokumente',
+	'monitors.documents.hint' => 'Lade Dokumente für diesen Monitor hoch und wähle aus, welche zugeordneten Kontakte sie erhalten sollen.',
+	'monitors.documents.none' => 'Noch keine Dokumente hochgeladen.',
+
+	'monitors.documents.upload.title' => 'Dokumenttitel',
+	'monitors.documents.upload.file' => 'Datei',
+	'monitors.documents.upload.submit' => 'Dokument hochladen',
+
+	'monitors.documents.recipients.heading' => 'Empfänger',
+	'monitors.documents.recipients.none' => 'Keine zugeordneten Kontakte vorhanden.',
+	'monitors.documents.recipients.submit' => 'Empfänger speichern',
+
+	'monitors.documents.table.original_filename' => 'Originaldateiname',
+	'monitors.documents.table.mime_type' => 'MIME-Typ',
+	'monitors.documents.table.file_size' => 'Dateigröße',
+
+	'monitors.documents.delete.submit' => 'Dokument löschen',
+
+	'monitors.documents.flash.monitor_not_found' => 'Monitor nicht gefunden.',
+	'monitors.documents.flash.document_not_found' => 'Dokument nicht gefunden.',
+	'monitors.documents.flash.file_required' => 'Bitte wähle eine Datei zum Hochladen aus.',
+	'monitors.documents.flash.upload_failed' => 'Das Dokument konnte nicht hochgeladen werden.',
+	'monitors.documents.flash.uploaded' => 'Dokument "{name}" hochgeladen.',
+	'monitors.documents.flash.recipients_updated' => 'Dokumentempfänger aktualisiert.',
+	'monitors.documents.flash.deleted' => 'Dokument gelöscht.',
+
 	'profile.title' => 'Profil',
 	'profile.heading' => 'Profil',
 
