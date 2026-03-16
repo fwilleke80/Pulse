@@ -1,169 +1,312 @@
 # Pulse
 
-Pulse is a small personal web application designed as an **emergency notification and heartbeat system**.
+Pulse is a personal safety web application that monitors user inactivity and can later notify trusted contacts if the user stops checking in.
 
-Its purpose is to notify trusted contacts if the user becomes unreachable or fails to confirm that they are safe within a configured time period.
+The project currently implements the **configuration and preparation layer** of the system: users can define monitors, manage contacts, attach documents, and configure who should receive which information.
 
-The project is intentionally lightweight and designed to run on inexpensive shared hosting without external frameworks.
-
-## Original idea, as worded by Frank
-
-It should be a kind of emergency notification service made to notify my family & loved ones in case something happens to me.
-
-I can log in, and set up emergency contacts (Name & eMail). I can also set up grace periods. This means: If I set up a grace period of e.g. 1 month, the web app will send me an email once a month. The email contains a link that I need to click on to indicate I'm still alive. If I fail to click the link within a certain period of time after the mail has been sent (e.g. a week), the mail to me will be sent again.
-
-If, after a number of times, I still didn't click the link, the emergency contacts assigned to this grace period will be notified. Each emergency contact gets a personalised email for a grace period (meaning: I can write a personalised message for each emergency contact assigned to this grace period). The notification mail contains a link that the emergency contact person can click on. The link will open a document that I have written/uploaded for this emergency contact in this grace period (e.g. a personal goopdbye letter, my testament, et cetera).
-
-Setting up different grace periods will allow me to e.g. use a longer period for when I die, and a shorter period for if I disappear during a vacation, or so.
+Automatic notifications and check-in processing will be added in later versions.
 
 ---
 
-## Features
+## Current Features
 
-Pulse provides the following core functionality:
+Pulse currently supports the following functionality.
 
-- Periodic **heartbeat confirmations**
-- Configurable **grace periods**
-- Management of **emergency contacts**
-- Escalation if confirmations fail
-- Delivery of **personal messages or documents** to contacts
-- Multi-language interface (currently English and German)
+### Authentication
+
+- User login and logout
+- Session-based authentication
+- Password verification
+- Profile editing and password change
+
+### Dashboard
+
+The dashboard provides a quick overview of:
+
+- total contacts
+- total monitors
+
+Future versions will also display monitor status.
+
+### Contacts
+
+Users can manage contacts who may later receive notifications.
+
+Supported operations:
+
+- create contact
+- edit contact
+- delete contact
+
+Each contact may include:
+
+- name
+- email
+- phone number
+- optional notes
+
+### Monitors
+
+A **monitor** represents a rule that watches the user's activity.
+
+Each monitor has:
+
+- title
+- description
+- monitoring interval
+- assigned contacts
+
+Contacts are assigned using **monitor-contact assignments**, allowing the same contact to participate in multiple monitors.
+
+### Documents
+
+Documents can be uploaded to monitors.
+
+Documents may be:
+
+- uploaded files
+- text content stored in the database
+
+Documents belong to the **monitor**, not directly to contacts.
+
+### Document Recipient Assignment
+
+Each document can be assigned to specific monitor contacts.
+
+This is implemented through the table:  
+`document_monitor_contacts`
+
+This model allows a document to be delivered to:
+
+- one contact
+- multiple contacts
+- all contacts assigned to a monitor
+
+### Document Download
+
+Uploaded files can be downloaded through the monitor edit page.
+
+Access is validated so that:
+
+- the user owns the monitor
+- the document belongs to that monitor
+
+Files are delivered using their original filenames.
+
+### Language Support
+
+The interface supports:
+
+- English
+- German
+
+Language switching is handled by the `LanguageController`.
+
+### Health Endpoint
+
+A health endpoint is available at:  
+`/health`
+
+It reports:
+
+- database connectivity
+- PHP version
+
+### Version Display
+
+Pulse displays a version string generated from the Git repository.
+
+A helper script derives the version from:
+
+- the latest tag
+- the current commit hash
+
+The version is written to:  
+`config/version.php`
 
 ---
 
-## Concept
+## Planned Features
 
-Pulse regularly sends the user a confirmation email containing a link.
+The following features are planned for upcoming versions.
 
-Clicking the link confirms that the user is safe.
+### Check-in System
 
-If the confirmation is not received within the configured time window:
+Users will confirm they are still active at regular intervals.
 
-1. Reminder emails are sent
-2. After the configured number of reminders
-3. Emergency contacts are notified
+Possible confirmation methods:
 
-Contacts may receive:
+- confirmation through the web interface
+- confirmation through secure email links
 
-- personal messages
-- instructions
-- documents
-- final letters
+Each confirmation resets the monitor timer.
 
-Typical use cases include:
+### Email Notifications
 
-- travel safety check-ins
-- long-term inactivity alerts
-- digital legacy notifications
+If a monitor expires without confirmation:
 
----
+- reminder emails will be sent to the user
+- assigned contacts will eventually receive notifications
 
-## Technology Stack
+Contacts will receive:
 
-Pulse intentionally uses a minimal stack:
+- their configured message
+- documents assigned to them
 
-| Component | Technology |
-| -------- | -------- |
-| Language | PHP 8+ |
-| Database | MySQL / MariaDB |
-| Web server | Apache |
-| Frontend | HTML + CSS |
-| Routing | Custom lightweight router |
+### Escalation Logic
 
-No external frameworks are required.
+Future versions may support escalation steps such as:
+
+- repeated reminders
+- staged contact notification
+- configurable delays
+
+### Cron Processing
+
+A scheduled background job will evaluate monitors and trigger notifications when needed.
 
 ---
 
 ## Project Structure
 
 ```txt
-/pulse
-  /app
-    Application code
-    /Controllers
-      Controllers
-    /Core
-      Core framework components
-    /Lang
-      Translations
-    /Repositories
-      Repositories
-    /Services
-      Services
-    /Views
-      /auth
-        Login view
-      /contacts
-        Contacts views
-      /home
-        Home views
-      /layouts
-        Layout template
-      /profile
-        Profile view
-      /static
-        Static pages
-  /config
-    Configuration
-  /database
-    SQL schema and migrations
-  /public
-    Web entry point
-    /assets
-      CSS files and image files
-    /secret0410
-      Test files (don't publish them!)
-  /storage
-    Runtime data
-  /bootstrap.php
-    Application initialization
+app/
+Controllers/
+Core/
+Lang/
+Repositories/
+Services/
+Views/
+
+config/
+app.php
+version.php
+
+database/
+schema.sql
+migrations/
+
+docs/
+README.md
+USER_GUIDE.md
+
+public/
+index.php
+assets/
+
+storage/
+uploads/
+
+tools/
+write_version.py
 ```
 
-Only the `/public` directory is exposed to the web server.
+---
+
+## Key Components
+
+### Controllers
+
+Controllers handle request routing and application logic.
+
+Examples:
+
+- `AuthController`
+- `ContactController`
+- `MonitorController`
+- `ProfileController`
+- `HomeController`
+
+### Repositories
+
+Repositories encapsulate database access.
+
+Examples:
+
+- `UserRepository`
+- `ContactRepository`
+- `MonitorRepository`
+- `DocumentRepository`
+
+### Core Infrastructure
+
+Core components include:
+
+- Router
+- Database abstraction
+- View renderer
+- Session manager
+- Translator
+
+---
+
+## Database Structure
+
+Important tables include:
+
+```txt
+users
+contacts
+monitors
+monitor_contacts
+contact_messages
+documents
+document_monitor_contacts
+```
+
+### Document Model
+
+Documents belong to monitors:  
+`ocuments.monitor_id → monitors.id`
+
+Recipient assignment is handled through:  
+`document_monitor_contacts`
 
 ---
 
 ## Installation
 
-1. Clone or download the repository.
-2. Create a database and import the schema:  
-  `/database/schema.sql`
+### Requirements
+
+- PHP 8.1+
+- MySQL or MariaDB
+- Web server with PHP support
+
+### Setup
+
+1. Create a database.
+2. Import the schema:  
+    database/schema.sql
 3. Configure the application:  
-  `/config/app.php`
-  `/config/database.php`
-4. Point your web server document root to:  
-  `/public`
-5. Ensure the following directories are writable:  
-  `/storage`
-  `/storage/logs`
-  `/storage/uploads`
-  `/storage/tmp`
+    config/app.php
+4. Ensure the upload directory exists and is writable:  
+    storage/uploads/monitor-documents
+5. Generate the application version:  
+    python tools/write_version.py
 
 ---
 
 ## Development
 
-Enable debug mode in: `config/app.php`.
+### Version Generation
 
-`'debug' => true`
+The script:  
+`tools/write_version.py`
 
-This enables detailed error output and debugging pages.
+reads the Git repository and generates:  
+`config/version.php`
+
+This file contains the version string displayed in the UI.
 
 ---
 
 ## Security Notes
 
-For production deployments:
+Uploaded documents are stored using **generated unique filenames**.
 
-- Disable debug mode
-- Remove development helper scripts
-- Ensure `/public` is the only web-accessible directory
-- Use HTTPS
-- Use strong passwords
+Original filenames are stored only as metadata.
 
----
+All document access is validated to ensure that:
 
-## License
-
-This project is licensed under the MIT License.  
-See the `LICENSE` file for details.
+- the requesting user owns the monitor
+- the document belongs to that monitor
