@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Pulse\Controllers;
 
+use \Pulse\Core\View;
+use \Pulse\Core\Session;
+use \Pulse\Core\Logger;
+use \Pulse\Services\AuthService;
 use Pulse\Repositories\ContactRepository;
 
 /**
@@ -18,13 +22,14 @@ class ContactController extends BaseController
 	 * @param \Pulse\Core\View $view View renderer.
 	 * @param \Pulse\Core\Session $session Session service.
 	 * @param \Pulse\Services\AuthService $auth Authentication service.
+	 * @param \Pulse\Core\Logger $logger Application logger.
 	 * @param ContactRepository $contactRepository Contact repository.
 	 */
 	public function __construct(
-		\Pulse\Core\View $view,
-		\Pulse\Core\Session $session,
-		\Pulse\Services\AuthService $auth,
-		\Pulse\Core\Logger $logger,
+		View $view,
+		Session $session,
+		AuthService $auth,
+		Logger $logger,
 		ContactRepository $contactRepository
 	)
 	{

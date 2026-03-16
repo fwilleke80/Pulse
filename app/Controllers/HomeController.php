@@ -5,6 +5,10 @@ declare(strict_types=1);
 namespace Pulse\Controllers;
 
 use Pulse\Core\Database;
+use Pulse\Core\Session;
+use Pulse\Core\View;
+use Pulse\Core\Logger;
+use Pulse\Services\AuthService;
 
 /**
  * @brief Controller for home and utility routes.
@@ -24,14 +28,17 @@ class HomeController extends BaseController
 	 * @param \Pulse\Core\View $view View renderer.
 	 * @param \Pulse\Core\Session $session Session service.
 	 * @param \Pulse\Services\AuthService $auth Authentication service.
+	 * @param \Pulse\Core\Logger $logger Application logger.
 	 * @param Database $db Database service.
 	 * @param array<string, mixed> $config Application configuration.
+	 * @param \Pulse\Repositories\ContactRepository $contactRepository Contact repository.
+	 * @param \Pulse\Repositories\MonitorRepository $monitorRepository Monitor repository.
 	 */
 	public function __construct(
-		\Pulse\Core\View $view,
-		\Pulse\Core\Session $session,
-		\Pulse\Services\AuthService $auth,
-		\Pulse\Core\Logger $logger,
+		View $view,
+		Session $session,
+		AuthService $auth,
+		Logger $logger,
 		Database $db,
 		array $config,
 		\Pulse\Repositories\ContactRepository $contactRepository,
