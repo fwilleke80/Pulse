@@ -78,43 +78,46 @@ ob_start();
 	<h2><?= e__('monitors.documents.heading') ?></h2>
 	<p class="form-hint"><?= e__('monitors.documents.hint') ?></p>
 
-	<form method="post" action="<?= e($base_url) ?>/monitors/documents/upload" enctype="multipart/form-data" class="document-upload-form">
-		<input type="hidden" name="monitor_id" value="<?= (int)$monitor['id'] ?>">
+	<div class="monitor-document-card">
+		<h3><?= e__('monitors.documents.upload.heading') ?></h3>
+		<form method="post" action="<?= e($base_url) ?>/monitors/documents/upload" enctype="multipart/form-data" class="document-upload-form">
+			<input type="hidden" name="monitor_id" value="<?= (int)$monitor['id'] ?>">
 
-		<label for="document_title"><?= e__('monitors.documents.upload.title') ?></label>
-		<input type="text" id="document_title" name="title">
+			<label for="document_title"><?= e__('monitors.documents.upload.title') ?></label>
+			<input type="text" id="document_title" name="title">
 
-		<label for="document_file"><?= e__('monitors.documents.upload.file') ?></label>
-		<input type="file" id="document_file" name="document_file" required>
+			<label for="document_file"><?= e__('monitors.documents.upload.file') ?></label>
+			<input type="file" id="document_file" name="document_file" required>
 
-		<div class="assignment-box">
-			<h3><?= e__('monitors.documents.recipients.heading') ?></h3>
+			<div class="assignment-box">
+				<h3><?= e__('monitors.documents.recipients.heading') ?></h3>
 
-			<?php if ($monitorContacts === []): ?>
-				<p><?= e__('monitors.documents.recipients.none') ?></p>
-			<?php else: ?>
-				<div class="assignment-list">
-					<?php foreach ($monitorContacts as $monitorContact): ?>
-						<label class="assignment-item">
-							<input
-								type="checkbox"
-								name="document_monitor_contact_ids[]"
-								value="<?= (int)$monitorContact['id'] ?>"
-							>
-							<span>
-								<strong><?= htmlspecialchars((string)$monitorContact['name'], ENT_QUOTES, 'UTF-8') ?></strong>
-								<?php if (!empty($monitorContact['email'])): ?>
-									<br><small><?= htmlspecialchars((string)$monitorContact['email'], ENT_QUOTES, 'UTF-8') ?></small>
-								<?php endif; ?>
-							</span>
-						</label>
-					<?php endforeach; ?>
-				</div>
-			<?php endif; ?>
-		</div>
+				<?php if ($monitorContacts === []): ?>
+					<p><?= e__('monitors.documents.recipients.none') ?></p>
+				<?php else: ?>
+					<div class="assignment-list">
+						<?php foreach ($monitorContacts as $monitorContact): ?>
+							<label class="assignment-item">
+								<input
+									type="checkbox"
+									name="document_monitor_contact_ids[]"
+									value="<?= (int)$monitorContact['id'] ?>"
+								>
+								<span>
+									<strong><?= htmlspecialchars((string)$monitorContact['name'], ENT_QUOTES, 'UTF-8') ?></strong>
+									<?php if (!empty($monitorContact['email'])): ?>
+										<br><small><?= htmlspecialchars((string)$monitorContact['email'], ENT_QUOTES, 'UTF-8') ?></small>
+									<?php endif; ?>
+								</span>
+							</label>
+						<?php endforeach; ?>
+					</div>
+				<?php endif; ?>
+			</div>
 
-		<button type="submit"><?= e__('monitors.documents.upload.submit') ?></button>
-	</form>
+			<button type="submit"><?= e__('monitors.documents.upload.submit') ?></button>
+		</form>
+	</div>
 
 	<?php if ($documents === []): ?>
 		<p><?= e__('monitors.documents.none') ?></p>
@@ -180,11 +183,20 @@ ob_start();
 						</div>
 					</form>
 
-					<form method="post" action="<?= e($base_url) ?>/monitors/documents/delete" onsubmit="return confirm('Delete this document?');">
-						<input type="hidden" name="monitor_id" value="<?= (int)$monitor['id'] ?>">
-						<input type="hidden" name="document_id" value="<?= (int)$document['id'] ?>">
-						<button type="submit" class="btn-table-inline"><?= e__('monitors.documents.delete.submit') ?></button>
-					</form>
+					<div class="table-actions">
+						<form method="get" action="<?= e($base_url) ?>/monitors/documents/download">
+							<input type="hidden" name="monitor_id" value="<?= (int)$monitor['id'] ?>">
+							<input type="hidden" name="document_id" value="<?= (int)$document['id'] ?>">
+							<button type="submit">
+								<?= e__('monitors.documents.download.submit') ?>
+							</button>
+						</form>
+						<form method="post" action="<?= e($base_url) ?>/monitors/documents/delete" onsubmit="return confirm('<?= e__('monitors.documents.flash.delete_confirm') ?>');">
+							<input type="hidden" name="monitor_id" value="<?= (int)$monitor['id'] ?>">
+							<input type="hidden" name="document_id" value="<?= (int)$document['id'] ?>">
+							<button type="submit"><?= e__('monitors.documents.delete.submit') ?></button>
+						</form>
+					</div>
 				</div>
 			<?php endforeach; ?>
 		</div>

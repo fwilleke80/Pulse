@@ -111,6 +111,7 @@ return [
 	'monitors.documents.hint' => 'Lade Dokumente für diesen Monitor hoch und wähle aus, welche zugeordneten Kontakte sie erhalten sollen.',
 	'monitors.documents.none' => 'Noch keine Dokumente hochgeladen.',
 
+	'monitors.documents.upload.heading' => 'Dokument hochladen',
 	'monitors.documents.upload.title' => 'Dokumenttitel',
 	'monitors.documents.upload.file' => 'Datei',
 	'monitors.documents.upload.submit' => 'Dokument hochladen',
@@ -123,7 +124,10 @@ return [
 	'monitors.documents.table.mime_type' => 'MIME-Typ',
 	'monitors.documents.table.file_size' => 'Dateigröße',
 
+	'monitors.documents.download.submit' => 'Herunterladen',
+
 	'monitors.documents.delete.submit' => 'Dokument löschen',
+	'monitors.documents.flash.delete_confirm' => 'Bist du sicher, dass du dieses Dokument löschen möchtest?',
 
 	'monitors.documents.flash.monitor_not_found' => 'Monitor nicht gefunden.',
 	'monitors.documents.flash.document_not_found' => 'Dokument nicht gefunden.',

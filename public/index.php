@@ -91,6 +91,7 @@ $router->Post('/monitors/delete', [$monitorController, 'Delete']);
 $router->Post('/monitors/documents/upload', [$monitorController, 'UploadDocument']);
 $router->Post('/monitors/documents/recipients', [$monitorController, 'UpdateDocumentRecipients']);
 $router->Post('/monitors/documents/delete', [$monitorController, 'DeleteDocument']);
+$router->Get('/monitors/documents/download', [$monitorController, 'DownloadDocument']);
 
 // ----- Authentication routes -----
 $router->Get('/login', [$authController, 'ShowLogin']);

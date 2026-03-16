@@ -534,4 +534,84 @@ class MonitorController extends BaseController
 		$this->Flash('success', e__('monitors.documents.flash.deleted'));
 		$this->Redirect('/monitors/edit?id=' . $monitorId);
 	}
+
+	/**
+	 * @brief Downloads a document file for a monitor owned by the current user.
+	 */
+	public function DownloadDocument(): void
+	{
+		$user = $this->RequireUser();
+
+		$monitorId = (int)($_GET['monitor_id'] ?? 0);
+		$documentId = (int)($_GET['document_id'] ?? 0);
+
+		if ($monitorId <= 0 || $documentId <= 0)
+		{
+			http_response_code(404);
+			echo 'Document not found.';
+			exit;
+		}
+
+		$document = $this->_documentRepository->FindByIdForMonitorAndUser(
+			$documentId,
+			$monitorId,
+			(int)$user['id']
+		);
+
+		if ($document === null)
+		{
+			$this->_logger->Warning('Document download failed: document not found', [
+				'user_id' => $user['id'],
+				'monitor_id' => $monitorId,
+				'document_id' => $documentId,
+			]);
+
+			http_response_code(404);
+			echo 'Document not found.';
+			exit;
+		}
+
+		if ((string)$document['storage_type'] !== 'file' || empty($document['stored_filename']))
+		{
+			$this->_logger->Warning('Document download failed: document is not a file', [
+				'user_id' => $user['id'],
+				'monitor_id' => $monitorId,
+				'document_id' => $documentId,
+			]);
+
+			http_response_code(404);
+			echo 'Document not found.';
+			exit;
+		}
+
+		$filePath = dirname(__DIR__, 2) . '/storage/uploads/monitor-documents/' . (string)$document['stored_filename'];
+
+		if (!is_file($filePath))
+		{
+			$this->_logger->Error('Document download failed: stored file missing', [
+				'user_id' => $user['id'],
+				'monitor_id' => $monitorId,
+				'document_id' => $documentId,
+				'stored_filename' => $document['stored_filename'],
+			]);
+
+			http_response_code(404);
+			echo 'Document not found.';
+			exit;
+		}
+
+		$downloadFilename = (string)($document['original_filename'] ?? $document['title'] ?? 'document');
+		$mimeType = (string)($document['mime_type'] ?? 'application/octet-stream');
+		$fileSize = filesize($filePath);
+
+		header('Content-Description: File Transfer');
+		header('Content-Type: ' . $mimeType);
+		header('Content-Disposition: attachment; filename="' . str_replace('"', '', $downloadFilename) . '"');
+		header('Content-Length: ' . (string)$fileSize);
+		header('Cache-Control: private, must-revalidate');
+		header('Pragma: public');
+
+		readfile($filePath);
+		exit;
+	}
 }

@@ -111,6 +111,7 @@ return [
 	'monitors.documents.hint' => 'Upload documents for this monitor and choose which assigned contacts should receive them.',
 	'monitors.documents.none' => 'No documents uploaded yet.',
 
+	'monitors.documents.upload.heading' => 'Upload document',
 	'monitors.documents.upload.title' => 'Document title',
 	'monitors.documents.upload.file' => 'File',
 	'monitors.documents.upload.submit' => 'Upload document',
@@ -123,7 +124,10 @@ return [
 	'monitors.documents.table.mime_type' => 'MIME type',
 	'monitors.documents.table.file_size' => 'File size',
 
+	'monitors.documents.download.submit' => 'Download',
+
 	'monitors.documents.delete.submit' => 'Delete document',
+	'monitors.documents.flash.delete_confirm' => 'Are you sure you want to delete this document?',
 
 	'monitors.documents.flash.monitor_not_found' => 'Monitor not found.',
 	'monitors.documents.flash.document_not_found' => 'Document not found.',

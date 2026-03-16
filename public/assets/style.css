@@ -219,6 +219,11 @@ table
 	align-items: center;
 }
 
+.table-actions form
+{
+	margin: 0;
+}
+
 th,
 td
 {
