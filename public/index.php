@@ -77,6 +77,8 @@ $router->Get('/health', [$homeController, 'Health']);
 // ----- Contact management routes -----
 $router->Get('/contacts', [$contactController, 'Index']);
 $router->Get('/contacts/new', [$contactController, 'New']);
+$router->Get('/contacts/edit', [$contactController, 'Edit']);
+$router->Post('/contacts/update', [$contactController, 'Update']);
 $router->Post('/contacts/create', [$contactController, 'Create']);
 $router->Post('/contacts/delete', [$contactController, 'Delete']);
 
@@ -84,8 +86,6 @@ $router->Post('/contacts/delete', [$contactController, 'Delete']);
 $router->Get('/profile', [$profileController, 'Index']);
 $router->Post('/profile/update', [$profileController, 'Update']);
 $router->Post('/profile/password', [$profileController, 'ChangePassword']);
-$router->Get('/contacts/edit', [$contactController, 'Edit']);
-$router->Post('/contacts/update', [$contactController, 'Update']);
 
 // ----- Monitor management routes -----
 $router->Get('/monitors', [$monitorController, 'Index']);
