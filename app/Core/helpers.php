@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * @file helpers.php
+ * @brief Global helper functions for Pulse.
+ * @author Frank Willeke
+ */
+
 declare(strict_types=1);
 
 use Pulse\Core\Translator;

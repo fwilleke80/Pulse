@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * @file UserRepository.php
+ * @brief Repository for user accounts.
+ * @author Frank Willeke
+ */
+
 declare(strict_types=1);
 
 namespace Pulse\Repositories;

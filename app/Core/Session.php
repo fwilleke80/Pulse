@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * @file Session.php
+ * @brief Small session wrapper for Pulse authentication.
+ * @author Frank Willeke
+*/
+
 declare(strict_types=1);
 
 namespace Pulse\Core;

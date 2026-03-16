@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * @file ContactRepository.php
+ * @brief Repository for user contacts.
+ * @author Frank Willeke
+ */
+
 declare(strict_types=1);
 
 namespace Pulse\Repositories;

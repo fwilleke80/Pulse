@@ -1,5 +1,12 @@
 <?php
 
+/**
+ * @file Translator.php
+ * @brief Simple translation service.
+ * Loads the appropriate language file based on the locale and provides a method to translate keys to their corresponding strings.
+ * @author Frank Willeke
+ */
+
 declare(strict_types=1);
 
 namespace Pulse\Core;

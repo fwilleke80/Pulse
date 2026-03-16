@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * @file Database.php
+ * @brief PDO database wrapper for Pulse.
+ * @author Frank Willeke
+ */
+
 declare(strict_types=1);
 
 namespace Pulse\Core;

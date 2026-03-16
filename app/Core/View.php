@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * @file View.php
+ * @brief Very small PHP view renderer.
+ * @author Frank Willeke
+ */
+
 declare(strict_types=1);
 
 namespace Pulse\Core;

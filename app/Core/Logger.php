@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * @file Logger.php
+ * @brief Very small file logger for Pulse.
+ * @author Frank Willeke
+ */
+
 declare(strict_types=1);
 
 namespace Pulse\Core;

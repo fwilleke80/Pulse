@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * @file Router.php
+ * @brief Very small router for exact GET and POST route matching.
+ * @author Frank Willeke
+ */
+
 declare(strict_types=1);
 
 namespace Pulse\Core;
