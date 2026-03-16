@@ -72,17 +72,30 @@ CREATE TABLE contact_messages
 CREATE TABLE documents
 (
 	id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-	user_id BIGINT UNSIGNED NOT NULL,
 	monitor_id BIGINT UNSIGNED NOT NULL,
 	title VARCHAR(255) NOT NULL,
 	storage_type ENUM('text','file') NOT NULL,
 	text_content LONGTEXT NULL,
 	stored_filename VARCHAR(255) NULL,
+	original_filename VARCHAR(255) NULL,
 	mime_type VARCHAR(255) NULL,
 	file_size_bytes BIGINT NULL,
 	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-	FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+	updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	FOREIGN KEY (monitor_id) REFERENCES monitors(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE document_monitor_contacts
+(
+	document_id BIGINT UNSIGNED NOT NULL,
+	monitor_contact_id BIGINT UNSIGNED NOT NULL,
+	PRIMARY KEY (document_id, monitor_contact_id),
+	FOREIGN KEY (document_id)
+		REFERENCES documents(id)
+		ON DELETE CASCADE,
+	FOREIGN KEY (monitor_contact_id)
+		REFERENCES monitor_contacts(id)
+		ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE check_cycles
