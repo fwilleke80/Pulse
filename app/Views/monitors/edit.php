@@ -6,6 +6,8 @@ declare(strict_types=1);
 /** @var array<int> $assignedContactIds */
 /** @var array<int, array<string, mixed>> $monitorContacts */
 /** @var array<int, array<string, mixed>> $documents */
+/** @var array<string, mixed> $monitor */
+/** @var string $base_url */
 
 ob_start();
 ?>

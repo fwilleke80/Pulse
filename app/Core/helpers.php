@@ -13,7 +13,9 @@ use Pulse\Core\Translator;
 $__pulseTranslator = null;
 
 /**
- * Escapes a string for safe output in HTML.
+ * @brief Escapes a string for safe HTML output.
+ * @param string $value Input string.
+ * @return string
  */
 function e(string $value): string
 {
@@ -21,7 +23,8 @@ function e(string $value): string
 }
 
 /**
- * Registers the global translator.
+ * @brief Registers the global translator.
+ * @param Translator $translator Translator instance.
  */
 function setTranslator(Translator $translator): void
 {
@@ -31,7 +34,10 @@ function setTranslator(Translator $translator): void
 }
 
 /**
- * Raw translation.
+ * @brief Performs a raw translation.
+ * @param string $key Translation key.
+ * @param array $params Parameters for the translation.
+ * @return string
  */
 function __(string $key, array $params = []): string
 {
@@ -60,7 +66,10 @@ function __(string $key, array $params = []): string
 }
 
 /**
- * HTML-escaped translation.
+ * @brief HTML-escaped translation.
+ * @param string $key Translation key.
+ * @param array $params Parameters for the translation.
+ * @return string
  */
 function e__(string $key, array $params = []): string
 {

@@ -49,6 +49,8 @@ class MonitorController extends BaseController
 		$this->_documentRepository = $documentRepository;
 	}
 
+	// ----- Monitor CRUD -----
+
 	/**
 	 * @brief Displays the monitor list.
 	 * @return string
@@ -294,6 +296,8 @@ class MonitorController extends BaseController
 
 		$this->Redirect('/monitors');
 	}
+
+	// ----- Document upload and recipient assignment -----
 
 	/**
 	 * @brief Generates a unique stored filename for an uploaded file.
@@ -543,6 +547,8 @@ class MonitorController extends BaseController
 		$this->Flash('success', e__('monitors.documents.flash.deleted'));
 		$this->Redirect('/monitors/edit?id=' . $monitorId);
 	}
+
+	// ----- Document download -----
 
 	/**
 	 * @brief Downloads a document file for a monitor owned by the current user.

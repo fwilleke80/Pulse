@@ -1,6 +1,16 @@
 <?php
 
+/**
+ * @file index.php
+ * @brief Home page view.
+ * @author Frank Willeke
+ */
+
 declare(strict_types=1);
+
+/** @var bool $databaseOk */
+/** @var string $phpVersion */
+/** @var string $base_url */
 
 ob_start();
 ?>

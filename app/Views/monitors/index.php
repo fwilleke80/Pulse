@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+/** @var array<int, array<string, mixed>> $monitors */
+/** @var string $base_url */
+
 ob_start();
 ?>
 

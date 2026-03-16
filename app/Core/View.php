@@ -35,6 +35,7 @@ class View
 	/**
 	 * @brief Sets global variables available in every view.
 	 * @param array<string, mixed> $globals Global variables.
+	* @param bool $merge Whether to merge with existing globals instead of replacing them.
 	 */
 	public function SetGlobals(array $globals, bool $merge = false): void
 	{

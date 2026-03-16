@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * @file app.php
+ * @brief Application configuration.
+ * @author Frank Willeke
+ */
+
 declare(strict_types=1);
 
 return [

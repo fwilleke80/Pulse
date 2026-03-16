@@ -1,5 +1,16 @@
 <?php
 declare(strict_types=1);
+
+/** @var string $appName */
+/** @var string $appVersion */
+/** @var string $locale */
+/** @var string $base_url */
+/** @var bool $isAuthenticated */
+/** @var array<string, mixed>|null $currentUser */
+/** @var array<string, string>|null $flash */
+/** @var string $content */
+/** @var string|null $title */
+
 ?><!DOCTYPE html>
 <html lang="<?= htmlspecialchars($locale, ENT_QUOTES, 'UTF-8') ?>">
 <head>

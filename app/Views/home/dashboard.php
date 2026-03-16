@@ -1,6 +1,17 @@
 <?php
 
+/**
+ * @file dashboard.php
+ * @brief Dashboard page view.
+ * @author Frank Willeke
+ */
+
 declare(strict_types=1);
+
+/** @var array<string, mixed> $user */
+/** @var int $contactCount */
+/** @var int $monitorCount */
+/** @var string $base_url */
 
 ob_start();
 ?>

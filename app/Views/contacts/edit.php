@@ -1,6 +1,15 @@
 <?php
 
+/**
+ * @file edit.php
+ * @brief Contact edit page view.
+ * @author Frank Willeke
+ */
+
 declare(strict_types=1);
+
+/** @var array<string, mixed> $contact */
+/** @var string $base_url */
 
 ob_start();
 ?>

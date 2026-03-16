@@ -98,7 +98,7 @@ class Session
 	}
 
 	/**
-	 * @brief Stores a session value.
+	 * @brief Stores an arbitrary session value.
 	 * @param string $key Session key.
 	 * @param mixed $value Value to store.
 	 */
@@ -108,7 +108,7 @@ class Session
 	}
 
 	/**
-	 * @brief Returns a session value.
+	 * @brief Returns an arbitrary session value or a default if the key is not set.
 	 * @param string $key Session key.
 	 * @param mixed $default Default value if key does not exist.
 	 * @return mixed

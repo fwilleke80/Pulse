@@ -1,6 +1,14 @@
 <?php
 
+/**
+ * @file about.php
+ * @brief About page view.
+ * @author Frank Willeke
+ */
+
 declare(strict_types=1);
+
+/** @var string $base_url */
 
 ob_start();
 ?>

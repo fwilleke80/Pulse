@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * @file database.php
+ * @brief Database configuration.
+ * @author Frank Willeke
+ */
+
 declare(strict_types=1);
 
 return [

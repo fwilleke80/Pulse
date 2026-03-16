@@ -1,3 +1,6 @@
+-- Converts documents from the old structure to the current monitor-based model
+-- and introduces document_monitor_contacts for per-recipient assignment.
+
 ALTER TABLE documents
 	DROP FOREIGN KEY documents_ibfk_1,
 	DROP COLUMN user_id;

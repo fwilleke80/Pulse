@@ -1,5 +1,11 @@
 -- Pulse initial database schema
 -- MySQL 8+
+-- ----
+-- Core user and contact data
+-- Monitor configuration and monitor-contact assignments
+-- Per-contact monitor messages
+-- Monitor documents and document recipient assignments
+-- Future runtime/check-cycle/mail/audit tables
 
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
@@ -85,6 +91,9 @@ CREATE TABLE documents
 	FOREIGN KEY (monitor_id) REFERENCES monitors(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Documents belong to a monitor.
+-- Recipient assignment is modeled separately through document_monitor_contacts,
+-- which links each document to one or more monitor_contacts.
 CREATE TABLE document_monitor_contacts
 (
 	document_id BIGINT UNSIGNED NOT NULL,
