@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * @file index.php
+ * @brief Front controller: bootstraps the application, registers routes, and dispatches the current request.
+ * @author Frank Willeke
+ */
+
 declare(strict_types=1);
 
 use Pulse\Controllers\HomeController;

@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * @file MonitorController.php
+ * @brief Controller for monitor management.
+ * @author Frank Willeke
+ */
+
 declare(strict_types=1);
 
 namespace Pulse\Controllers;
@@ -22,7 +28,10 @@ class MonitorController extends BaseController
 	 * @param \Pulse\Core\View $view View renderer.
 	 * @param \Pulse\Core\Session $session Session service.
 	 * @param \Pulse\Services\AuthService $auth Authentication service.
+	 * @param \Pulse\Core\Logger $logger Application logger.
 	 * @param MonitorRepository $monitorRepository Monitor repository.
+	 * @param ContactRepository $contactRepository Contact repository.
+	 * @param DocumentRepository $documentRepository Document repository.
 	 */
 	public function __construct(
 		\Pulse\Core\View $view,

@@ -24,6 +24,7 @@ abstract class BaseController
 	 * @param View $view View renderer.
 	 * @param Session $session Session service.
 	 * @param AuthService $auth Authentication service.
+	 * @param Logger $logger Application logger.
 	 */
 	public function __construct(
 		View $view,

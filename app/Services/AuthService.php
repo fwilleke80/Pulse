@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * @file AuthService.php
+ * @brief Authentication service.
+ * @author Frank Willeke
+ */
+
 declare(strict_types=1);
 
 namespace Pulse\Services;
@@ -21,6 +27,7 @@ class AuthService
 	 * @brief Constructs the authentication service.
 	 * @param UserRepository $userRepository User repository.
 	 * @param Session $session Session service.
+	 * @param Logger $logger Application logger.
 	 */
 	public function __construct(UserRepository $userRepository, Session $session, Logger $logger)
 	{

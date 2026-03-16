@@ -22,6 +22,7 @@ class ProfileController extends BaseController
 	 * @param View $view View renderer.
 	 * @param Session $session Session service.
 	 * @param AuthService $auth Authentication service.
+	 * @param Logger $logger Application logger.
 	 * @param UserRepository $userRepository User repository.
 	 */
 	public function __construct(

@@ -37,6 +37,11 @@ class Translator
 		$this->_strings = require $file;
 	}
 
+	/**
+	 * @brief Returns the translated string for a key, or the key itself if no translation exists.
+	 * @param string $key Translation key.
+	 * @return string
+	 */
 	public function Translate(string $key): string
 	{
 		return $this->_strings[$key] ?? $key;
