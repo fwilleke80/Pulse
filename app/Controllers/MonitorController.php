@@ -167,6 +167,7 @@ class MonitorController extends BaseController
 	{
 		$user = $this->RequireUser();
 		$monitorId = $this->_request->PostInt('id');
+		$returnTab = $this->PostedEditorTab();
 		$monitor = $this->_monitorRepository->FindByIdForUser($monitorId, (int)$user['id']);
 
 		if ($monitor === null)
@@ -200,7 +201,7 @@ class MonitorController extends BaseController
 		);
 		$this->_logger->Info('Monitor updated', ['user_id' => (int)$user['id'], 'monitor_id' => $monitorId]);
 		$this->Flash('success', __('monitors.edit.flash.updated', ['name' => $values['name']]));
-		$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=review');
+		$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=' . $returnTab);
 	}
 
 	/** @brief Updates the default and recipient-specific delivery messages. */
@@ -383,6 +384,13 @@ class MonitorController extends BaseController
 			'reminder_interval_days' => $this->_request->PostInt('reminder_interval_days'),
 			'max_reminders' => $this->_request->PostInt('max_reminders'),
 		];
+	}
+
+	/** @brief Returns a whitelisted editor tab from the shared settings form. */
+	private function PostedEditorTab(): string
+	{
+		$tab = $this->_request->PostString('active_tab', 20);
+		return in_array($tab, ['schedule', 'recipients', 'messages', 'review'], true) ? $tab : 'schedule';
 	}
 
 	/**

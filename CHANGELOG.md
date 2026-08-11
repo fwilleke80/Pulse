@@ -1,5 +1,67 @@
 # Changelog
 
+## 0.6.3 — 2026-08-12
+
+### Immediate due notifications
+
+- Send an owner notification as soon as a monitor becomes due instead of remaining silent throughout the response window.
+- Treat configured reminders as follow-ups: reminder 1 is sent when the response window closes, with later reminders following the configured interval.
+- Keep **Maximum follow-up reminders** separate from the initial due notice, including the valid zero-follow-up configuration.
+- Record successful due-notice delivery independently in `check_cycles.due_notice_sent_at` and lifecycle activity.
+- Require both the due notice and all configured reminders to have been accepted by SMTP before a monitor may become **Overdue**.
+- Surface permanent failures of either the due notice or a reminder as a check-in email delivery warning while retaining the truthful **Awaiting check-in** state.
+- Cancel pending due notices as well as reminders when a monitor is checked in or paused.
+- Preserve upgrade behavior by treating cycles that already delivered a 0.6.2 reminder as already notified.
+- Added migration `008_immediate_due_notifications.sql`, bilingual mail copy, queue and lifecycle tests, and updated documentation.
+
+## 0.6.2 — 2026-08-12
+
+### Web cron
+
+- Added `public/cron/cron.php` for hosting services that can schedule only a URL.
+- Protected web execution with a required long `PULSE_CRON_TOKEN`, constant-time comparison, no login session, no operational URL parameters, and minimal responses.
+- Made the web endpoint run only the same combined scheduler/worker operation as `notifications:run`, using the configured queue batch size.
+- Retained command-line notification commands as an equivalent deployment option.
+
+### Recipient notification languages
+
+- Added a notification language to the owner profile for owner reminders and test messages.
+- Added an independent notification language to every contact in preparation for later recipient delivery.
+- Made queued mail use the recipient's stored language rather than the active interface language.
+- Kept existing users and contacts compatible by falling back to `PULSE_DEFAULT_LOCALE` until an explicit language is saved.
+- Added migration `007_recipient_notification_languages.sql`, bilingual UI copy, tests, and deployment documentation.
+
+## 0.6.1 — 2026-08-12
+
+### Notification readiness
+
+- Added a prominent Dashboard warning while mail delivery is disabled, explaining that Pulse cannot send reminders or advance active monitors reliably.
+- Linked the Dashboard warning directly to **Profile → Notifications**.
+- Replaced the apparently actionable disabled test form with a visibly disabled, non-submitting button and an explanation of the required server configuration.
+- Changed the disabled-mail status badge from neutral grey to a critical red state.
+- Added bilingual interface copy, responsive warning styles, regression coverage, and updated SMTP setup documentation.
+
+## 0.6.0 — 2026-08-11
+
+### Notification infrastructure
+
+- Added authenticated SMTP delivery with implicit TLS and STARTTLS support, UTF-8 plain-text messages, and header-injection protection.
+- Added a durable transactional mail queue with immutable message snapshots, idempotency keys, attempt counters, bounded retry delays, permanent-failure state, and delivery-attempt history.
+- Added concurrent worker claims using database row locks, `SKIP LOCKED`, unique worker identities, and expiring leases that recover jobs abandoned after a crash.
+- Added the `notifications:run`, `notifications:schedule`, `mail:work`, `mail:test`, and `mail:retry-failed` command-line operations.
+- Added owner check-in reminders. Recipient messages, documents, and access links remain inactive.
+- Count reminders only after SMTP accepts the complete message; only then can the cycle eventually become **Overdue**.
+- Keep monitors with permanently failed reminders at **Awaiting check-in**, show a prominent delivery-failure warning, and allow failed jobs to be requeued from the profile page.
+- Cancel reminders that have not begun sending when their cycle is confirmed or paused.
+
+### Interface and fixes
+
+- Added **Profile → Notifications** with mail state, pending/sent/failed counts, the latest test result, end-to-end test delivery, and manual retry for failed notifications.
+- Added reminder-sent lifecycle activity to the dashboard.
+- Limited dashboard activity to the latest 10 entries and added a complete paginated activity history.
+- Fixed **Save monitor settings** always returning to **Review & activation**; it now preserves the tab from which the settings were saved.
+- Added migration `006_notification_infrastructure.sql`, bilingual notification copy, queue integration tests, SMTP safety tests, and updated deployment documentation.
+
 ## 0.5.0 — 2026-08-11
 
 ### Reliable check-in lifecycle

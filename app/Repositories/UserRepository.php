@@ -87,17 +87,19 @@ class UserRepository
 	 * @param int $userId User ID.
 	 * @param string $displayName Display name.
 	 * @param string $email Email address.
+	 * @param string $notificationLocale Language for notifications sent to this user.
 	 */
-	public function UpdateProfile(int $userId, string $displayName, string $email): void
+	public function UpdateProfile(int $userId, string $displayName, string $email, string $notificationLocale): void
 	{
 		$sql = 'UPDATE users
-			SET display_name = :display_name, email = :email
+			SET display_name = :display_name, email = :email, notification_locale = :notification_locale
 			WHERE id = :id';
 
 		$statement = $this->_database->GetConnection()->prepare($sql);
 		$statement->execute([
 			'display_name' => $displayName,
 			'email' => $email,
+			'notification_locale' => $notificationLocale,
 			'id' => $userId,
 		]);
 	}

@@ -37,6 +37,9 @@ $monitorExecutionService = $container['monitorExecutionService'];
 $documentService = $container['documentService'];
 $userRepository = $container['userRepository'];
 $loginThrottle = $container['loginThrottle'];
+$mailQueueRepository = $container['mailQueueRepository'];
+$testNotificationService = $container['testNotificationService'];
+$notificationLanguage = $container['notificationLanguage'];
 
 (new SecurityHeaders())->Apply($request, (array)$config['security']);
 header('Cache-Control: no-store');
@@ -67,7 +70,7 @@ $homeController = new HomeController(
 	$monitorExecutionService
 );
 $authController = new AuthController($view, $session, $auth, $logger, $request, $loginThrottle, $csrf);
-$contactController = new ContactController($view, $session, $auth, $logger, $request, $contactRepository);
+$contactController = new ContactController($view, $session, $auth, $logger, $request, $contactRepository, $notificationLanguage);
 $languageController = new LanguageController($view, $session, $auth, $logger, $request, (array)$config['available_locales']);
 $profileController = new ProfileController(
 	$view,
@@ -76,7 +79,11 @@ $profileController = new ProfileController(
 	$logger,
 	$request,
 	$userRepository,
-	(int)$config['security']['password_minimum_length']
+	(int)$config['security']['password_minimum_length'],
+	$mailQueueRepository,
+	$testNotificationService,
+	(bool)$config['mail']['enabled'],
+	$notificationLanguage
 );
 $monitorController = new MonitorController(
 	$view,
@@ -95,6 +102,7 @@ $monitorController = new MonitorController(
 $documentController = new DocumentController($view, $session, $auth, $logger, $request, $documentService);
 
 $router->Get('/', [$homeController, 'Dashboard']);
+$router->Get('/activity', [$homeController, 'Activity']);
 $router->Get('/about', [$homeController, 'About']);
 $router->Get('/imprint', [$homeController, 'Imprint']);
 $router->Get('/health', [$homeController, 'Health']);
@@ -110,6 +118,8 @@ $router->Post('/contacts/delete', [$contactController, 'Delete']);
 $router->Get('/profile', [$profileController, 'Index']);
 $router->Post('/profile/update', [$profileController, 'Update']);
 $router->Post('/profile/password', [$profileController, 'ChangePassword']);
+$router->Post('/profile/notifications/test', [$profileController, 'SendTestNotification']);
+$router->Post('/profile/notifications/retry', [$profileController, 'RetryFailedNotifications']);
 
 $router->Get('/monitors', [$monitorController, 'Index']);
 $router->Get('/monitors/new', [$monitorController, 'New']);

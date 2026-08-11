@@ -2,7 +2,7 @@
 
 ## Current scope
 
-Pulse 0.5.0 lets you:
+Pulse 0.6.3 lets you:
 
 - sign in and update your profile
 - create and edit trusted contacts and confirm that you checked their addresses
@@ -14,8 +14,11 @@ Pulse 0.5.0 lets you:
 - confirm every active monitor with one check-in
 - pause and resume individual monitors with explicit actions
 - review current monitor state and recent lifecycle activity on the dashboard
+- receive an immediate owner email when a check-in becomes due, followed by configured reminders after the response window closes
+- test SMTP delivery and inspect or retry failed notifications from the profile page
+- choose a separate notification language for yourself and every contact
 
-Automatic reminder mail, escalation, contact notifications, and recipient document access are not active yet.
+Recipient contact notifications, delivery messages, document release, and recipient access are not active yet. Version 0.6.3 sends only check-in due notices and reminders to the owner's own profile address.
 
 Uploaded files are private from normal website visitors, but files, messages, and editable text documents are not encrypted at rest in this version. Do not store your final highly sensitive material until the encrypted-storage release is complete.
 
@@ -29,6 +32,8 @@ Pulse requires you to confirm that you carefully checked a contact's email addre
 
 Contacts created before 0.4.0 initially show **Not yet checked**. In a monitor editor, open **Recipients**, select **Check address** beside the contact, review the address, tick the confirmation box, and save. Pulse returns to the same monitor tab and records the new status.
 
+Each contact has a **Notification language**. Choose the language that recipient should later receive, regardless of the language currently selected in your browser. Existing contacts fall back to the server's `PULSE_DEFAULT_LOCALE` until you save an explicit choice.
+
 ## Monitors
 
 A monitor describes how frequently you intend to confirm that you are active. Its editor contains four sections:
@@ -38,7 +43,7 @@ A monitor describes how frequently you intend to confirm that you are active. It
 3. **Messages & documents** — delivery wording and recipient document assignments
 4. **Review & activation** — a configuration summary, warnings, and the paused state
 
-The sticky save action stores schedule and recipient selection together. **Cancel** returns to the monitor overview without saving changes to those settings. Messages and individual documents have their own explicit save actions. Pause and resume are immediate runtime actions and are not part of the settings form.
+The sticky save action stores schedule and recipient selection together and returns to whichever editor tab was active. **Cancel** returns to the monitor overview without saving changes to those settings. Messages and individual documents have their own explicit save actions. Pause and resume are immediate runtime actions and are not part of the settings form.
 
 Select a monitor's linked title in the overview to open its editor.
 
@@ -50,7 +55,21 @@ The monitor overview focuses on runtime state:
 - **Escalated** — recipient notification or delivery actually began
 - **Paused** — no confirmation is currently expected
 
-Pulse 0.5.0 does not yet run the reminder and notification engine. It can move scheduled cycles to **Awaiting check-in**, but it does not pretend to have sent reminders. Consequently, a normal 0.5.0 installation will not move a cycle to **Overdue** or **Escalated** until the later notification worker is connected.
+The cron scheduler sends an immediate owner notification when the monitor becomes due. The configured response window then gives you time to check in. If it closes without a check-in, Pulse sends reminder 1 and follows the configured reminder interval for any remaining follow-ups. **Maximum follow-up reminders** does not include the initial due notice. A monitor becomes **Overdue** only after the due notice and all configured reminders were accepted by SMTP and the final response/reminder interval elapsed. **Escalated** remains inactive until recipient delivery is implemented.
+
+If a due notice or reminder exhausts all delivery attempts, the monitor remains **Awaiting check-in** and displays a red **Check-in email delivery failed** warning. This is intentional: Pulse will not pretend a notification was delivered. Open **Profile → Notifications** to see failed jobs and queue them for another attempt after correcting the SMTP problem.
+
+## Notifications
+
+The profile page shows whether mail is enabled, pending/sent/failed queue counts, and the latest test result. **Send test notification** delivers to the current profile email using the same queue and SMTP worker as real reminders.
+
+The **Notification language** in Profile data belongs to you as the reminder recipient. Owner reminders and tests always use that stored choice; changing the footer's interface language does not change mail language. A queued mail remains in the language in which it was created.
+
+When mail is disabled, Pulse shows a critical warning on the Dashboard and a visibly disabled test button on the profile page. Configure the `PULSE_SMTP_*` and `PULSE_MAIL_*` values in the server's `.env` file, set `PULSE_MAIL_ENABLED=true`, then reload the profile page. The SMTP test should succeed before Pulse is relied upon for reminders.
+
+Delivery attempts retry automatically according to the server configuration. A permanently failed message can be requeued with **Retry failed notifications**. The normal cron worker performs the new attempt.
+
+Changing a profile email affects newly queued reminders. Messages already in the queue retain the address and content snapshot that existed when they were created.
 
 The displayed timestamps use the configured local display timezone. Storage and comparisons use UTC.
 
@@ -74,7 +93,7 @@ Pause and resume actions are available on the dashboard, monitor overview, and t
 
 The dashboard shows monitor totals, the number of active monitors, and how many currently need attention. Its monitor overview includes each status, last confirmation, next due time, and pause/resume control.
 
-Recent lifecycle activity records check-ins, due-state changes, pauses, resumes, overdue transitions, and escalations. Times are stored in UTC and displayed in the configured local timezone.
+The dashboard shows the latest 10 lifecycle entries. Use **View complete activity** for the complete history, shown 50 entries at a time. The history records check-ins, due-state changes, sent due notices and reminders, pauses, resumes, overdue transitions, and escalations. Times are stored in UTC and displayed in the configured local timezone.
 
 ## Messages
 
@@ -102,7 +121,7 @@ Repeated failed sign-ins are temporarily blocked. The response does not reveal w
 
 ## Languages
 
-English and German are available from the footer. Language changes use the same security protection as other state changes and return only to a local Pulse page.
+English and German are available from the footer. Language changes use the same security protection as other state changes and return only to a local Pulse page. The interface language is independent of each recipient's notification language.
 
 ## Health checks
 

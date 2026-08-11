@@ -57,7 +57,7 @@ class MonitorExecutionServiceTest extends TestCase
 
 		$this->_connection->exec('SET FOREIGN_KEY_CHECKS = 0');
 
-		foreach (['audit_log', 'check_cycles', 'monitors', 'users'] as $table)
+		foreach (['mail_queue', 'audit_log', 'check_cycles', 'monitors', 'users'] as $table)
 		{
 			$this->_connection->exec('DROP TABLE IF EXISTS `' . $table . '`');
 		}
@@ -117,6 +117,23 @@ class MonitorExecutionServiceTest extends TestCase
 		self::assertFalse($this->_service->ForceDueForUser(1, 1));
 	}
 
+	public function testOverdueRequiresTheInitialDueNoticeToHaveBeenSent(): void
+	{
+		self::assertInstanceOf(MonitorExecutionService::class, $this->_service);
+		$this->_service->InitializeMonitorForUser(1, 1);
+		self::assertTrue($this->_service->ForceDueForUser(1, 1));
+		$this->_connection?->exec("
+			UPDATE check_cycles
+			SET response_deadline_at = TIMESTAMPADD(DAY, -3, UTC_TIMESTAMP()), reminders_sent = max_reminders
+			WHERE monitor_id = 1 AND status = 'awaiting'
+		");
+		$cycleId = (int)$this->_connection?->query("SELECT id FROM check_cycles WHERE monitor_id = 1 AND status = 'awaiting'")->fetchColumn();
+
+		self::assertFalse($this->_service->MarkCycleOverdue($cycleId));
+		$this->_connection?->exec('UPDATE check_cycles SET due_notice_sent_at = UTC_TIMESTAMP() WHERE id = ' . $cycleId);
+		self::assertTrue($this->_service->MarkCycleOverdue($cycleId));
+	}
+
 	private function CreateFixture(): void
 	{
 		self::assertInstanceOf(PDO::class, $this->_connection);
@@ -152,6 +169,7 @@ class MonitorExecutionServiceTest extends TestCase
 				reminder_interval_days INT UNSIGNED NOT NULL,
 				max_reminders INT UNSIGNED NOT NULL,
 				reminders_sent INT UNSIGNED NOT NULL DEFAULT 0,
+				due_notice_sent_at DATETIME NULL,
 				confirmed_at DATETIME NULL,
 				overdue_at DATETIME NULL,
 				escalated_at DATETIME NULL,
@@ -173,6 +191,15 @@ class MonitorExecutionServiceTest extends TestCase
 				created_at DATETIME NOT NULL
 			) ENGINE=InnoDB
 		');
+		$this->_connection->exec("CREATE TABLE mail_queue
+		(
+			id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+			check_cycle_id BIGINT UNSIGNED NULL,
+			mail_type VARCHAR(50) NOT NULL,
+			status ENUM('queued','retrying','processing','sent','failed','cancelled') NOT NULL,
+			cancelled_at DATETIME NULL,
+			updated_at DATETIME NOT NULL
+		) ENGINE=InnoDB");
 		$this->_connection->exec('INSERT INTO users (id) VALUES (1)');
 		$this->_connection->exec("INSERT INTO monitors VALUES
 			(1, 1, 3, 2, 1, 2, 0, NULL, UTC_TIMESTAMP(), TIMESTAMPADD(DAY, 3, UTC_TIMESTAMP()), UTC_TIMESTAMP(), UTC_TIMESTAMP()),

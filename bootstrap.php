@@ -15,22 +15,29 @@ use Pulse\Core\Environment;
 use Pulse\Core\ErrorHandler;
 use Pulse\Core\Logger;
 use Pulse\Core\MigrationRunner;
+use Pulse\Core\NotificationLanguage;
 use Pulse\Core\Request;
 use Pulse\Core\Router;
 use Pulse\Core\Session;
 use Pulse\Core\Translator;
 use Pulse\Core\View;
+use Pulse\Mail\SmtpMailTransport;
 use Pulse\Repositories\ContactRepository;
 use Pulse\Repositories\DocumentRepository;
 use Pulse\Repositories\LoginThrottleRepository;
+use Pulse\Repositories\MailQueueRepository;
 use Pulse\Repositories\MessageRepository;
 use Pulse\Repositories\MonitorRepository;
 use Pulse\Repositories\UserRepository;
 use Pulse\Services\AuthService;
 use Pulse\Services\DocumentService;
 use Pulse\Services\LoginThrottleService;
+use Pulse\Services\MailQueueWorker;
 use Pulse\Services\MonitorExecutionService;
 use Pulse\Services\MonitorStateMachine;
+use Pulse\Services\NotificationComposer;
+use Pulse\Services\NotificationScheduler;
+use Pulse\Services\TestNotificationService;
 
 $composerAutoloader = __DIR__ . '/vendor/autoload.php';
 
@@ -77,7 +84,13 @@ $appVersion = is_file($versionFile) ? require $versionFile : 'dev';
 
 $request = Request::FromGlobals();
 $session = new Session((array)$appConfig['session']);
-$session->Start();
+$isCli = PHP_SAPI === 'cli';
+$isBackgroundRequest = defined('PULSE_BACKGROUND_REQUEST') && PULSE_BACKGROUND_REQUEST === true;
+
+if (!$isCli && !$isBackgroundRequest)
+{
+	$session->Start();
+}
 $csrf = new CsrfTokenManager($session);
 
 $database = new Database($dbConfig);
@@ -96,6 +109,7 @@ $contactRepository = new ContactRepository($database);
 $monitorRepository = new MonitorRepository($database);
 $documentRepository = new DocumentRepository($database);
 $messageRepository = new MessageRepository($database);
+$mailQueueRepository = new MailQueueRepository($database);
 $loginThrottleRepository = new LoginThrottleRepository($database);
 $loginThrottle = new LoginThrottleService($loginThrottleRepository, (array)$appConfig['security']);
 $monitorStateMachine = new MonitorStateMachine();
@@ -111,7 +125,8 @@ $documentService = new DocumentService(
 
 $defaultLocale = (string)$appConfig['locale'];
 $availableLocales = (array)$appConfig['available_locales'];
-$locale = $session->Get('locale', $defaultLocale);
+$notificationLanguage = new NotificationLanguage($availableLocales, $defaultLocale);
+$locale = $isCli || $isBackgroundRequest ? $defaultLocale : $session->Get('locale', $defaultLocale);
 
 if (!is_string($locale) || !in_array($locale, $availableLocales, true))
 {
@@ -119,6 +134,32 @@ if (!is_string($locale) || !in_array($locale, $availableLocales, true))
 }
 
 $translator = new Translator(__DIR__ . '/app/Lang', $locale);
+$notificationComposer = new NotificationComposer($notificationLanguage, __DIR__ . '/app/Lang', $appConfig);
+$smtpConfig = (array)$appConfig['mail'];
+$smtpConfig['base_url'] = (string)$appConfig['base_url'];
+$mailTransport = new SmtpMailTransport($smtpConfig);
+$mailQueueWorker = new MailQueueWorker(
+	$mailQueueRepository,
+	$mailTransport,
+	$logger,
+	(int)$appConfig['mail']['lease_seconds'],
+	(array)$appConfig['mail']['retry_delays_seconds']
+);
+$notificationScheduler = new NotificationScheduler(
+	$database,
+	$monitorExecutionService,
+	$mailQueueRepository,
+	$notificationComposer,
+	$logger,
+	(int)$appConfig['mail']['max_attempts']
+);
+$testNotificationService = new TestNotificationService(
+	$mailQueueRepository,
+	$notificationComposer,
+	$mailQueueWorker,
+	(bool)$appConfig['mail']['enabled'],
+	(int)$appConfig['mail']['max_attempts']
+);
 setTranslator($translator);
 setCsrfTokenManager($csrf);
 setDisplayTimezone((string)$appConfig['display_timezone']);
@@ -126,8 +167,8 @@ setDisplayTimezone((string)$appConfig['display_timezone']);
 $view->SetGlobals([
 	'appName' => $appConfig['name'],
 	'appVersion' => $appVersion,
-	'isAuthenticated' => $auth->IsAuthenticated(),
-	'currentUser' => $auth->GetCurrentUser(),
+	'isAuthenticated' => $isCli || $isBackgroundRequest ? false : $auth->IsAuthenticated(),
+	'currentUser' => $isCli || $isBackgroundRequest ? null : $auth->GetCurrentUser(),
 	'locale' => $locale,
 	'base_url' => $appConfig['base_url'],
 	'currentTarget' => $request->Target(),
@@ -145,12 +186,17 @@ return [
 	'userRepository' => $userRepository,
 	'auth' => $auth,
 	'translator' => $translator,
+	'notificationLanguage' => $notificationLanguage,
 	'logger' => $logger,
 	'contactRepository' => $contactRepository,
 	'monitorRepository' => $monitorRepository,
 	'documentRepository' => $documentRepository,
 	'messageRepository' => $messageRepository,
+	'mailQueueRepository' => $mailQueueRepository,
 	'monitorExecutionService' => $monitorExecutionService,
 	'documentService' => $documentService,
 	'loginThrottle' => $loginThrottle,
+	'mailQueueWorker' => $mailQueueWorker,
+	'notificationScheduler' => $notificationScheduler,
+	'testNotificationService' => $testNotificationService,
 ];

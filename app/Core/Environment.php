@@ -174,4 +174,28 @@ final class Environment
 
 		return array_values(array_unique($items));
 	}
+
+	/**
+	 * @brief Returns a comma-separated list of non-negative integers.
+	 * @param string $name Environment variable name.
+	 * @param array<int> $default Default values.
+	 * @return array<int>
+	 */
+	public static function GetIntList(string $name, array $default = []): array
+	{
+		$values = self::GetList($name, array_map('strval', $default));
+		$result = [];
+
+		foreach ($values as $value)
+		{
+			if (preg_match('/^\d+$/', $value) !== 1)
+			{
+				continue;
+			}
+
+			$result[] = (int)$value;
+		}
+
+		return $result !== [] ? $result : $default;
+	}
 }

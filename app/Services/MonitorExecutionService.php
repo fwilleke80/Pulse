@@ -160,6 +160,7 @@ final class MonitorExecutionService
 
 				$previousStatus = (string)$cycle['status'];
 				$this->_stateMachine->AssertTransition($previousStatus, MonitorStateMachine::CONFIRMED);
+				$this->CancelQueuedReminders($connection, (int)$cycle['id'], $nowValue);
 
 				if ($previousStatus === MonitorStateMachine::ESCALATED)
 				{
@@ -254,6 +255,7 @@ final class MonitorExecutionService
 			if (is_array($cycle))
 			{
 				$this->_stateMachine->AssertTransition((string)$cycle['status'], MonitorStateMachine::CANCELLED);
+				$this->CancelQueuedReminders($connection, (int)$cycle['id'], $nowValue);
 				$cancel = $connection->prepare('
 					UPDATE check_cycles
 					SET status = :status, cancelled_at = :cancelled_at, updated_at = :updated_at
@@ -314,6 +316,7 @@ final class MonitorExecutionService
 			if (is_array($lingeringCycle))
 			{
 				$this->_stateMachine->AssertTransition((string)$lingeringCycle['status'], MonitorStateMachine::CANCELLED);
+				$this->CancelQueuedReminders($connection, (int)$lingeringCycle['id'], $nowValue);
 				$cancel = $connection->prepare('
 					UPDATE check_cycles
 					SET status = :status, cancelled_at = :cancelled_at, updated_at = :updated_at
@@ -468,7 +471,18 @@ final class MonitorExecutionService
 	 */
 	public function FindRecentActivityForUser(int $userId, int $limit = 12): array
 	{
-		$limit = max(1, min(50, $limit));
+		return $this->FindActivityPageForUser($userId, 1, $limit);
+	}
+
+	/**
+	 * @brief Returns one page of complete lifecycle activity.
+	 * @return array<int, array<string, mixed>>
+	 */
+	public function FindActivityPageForUser(int $userId, int $page, int $perPage = 50): array
+	{
+		$perPage = max(1, min(100, $perPage));
+		$page = max(1, $page);
+		$offset = ($page - 1) * $perPage;
 		$statement = $this->_database->GetConnection()->prepare('
 			SELECT
 				a.event_type,
@@ -490,15 +504,42 @@ final class MonitorExecutionService
 					\'monitor.escalated\',
 					\'monitor.paused\',
 					\'monitor.resumed\',
-					\'monitor.forced_due\'
+					\'monitor.forced_due\',
+					\'mail.due_notice_sent\',
+					\'mail.reminder_sent\'
 				)
 			ORDER BY a.created_at DESC, a.id DESC
-			LIMIT ' . $limit . '
+			LIMIT ' . $perPage . '
+			OFFSET ' . $offset . '
 		');
 		$statement->execute(['user_id' => $userId]);
 		$rows = $statement->fetchAll(PDO::FETCH_ASSOC);
 
 		return is_array($rows) ? $rows : [];
+	}
+
+	/** @brief Counts complete lifecycle activity for pagination. */
+	public function CountActivityForUser(int $userId): int
+	{
+		$statement = $this->_database->GetConnection()->prepare('
+			SELECT COUNT(*)
+			FROM audit_log
+			WHERE user_id = :user_id
+				AND event_type IN
+				(
+					\'monitor.checked_in\',
+					\'monitor.awaiting\',
+					\'monitor.overdue\',
+					\'monitor.escalated\',
+					\'monitor.paused\',
+					\'monitor.resumed\',
+					\'monitor.forced_due\',
+					\'mail.due_notice_sent\',
+					\'mail.reminder_sent\'
+				)
+		');
+		$statement->execute(['user_id' => $userId]);
+		return (int)$statement->fetchColumn();
 	}
 
 	/**
@@ -774,6 +815,7 @@ final class MonitorExecutionService
 					cc.reminder_interval_days,
 					cc.max_reminders,
 					cc.reminders_sent,
+					cc.due_notice_sent_at,
 					m.user_id
 				FROM check_cycles cc
 				INNER JOIN monitors m ON m.id = cc.monitor_id
@@ -793,13 +835,14 @@ final class MonitorExecutionService
 
 			if ($targetStatus === MonitorStateMachine::OVERDUE)
 			{
+				$dueNoticeSent = !empty($cycle['due_notice_sent_at']);
 				$allRemindersSent = (int)$cycle['reminders_sent'] >= (int)$cycle['max_reminders'];
 				$eligibleAt = $this->AddDays(
 					$this->ParseUtc((string)$cycle['response_deadline_at'], $now),
 					(int)$cycle['reminder_interval_days'] * (int)$cycle['max_reminders']
 				);
 
-				if (!$allRemindersSent || $now < $eligibleAt)
+				if (!$dueNoticeSent || !$allRemindersSent || $now < $eligibleAt)
 				{
 					$connection->commit();
 					return false;
@@ -967,6 +1010,28 @@ final class MonitorExecutionService
 			'message' => $eventType,
 			'context_json' => $context === [] ? null : json_encode($context, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES),
 			'created_at' => $createdAt,
+		]);
+	}
+
+	/**
+	 * @brief Cancels durable owner-notification jobs that have not yet been claimed.
+	 * @param PDO $connection Active connection and transaction.
+	 * @param int $cycleId Closing cycle ID.
+	 * @param string $cancelledAt UTC timestamp.
+	 */
+	private function CancelQueuedReminders(PDO $connection, int $cycleId, string $cancelledAt): void
+	{
+		$statement = $connection->prepare('
+			UPDATE mail_queue
+			SET status = \'cancelled\', cancelled_at = :cancelled_at, updated_at = :updated_at
+			WHERE check_cycle_id = :cycle_id
+				AND mail_type IN (\'owner_due_notice\', \'owner_reminder\')
+				AND status IN (\'queued\', \'retrying\', \'failed\')
+		');
+		$statement->execute([
+			'cancelled_at' => $cancelledAt,
+			'updated_at' => $cancelledAt,
+			'cycle_id' => $cycleId,
 		]);
 	}
 

@@ -197,6 +197,16 @@ button:hover
 	border-color: var(--primary);
 }
 
+button:disabled,
+button:disabled:hover
+{
+	border-color: var(--border);
+	background: var(--surface-subtle);
+	color: var(--muted);
+	cursor: not-allowed;
+	opacity: 0.62;
+}
+
 .btn-primary
 {
 	border-color: var(--primary);
@@ -243,6 +253,98 @@ button.btn-table-inline
 {
 	display: flex;
 	justify-content: flex-end;
+}
+
+.notification-status-grid
+{
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 0.8rem;
+}
+
+.notification-status-grid > div
+{
+	display: flex;
+	flex-direction: column;
+	gap: 0.25rem;
+	padding: 0.9rem 1rem;
+	border: 1px solid var(--border);
+	border-radius: 0.7rem;
+	background: var(--surface-subtle);
+}
+
+.notification-status-grid strong
+{
+	font-size: 1.45rem;
+}
+
+.notification-last-test
+{
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 0.6rem;
+	padding: 0.8rem 1rem;
+	border-left: 4px solid var(--primary);
+	background: var(--surface-subtle);
+}
+
+.notification-last-test small
+{
+	flex-basis: 100%;
+}
+
+.notification-disabled-warning
+{
+	display: flex;
+	flex-direction: column;
+	gap: 0.2rem;
+	padding: 0.8rem 1rem;
+	border: 1px solid color-mix(in srgb, var(--danger) 35%, var(--border));
+	border-radius: 8px;
+	background: color-mix(in srgb, var(--danger) 9%, var(--surface));
+	color: var(--danger);
+}
+
+.status-mail-enabled
+{
+	background: #d1fae5;
+	color: #065f46;
+}
+
+.status-mail-disabled
+{
+	background: #fee2e2;
+	color: #991b1b;
+}
+
+.status-mail-sent
+{
+	background: #d1fae5;
+	color: #065f46;
+}
+
+.status-mail-queued,
+.status-mail-retrying,
+.status-mail-processing
+{
+	background: #fef3c7;
+	color: #92400e;
+}
+
+.status-mail-failed,
+.status-mail-cancelled
+{
+	background: #fee2e2;
+	color: #991b1b;
+}
+
+@media (max-width: 640px)
+{
+	.notification-status-grid
+	{
+		grid-template-columns: 1fr;
+	}
 }
 
 .password-error
@@ -440,6 +542,12 @@ th
 	color: var(--warning);
 }
 
+.table-warning-critical
+{
+	color: var(--danger);
+	font-weight: 750;
+}
+
 .dashboard-stats
 {
 	display: flex;
@@ -477,6 +585,30 @@ th
 {
 	font-size: 1.8rem;
 	font-weight: 750;
+}
+
+.dashboard-system-warning
+{
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	margin-top: 1.5rem;
+	padding: 0.9rem 1rem;
+	border: 1px solid color-mix(in srgb, var(--danger) 38%, var(--border));
+	border-radius: 10px;
+	background: color-mix(in srgb, var(--danger) 9%, var(--surface));
+	color: var(--danger);
+}
+
+.dashboard-system-warning p
+{
+	margin: 0.2rem 0 0;
+}
+
+.dashboard-system-warning .button-link
+{
+	flex: 0 0 auto;
 }
 
 .dashboard-monitor-section
@@ -579,6 +711,19 @@ th
 	gap: 0.55rem;
 }
 
+.dashboard-delivery-warning
+{
+	grid-column: 1 / -1;
+	display: flex;
+	flex-direction: column;
+	gap: 0.15rem;
+	padding: 0.65rem 0.8rem;
+	border: 1px solid color-mix(in srgb, var(--danger) 35%, var(--border));
+	border-radius: 8px;
+	background: color-mix(in srgb, var(--danger) 9%, var(--surface));
+	color: var(--danger);
+}
+
 .dashboard-monitor-time
 {
 	display: flex;
@@ -621,6 +766,20 @@ th
 	color: var(--muted);
 	font-size: 0.85rem;
 	white-space: nowrap;
+}
+
+.activity-list-complete
+{
+	margin-top: 1rem;
+}
+
+.pagination
+{
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 1rem;
+	margin-top: 1.25rem;
 }
 
 .monitor-index-toolbar
@@ -1280,7 +1439,8 @@ footer
 	}
 
 	.due-monitor-card,
-	.global-check-in-card
+	.global-check-in-card,
+	.dashboard-system-warning
 	{
 		align-items: stretch;
 		flex-direction: column;

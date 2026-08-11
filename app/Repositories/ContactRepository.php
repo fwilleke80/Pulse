@@ -41,6 +41,7 @@ class ContactRepository
 				id,
 				name,
 				email,
+				notification_locale,
 				email_checked_at,
 				cell_phone,
 				notes,
@@ -65,6 +66,7 @@ class ContactRepository
 	 * @param int $userId User ID.
 	 * @param string $name Contact name.
 	 * @param string $email Contact email.
+	 * @param string $notificationLocale Language for notifications sent to this contact.
 	 * @param bool $emailChecked Whether the owner confirmed checking the address.
 	 * @param string|null $cellPhone Optional cell phone.
 	 * @param string|null $notes Optional notes.
@@ -73,6 +75,7 @@ class ContactRepository
 		int $userId,
 		string $name,
 		string $email,
+		string $notificationLocale,
 		bool $emailChecked,
 		?string $cellPhone,
 		?string $notes
@@ -84,6 +87,7 @@ class ContactRepository
 				user_id,
 				name,
 				email,
+				notification_locale,
 				email_checked_at,
 				cell_phone,
 				notes,
@@ -95,6 +99,7 @@ class ContactRepository
 				:user_id,
 				:name,
 				:email,
+				:notification_locale,
 				CASE WHEN :email_checked = 1 THEN UTC_TIMESTAMP() ELSE NULL END,
 				:cell_phone,
 				:notes,
@@ -108,6 +113,7 @@ class ContactRepository
 			'user_id' => $userId,
 			'name' => $name,
 			'email' => $email,
+			'notification_locale' => $notificationLocale,
 			'email_checked' => $emailChecked ? 1 : 0,
 			'cell_phone' => $cellPhone,
 			'notes' => $notes,
@@ -147,6 +153,7 @@ class ContactRepository
 				id,
 				name,
 				email,
+				notification_locale,
 				email_checked_at,
 				cell_phone,
 				notes,
@@ -174,6 +181,7 @@ class ContactRepository
 	 * @param int $userId User ID.
 	 * @param string $name Contact name.
 	 * @param string $email Contact email.
+	 * @param string $notificationLocale Language for notifications sent to this contact.
 	 * @param bool $emailChecked Whether the owner confirmed checking the address.
 	 * @param string|null $cellPhone Optional cell phone.
 	 * @param string|null $notes Optional notes.
@@ -183,6 +191,7 @@ class ContactRepository
 		int $userId,
 		string $name,
 		string $email,
+		string $notificationLocale,
 		bool $emailChecked,
 		?string $cellPhone,
 		?string $notes
@@ -193,6 +202,7 @@ class ContactRepository
 			SET
 				name = :name,
 				email = :email,
+				notification_locale = :notification_locale,
 				email_checked_at = CASE WHEN :email_checked = 1 THEN UTC_TIMESTAMP() ELSE NULL END,
 				cell_phone = :cell_phone,
 				notes = :notes,
@@ -207,6 +217,7 @@ class ContactRepository
 			'user_id' => $userId,
 			'name' => $name,
 			'email' => $email,
+			'notification_locale' => $notificationLocale,
 			'email_checked' => $emailChecked ? 1 : 0,
 			'cell_phone' => $cellPhone,
 			'notes' => $notes,

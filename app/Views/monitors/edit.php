@@ -46,6 +46,7 @@ ob_start();
 <form id="monitor-settings-form" method="post" action="<?= e($base_url) ?>/monitors/update" class="form-carrier">
 	<?= csrf_field() ?>
 	<input type="hidden" name="id" value="<?= (int)$monitor['id'] ?>">
+	<input type="hidden" name="active_tab" value="<?= e($activeTab) ?>" data-active-tab-input>
 </form>
 
 <div class="monitor-editor" data-monitor-tabs data-active-tab="<?= e($activeTab) ?>">

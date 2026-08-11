@@ -60,6 +60,7 @@ document.addEventListener('DOMContentLoaded', function ()
 		const tabs = Array.from(editor.querySelectorAll('[data-tab-target]'));
 		const panels = Array.from(editor.querySelectorAll('[data-tab-panel]'));
 		const availableTabs = tabs.map((tab) => tab.dataset.tabTarget);
+		const activeTabInput = document.querySelector('[data-active-tab-input]');
 
 		/** @brief Activates one accessible editor tab and optionally updates browser state. */
 		const activateTab = function (name, focus, updateUrl)
@@ -87,6 +88,11 @@ document.addEventListener('DOMContentLoaded', function ()
 				const active = panel.dataset.tabPanel === name;
 				panel.classList.toggle('is-active', active);
 				panel.hidden = !active;
+			}
+
+			if (activeTabInput)
+			{
+				activeTabInput.value = name;
 			}
 
 			if (updateUrl && window.history && window.URL)

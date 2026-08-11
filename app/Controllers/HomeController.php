@@ -79,8 +79,27 @@ class HomeController extends BaseController
 			'contactCount' => $contactCount,
 			'monitorCount' => $monitorCount,
 			'monitors' => $monitors,
-			'recentActivity' => $this->_monitorExecutionService->FindRecentActivityForUser((int)$user['id']),
+			'recentActivity' => $this->_monitorExecutionService->FindRecentActivityForUser((int)$user['id'], 10),
+			'mailEnabled' => (bool)($this->_config['mail']['enabled'] ?? false),
 			'allowForceDue' => (bool)($this->_config['development']['allow_force_due'] ?? false),
+		]);
+	}
+
+	/** @brief Displays the authenticated owner's paginated lifecycle history. */
+	public function Activity(): string
+	{
+		$user = $this->RequireUser();
+		$userId = (int)$user['id'];
+		$perPage = 50;
+		$total = $this->_monitorExecutionService->CountActivityForUser($userId);
+		$totalPages = max(1, (int)ceil($total / $perPage));
+		$page = max(1, min($totalPages, $this->_request->QueryInt('page', 1)));
+
+		return $this->_view->Render('home.activity', [
+			'activity' => $this->_monitorExecutionService->FindActivityPageForUser($userId, $page, $perPage),
+			'page' => $page,
+			'totalPages' => $totalPages,
+			'total' => $total,
 		]);
 	}
 

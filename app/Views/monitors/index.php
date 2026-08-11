@@ -58,6 +58,7 @@ ob_start();
 					$statusClass = monitor_status($monitor);
 					$statusKey = 'monitors.status.' . $statusClass;
 					$uncheckedContactCount = (int)($monitor['unchecked_contact_count'] ?? 0);
+					$failedNotificationCount = (int)($monitor['failed_notification_count'] ?? 0);
 					?>
 					<tr class="monitor-row monitor-row-<?= e($statusClass) ?>">
 						<td class="monitor-name">
@@ -70,6 +71,9 @@ ob_start();
 						</td>
 						<td>
 							<span class="status-badge status-<?= e($statusClass) ?>"><?= e__($statusKey) ?></span>
+							<?php if ($failedNotificationCount > 0): ?>
+								<small class="table-warning table-warning-critical"><?= e__('monitors.notifications.delivery_failed_short') ?></small>
+							<?php endif; ?>
 							<?php if ($uncheckedContactCount > 0 && empty($monitor['is_paused'])): ?>
 								<small class="table-warning"><?= e__(
 									$uncheckedContactCount === 1

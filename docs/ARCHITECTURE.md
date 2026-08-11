@@ -12,6 +12,7 @@ Pulse/
 ├── docs/                Documentation, never public
 ├── public/              Web-server document root
 │   ├── assets/
+│   ├── cron/cron.php    Token-protected notification runner
 │   └── index.php
 ├── storage/             Logs and private documents, never public
 ├── tests/               Development tests, never public
@@ -66,6 +67,8 @@ View or download response
 - `ErrorHandler` — production-safe diagnostics
 - `MigrationRunner` — ordered SQL migrations and checksums
 - `EmailAddressValidator` — local format validation and conservative typo suggestions without contacting recipients
+- `NotificationLanguage` — validates recipient-specific mail languages and legacy fallback
+- `WebCronAuthenticator` — authorizes the public background runner with constant-time token comparison
 - `Database`, `Router`, `View`, `Translator`, and `Logger`
 
 ### Controllers
@@ -81,12 +84,18 @@ Document actions have their own `DocumentController`; they are no longer mixed i
 - `DocumentService` owns upload policy and private filesystem operations.
 - `MonitorStateMachine` defines every legal persisted check-cycle transition.
 - `MonitorExecutionService` owns cycle creation, UTC scheduling, global check-in, pause/resume, notification-state transitions, and lifecycle audit entries.
+- `NotificationScheduler` opens due cycles, creates idempotent owner-reminder jobs, and advances genuinely completed reminder windows to overdue.
+- `MailQueueWorker` claims jobs with expiring leases, invokes the transport outside the database transaction, then atomically records success or retry state.
+- `NotificationComposer` freezes owner-reminder and test-message content in the recipient's stored language before queueing.
+- `TestNotificationService` exercises the same queue and worker path from the authenticated profile action.
 
-Later releases will connect notification delivery and encryption/key services to this lifecycle.
+`app/Mail` contains the transport boundary and the authenticated SMTP implementation. Later releases will connect recipient delivery and encryption/key services to this lifecycle.
 
 ### Repositories
 
 Repositories own prepared SQL. Ownership-sensitive queries bind the current user through the relevant parent record.
+
+`MailQueueRepository` owns idempotent enqueueing, `FOR UPDATE SKIP LOCKED` claims, expiring leases, attempt history, successful reminder accounting, and explicit failed-job requeueing.
 
 `MessageRepository` saves a monitor's default message and all recipient overrides in one database transaction. Its ownership check locks the monitor and accepts override IDs only from that monitor's current assignments.
 
@@ -149,7 +158,7 @@ stateDiagram-v2
 
 `MonitorExecutionService` locks monitor rows and wraps all affected cycle, monitor, and audit changes in one database transaction. A global check-in selects every active monitor belonging to the user, applies one shared UTC confirmation time, and calculates each new due time from that monitor's individual interval. Paused monitors are excluded.
 
-Scheduled cycles become `awaiting` when their due time arrives. Dashboard and monitor-page requests perform this idempotent synchronization; a later cron command can call the same service without changing the state model.
+Scheduled cycles become `awaiting` when their due time arrives. Dashboard and monitor-page requests perform this idempotent synchronization; the cron scheduler performs it for all active users without requiring browser traffic.
 
 Pausing transitions the open cycle to `cancelled`, records `paused_at`, and clears the active due date. Resuming treats the resume instant as a fresh confirmation and creates a new scheduled cycle. Pause and resume therefore cannot revive stale deadlines.
 
@@ -157,11 +166,28 @@ The user-facing status model is:
 
 - **Checked in** — the current cycle is `scheduled`
 - **Awaiting check-in** — the current cycle is `awaiting`
-- **Overdue** — the notification worker recorded all owner reminders and transitioned the cycle to `overdue`
+- **Overdue** — the notification worker recorded the initial due notice and all configured owner reminders, then transitioned the cycle to `overdue`
 - **Escalated** — recipient delivery began and the cycle is `escalated`
 - **Paused** — the schedule is deliberately suspended
 
-Elapsed time alone never produces **Overdue**. `MarkCycleOverdue()` additionally requires `reminders_sent >= max_reminders` and the complete response/reminder window to have elapsed. `MarkCycleEscalated()` is reserved for the future notification worker after recipient delivery actually begins. Pulse 0.5.0 does not send mail itself.
+Elapsed time alone never produces **Overdue**. `MarkCycleOverdue()` additionally requires `due_notice_sent_at`, `reminders_sent >= max_reminders`, and the complete response/reminder window to have elapsed. A permanently failed due notice or reminder leaves the cycle at `awaiting`; the interface adds a delivery-failure warning without falsifying lifecycle state. `MarkCycleEscalated()` is reserved for recipient delivery after that later feature actually begins.
+
+## Notification queue
+
+Each queue row is an immutable delivery snapshot: recipient address, already-localized subject and body, type, cycle, reminder number, and idempotency key. Editing a profile, contact, or notification language after enqueueing does not rewrite an already pending message.
+
+The once-per-minute `notifications:run` command and the protected `/cron/cron.php` web endpoint perform the same two bounded phases:
+
+1. synchronize due cycles and ensure the initial due notice or next eligible reminder exists
+2. claim and deliver a limited batch of available jobs
+
+A claim uses an InnoDB row lock with `SKIP LOCKED`, changes the job to `processing`, and assigns a unique worker ID plus an expiry time. SMTP I/O occurs after the claim transaction commits. A second worker therefore skips that job. If the first process dies, a later worker converts the expired lease to `retrying` or `failed` according to its attempt limit.
+
+Successful SMTP completion, the `sent` queue state, `mail_log` entry, corresponding cycle timestamp/counter, and notification audit entry are committed together. The initial due notice records `due_notice_sent_at`; later reminders advance `reminders_sent`. Failed attempts clear the lease and schedule a configured retry. A manual requeue resets only permanently failed jobs. Check-in or pause cancels unsent and failed owner notifications for the closed cycle; a worker also cancels a claimed notification if its cycle is no longer awaiting.
+
+The web endpoint authenticates a normal GET request with `PULSE_CRON_TOKEN`, starts no login session, accepts no run parameters, and takes its batch limit from configuration. The command-line interface remains available for hosts with shell cron.
+
+Notification language belongs to the message recipient rather than the browser session. `users.notification_locale` controls owner reminders and tests; `contacts.notification_locale` is reserved for that contact's later delivery. Null legacy values resolve to `PULSE_DEFAULT_LOCALE`.
 
 The interface converts UTC timestamps to `PULSE_DISPLAY_TIMEZONE`, which defaults to `Europe/Berlin`.
 
@@ -192,4 +218,4 @@ New uploads are:
 - assigned filesystem mode `0600`
 - delivered only through an authenticated, ownership-checked controller
 
-This prevents direct web access and executable filename behavior. It is not encryption. Messages and editable text documents are also unencrypted database values in 0.5.0. A later secure-storage release will add authenticated encryption and key versioning without changing the recipient-assignment model.
+This prevents direct web access and executable filename behavior. It is not encryption. Messages and editable text documents are also unencrypted database values in 0.6.3. A later secure-storage release will add authenticated encryption and key versioning without changing the recipient-assignment model.

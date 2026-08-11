@@ -1,4 +1,4 @@
--- Pulse 0.5.0 reference database schema
+-- Pulse 0.6.3 reference database schema
 -- MySQL 8+ / MariaDB 10.6+
 -- Pulse applies database/migrations automatically. Do not import this reference file over an existing database.
 -- ----
@@ -24,6 +24,7 @@ CREATE TABLE users
 	email VARCHAR(255) NOT NULL UNIQUE,
 	password_hash VARCHAR(255) NOT NULL,
 	display_name VARCHAR(255) NOT NULL,
+	notification_locale VARCHAR(10) NULL,
 	is_active TINYINT(1) NOT NULL DEFAULT 1,
 	last_login_at DATETIME NULL,
 	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -36,6 +37,7 @@ CREATE TABLE contacts
 	user_id BIGINT UNSIGNED NOT NULL,
 	name VARCHAR(255) NOT NULL,
 	email VARCHAR(255) NOT NULL,
+	notification_locale VARCHAR(10) NULL,
 	email_checked_at DATETIME NULL,
 	cell_phone VARCHAR(50) NULL,
 	notes TEXT NULL,
@@ -131,6 +133,8 @@ CREATE TABLE check_cycles
 	reminder_interval_days INT UNSIGNED NOT NULL DEFAULT 1,
 	max_reminders INT UNSIGNED NOT NULL DEFAULT 0,
 	reminders_sent INT UNSIGNED NOT NULL DEFAULT 0,
+	due_notice_sent_at DATETIME NULL,
+	last_reminder_sent_at DATETIME NULL,
 	confirmed_at DATETIME NULL,
 	overdue_at DATETIME NULL,
 	escalated_at DATETIME NULL,
@@ -162,28 +166,52 @@ CREATE TABLE mail_queue
 (
 	id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
 	user_id BIGINT UNSIGNED NOT NULL,
-	check_cycle_id BIGINT NULL,
-	contact_id BIGINT NULL,
+	check_cycle_id BIGINT UNSIGNED NULL,
+	monitor_id BIGINT UNSIGNED NULL,
+	contact_id BIGINT UNSIGNED NULL,
 	mail_type VARCHAR(50) NOT NULL,
+	idempotency_key VARCHAR(191) NOT NULL,
+	reminder_number INT UNSIGNED NULL,
 	recipient_email VARCHAR(255) NOT NULL,
 	subject VARCHAR(255) NOT NULL,
 	body_text LONGTEXT NOT NULL,
-	status ENUM('queued','sent','failed') DEFAULT 'queued',
+	status ENUM('queued','retrying','processing','sent','failed','cancelled') NOT NULL DEFAULT 'queued',
+	attempt_count INT UNSIGNED NOT NULL DEFAULT 0,
+	max_attempts INT UNSIGNED NOT NULL DEFAULT 5,
+	last_error TEXT NULL,
 	available_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	locked_at DATETIME NULL,
+	locked_until DATETIME NULL,
+	locked_by VARCHAR(64) NULL,
+	lease_token CHAR(32) NULL,
 	sent_at DATETIME NULL,
-	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+	failed_at DATETIME NULL,
+	cancelled_at DATETIME NULL,
+	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+	UNIQUE KEY uq_mail_queue_idempotency (idempotency_key),
+	INDEX idx_mail_queue_delivery (status, available_at),
+	INDEX idx_mail_queue_claim (status, available_at, locked_until),
+	INDEX idx_mail_queue_cycle (check_cycle_id, mail_type, reminder_number),
+	INDEX idx_mail_queue_user_created (user_id, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE mail_log
 (
 	id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+	queue_id BIGINT UNSIGNED NULL,
 	user_id BIGINT UNSIGNED NOT NULL,
+	check_cycle_id BIGINT UNSIGNED NULL,
 	mail_type VARCHAR(50) NOT NULL,
 	recipient_email VARCHAR(255) NOT NULL,
 	subject VARCHAR(255) NOT NULL,
-	send_status ENUM('sent','failed') NOT NULL,
+	attempt_number INT UNSIGNED NOT NULL DEFAULT 1,
+	status ENUM('sent','retrying','failed') NOT NULL,
 	error_message TEXT NULL,
-	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+	smtp_message TEXT NULL,
+	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	INDEX idx_mail_log_queue (queue_id),
+	INDEX idx_mail_log_user_created (user_id, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE audit_log

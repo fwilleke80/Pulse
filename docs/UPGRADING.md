@@ -1,6 +1,6 @@
 # Upgrading Pulse
 
-## Upgrade from 0.2.9–0.4.2 to 0.5.0
+## Upgrade from 0.2.9–0.6.2 to 0.6.3
 
 ### Before extraction
 
@@ -11,7 +11,7 @@
 
 ### Install the source
 
-Extract the complete `Pulse_0.5.0_source.zip` archive over the Pulse project directory. The archive paths begin with `app/`, `config/`, `public/`, and the other project-root entries; it does not add an extra `Pulse/` directory.
+Extract the complete `Pulse_0.6.3_source.zip` archive over the Pulse project directory. The archive paths begin with `app/`, `config/`, `public/`, and the other project-root entries; it does not add an extra `Pulse/` directory.
 
 Extraction overwrites the old public password utility files with inert 404 stubs. You may delete `public/secret0410` entirely after extraction.
 
@@ -49,6 +49,12 @@ Migration `005_check_in_lifecycle.sql` then:
 
 No existing monitor, contact, document, or completed cycle history is deleted.
 
+Migration `006_notification_infrastructure.sql` upgrades the provisional `mail_queue` and `mail_log` tables with idempotency keys, retry counters, delivery states, worker leases, attempt history, and supporting indexes. It also records the last successfully sent reminder on each check cycle. Existing provisional queue rows are preserved.
+
+Migration `007_recipient_notification_languages.sql` adds nullable notification-language fields to the user and contact tables. Existing recipients use `PULSE_DEFAULT_LOCALE` until their own setting is saved; no language is inferred from a browser session.
+
+Migration `008_immediate_due_notifications.sql` adds a separate successful-delivery timestamp for the initial check-in due notice. An awaiting cycle that has not yet delivered any 0.6.2 reminder receives the new due notice on the next notification run. A cycle that already delivered a reminder is marked as already notified during migration, preventing a duplicate late due notice.
+
 Existing contacts receive a null `email_checked_at` value. This is intentional: Pulse cannot infer that an address was reviewed before the feature existed. Reviewing a contact updates the local timestamp without sending anything to that contact.
 
 Actual upgrades are protected by a database advisory lock. If two requests arrive immediately after extraction, one applies the migrations and the other waits, rechecks the result, and continues without applying them twice.
@@ -58,6 +64,36 @@ Do not import `database/schema.sql` over an existing database.
 ### Web server
 
 Confirm that the website document root is the extracted project’s `public/` directory. For Apache, `public/.htaccess` handles application routes. The root and storage access-denial files are defense in depth, not substitutes for the correct document root.
+
+### Configure SMTP and cron
+
+Copy the new `PULSE_SMTP_*` and `PULSE_MAIL_*` entries from `.env.example` into the existing `.env`. Use `starttls` (usually port 587) or implicit `tls` (usually port 465); production rejects unencrypted SMTP.
+
+Set `PULSE_MAIL_ENABLED=true` only after entering the SMTP host, sender address, and any required username and password. Process-level environment variables override `.env`; update the hosting environment as well if it already defines `PULSE_MAIL_ENABLED=false`.
+
+After enabling mail, choose your own language under **Profile data**, then send a test from **Profile → Notifications**. Only after that succeeds, install one once-per-minute notification trigger.
+
+For a hosting service that accepts only a URL, add a random token of at least 32 characters to `.env`:
+
+```dotenv
+PULSE_CRON_TOKEN=replace-with-a-long-random-web-cron-token
+```
+
+Configure the service to call:
+
+```text
+https://pulse.example.com/cron/cron.php?token=replace-with-a-long-random-web-cron-token
+```
+
+The endpoint performs only one complete notification run and takes its queue limit from `PULSE_MAIL_WORKER_BATCH_SIZE`. A successful request returns `OK`. Keep the complete URL secret because hosting access logs may contain it.
+
+If command-line cron is available, this remains an equivalent alternative:
+
+```cron
+* * * * * cd /path/to/pulse && /usr/bin/php tools/pulse.php notifications:run --limit=25 >/dev/null 2>&1
+```
+
+Overlapping invocations are safe because queue jobs use database row locks and expiring worker leases.
 
 ### Verification
 
@@ -75,9 +111,14 @@ Confirm that the website document root is the extracted project’s `public/` di
 12. Pause one monitor and verify its next due date becomes suspended and global check-in leaves it unchanged.
 13. Resume it and verify a fresh interval begins from the resume time.
 14. In a development environment, enable **Force due now** and verify the selected cycle changes to **Awaiting check-in**.
-15. Confirm recent lifecycle activity records check-ins, pauses, resumes, and due changes.
-16. Confirm production pages do not show stack traces.
+15. Call the notification cron and verify the owner immediately receives the check-in due notice, without waiting for the response window.
+16. Confirm recent lifecycle activity records check-ins, pauses, resumes, due changes, and the sent due notice.
+17. Save monitor settings from each tab and confirm Pulse returns to the same tab.
+18. Configure SMTP and send a successful test from **Profile → Notifications**.
+19. Set the owner and contact notification languages, change the footer language, and verify another test still uses the stored owner language.
+20. Call the configured web-cron URL once and verify it returns `OK`, or run the equivalent command-line notification operation.
+21. Confirm production pages do not show stack traces.
 
 ### Old archive debris
 
-Earlier archives contained macOS and Python cache files. They are excluded from 0.5.0, but extracting cannot delete files already present. Remove old `.DS_Store`, `__MACOSX`, and `__pycache__` entries from the project directory.
+Earlier archives contained macOS and Python cache files. They are excluded from current releases, but extracting cannot delete files already present. Remove old `.DS_Store`, `__MACOSX`, and `__pycache__` entries from the project directory.

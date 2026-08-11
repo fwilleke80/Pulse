@@ -2,7 +2,7 @@
 
 ## Current protection goals
 
-Pulse 0.5.0 retains the security foundation introduced in 0.3.0 and protects against common web application failures:
+Pulse 0.6.3 retains the security foundation introduced in 0.3.0 and protects against common web application failures:
 
 - cross-user access to contacts, monitors, and documents
 - cross-site request forgery
@@ -15,6 +15,9 @@ Pulse 0.5.0 retains the security foundation introduced in 0.3.0 and protects aga
 - accidental recipient-data deletion during monitor edits
 - partial multi-monitor check-ins and conflicting pause/check-in transitions through transactions and row locks
 - false overdue states based only on theoretical elapsed time
+- duplicate concurrent queue claims through row locks and expiring leases
+- plaintext SMTP credentials or mail content on the wire in production through mandatory TLS or STARTTLS
+- email header injection through strict queued-address and header validation
 
 The release does not claim to protect message or document confidentiality after a hosting-account, database, or filesystem compromise because encryption is not implemented yet.
 
@@ -26,7 +29,7 @@ It does not contact the address owner, request consent, verify mailbox ownership
 
 ## Secrets
 
-Real credentials belong in process variables or the ignored `.env` file. `.env` must be readable only by the deployment account and PHP process. It must never be committed, placed below `public/`, or included in support archives.
+Real database, SMTP, and web-cron credentials belong in process variables or the ignored `.env` file. `.env` must be readable only by the deployment account and PHP process. It must never be committed, placed below `public/`, or included in support archives.
 
 If a credential has previously appeared in source control or an archive, removing it is not enough; rotate it.
 
@@ -35,6 +38,8 @@ If a credential has previously appeared in source control or an archive, removin
 The only public directory is `public/`. The root and `storage/` `.htaccess` files deny access as a defense in depth, but correct document-root configuration remains mandatory.
 
 Private documents are never addressed by stored filename. The application validates the user, monitor, document relationship, and a safe stored basename before streaming a download.
+
+`public/cron/cron.php` is intentionally reachable because some hosting services can schedule only URLs. It requires an exact `PULSE_CRON_TOKEN` of at least 32 characters, compares it in constant time, starts no authenticated session, accepts no operational parameters, and returns no queue details. The token is part of the cron URL and may therefore appear in hosting or reverse-proxy access logs; treat that complete URL as a credential, restrict access to those logs, and rotate the token if it is exposed.
 
 ## Sessions and CSRF
 
@@ -58,7 +63,15 @@ Editable text documents, default messages, and recipient-specific messages are s
 
 All state-changing lifecycle operations lock the affected monitor rows and update cycles, monitor timing caches, and audit entries in one database transaction. A global check-in therefore confirms either every active monitor selected by that transaction or none of them.
 
-The state machine rejects illegal or duplicate transitions. **Overdue** additionally requires the future notification worker to record every configured owner reminder as sent and to wait until the full response/reminder window has elapsed. **Escalated** is available only as an explicit internal transition for the point at which recipient delivery actually begins.
+The state machine rejects illegal or duplicate transitions. **Overdue** additionally requires the notification worker to record every configured owner reminder as sent and to wait until the full response/reminder window has elapsed. **Escalated** is available only as an explicit internal transition for the point at which recipient delivery actually begins.
+
+## Mail queue and SMTP
+
+Production SMTP configuration requires implicit TLS or STARTTLS with peer and hostname verification. SMTP passwords are never logged. Queue and attempt logs intentionally omit body content, while the queue itself stores the immutable body needed for retries.
+
+Idempotency keys prevent the scheduler from creating the same numbered reminder twice. Workers use `FOR UPDATE SKIP LOCKED` and expiring leases, so overlapping cron runs do not deliberately process the same row. A reminder count advances only after SMTP accepts the completed message.
+
+SMTP does not provide a fully atomic transaction with the Pulse database. If a worker loses the database connection immediately after the SMTP server accepts a message but before Pulse commits `sent`, lease recovery may retry that message and produce a duplicate. This is the standard at-least-once boundary of SMTP queues; messages should therefore remain harmless if received twice.
 
 The current audit table records lifecycle activity but is not append-only at the database-permission level. Immutable or externally anchored audit storage remains future hardening work.
 
@@ -72,7 +85,7 @@ Before Pulse is suitable for final sensitive documents, it still needs:
 - MFA and recent-authentication requirements for document access
 - immutable audit events for security- and delivery-critical transitions
 - a recipient portal using hashed, purpose-bound, expiring tokens
-- staged, idempotent release and notification processing
+- staged, idempotent recipient release processing
 - backup and restore drills for encrypted data and keys
 
 Application-level encryption protects database dumps, filesystem copies, and many backup leaks. It cannot fully protect against an attacker who controls the running PHP account and can read both application memory and its keys. Hosting and operating-system security therefore remain part of the threat model.
@@ -89,3 +102,5 @@ Application-level encryption protects database dumps, filesystem copies, and man
 - Back up the database before extracting an update; Pulse applies pending migrations automatically on the first request.
 - Keep off-site backups, but do not assume unencrypted message or document backups are confidential.
 - Review logs without copying sensitive document or contact data into them.
+- Send a profile test after every SMTP configuration change.
+- Run either `notifications:run` or the protected web-cron URL every minute and monitor permanently failed queue jobs.

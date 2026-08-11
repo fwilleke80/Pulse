@@ -9,7 +9,8 @@
 declare(strict_types=1);
 
 /** @var string $base_url */
-/** @var array<int, array<string, mixed>> $contacts */
+/** @var array<int, string> $notificationLocales */
+/** @var string $notificationLocale */
 
 ob_start();
 ?>
@@ -22,6 +23,15 @@ ob_start();
 	<label for="email"><?= e__('contacts.add.email') ?></label>
 	<input type="email" id="email" name="email" data-contact-email required>
 	<p class="email-suggestion is-hidden" data-email-suggestion data-suggestion-template="<?= e__('contacts.email.suggestion') ?>" role="status"></p>
+	<label for="notification_locale"><?= e__('contacts.notification_language') ?></label>
+	<select id="notification_locale" name="notification_locale" required>
+		<?php foreach ($notificationLocales as $localeOption): ?>
+			<option value="<?= e($localeOption) ?>" <?= $localeOption === $notificationLocale ? 'selected' : '' ?>>
+				<?= e__('notification.language.' . $localeOption) ?>
+			</option>
+		<?php endforeach; ?>
+	</select>
+	<small><?= e__('contacts.notification_language_hint') ?></small>
 	<div class="checkbox-row contact-email-check">
 		<label>
 			<input type="checkbox" name="email_checked" data-email-checked required>

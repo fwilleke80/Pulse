@@ -13,6 +13,7 @@ declare(strict_types=1);
 /** @var int $monitorCount */
 /** @var array<int, array<string, mixed>> $monitors */
 /** @var array<int, array<string, mixed>> $recentActivity */
+/** @var bool $mailEnabled */
 /** @var string $base_url */
 
 $activeMonitors = array_values(array_filter(
@@ -31,6 +32,8 @@ $activityTranslationKeys = [
 	'monitor.paused' => 'dashboard.activity.paused',
 	'monitor.resumed' => 'dashboard.activity.resumed',
 	'monitor.forced_due' => 'dashboard.activity.forced_due',
+	'mail.due_notice_sent' => 'dashboard.activity.due_notice_sent',
+	'mail.reminder_sent' => 'dashboard.activity.reminder_sent',
 ];
 
 ob_start();
@@ -39,6 +42,17 @@ ob_start();
 <h1><?= e__('dashboard.heading') ?></h1>
 <p><?= e__('dashboard.message.1', ['name' => $user['display_name']]) ?></p>
 <p><?= e__('dashboard.message.2') ?></p>
+
+<?php if (!$mailEnabled): ?>
+	<section class="dashboard-system-warning" role="alert">
+		<div>
+			<strong><?= e__('dashboard.notifications.disabled.heading') ?></strong>
+			<p><?= e__('dashboard.notifications.disabled.message') ?></p>
+		</div>
+		<a href="<?= e($base_url) ?>/profile#notifications" class="button-link"><?= e__('dashboard.notifications.disabled.action') ?></a>
+	</section>
+<?php endif; ?>
+
 <div class="dashboard-stats">
 	<a href="<?= e($base_url) ?>/monitors" class="dashboard-stat">
 		<div class="dashboard-stat-title"><?= e__('dashboard.stats.monitors') ?></div>
@@ -92,12 +106,21 @@ ob_start();
 	<?php else: ?>
 		<div class="dashboard-monitor-list">
 			<?php foreach ($monitors as $monitor): ?>
-				<?php $monitorStatus = monitor_status($monitor); ?>
+				<?php
+				$monitorStatus = monitor_status($monitor);
+				$failedNotificationCount = (int)($monitor['failed_notification_count'] ?? 0);
+				?>
 				<article class="dashboard-monitor-card monitor-row-<?= e($monitorStatus) ?>">
 					<div class="dashboard-monitor-identity">
 						<a href="<?= e($base_url) ?>/monitors/edit?id=<?= (int)$monitor['id'] ?>"><strong><?= e((string)$monitor['name']) ?></strong></a>
 						<span class="status-badge status-<?= e($monitorStatus) ?>"><?= e__('monitors.status.' . $monitorStatus) ?></span>
 					</div>
+					<?php if ($failedNotificationCount > 0): ?>
+						<div class="dashboard-delivery-warning" role="alert">
+							<strong><?= e__('monitors.notifications.delivery_failed_heading') ?></strong>
+							<span><?= e__('monitors.notifications.delivery_failed_message') ?></span>
+						</div>
+					<?php endif; ?>
 					<div class="dashboard-monitor-time">
 						<span><?= e__('dashboard.monitors.last') ?></span>
 						<strong><?= e(format_datetime(isset($monitor['last_confirmed_at']) ? (string)$monitor['last_confirmed_at'] : null)) ?></strong>
@@ -119,7 +142,13 @@ ob_start();
 </section>
 
 <section class="dashboard-activity-section">
-	<h2><?= e__('dashboard.activity.heading') ?></h2>
+	<div class="section-title-row">
+		<div>
+			<h2><?= e__('dashboard.activity.heading') ?></h2>
+			<p><?= e__('dashboard.activity.latest', ['count' => 10]) ?></p>
+		</div>
+		<a href="<?= e($base_url) ?>/activity"><?= e__('dashboard.activity.view_all') ?></a>
+	</div>
 	<?php if ($recentActivity === []): ?>
 		<p><?= e__('dashboard.activity.none') ?></p>
 	<?php else: ?>

@@ -89,4 +89,16 @@ class CompleteConfigurationSourceTest extends TestCase
 		self::assertStringContainsString("e__('monitors.edit.cancel')", $view);
 		self::assertStringNotContainsString($backTranslationKey, $view);
 	}
+
+	public function testSavingMonitorSettingsPreservesTheActiveTab(): void
+	{
+		$view = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Views/monitors/edit.php');
+		$controller = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Controllers/MonitorController.php');
+		$script = (string)file_get_contents(dirname(__DIR__, 2) . '/public/assets/app.js');
+
+		self::assertStringContainsString('data-active-tab-input', $view);
+		self::assertStringContainsString("PostString('active_tab'", $controller);
+		self::assertStringContainsString("'&tab=' . \$returnTab", $controller);
+		self::assertStringContainsString('activeTabInput.value = name', $script);
+	}
 }

@@ -67,7 +67,16 @@ class MonitorRepository
 					INNER JOIN contacts warning_c ON warning_c.id = warning_mc.contact_id
 					WHERE warning_mc.monitor_id = monitors.id
 					  AND warning_c.email_checked_at IS NULL
-				) AS unchecked_contact_count
+				) AS unchecked_contact_count,
+				(
+					SELECT COUNT(*)
+					FROM mail_queue failed_mq
+					INNER JOIN check_cycles failed_cc ON failed_cc.id = failed_mq.check_cycle_id
+					WHERE failed_cc.monitor_id = monitors.id
+					  AND failed_cc.status = \'awaiting\'
+					  AND failed_mq.mail_type IN (\'owner_due_notice\', \'owner_reminder\')
+					  AND failed_mq.status = \'failed\'
+				) AS failed_notification_count
 			FROM monitors
 			WHERE user_id = :user_id
 			ORDER BY name ASC

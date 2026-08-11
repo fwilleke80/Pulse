@@ -10,4 +10,4 @@ Detailed documents:
 - [Upgrade guide](UPGRADING.md)
 - [Changelog](../CHANGELOG.md)
 
-Pulse 0.5.0 is the reliable check-in lifecycle release. It supports persisted check cycles, one atomic check-in for every active monitor, independent UTC schedules, explicit pause/resume actions, a complete status dashboard, lifecycle activity, and the complete configuration features from 0.4.x. It does not yet implement encrypted storage, reminder mail, recipient delivery, or recipient access.
+Pulse 0.6.3 adds immediate check-in due notifications before the response window and keeps the protected public web-cron and recipient-specific notification languages from 0.6.2. It does not yet implement encrypted storage, recipient delivery, or recipient access.

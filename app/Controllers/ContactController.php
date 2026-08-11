@@ -6,6 +6,7 @@ namespace Pulse\Controllers;
 
 use Pulse\Core\EmailAddressValidator;
 use Pulse\Core\Logger;
+use Pulse\Core\NotificationLanguage;
 use Pulse\Core\Request;
 use Pulse\Core\Session;
 use Pulse\Core\View;
@@ -18,6 +19,7 @@ use Pulse\Services\AuthService;
 class ContactController extends BaseController
 {
 	private ContactRepository $_contactRepository;
+	private NotificationLanguage $_notificationLanguage;
 
 	/**
 	 * @brief Constructs the contact controller.
@@ -27,6 +29,7 @@ class ContactController extends BaseController
 	 * @param Logger $logger Application logger.
 	 * @param Request $request Current request.
 	 * @param ContactRepository $contactRepository Contact repository.
+	 * @param NotificationLanguage $notificationLanguage Recipient-language resolver.
 	 */
 	public function __construct(
 		View $view,
@@ -34,11 +37,13 @@ class ContactController extends BaseController
 		AuthService $auth,
 		Logger $logger,
 		Request $request,
-		ContactRepository $contactRepository
+		ContactRepository $contactRepository,
+		NotificationLanguage $notificationLanguage
 	)
 	{
 		parent::__construct($view, $session, $auth, $logger, $request);
 		$this->_contactRepository = $contactRepository;
+		$this->_notificationLanguage = $notificationLanguage;
 	}
 
 	/**
@@ -67,6 +72,8 @@ class ContactController extends BaseController
 
 		return $this->_view->Render('contacts.new', [
 			'user' => $user,
+			'notificationLocales' => $this->_notificationLanguage->SupportedLocales(),
+			'notificationLocale' => $this->_notificationLanguage->Resolve(null),
 		]);
 	}
 
@@ -79,6 +86,7 @@ class ContactController extends BaseController
 
 		$name = $this->_request->PostString('name', 255);
 		$email = $this->_request->PostString('email', 255);
+		$notificationLocale = $this->_request->PostString('notification_locale', 10);
 		$cellPhone = $this->_request->PostString('cell_phone', 50);
 		$notes = $this->_request->PostString('notes', 10000);
 		$emailChecked = $this->_request->PostBool('email_checked');
@@ -95,6 +103,12 @@ class ContactController extends BaseController
 			$this->Redirect('/contacts/new');
 		}
 
+		if (!$this->_notificationLanguage->IsSupported($notificationLocale))
+		{
+			$this->Flash('error', __('contacts.flash.invalid_language'));
+			$this->Redirect('/contacts/new');
+		}
+
 		if (!$emailChecked)
 		{
 			$this->Flash('error', __('contacts.add.flash.email_not_checked'));
@@ -105,6 +119,7 @@ class ContactController extends BaseController
 			(int)$user['id'],
 			$name,
 			$email,
+			$notificationLocale,
 			$emailChecked,
 			$cellPhone !== '' ? $cellPhone : null,
 			$notes !== '' ? $notes : null
@@ -168,6 +183,10 @@ class ContactController extends BaseController
 			'user' => $user,
 			'contact' => $contact,
 			'returnMonitorId' => $returnMonitorId,
+			'notificationLocales' => $this->_notificationLanguage->SupportedLocales(),
+			'notificationLocale' => $this->_notificationLanguage->Resolve(
+				isset($contact['notification_locale']) ? (string)$contact['notification_locale'] : null
+			),
 		]);
 	}
 
@@ -182,6 +201,7 @@ class ContactController extends BaseController
 		$returnMonitorId = max(0, $this->_request->PostInt('return_monitor_id'));
 		$name = $this->_request->PostString('name', 255);
 		$email = $this->_request->PostString('email', 255);
+		$notificationLocale = $this->_request->PostString('notification_locale', 10);
 		$cellPhone = $this->_request->PostString('cell_phone', 50);
 		$notes = $this->_request->PostString('notes', 10000);
 		$emailChecked = $this->_request->PostBool('email_checked');
@@ -216,6 +236,12 @@ class ContactController extends BaseController
 			$this->Redirect($this->ContactEditPath($contactId, $returnMonitorId));
 		}
 
+		if (!$this->_notificationLanguage->IsSupported($notificationLocale))
+		{
+			$this->Flash('error', __('contacts.flash.invalid_language'));
+			$this->Redirect($this->ContactEditPath($contactId, $returnMonitorId));
+		}
+
 		if (!$emailChecked)
 		{
 			$this->Flash('error', __('contacts.edit.flash.email_not_checked'));
@@ -227,6 +253,7 @@ class ContactController extends BaseController
 			(int)$user['id'],
 			$name,
 			$email,
+			$notificationLocale,
 			$emailChecked,
 			$cellPhone !== '' ? $cellPhone : null,
 			$notes !== '' ? $notes : null
