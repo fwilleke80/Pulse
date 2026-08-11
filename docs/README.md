@@ -10,4 +10,4 @@ Detailed documents:
 - [Upgrade guide](UPGRADING.md)
 - [Changelog](../CHANGELOG.md)
 
-Pulse 0.4.2 is the complete-configuration release. It supports a tabbed monitor editor, owner-checked recipient addresses, default and recipient-specific messages, editable text documents, file documents, recipient assignment, automatic database migration, and manual due-monitor check-ins. It does not yet implement encrypted storage, reminder processing, notification delivery, or recipient access.
+Pulse 0.5.0 is the reliable check-in lifecycle release. It supports persisted check cycles, one atomic check-in for every active monitor, independent UTC schedules, explicit pause/resume actions, a complete status dashboard, lifecycle activity, and the complete configuration features from 0.4.x. It does not yet implement encrypted storage, reminder mail, recipient delivery, or recipient access.

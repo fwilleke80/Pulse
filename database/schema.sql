@@ -1,4 +1,4 @@
--- Pulse 0.4.2 reference database schema
+-- Pulse 0.5.0 reference database schema
 -- MySQL 8+ / MariaDB 10.6+
 -- Pulse applies database/migrations automatically. Do not import this reference file over an existing database.
 -- ----
@@ -6,7 +6,7 @@
 -- Monitor configuration and monitor-contact assignments
 -- Per-contact monitor messages
 -- Monitor documents and document recipient assignments
--- Future runtime/check-cycle/mail/audit tables
+-- Persisted check-in lifecycle plus future mail and recipient-access tables
 
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
@@ -57,6 +57,7 @@ CREATE TABLE monitors
 	reminder_interval_days INT NOT NULL,
 	max_reminders INT NOT NULL DEFAULT 0,
 	is_paused TINYINT(1) NOT NULL DEFAULT 0,
+	paused_at DATETIME NULL,
 	last_confirmed_at DATETIME NULL,
 	next_check_due_at DATETIME NULL,
 	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -123,12 +124,20 @@ CREATE TABLE check_cycles
 (
 	id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
 	monitor_id BIGINT UNSIGNED NOT NULL,
-	status ENUM('pending','confirmed','escalated') DEFAULT 'pending',
+	status ENUM('scheduled','awaiting','overdue','escalated','confirmed','cancelled') NOT NULL DEFAULT 'scheduled',
 	started_at DATETIME NOT NULL,
-	expires_at DATETIME NOT NULL,
-	reminders_sent INT DEFAULT 0,
+	due_at DATETIME NOT NULL,
+	response_deadline_at DATETIME NOT NULL,
+	reminder_interval_days INT UNSIGNED NOT NULL DEFAULT 1,
+	max_reminders INT UNSIGNED NOT NULL DEFAULT 0,
+	reminders_sent INT UNSIGNED NOT NULL DEFAULT 0,
 	confirmed_at DATETIME NULL,
+	overdue_at DATETIME NULL,
 	escalated_at DATETIME NULL,
+	cancelled_at DATETIME NULL,
+	updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+	INDEX idx_check_cycles_monitor (monitor_id),
+	INDEX idx_check_cycles_runtime (monitor_id, status, due_at),
 	FOREIGN KEY (monitor_id)
 		REFERENCES monitors(id)
 		ON DELETE CASCADE

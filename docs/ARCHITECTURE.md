@@ -79,8 +79,10 @@ Document actions have their own `DocumentController`; they are no longer mixed i
 - `AuthService` verifies credentials and maintains authentication state.
 - `LoginThrottleService` applies account and network limits through opaque hashes.
 - `DocumentService` owns upload policy and private filesystem operations.
+- `MonitorStateMachine` defines every legal persisted check-cycle transition.
+- `MonitorExecutionService` owns cycle creation, UTC scheduling, global check-in, pause/resume, notification-state transitions, and lifecycle audit entries.
 
-Later releases will add `MonitorExecutionService`, notification delivery, and encryption/key services.
+Later releases will connect notification delivery and encryption/key services to this lifecycle.
 
 ### Repositories
 
@@ -103,6 +105,7 @@ This is essential because recipient messages and document-recipient links refere
 User
 ├── Contacts
 └── Monitors
+    ├── Check cycles
     ├── Default message
     ├── Monitor contacts
     │   └── Recipient-specific messages
@@ -114,25 +117,51 @@ Documents belong to monitors. Delivery selection is modeled independently throug
 
 ## Monitor timing
 
-Database timestamps are UTC. `last_confirmed_at` and `next_check_due_at` describe the current lightweight runtime state.
+Database timestamps are UTC. Each active monitor has one current row in `check_cycles`. `last_confirmed_at` and `next_check_due_at` on the monitor are indexed display/runtime caches; the cycle is the persisted source of lifecycle state.
 
-A manual check-in is accepted only when the monitor:
+A cycle snapshots:
 
-- belongs to the active user
-- is not paused
-- is due or has no due timestamp
+- its UTC start and due timestamps
+- its response deadline
+- the reminder interval and reminder limit in force when scheduled
+- the number of owner reminders actually sent
+- confirmation, overdue, escalation, or cancellation timestamps
 
-Confirmation sets `last_confirmed_at` to the current UTC time and schedules `next_check_due_at` by the monitor’s configured check interval. Cron evaluation, reminders, response windows, and escalation are deliberately deferred.
+The pure `MonitorStateMachine` allows these transitions:
+
+```mermaid
+stateDiagram-v2
+	[*] --> scheduled
+	scheduled --> awaiting: Due time
+	awaiting --> overdue: All reminders sent
+	overdue --> escalated: Recipient delivery
+	scheduled --> confirmed: Check-in
+	awaiting --> confirmed: Check-in
+	overdue --> confirmed: Late check-in
+	escalated --> confirmed: Late check-in
+	scheduled --> cancelled: Pause
+	awaiting --> cancelled: Pause
+	overdue --> cancelled: Pause
+	escalated --> cancelled: Pause
+```
+
+`confirmed` and `cancelled` are terminal. A successful check-in closes the current cycle and creates a separate new `scheduled` cycle.
+
+`MonitorExecutionService` locks monitor rows and wraps all affected cycle, monitor, and audit changes in one database transaction. A global check-in selects every active monitor belonging to the user, applies one shared UTC confirmation time, and calculates each new due time from that monitor's individual interval. Paused monitors are excluded.
+
+Scheduled cycles become `awaiting` when their due time arrives. Dashboard and monitor-page requests perform this idempotent synchronization; a later cron command can call the same service without changing the state model.
+
+Pausing transitions the open cycle to `cancelled`, records `paused_at`, and clears the active due date. Resuming treats the resume instant as a fresh confirmation and creates a new scheduled cycle. Pause and resume therefore cannot revive stale deadlines.
 
 The user-facing status model is:
 
-- **Checked in** — the next check-in is in the future
-- **Awaiting check-in** — the due time has passed but the configured response/reminder window remains open
-- **Overdue** — that complete window elapsed without a check-in
-- **Escalated** — the latest persisted check cycle records recipient notification
+- **Checked in** — the current cycle is `scheduled`
+- **Awaiting check-in** — the current cycle is `awaiting`
+- **Overdue** — the notification worker recorded all owner reminders and transitioned the cycle to `overdue`
+- **Escalated** — recipient delivery began and the cycle is `escalated`
 - **Paused** — the schedule is deliberately suspended
 
-The notification engine is not active in 0.4.2, so this release can display an existing escalated cycle but does not create one or send mail itself.
+Elapsed time alone never produces **Overdue**. `MarkCycleOverdue()` additionally requires `reminders_sent >= max_reminders` and the complete response/reminder window to have elapsed. `MarkCycleEscalated()` is reserved for the future notification worker after recipient delivery actually begins. Pulse 0.5.0 does not send mail itself.
 
 The interface converts UTC timestamps to `PULSE_DISPLAY_TIMEZONE`, which defaults to `Europe/Berlin`.
 
@@ -163,4 +192,4 @@ New uploads are:
 - assigned filesystem mode `0600`
 - delivered only through an authenticated, ownership-checked controller
 
-This prevents direct web access and executable filename behavior. It is not encryption. Messages and editable text documents are also unencrypted database values in 0.4.2. A later secure-storage release will add authenticated encryption and key versioning without changing the recipient-assignment model.
+This prevents direct web access and executable filename behavior. It is not encryption. Messages and editable text documents are also unencrypted database values in 0.5.0. A later secure-storage release will add authenticated encryption and key versioning without changing the recipient-assignment model.

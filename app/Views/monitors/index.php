@@ -12,12 +12,30 @@ declare(strict_types=1);
 /** @var string $base_url */
 /** @var bool $allowForceDue */
 
+$activeMonitorCount = count(array_filter(
+	$monitors,
+	static fn (array $monitor): bool => empty($monitor['is_paused'])
+));
+
 ob_start();
 ?>
 
 <h1><?= e__('monitors.index.heading') ?></h1>
 <p><?= e__('monitors.index.message') ?></p>
-<p><a href="<?= e($base_url) ?>/monitors/new"><?= e__('monitors.index.add') ?></a></p>
+<div class="monitor-index-toolbar">
+	<a href="<?= e($base_url) ?>/monitors/new" class="button-link"><?= e__('monitors.index.add') ?></a>
+	<?php if ($activeMonitorCount > 0): ?>
+		<form method="post" action="<?= e($base_url) ?>/monitors/check-in">
+			<?= csrf_field() ?>
+			<input type="hidden" name="redirect" value="/monitors">
+			<button type="submit" class="btn-primary"><?= e__('monitors.check_in.submit') ?></button>
+		</form>
+	<?php endif; ?>
+</div>
+
+<?php if ($activeMonitorCount > 0): ?>
+	<p class="form-hint"><?= e__('monitors.index.check_in_hint', ['count' => $activeMonitorCount]) ?></p>
+<?php endif; ?>
 
 <?php if ($monitors === []): ?>
 	<p><?= e__('monitors.index.no_monitors') ?></p>
@@ -37,7 +55,6 @@ ob_start();
 			<tbody>
 				<?php foreach ($monitors as $monitor): ?>
 					<?php
-					$isDue = is_monitor_due($monitor);
 					$statusClass = monitor_status($monitor);
 					$statusKey = 'monitors.status.' . $statusClass;
 					$uncheckedContactCount = (int)($monitor['unchecked_contact_count'] ?? 0);
@@ -66,18 +83,17 @@ ob_start();
 						<td class="monitor-datetime"><?= e(format_datetime(isset($monitor['next_check_due_at']) ? (string)$monitor['next_check_due_at'] : null)) ?></td>
 						<td class="monitor-actions-cell">
 							<div class="table-actions">
-								<?php if ($isDue): ?>
-									<form method="post" action="<?= e($base_url) ?>/monitors/check-in">
-										<?= csrf_field() ?>
-										<input type="hidden" name="id" value="<?= (int)$monitor['id'] ?>">
-										<input type="hidden" name="redirect" value="/monitors">
-										<button type="submit" class="btn-table-inline btn-primary"><?= e__('monitors.check_in.submit') ?></button>
-									</form>
-								<?php endif; ?>
-								<?php if ($allowForceDue): ?>
+								<form method="post" action="<?= e($base_url) ?>/monitors/<?= $statusClass === 'paused' ? 'resume' : 'pause' ?>">
+									<?= csrf_field() ?>
+									<input type="hidden" name="id" value="<?= (int)$monitor['id'] ?>">
+									<input type="hidden" name="redirect" value="/monitors">
+									<button type="submit" class="btn-table-inline"><?= e__($statusClass === 'paused' ? 'monitors.resume.submit' : 'monitors.pause.submit') ?></button>
+								</form>
+								<?php if ($allowForceDue && $statusClass === 'checked-in'): ?>
 									<form method="post" action="<?= e($base_url) ?>/monitors/force-due">
 										<?= csrf_field() ?>
 										<input type="hidden" name="id" value="<?= (int)$monitor['id'] ?>">
+										<input type="hidden" name="redirect" value="/monitors">
 										<button type="submit" class="btn-table-inline"><?= e__('monitors.force_due.submit') ?></button>
 									</form>
 								<?php endif; ?>

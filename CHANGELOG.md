@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.5.0 — 2026-08-11
+
+### Reliable check-in lifecycle
+
+- Added a persisted check-cycle state machine with legal `scheduled`, `awaiting`, `overdue`, `escalated`, `confirmed`, and `cancelled` transitions.
+- Added migration `005_check_in_lifecycle.sql`, including upgrade conversion and repair of missing, paused, or duplicate open cycles.
+- Made cycle creation, check-in, pause, resume, due-state changes, and audit entries atomic database operations protected by monitor-row locks.
+- Snapshotted each cycle's UTC due time, response deadline, reminder interval, reminder limit, and actual reminder count.
+- Stopped inferring **Overdue** from elapsed time alone; the notification worker must record that all owner reminders were actually sent before making that transition.
+- Prepared explicit notification-only transitions from **Awaiting check-in** to **Overdue** and then **Escalated** without sending mail in this release.
+
+### Global check-in
+
+- Replaced individual due-monitor buttons with one prominent **Check in now** action.
+- A check-in confirms every active monitor in one transaction, including monitors not yet due, while leaving paused monitors untouched.
+- Each monitor starts its own next interval from the shared confirmation time, so different interval lengths remain independent.
+- Added explicit handling and a warning when a late check-in follows an already escalated cycle.
+
+### Dashboard and monitor controls
+
+- Expanded the dashboard with active and attention counts, a complete monitor-status overview, local-time scheduling details, and recent lifecycle activity.
+- Replaced the pause settings checkbox with immediate **Pause** and **Resume** actions on the dashboard, monitor overview, and editor review tab.
+- Pausing cancels the open cycle and clears the active due date; resuming counts as a fresh confirmation and schedules a new interval from that moment.
+- Updated the monitor overview with a single global check-in control and per-monitor pause/resume actions.
+- Added bilingual interface copy, lifecycle state-machine tests, integration coverage, and rendered light/dark interface checks.
+
 ## 0.4.2 — 2026-08-11
 
 ### Interface refinement

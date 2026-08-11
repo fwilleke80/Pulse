@@ -48,6 +48,7 @@ class MonitorRepository
 				reminder_interval_days,
 				max_reminders,
 				is_paused,
+				paused_at,
 				last_confirmed_at,
 				next_check_due_at,
 				created_at,
@@ -56,8 +57,8 @@ class MonitorRepository
 					SELECT cc.status
 					FROM check_cycles cc
 					WHERE cc.monitor_id = monitors.id
-					  AND (monitors.last_confirmed_at IS NULL OR cc.started_at > monitors.last_confirmed_at)
-					ORDER BY cc.started_at DESC, cc.id DESC
+					  AND cc.status IN (\'scheduled\',\'awaiting\',\'overdue\',\'escalated\')
+					ORDER BY cc.id DESC
 					LIMIT 1
 				) AS latest_cycle_status,
 				(
@@ -101,6 +102,7 @@ class MonitorRepository
 				reminder_interval_days,
 				max_reminders,
 				is_paused,
+				paused_at,
 				last_confirmed_at,
 				next_check_due_at,
 				created_at,
@@ -109,8 +111,8 @@ class MonitorRepository
 					SELECT cc.status
 					FROM check_cycles cc
 					WHERE cc.monitor_id = monitors.id
-					  AND (monitors.last_confirmed_at IS NULL OR cc.started_at > monitors.last_confirmed_at)
-					ORDER BY cc.started_at DESC, cc.id DESC
+					  AND cc.status IN (\'scheduled\',\'awaiting\',\'overdue\',\'escalated\')
+					ORDER BY cc.id DESC
 					LIMIT 1
 				) AS latest_cycle_status
 			FROM monitors
@@ -167,7 +169,6 @@ class MonitorRepository
 	 * @param int $responseWindowDays Days allowed for response.
 	 * @param int $reminderIntervalDays Days between reminders.
 	 * @param int $maxReminders Maximum number of reminders.
-	 * @param bool $isPaused Whether the monitor is paused.
 	 */
 	public function CreateForUser(
 		int $userId,
@@ -177,7 +178,6 @@ class MonitorRepository
 		int $responseWindowDays,
 		int $reminderIntervalDays,
 		int $maxReminders,
-		bool $isPaused,
 	): int
 	{
 		$sql = '
@@ -222,7 +222,7 @@ class MonitorRepository
 			'response_window_days' => $responseWindowDays,
 			'reminder_interval_days' => $reminderIntervalDays,
 			'max_reminders' => $maxReminders,
-			'is_paused' => $isPaused ? 1 : 0,
+			'is_paused' => 0,
 			'next_check_interval_days' => $checkIntervalDays,
 		]);
 
@@ -343,7 +343,6 @@ class MonitorRepository
 	 * @param int $responseWindowDays Days allowed for response.
 	 * @param int $reminderIntervalDays Days between reminders.
 	 * @param int $maxReminders Maximum number of reminders.
-	 * @param bool $isPaused Whether the monitor is paused.
 	 */
 	public function UpdateForUser(
 		int $monitorId,
@@ -353,8 +352,7 @@ class MonitorRepository
 		int $checkIntervalDays,
 		int $responseWindowDays,
 		int $reminderIntervalDays,
-		int $maxReminders,
-		bool $isPaused
+		int $maxReminders
 	): void
 	{
 		$sql = '
@@ -366,8 +364,6 @@ class MonitorRepository
 				response_window_days = :response_window_days,
 				reminder_interval_days = :reminder_interval_days,
 				max_reminders = :max_reminders,
-				is_paused = :is_paused,
-				next_check_due_at = TIMESTAMPADD(DAY, :next_check_interval_days, COALESCE(last_confirmed_at, UTC_TIMESTAMP())),
 				updated_at = UTC_TIMESTAMP()
 			WHERE id = :id
 			  AND user_id = :user_id
@@ -383,57 +379,7 @@ class MonitorRepository
 			'response_window_days' => $responseWindowDays,
 			'reminder_interval_days' => $reminderIntervalDays,
 			'max_reminders' => $maxReminders,
-			'is_paused' => $isPaused ? 1 : 0,
-			'next_check_interval_days' => $checkIntervalDays,
 		]);
-	}
-
-	/**
-	 * @brief Confirms a monitor when it is due and schedules its next check.
-	 * @param int $monitorId Monitor ID.
-	 * @param int $userId User ID.
-	 * @return bool True when the monitor was due and confirmed.
-	 */
-	public function ConfirmDueForUser(int $monitorId, int $userId): bool
-	{
-		$statement = $this->_database->GetConnection()->prepare('
-			UPDATE monitors
-			SET
-				last_confirmed_at = UTC_TIMESTAMP(),
-				next_check_due_at = TIMESTAMPADD(DAY, check_interval_days, UTC_TIMESTAMP()),
-				updated_at = UTC_TIMESTAMP()
-			WHERE id = :id
-			  AND user_id = :user_id
-			  AND is_paused = 0
-			  AND (next_check_due_at IS NULL OR next_check_due_at <= UTC_TIMESTAMP())
-		');
-		$statement->execute([
-			'id' => $monitorId,
-			'user_id' => $userId,
-		]);
-
-		return $statement->rowCount() === 1;
-	}
-
-	/**
-	 * @brief Forces a monitor due for development testing.
-	 * @param int $monitorId Monitor ID.
-	 * @param int $userId User ID.
-	 * @return bool True when an owned monitor was updated.
-	 */
-	public function ForceDueForUser(int $monitorId, int $userId): bool
-	{
-		$statement = $this->_database->GetConnection()->prepare('
-			UPDATE monitors
-			SET next_check_due_at = UTC_TIMESTAMP(), updated_at = UTC_TIMESTAMP()
-			WHERE id = :id AND user_id = :user_id
-		');
-		$statement->execute([
-			'id' => $monitorId,
-			'user_id' => $userId,
-		]);
-
-		return $statement->rowCount() === 1;
 	}
 
 	/**

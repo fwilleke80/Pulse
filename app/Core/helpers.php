@@ -145,9 +145,16 @@ function monitor_status(array $monitor): string
 		return 'paused';
 	}
 
-	if (($monitor['latest_cycle_status'] ?? null) === 'escalated')
+	$cycleStatus = (string)($monitor['latest_cycle_status'] ?? '');
+
+	if ($cycleStatus === 'scheduled')
 	{
-		return 'escalated';
+		return 'checked-in';
+	}
+
+	if (in_array($cycleStatus, ['awaiting', 'overdue', 'escalated'], true))
+	{
+		return $cycleStatus;
 	}
 
 	$nextDue = $monitor['next_check_due_at'] ?? null;
@@ -164,10 +171,5 @@ function monitor_status(array $monitor): string
 		return 'checked-in';
 	}
 
-	$responseDays = max(0, (int)($monitor['response_window_days'] ?? 0));
-	$reminderDays = max(0, (int)($monitor['reminder_interval_days'] ?? 0));
-	$maximumReminders = max(0, (int)($monitor['max_reminders'] ?? 0));
-	$overdueTimestamp = $dueTimestamp + (($responseDays + ($reminderDays * $maximumReminders)) * 86400);
-
-	return time() >= $overdueTimestamp ? 'overdue' : 'awaiting';
+	return 'awaiting';
 }

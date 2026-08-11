@@ -1,6 +1,6 @@
 # Upgrading Pulse
 
-## Upgrade from 0.2.9–0.4.1 to 0.4.2
+## Upgrade from 0.2.9–0.4.2 to 0.5.0
 
 ### Before extraction
 
@@ -11,7 +11,7 @@
 
 ### Install the source
 
-Extract the complete `Pulse_0.4.2_source.zip` archive over the Pulse project directory. The archive paths begin with `app/`, `config/`, `public/`, and the other project-root entries; it does not add an extra `Pulse/` directory.
+Extract the complete `Pulse_0.5.0_source.zip` archive over the Pulse project directory. The archive paths begin with `app/`, `config/`, `public/`, and the other project-root entries; it does not add an extra `Pulse/` directory.
 
 Extraction overwrites the old public password utility files with inert 404 stubs. You may delete `public/secret0410` entirely after extraction.
 
@@ -38,6 +38,17 @@ No command line is required. Open Pulse in a browser after extraction. Before ha
 
 For an existing Pulse database without `schema_migrations`, the runner detects the `users` table and records migrations 001 and 002 as the legacy baseline. It then applies the security-foundation and complete-configuration migrations. For an existing 0.3.1 database, `004_complete_configuration.sql` adds the owner address-check timestamp, default monitor message fields, and the one-message-per-monitor-contact constraint.
 
+Migration `005_check_in_lifecycle.sql` then:
+
+- adds explicit pause timestamps
+- expands check-cycle states and adds UTC due/response timestamps plus reminder snapshots
+- converts legacy pending cycles to awaiting cycles
+- cancels open cycles belonging to paused monitors
+- retains only the newest current cycle if legacy data contains duplicates
+- creates one scheduled or awaiting cycle for every active monitor that lacks one
+
+No existing monitor, contact, document, or completed cycle history is deleted.
+
 Existing contacts receive a null `email_checked_at` value. This is intentional: Pulse cannot infer that an address was reviewed before the feature existed. Reviewing a contact updates the local timestamp without sending anything to that contact.
 
 Actual upgrades are protected by a database advisory lock. If two requests arrive immediately after extraction, one applies the migrations and the other waits, rechecks the result, and continues without applying them twice.
@@ -59,9 +70,14 @@ Confirm that the website document root is the extracted project’s `public/` di
 7. Create, edit, assign, and delete a non-sensitive text document.
 8. Upload a non-sensitive test PDF without a title and verify the success message contains its filename.
 9. Download and delete that PDF, then confirm its storage file is removed.
-10. Verify due monitors appear on the dashboard and can be checked in.
-11. Confirm production pages do not show stack traces.
+10. Verify the dashboard shows every monitor and one global **Check in now** action.
+11. Check in and confirm that every active monitor receives the same last-confirmed time but keeps its own next-due interval.
+12. Pause one monitor and verify its next due date becomes suspended and global check-in leaves it unchanged.
+13. Resume it and verify a fresh interval begins from the resume time.
+14. In a development environment, enable **Force due now** and verify the selected cycle changes to **Awaiting check-in**.
+15. Confirm recent lifecycle activity records check-ins, pauses, resumes, and due changes.
+16. Confirm production pages do not show stack traces.
 
 ### Old archive debris
 
-Earlier archives contained macOS and Python cache files. They are excluded from 0.4.2, but extracting cannot delete files already present. Remove old `.DS_Store`, `__MACOSX`, and `__pycache__` entries from the project directory.
+Earlier archives contained macOS and Python cache files. They are excluded from 0.5.0, but extracting cannot delete files already present. Remove old `.DS_Store`, `__MACOSX`, and `__pycache__` entries from the project directory.

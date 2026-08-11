@@ -34,24 +34,24 @@ class MonitorStatusTest extends TestCase
 	{
 		self::assertSame('checked-in', monitor_status([
 			'is_paused' => 0,
+			'latest_cycle_status' => 'scheduled',
 			'next_check_due_at' => gmdate('Y-m-d H:i:s', time() + 3600),
 		]));
 	}
 
-	public function testDueAndOverdueWindowsAreDistinguished(): void
+	public function testPersistedRuntimeStatesAreReported(): void
 	{
-		$base = [
-			'is_paused' => 0,
-			'response_window_days' => 1,
-			'reminder_interval_days' => 1,
-			'max_reminders' => 2,
-		];
+		self::assertSame('awaiting', monitor_status(['is_paused' => 0, 'latest_cycle_status' => 'awaiting']));
+		self::assertSame('overdue', monitor_status(['is_paused' => 0, 'latest_cycle_status' => 'overdue']));
+		self::assertSame('escalated', monitor_status(['is_paused' => 0, 'latest_cycle_status' => 'escalated']));
+	}
 
-		self::assertSame('awaiting', monitor_status($base + [
-			'next_check_due_at' => gmdate('Y-m-d H:i:s', time() - 3600),
-		]));
-		self::assertSame('overdue', monitor_status($base + [
-			'next_check_due_at' => gmdate('Y-m-d H:i:s', time() - (4 * 86400)),
+	public function testElapsedTimeAloneNeverPretendsRemindersWereSent(): void
+	{
+		self::assertSame('awaiting', monitor_status([
+			'is_paused' => 0,
+			'latest_cycle_status' => null,
+			'next_check_due_at' => gmdate('Y-m-d H:i:s', time() - (30 * 86400)),
 		]));
 	}
 }

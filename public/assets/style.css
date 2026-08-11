@@ -450,7 +450,8 @@ th
 
 .dashboard-stat
 {
-	min-width: 170px;
+	min-width: 155px;
+	flex: 1 1 155px;
 	padding: 1rem 1.3rem;
 	border: 1px solid var(--border);
 	border-radius: 10px;
@@ -481,6 +482,160 @@ th
 .dashboard-monitor-section
 {
 	margin-top: 2rem;
+}
+
+.global-check-in-card
+{
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1.5rem;
+	margin-top: 1.5rem;
+	padding: clamp(1rem, 3vw, 1.5rem);
+	border: 1px solid color-mix(in srgb, var(--primary) 42%, var(--border));
+	border-radius: var(--radius);
+	background: color-mix(in srgb, var(--primary) 7%, var(--surface));
+}
+
+.global-check-in-card h2,
+.global-check-in-card p
+{
+	margin-block: 0 0.35rem;
+}
+
+.global-check-in-card p
+{
+	max-width: 760px;
+	color: var(--muted);
+}
+
+.global-check-in-card form,
+.global-check-in-card button
+{
+	margin: 0;
+}
+
+.global-check-in-card-empty
+{
+	border-color: var(--border);
+	background: var(--surface-subtle);
+}
+
+.btn-check-in
+{
+	min-width: 150px;
+	padding: 0.8rem 1.15rem;
+}
+
+.section-title-row
+{
+	display: flex;
+	align-items: end;
+	justify-content: space-between;
+	gap: 1rem;
+	margin-bottom: 1rem;
+}
+
+.section-title-row h2,
+.section-title-row p
+{
+	margin-block: 0 0.25rem;
+}
+
+.section-title-row p
+{
+	color: var(--muted);
+}
+
+.dashboard-monitor-list
+{
+	display: grid;
+	gap: 0.7rem;
+}
+
+.dashboard-monitor-card
+{
+	display: grid;
+	grid-template-columns: minmax(190px, 1.4fr) minmax(145px, 0.8fr) minmax(145px, 0.8fr) auto;
+	align-items: center;
+	gap: 1rem;
+	padding: 0.85rem 1rem;
+	border: 1px solid var(--border);
+	border-radius: 10px;
+	background: var(--surface-subtle);
+}
+
+.dashboard-monitor-card form,
+.dashboard-monitor-card button
+{
+	margin: 0;
+}
+
+.dashboard-monitor-identity
+{
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.55rem;
+}
+
+.dashboard-monitor-time
+{
+	display: flex;
+	flex-direction: column;
+}
+
+.dashboard-monitor-time span
+{
+	color: var(--muted);
+	font-size: 0.78rem;
+	font-weight: 650;
+	letter-spacing: 0.02em;
+	text-transform: uppercase;
+}
+
+.dashboard-activity-section
+{
+	margin-top: 2rem;
+}
+
+.activity-list
+{
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.activity-list li
+{
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 1rem;
+	padding: 0.65rem 0;
+	border-bottom: 1px solid var(--border);
+}
+
+.activity-list time
+{
+	color: var(--muted);
+	font-size: 0.85rem;
+	white-space: nowrap;
+}
+
+.monitor-index-toolbar
+{
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.65rem;
+	margin: 1rem 0 0.4rem;
+}
+
+.monitor-index-toolbar form,
+.monitor-index-toolbar button
+{
+	margin: 0;
 }
 
 .due-monitor-list
@@ -1012,6 +1167,12 @@ small
 	margin-block: 0 0.25rem;
 }
 
+.activation-card form,
+.activation-card button
+{
+	margin: 0;
+}
+
 .editor-save-bar
 {
 	position: sticky;
@@ -1118,10 +1279,49 @@ footer
 		padding: 1rem;
 	}
 
-	.due-monitor-card
+	.due-monitor-card,
+	.global-check-in-card
 	{
 		align-items: stretch;
 		flex-direction: column;
+	}
+
+	.global-check-in-card button
+	{
+		width: 100%;
+	}
+
+	.section-title-row
+	{
+		align-items: flex-start;
+		flex-direction: column;
+	}
+
+	.dashboard-monitor-card
+	{
+		grid-template-columns: 1fr 1fr;
+	}
+
+	.dashboard-monitor-identity
+	{
+		grid-column: 1 / -1;
+	}
+
+	.dashboard-monitor-card form
+	{
+		grid-column: 1 / -1;
+	}
+
+	.dashboard-monitor-card button
+	{
+		width: 100%;
+	}
+
+	.activity-list li
+	{
+		align-items: flex-start;
+		flex-direction: column;
+		gap: 0.15rem;
 	}
 
 	.dashboard-stat

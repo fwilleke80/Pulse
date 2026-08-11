@@ -33,6 +33,7 @@ $contactRepository = $container['contactRepository'];
 $monitorRepository = $container['monitorRepository'];
 $documentRepository = $container['documentRepository'];
 $messageRepository = $container['messageRepository'];
+$monitorExecutionService = $container['monitorExecutionService'];
 $documentService = $container['documentService'];
 $userRepository = $container['userRepository'];
 $loginThrottle = $container['loginThrottle'];
@@ -62,7 +63,8 @@ $homeController = new HomeController(
 	$db,
 	$config,
 	$contactRepository,
-	$monitorRepository
+	$monitorRepository,
+	$monitorExecutionService
 );
 $authController = new AuthController($view, $session, $auth, $logger, $request, $loginThrottle, $csrf);
 $contactController = new ContactController($view, $session, $auth, $logger, $request, $contactRepository);
@@ -87,6 +89,7 @@ $monitorController = new MonitorController(
 	$documentRepository,
 	$messageRepository,
 	$documentService,
+	$monitorExecutionService,
 	(bool)$config['development']['allow_force_due']
 );
 $documentController = new DocumentController($view, $session, $auth, $logger, $request, $documentService);
@@ -116,6 +119,8 @@ $router->Post('/monitors/update', [$monitorController, 'Update']);
 $router->Post('/monitors/messages/update', [$monitorController, 'UpdateMessages']);
 $router->Post('/monitors/delete', [$monitorController, 'Delete']);
 $router->Post('/monitors/check-in', [$monitorController, 'CheckIn']);
+$router->Post('/monitors/pause', [$monitorController, 'Pause']);
+$router->Post('/monitors/resume', [$monitorController, 'Resume']);
 $router->Post('/monitors/force-due', [$monitorController, 'ForceDue']);
 
 $router->Post('/monitors/documents/upload', [$documentController, 'Upload']);

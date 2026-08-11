@@ -2,7 +2,7 @@
 
 /**
  * @file MonitorController.php
- * @brief Monitor configuration and manual check-in controller.
+ * @brief Monitor configuration and global manual check-in controller.
  * @author Frank Willeke
  */
 
@@ -20,6 +20,7 @@ use Pulse\Repositories\MessageRepository;
 use Pulse\Repositories\MonitorRepository;
 use Pulse\Services\AuthService;
 use Pulse\Services\DocumentService;
+use Pulse\Services\MonitorExecutionService;
 
 /**
  * @brief Handles monitor configuration without owning document HTTP actions.
@@ -31,6 +32,7 @@ class MonitorController extends BaseController
 	private DocumentRepository $_documentRepository;
 	private MessageRepository $_messageRepository;
 	private DocumentService $_documentService;
+	private MonitorExecutionService $_monitorExecutionService;
 	private bool $_allowForceDue;
 
 	/**
@@ -45,6 +47,7 @@ class MonitorController extends BaseController
 	 * @param DocumentRepository $documentRepository Document repository.
 	 * @param MessageRepository $messageRepository Message repository.
 	 * @param DocumentService $documentService Document service.
+	 * @param MonitorExecutionService $monitorExecutionService Check-in lifecycle service.
 	 * @param bool $allowForceDue Whether the development-only action is enabled.
 	 */
 	public function __construct(
@@ -58,6 +61,7 @@ class MonitorController extends BaseController
 		DocumentRepository $documentRepository,
 		MessageRepository $messageRepository,
 		DocumentService $documentService,
+		MonitorExecutionService $monitorExecutionService,
 		bool $allowForceDue
 	)
 	{
@@ -67,6 +71,7 @@ class MonitorController extends BaseController
 		$this->_documentRepository = $documentRepository;
 		$this->_messageRepository = $messageRepository;
 		$this->_documentService = $documentService;
+		$this->_monitorExecutionService = $monitorExecutionService;
 		$this->_allowForceDue = $allowForceDue;
 	}
 
@@ -74,6 +79,7 @@ class MonitorController extends BaseController
 	public function Index(): string
 	{
 		$user = $this->RequireUser();
+		$this->_monitorExecutionService->SynchronizeDueCyclesForUser((int)$user['id']);
 
 		return $this->_view->Render('monitors.index', [
 			'user' => $user,
@@ -112,9 +118,9 @@ class MonitorController extends BaseController
 			$values['check_interval_days'],
 			$values['response_window_days'],
 			$values['reminder_interval_days'],
-			$values['max_reminders'],
-			$values['is_paused']
+			$values['max_reminders']
 		);
+		$this->_monitorExecutionService->InitializeMonitorForUser($monitorId, (int)$user['id']);
 		$this->_monitorRepository->ReplaceContactsForMonitor($monitorId, (int)$user['id'], $contactIds);
 		$this->_logger->Info('Monitor created', ['user_id' => (int)$user['id'], 'monitor_id' => $monitorId]);
 		$this->Flash('success', __('monitors.add.flash.created', ['name' => $values['name']]));
@@ -126,6 +132,7 @@ class MonitorController extends BaseController
 	{
 		$user = $this->RequireUser();
 		$monitorId = $this->_request->QueryInt('id');
+		$this->_monitorExecutionService->SynchronizeMonitorForUser($monitorId, (int)$user['id']);
 		$monitor = $this->_monitorRepository->FindByIdForUser($monitorId, (int)$user['id']);
 
 		if ($monitor === null)
@@ -183,9 +190,9 @@ class MonitorController extends BaseController
 			$values['check_interval_days'],
 			$values['response_window_days'],
 			$values['reminder_interval_days'],
-			$values['max_reminders'],
-			$values['is_paused']
+			$values['max_reminders']
 		);
+		$this->_monitorExecutionService->SynchronizeMonitorForUser($monitorId, (int)$user['id']);
 		$this->_monitorRepository->ReplaceContactsForMonitor(
 			$monitorId,
 			(int)$user['id'],
@@ -273,23 +280,68 @@ class MonitorController extends BaseController
 		$this->Redirect('/monitors');
 	}
 
-	/** @brief Confirms a due, active monitor and schedules the next check. */
+	/** @brief Confirms every active monitor and restarts each monitor's own interval. */
 	public function CheckIn(): void
+	{
+		$user = $this->RequireUser();
+		$result = $this->_monitorExecutionService->CheckInAllActiveForUser((int)$user['id']);
+
+		if ($result['updated'] === 0)
+		{
+			$this->Flash('warning', __('monitors.check_in.none_active'));
+		}
+		elseif ($result['escalated'] > 0)
+		{
+			$this->Flash('warning', __('monitors.check_in.success_escalated', [
+				'count' => $result['updated'],
+				'escalated' => $result['escalated'],
+			]));
+		}
+		else
+		{
+			$this->Flash('success', __(
+				$result['updated'] === 1 ? 'monitors.check_in.success.one' : 'monitors.check_in.success.many',
+				['count' => $result['updated']]
+			));
+		}
+
+		$this->Redirect($this->RuntimeRedirect());
+	}
+
+	/** @brief Pauses an owned monitor and cancels its current schedule. */
+	public function Pause(): void
 	{
 		$user = $this->RequireUser();
 		$monitorId = $this->_request->PostInt('id');
 
-		if ($this->_monitorRepository->ConfirmDueForUser($monitorId, (int)$user['id']))
+		if ($this->_monitorExecutionService->PauseMonitorForUser($monitorId, (int)$user['id']))
 		{
-			$this->_logger->Info('Monitor manually confirmed', ['user_id' => (int)$user['id'], 'monitor_id' => $monitorId]);
-			$this->Flash('success', __('monitors.check_in.success'));
+			$this->Flash('success', __('monitors.pause.success'));
 		}
 		else
 		{
-			$this->Flash('error', __('monitors.check_in.not_due'));
+			$this->Flash('warning', __('monitors.pause.unchanged'));
 		}
 
-		$this->Redirect($this->CheckInRedirect());
+		$this->Redirect($this->RuntimeRedirect());
+	}
+
+	/** @brief Resumes an owned monitor with a fresh interval. */
+	public function Resume(): void
+	{
+		$user = $this->RequireUser();
+		$monitorId = $this->_request->PostInt('id');
+
+		if ($this->_monitorExecutionService->ResumeMonitorForUser($monitorId, (int)$user['id']))
+		{
+			$this->Flash('success', __('monitors.resume.success'));
+		}
+		else
+		{
+			$this->Flash('warning', __('monitors.resume.unchanged'));
+		}
+
+		$this->Redirect($this->RuntimeRedirect());
 	}
 
 	/** @brief Forces a monitor due when the explicit development setting is enabled. */
@@ -304,14 +356,22 @@ class MonitorController extends BaseController
 		}
 
 		$monitorId = $this->_request->PostInt('id');
-		$this->_monitorRepository->ForceDueForUser($monitorId, (int)$user['id']);
-		$this->Flash('success', __('monitors.force_due.success'));
-		$this->Redirect('/monitors');
+
+		if ($this->_monitorExecutionService->ForceDueForUser($monitorId, (int)$user['id']))
+		{
+			$this->Flash('success', __('monitors.force_due.success'));
+		}
+		else
+		{
+			$this->Flash('warning', __('monitors.force_due.unavailable'));
+		}
+
+		$this->Redirect($this->RuntimeRedirect());
 	}
 
 	/**
 	 * @brief Reads and bounds monitor configuration input.
-	 * @return array{name: string, description: string, check_interval_days: int, response_window_days: int, reminder_interval_days: int, max_reminders: int, is_paused: bool}
+	 * @return array{name: string, description: string, check_interval_days: int, response_window_days: int, reminder_interval_days: int, max_reminders: int}
 	 */
 	private function MonitorInput(): array
 	{
@@ -322,7 +382,6 @@ class MonitorController extends BaseController
 			'response_window_days' => $this->_request->PostInt('response_window_days'),
 			'reminder_interval_days' => $this->_request->PostInt('reminder_interval_days'),
 			'max_reminders' => $this->_request->PostInt('max_reminders'),
-			'is_paused' => $this->_request->PostBool('is_paused'),
 		];
 	}
 
@@ -369,12 +428,17 @@ class MonitorController extends BaseController
 		));
 	}
 
-	/** @brief Restricts the post-check-in redirect to known monitor pages. @return string */
-	private function CheckInRedirect(): string
+	/** @brief Restricts runtime-action redirects to known monitor pages. @return string */
+	private function RuntimeRedirect(): string
 	{
-		$target = $this->_request->PostString('redirect', 100);
+		$target = $this->_request->PostString('redirect', 200);
 
-		return in_array($target, ['/', '/monitors'], true) ? $target : '/monitors';
+		if (in_array($target, ['/', '/monitors'], true))
+		{
+			return $target;
+		}
+
+		return preg_match('/^\/monitors\/edit\?id=\d+&tab=review$/', $target) === 1 ? $target : '/monitors';
 	}
 
 	/** @brief Returns a supported monitor editor tab from the query. @return string */

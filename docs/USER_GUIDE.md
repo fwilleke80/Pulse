@@ -2,7 +2,7 @@
 
 ## Current scope
 
-Pulse 0.4.2 lets you:
+Pulse 0.5.0 lets you:
 
 - sign in and update your profile
 - create and edit trusted contacts and confirm that you checked their addresses
@@ -11,7 +11,9 @@ Pulse 0.4.2 lets you:
 - create editable text documents or upload approved file types
 - assign text and file documents to individual monitor recipients
 - see whether monitors are checked in, awaiting check-in, overdue, escalated, or paused
-- manually confirm a due monitor
+- confirm every active monitor with one check-in
+- pause and resume individual monitors with explicit actions
+- review current monitor state and recent lifecycle activity on the dashboard
 
 Automatic reminder mail, escalation, contact notifications, and recipient document access are not active yet.
 
@@ -36,27 +38,43 @@ A monitor describes how frequently you intend to confirm that you are active. It
 3. **Messages & documents** — delivery wording and recipient document assignments
 4. **Review & activation** — a configuration summary, warnings, and the paused state
 
-The sticky save action stores schedule, recipient selection, and activation together. **Cancel** returns to the monitor overview without saving changes to those settings. Messages and individual documents have their own explicit save actions.
+The sticky save action stores schedule and recipient selection together. **Cancel** returns to the monitor overview without saving changes to those settings. Messages and individual documents have their own explicit save actions. Pause and resume are immediate runtime actions and are not part of the settings form.
 
 Select a monitor's linked title in the overview to open its editor.
 
 The monitor overview focuses on runtime state:
 
-- **Checked in** — the next confirmation is still in the future
-- **Awaiting check-in** — confirmation is due and the response/reminder window remains open
-- **Overdue** — that complete window elapsed without a response
-- **Escalated** — a persisted check cycle records that recipients were contacted
+- **Checked in** — the current scheduled cycle has a future due time
+- **Awaiting check-in** — the due time arrived and Pulse is waiting for confirmation
+- **Overdue** — the notification worker recorded that every configured owner reminder was sent without a response
+- **Escalated** — recipient notification or delivery actually began
 - **Paused** — no confirmation is currently expected
 
-Pulse 0.4.2 does not yet run the reminder and notification engine. It presents the complete status vocabulary and timing calculation, but it does not send escalation mail.
+Pulse 0.5.0 does not yet run the reminder and notification engine. It can move scheduled cycles to **Awaiting check-in**, but it does not pretend to have sent reminders. Consequently, a normal 0.5.0 installation will not move a cycle to **Overdue** or **Escalated** until the later notification worker is connected.
 
 The displayed timestamps use the configured local display timezone. Storage and comparisons use UTC.
 
-## Manual check-in
+## Global check-in
 
-When a monitor is due, **Check in now** appears on the dashboard and monitor overview. Confirming it records the current time and schedules the next due date from the check interval.
+When at least one monitor is active, **Check in now** appears on the dashboard and monitor overview. One click confirms every active monitor in a single database transaction. Paused monitors are not changed.
 
-The action is intentionally one click, but it is accepted only for a due, active monitor owned by the signed-in user.
+An active monitor does not need to be due. A check-in is proof that you are present now, so each active monitor restarts its own interval from that exact UTC time. A monitor with a two-day interval becomes due in two days; a monitor with a thirty-day interval becomes due in thirty days.
+
+If any monitor already reached **Escalated**, checking in records the late confirmation and starts its next cycle, but it cannot undo recipient notifications that were already sent. Pulse shows a warning in that case.
+
+## Pause and resume
+
+Use **Pause** when a monitor should temporarily expect no check-ins. Pausing immediately cancels its open cycle, records the action, and removes its active due date. Paused monitors are excluded from the global check-in.
+
+Use **Resume** to reactivate it. Resuming counts as a fresh confirmation and schedules a new cycle from that moment. A monitor therefore cannot become instantly overdue merely because it was paused for a long time.
+
+Pause and resume actions are available on the dashboard, monitor overview, and the editor's **Review & activation** tab.
+
+## Dashboard and history
+
+The dashboard shows monitor totals, the number of active monitors, and how many currently need attention. Its monitor overview includes each status, last confirmation, next due time, and pause/resume control.
+
+Recent lifecycle activity records check-ins, due-state changes, pauses, resumes, overdue transitions, and escalations. Times are stored in UTC and displayed in the configured local timezone.
 
 ## Messages
 

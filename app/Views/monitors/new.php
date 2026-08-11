@@ -30,13 +30,6 @@ ob_start();
 	<label for="max_reminders"><?= e__('monitors.add.max_reminders') ?></label>
 	<input type="number" id="max_reminders" name="max_reminders" min="0" value="2" required>
 
-	<div class="checkbox-row">
-		<label>
-			<input type="checkbox" name="is_paused">
-			<?= e__('monitors.add.is_paused') ?>
-		</label>
-	</div>
-
 	<div class="assignment-box">
 		<h2><?= e__('monitors.contacts.heading') ?></h2>
 		<p class="form-hint"><?= e__('monitors.contacts.hint') ?></p>

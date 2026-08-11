@@ -331,12 +331,14 @@ ob_start();
 		<div class="activation-card">
 			<div>
 				<h3><?= e__('monitors.activation.heading') ?></h3>
-				<p><?= e__('monitors.activation.hint') ?></p>
+				<p><?= e__($currentStatus === 'paused' ? 'monitors.activation.paused_hint' : 'monitors.activation.active_hint') ?></p>
 			</div>
-			<label class="activation-toggle">
-				<input type="checkbox" name="is_paused" form="monitor-settings-form" <?= !empty($monitor['is_paused']) ? 'checked' : '' ?>>
-				<span><?= e__('monitors.edit.is_paused') ?></span>
-			</label>
+			<form method="post" action="<?= e($base_url) ?>/monitors/<?= $currentStatus === 'paused' ? 'resume' : 'pause' ?>">
+				<?= csrf_field() ?>
+				<input type="hidden" name="id" value="<?= (int)$monitor['id'] ?>">
+				<input type="hidden" name="redirect" value="/monitors/edit?id=<?= (int)$monitor['id'] ?>&amp;tab=review">
+				<button type="submit" class="<?= $currentStatus === 'paused' ? 'btn-primary' : '' ?>"><?= e__($currentStatus === 'paused' ? 'monitors.resume.submit' : 'monitors.pause.submit') ?></button>
+			</form>
 		</div>
 	</section>
 </div>

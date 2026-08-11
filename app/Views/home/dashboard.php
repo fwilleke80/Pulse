@@ -12,8 +12,26 @@ declare(strict_types=1);
 /** @var int $contactCount */
 /** @var int $monitorCount */
 /** @var array<int, array<string, mixed>> $monitors */
-/** @var bool $allowForceDue */
+/** @var array<int, array<string, mixed>> $recentActivity */
 /** @var string $base_url */
+
+$activeMonitors = array_values(array_filter(
+	$monitors,
+	static fn (array $monitor): bool => empty($monitor['is_paused'])
+));
+$attentionCount = count(array_filter(
+	$activeMonitors,
+	static fn (array $monitor): bool => in_array(monitor_status($monitor), ['awaiting', 'overdue', 'escalated'], true)
+));
+$activityTranslationKeys = [
+	'monitor.checked_in' => 'dashboard.activity.checked_in',
+	'monitor.awaiting' => 'dashboard.activity.awaiting',
+	'monitor.overdue' => 'dashboard.activity.overdue',
+	'monitor.escalated' => 'dashboard.activity.escalated',
+	'monitor.paused' => 'dashboard.activity.paused',
+	'monitor.resumed' => 'dashboard.activity.resumed',
+	'monitor.forced_due' => 'dashboard.activity.forced_due',
+];
 
 ob_start();
 ?>
@@ -22,40 +40,105 @@ ob_start();
 <p><?= e__('dashboard.message.1', ['name' => $user['display_name']]) ?></p>
 <p><?= e__('dashboard.message.2') ?></p>
 <div class="dashboard-stats">
-	<a href="<?= e($base_url) ?>/contacts" class="dashboard-stat">
-		<div class="dashboard-stat-title"><?= e__('dashboard.stats.contacts') ?></div>
-		<div class="dashboard-stat-value"><?= (int)$contactCount ?></div>
-	</a>
 	<a href="<?= e($base_url) ?>/monitors" class="dashboard-stat">
 		<div class="dashboard-stat-title"><?= e__('dashboard.stats.monitors') ?></div>
 		<div class="dashboard-stat-value"><?= (int)$monitorCount ?></div>
 	</a>
+	<a href="<?= e($base_url) ?>/monitors" class="dashboard-stat">
+		<div class="dashboard-stat-title"><?= e__('dashboard.stats.active') ?></div>
+		<div class="dashboard-stat-value"><?= count($activeMonitors) ?></div>
+	</a>
+	<a href="<?= e($base_url) ?>/monitors" class="dashboard-stat">
+		<div class="dashboard-stat-title"><?= e__('dashboard.stats.attention') ?></div>
+		<div class="dashboard-stat-value"><?= $attentionCount ?></div>
+	</a>
+	<a href="<?= e($base_url) ?>/contacts" class="dashboard-stat">
+		<div class="dashboard-stat-title"><?= e__('dashboard.stats.contacts') ?></div>
+		<div class="dashboard-stat-value"><?= (int)$contactCount ?></div>
+	</a>
 </div>
 
-<?php $dueMonitors = array_values(array_filter($monitors, 'is_monitor_due')); ?>
+<?php if ($activeMonitors !== []): ?>
+	<section class="global-check-in-card">
+		<div>
+			<h2><?= e__('dashboard.check_in.heading') ?></h2>
+			<p><?= e__('dashboard.check_in.message', ['count' => count($activeMonitors)]) ?></p>
+		</div>
+		<form method="post" action="<?= e($base_url) ?>/monitors/check-in">
+			<?= csrf_field() ?>
+			<input type="hidden" name="redirect" value="/">
+			<button type="submit" class="btn-primary btn-check-in"><?= e__('monitors.check_in.submit') ?></button>
+		</form>
+	</section>
+<?php else: ?>
+	<div class="global-check-in-card global-check-in-card-empty">
+		<div>
+			<h2><?= e__('dashboard.check_in.heading') ?></h2>
+			<p><?= e__('dashboard.check_in.none_active') ?></p>
+		</div>
+	</div>
+<?php endif; ?>
+
 <section class="dashboard-monitor-section">
-	<h2><?= e__('dashboard.monitors.heading') ?></h2>
-	<?php if ($dueMonitors === []): ?>
-		<p class="status-ok"><?= e__('dashboard.monitors.none_due') ?></p>
+	<div class="section-title-row">
+		<div>
+			<h2><?= e__('dashboard.monitors.heading') ?></h2>
+			<p><?= e__('dashboard.monitors.hint') ?></p>
+		</div>
+		<a href="<?= e($base_url) ?>/monitors"><?= e__('dashboard.monitors.manage') ?></a>
+	</div>
+	<?php if ($monitors === []): ?>
+		<p><?= e__('dashboard.monitors.none') ?></p>
 	<?php else: ?>
-		<div class="due-monitor-list">
-			<?php foreach ($dueMonitors as $monitor): ?>
+		<div class="dashboard-monitor-list">
+			<?php foreach ($monitors as $monitor): ?>
 				<?php $monitorStatus = monitor_status($monitor); ?>
-				<div class="due-monitor-card">
-					<div>
-						<strong><?= e((string)$monitor['name']) ?></strong>
-						<span class="status-badge status-<?= e($monitorStatus) ?>"><?= e__('monitors.status.' . $monitorStatus) ?></span><br>
-						<small><?= e__('dashboard.monitors.due_since', ['date' => format_datetime(isset($monitor['next_check_due_at']) ? (string)$monitor['next_check_due_at'] : null)]) ?></small>
+				<article class="dashboard-monitor-card monitor-row-<?= e($monitorStatus) ?>">
+					<div class="dashboard-monitor-identity">
+						<a href="<?= e($base_url) ?>/monitors/edit?id=<?= (int)$monitor['id'] ?>"><strong><?= e((string)$monitor['name']) ?></strong></a>
+						<span class="status-badge status-<?= e($monitorStatus) ?>"><?= e__('monitors.status.' . $monitorStatus) ?></span>
 					</div>
-					<form method="post" action="<?= e($base_url) ?>/monitors/check-in">
+					<div class="dashboard-monitor-time">
+						<span><?= e__('dashboard.monitors.last') ?></span>
+						<strong><?= e(format_datetime(isset($monitor['last_confirmed_at']) ? (string)$monitor['last_confirmed_at'] : null)) ?></strong>
+					</div>
+					<div class="dashboard-monitor-time">
+						<span><?= e__('dashboard.monitors.next') ?></span>
+						<strong><?= e(format_datetime(isset($monitor['next_check_due_at']) ? (string)$monitor['next_check_due_at'] : null, __('dashboard.monitors.suspended'))) ?></strong>
+					</div>
+					<form method="post" action="<?= e($base_url) ?>/monitors/<?= $monitorStatus === 'paused' ? 'resume' : 'pause' ?>">
 						<?= csrf_field() ?>
 						<input type="hidden" name="id" value="<?= (int)$monitor['id'] ?>">
 						<input type="hidden" name="redirect" value="/">
-						<button type="submit" class="btn-primary"><?= e__('monitors.check_in.submit') ?></button>
+						<button type="submit" class="btn-table-inline"><?= e__($monitorStatus === 'paused' ? 'monitors.resume.submit' : 'monitors.pause.submit') ?></button>
 					</form>
-				</div>
+				</article>
 			<?php endforeach; ?>
 		</div>
+	<?php endif; ?>
+</section>
+
+<section class="dashboard-activity-section">
+	<h2><?= e__('dashboard.activity.heading') ?></h2>
+	<?php if ($recentActivity === []): ?>
+		<p><?= e__('dashboard.activity.none') ?></p>
+	<?php else: ?>
+		<ol class="activity-list">
+			<?php foreach ($recentActivity as $activity): ?>
+				<?php
+				$activityKey = $activityTranslationKeys[(string)$activity['event_type']] ?? null;
+				$monitorName = !empty($activity['monitor_name'])
+					? (string)$activity['monitor_name']
+					: __('dashboard.activity.unknown_monitor');
+				?>
+				<?php if (is_string($activityKey)): ?>
+					<li>
+						<span><?= e__($activityKey, ['name' => $monitorName]) ?></span>
+						<time datetime="<?= e((string)$activity['created_at']) ?>"><?= e(format_datetime((string)$activity['created_at'])) ?></time>
+					</li>
+				<?php endif; ?>
+			<?php endforeach; ?>
+		</ol>
 	<?php endif; ?>
 </section>
 

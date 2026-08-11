@@ -29,6 +29,8 @@ use Pulse\Repositories\UserRepository;
 use Pulse\Services\AuthService;
 use Pulse\Services\DocumentService;
 use Pulse\Services\LoginThrottleService;
+use Pulse\Services\MonitorExecutionService;
+use Pulse\Services\MonitorStateMachine;
 
 $composerAutoloader = __DIR__ . '/vendor/autoload.php';
 
@@ -96,6 +98,8 @@ $documentRepository = new DocumentRepository($database);
 $messageRepository = new MessageRepository($database);
 $loginThrottleRepository = new LoginThrottleRepository($database);
 $loginThrottle = new LoginThrottleService($loginThrottleRepository, (array)$appConfig['security']);
+$monitorStateMachine = new MonitorStateMachine();
+$monitorExecutionService = new MonitorExecutionService($database, $monitorStateMachine, $logger);
 $auth = new AuthService($userRepository, $session, $logger);
 $documentService = new DocumentService(
 	$documentRepository,
@@ -146,6 +150,7 @@ return [
 	'monitorRepository' => $monitorRepository,
 	'documentRepository' => $documentRepository,
 	'messageRepository' => $messageRepository,
+	'monitorExecutionService' => $monitorExecutionService,
 	'documentService' => $documentService,
 	'loginThrottle' => $loginThrottle,
 ];

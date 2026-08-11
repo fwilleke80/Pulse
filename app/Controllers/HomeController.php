@@ -10,6 +10,7 @@ use Pulse\Core\View;
 use Pulse\Core\Logger;
 use Pulse\Core\Request;
 use Pulse\Services\AuthService;
+use Pulse\Services\MonitorExecutionService;
 
 /**
  * @brief Controller for home and utility routes.
@@ -23,6 +24,7 @@ class HomeController extends BaseController
 
 	private \Pulse\Repositories\ContactRepository $_contactRepository;
 	private \Pulse\Repositories\MonitorRepository $_monitorRepository;
+	private MonitorExecutionService $_monitorExecutionService;
 
 	/**
 	 * @brief Constructs the home controller.
@@ -35,6 +37,7 @@ class HomeController extends BaseController
 	 * @param array<string, mixed> $config Application configuration.
 	 * @param \Pulse\Repositories\ContactRepository $contactRepository Contact repository.
 	 * @param \Pulse\Repositories\MonitorRepository $monitorRepository Monitor repository.
+	 * @param MonitorExecutionService $monitorExecutionService Check-in lifecycle service.
 	 */
 	public function __construct(
 		View $view,
@@ -45,7 +48,8 @@ class HomeController extends BaseController
 		Database $db,
 		array $config,
 		\Pulse\Repositories\ContactRepository $contactRepository,
-		\Pulse\Repositories\MonitorRepository $monitorRepository
+		\Pulse\Repositories\MonitorRepository $monitorRepository,
+		MonitorExecutionService $monitorExecutionService
 	)
 	{
 		parent::__construct($view, $session, $auth, $logger, $request);
@@ -53,6 +57,7 @@ class HomeController extends BaseController
 		$this->_config = $config;
 		$this->_contactRepository = $contactRepository;
 		$this->_monitorRepository = $monitorRepository;
+		$this->_monitorExecutionService = $monitorExecutionService;
 	}
 
 	/**
@@ -62,6 +67,7 @@ class HomeController extends BaseController
 	public function Dashboard(): string
 	{
 		$user = $this->RequireUser();
+		$this->_monitorExecutionService->SynchronizeDueCyclesForUser((int)$user['id']);
 		$contactCount = $this->_contactRepository->CountByUserId((int)$user['id']);
 		$monitorCount = $this->_monitorRepository->CountByUserId((int)$user['id']);
 		$monitors = $this->_monitorRepository->FindAllByUserId((int)$user['id']);
@@ -73,6 +79,7 @@ class HomeController extends BaseController
 			'contactCount' => $contactCount,
 			'monitorCount' => $monitorCount,
 			'monitors' => $monitors,
+			'recentActivity' => $this->_monitorExecutionService->FindRecentActivityForUser((int)$user['id']),
 			'allowForceDue' => (bool)($this->_config['development']['allow_force_due'] ?? false),
 		]);
 	}

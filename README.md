@@ -2,9 +2,9 @@
 
 Pulse is a small, framework-free PHP application for personal emergency check-ins. It lets a user configure monitors, trusted contacts, and recipient-specific documents in preparation for a later staged notification and delivery workflow.
 
-Version **0.4.2** completes monitor configuration. It adds a tabbed monitor editor, default and recipient-specific messages, editable text documents, document-recipient assignment, owner-confirmed contact address checks, and clearer monitor states. Automated reminders, notification delivery, recipient access, MFA, and document encryption are not implemented yet.
+Version **0.5.0** turns the configured monitors into a reliable check-in lifecycle. It adds persisted check cycles, one global check-in for all active monitors, explicit pause/resume behavior, UTC scheduling, lifecycle history, and a status-focused dashboard. Automated reminder mail, recipient delivery, recipient access, MFA, and document encryption are not implemented yet.
 
-> **Important:** Pulse 0.4.2 stores uploaded files outside the public web root, but files, messages, and editable text documents are not encrypted at rest. Do not treat this release as the finished secure vault for highly sensitive material. Secure storage is planned for a later release.
+> **Important:** Pulse 0.5.0 stores uploaded files outside the public web root, but files, messages, and editable text documents are not encrypted at rest. Do not treat this release as the finished secure vault for highly sensitive material. Secure storage is planned for a later release.
 
 ## Requirements
 
@@ -40,10 +40,10 @@ Pulse/bootstrap.php
 
 `public/index.php` does not search its own directory for the application. Its `dirname(__DIR__)` expression resolves the parent Pulse directory, then loads the root `bootstrap.php`.
 
-## Upgrading to 0.4.2
+## Upgrading to 0.5.0
 
 1. Back up the database and `storage/` directory.
-2. Extract the 0.4.2 source ZIP over the existing Pulse project directory.
+2. Extract the 0.5.0 source ZIP over the existing Pulse project directory.
 3. When upgrading from 0.2.9, create `.env` from `.env.example`; do not copy credentials back into `config/database.php`.
 4. Rotate the former database and application passwords if this was not already done.
 5. Confirm that the server document root is `public/`.
@@ -53,6 +53,19 @@ Pulse/bootstrap.php
 The migration runner detects a pre-migration Pulse database, records the consolidated legacy baseline, and applies only the required migrations. Existing user, contact, monitor, and document data is retained. A database-level advisory lock prevents concurrent requests from applying the same migration twice.
 
 Existing contacts begin with an unchecked address state because Pulse cannot know whether you previously reviewed their email addresses. In a monitor editor, open **Recipients**, choose **Check address** beside the contact, review the address, tick the confirmation box, and save. This confirmation is local to your account; Pulse does not send the contact any message.
+
+Migration `005_check_in_lifecycle.sql` converts existing lightweight timing data into persisted cycles. Active monitors receive a scheduled or awaiting cycle based on their existing next due time; paused monitors remain paused. Existing duplicate open cycles, if any, are reduced to one current cycle without deleting their history.
+
+## 0.5 reliable check-in lifecycle
+
+- One **Check in now** action confirms every active monitor in a single transaction; paused monitors remain untouched.
+- Checking in early is allowed. Each active monitor restarts its own configured interval from the shared confirmation time.
+- Every monitor has a persisted current cycle with an explicit state and UTC deadlines.
+- Opening the dashboard or monitor pages advances a scheduled cycle to **Awaiting check-in** when its due time arrives.
+- **Overdue** is never inferred from elapsed time alone. The future notification worker must record that all configured owner reminders were actually sent.
+- **Escalated** is reserved for the point when recipient delivery has actually begun.
+- **Pause** cancels the current cycle. **Resume** counts as a fresh confirmation and creates a new interval from that moment.
+- The dashboard shows all monitor states, next due times, operational actions, and recent lifecycle activity.
 
 ## 0.4 complete configuration
 

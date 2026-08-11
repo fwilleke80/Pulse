@@ -2,7 +2,7 @@
 
 ## Current protection goals
 
-Pulse 0.4.2 retains the security foundation introduced in 0.3.0 and protects against common web application failures:
+Pulse 0.5.0 retains the security foundation introduced in 0.3.0 and protects against common web application failures:
 
 - cross-user access to contacts, monitors, and documents
 - cross-site request forgery
@@ -13,6 +13,8 @@ Pulse 0.4.2 retains the security foundation introduced in 0.3.0 and protects aga
 - direct document URLs and executable upload names
 - credential leakage through committed configuration
 - accidental recipient-data deletion during monitor edits
+- partial multi-monitor check-ins and conflicting pause/check-in transitions through transactions and row locks
+- false overdue states based only on theoretical elapsed time
 
 The release does not claim to protect message or document confidentiality after a hosting-account, database, or filesystem compromise because encryption is not implemented yet.
 
@@ -51,6 +53,14 @@ The upload allowlist and maximum size are controlled through `.env`. Content is 
 Allowed files are still untrusted content. Downloads therefore use attachment disposition, `nosniff`, and no-store caching headers.
 
 Editable text documents, default messages, and recipient-specific messages are stored as unencrypted database text. Uploaded file contents are stored as unencrypted private files outside the public web root. The interface identifies this limitation where content is edited.
+
+## Lifecycle integrity
+
+All state-changing lifecycle operations lock the affected monitor rows and update cycles, monitor timing caches, and audit entries in one database transaction. A global check-in therefore confirms either every active monitor selected by that transaction or none of them.
+
+The state machine rejects illegal or duplicate transitions. **Overdue** additionally requires the future notification worker to record every configured owner reminder as sent and to wait until the full response/reminder window has elapsed. **Escalated** is available only as an explicit internal transition for the point at which recipient delivery actually begins.
+
+The current audit table records lifecycle activity but is not append-only at the database-permission level. Immutable or externally anchored audit storage remains future hardening work.
 
 ## Known limitations
 
