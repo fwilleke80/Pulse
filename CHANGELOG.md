@@ -1,5 +1,56 @@
 # Changelog
 
+## 0.4.2 — 2026-08-11
+
+### Interface refinement
+
+- Made monitor titles in the overview link directly to their editors and removed the redundant **Edit** action button.
+- Reduced the monitor table's minimum width now that the actions column needs less space.
+- Moved **Monitors** before **Contacts** in the main navigation to match the primary workflow.
+- Replaced the separate **Back to monitors** link with a **Cancel** button beside **Save monitor settings**.
+- Fixed language switching on parameterized pages so the monitor ID and selected editor tab are preserved.
+
+## 0.4.1 — 2026-08-11
+
+### Interface fixes
+
+- Restored a dedicated Description column in the monitor overview and prevented action buttons from wrapping onto a second row.
+- Made monitor tabs server-rendered and link-backed, preventing the raw all-panels-visible state while CSS and JavaScript load and preserving navigation when JavaScript is unavailable.
+- Added versioned CSS and JavaScript URLs so updated interface assets are not mixed with stale cached files.
+- Added a visible **Check address** action beside unchecked recipients in the monitor editor and return navigation after saving the contact.
+
+## 0.4.0 — 2026-08-11
+
+### Monitor configuration
+
+- Rebuilt the monitor editor as four accessible, progressively enhanced tabs: Schedule, Recipients, Messages & documents, and Review & activation.
+- Added a persistent monitor-settings save bar and tab-specific validation redirects.
+- Added a default monitor subject and message plus optional recipient-specific overrides.
+- Added a configuration review with recipient, message, document, address-check, and activation warnings.
+- Changed post-creation flow to continue directly into the monitor editor.
+
+### Contacts
+
+- Added explicit owner confirmation that a recipient email address was checked.
+- Kept contact entry completely silent: Pulse sends no invitation, consent request, or verification message.
+- Added conservative warnings for common email-domain typos.
+- Added checked/not-checked address status to contact and monitor views.
+- Legacy contacts remain unchecked until their owner reviews them.
+
+### Documents
+
+- Added editable text documents stored in the database.
+- Added create, edit, recipient-assignment, and delete actions for text documents.
+- Unified recipient selection across text documents and uploaded files.
+- Fixed successful uploads with an empty optional title displaying `Document "" uploaded.`; the message now uses the uploaded filename.
+- Added a prominent reminder that messages, text documents, and uploaded files remain unencrypted at rest.
+
+### Status and foundation
+
+- Replaced Scheduled/Due terminology with Checked in, Awaiting check-in, Overdue, Escalated, and Paused.
+- Added persisted escalated-cycle awareness and a calculated overdue window based on response and reminder settings.
+- Added migration `004_complete_configuration.sql`, bilingual interface copy, status tests, email validation tests, and configuration regressions.
+
 ## 0.3.1 — 2026-08-11
 
 ### Deployment

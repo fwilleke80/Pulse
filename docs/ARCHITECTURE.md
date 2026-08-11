@@ -65,6 +65,7 @@ View or download response
 - `SecurityHeaders` — central response policy and host validation
 - `ErrorHandler` — production-safe diagnostics
 - `MigrationRunner` — ordered SQL migrations and checksums
+- `EmailAddressValidator` — local format validation and conservative typo suggestions without contacting recipients
 - `Database`, `Router`, `View`, `Translator`, and `Logger`
 
 ### Controllers
@@ -85,6 +86,8 @@ Later releases will add `MonitorExecutionService`, notification delivery, and en
 
 Repositories own prepared SQL. Ownership-sensitive queries bind the current user through the relevant parent record.
 
+`MessageRepository` saves a monitor's default message and all recipient overrides in one database transaction. Its ownership check locks the monitor and accepts override IDs only from that monitor's current assignments.
+
 `MonitorRepository::ReplaceContactsForMonitor()` now synchronizes assignments:
 
 - retained contacts keep the same `monitor_contacts.id`
@@ -100,13 +103,14 @@ This is essential because recipient messages and document-recipient links refere
 User
 ├── Contacts
 └── Monitors
+    ├── Default message
     ├── Monitor contacts
     │   └── Recipient-specific messages
     └── Documents
         └── Document-recipient assignments
 ```
 
-Documents belong to monitors. Delivery selection is modeled independently through `document_monitor_contacts`, allowing one document to be assigned to several recipients without duplicate storage.
+Documents belong to monitors. Delivery selection is modeled independently through `document_monitor_contacts`, allowing one document to be assigned to several recipients without duplicate storage. File contents live in private filesystem storage; editable text documents and their metadata live in the database.
 
 ## Monitor timing
 
@@ -120,6 +124,16 @@ A manual check-in is accepted only when the monitor:
 
 Confirmation sets `last_confirmed_at` to the current UTC time and schedules `next_check_due_at` by the monitor’s configured check interval. Cron evaluation, reminders, response windows, and escalation are deliberately deferred.
 
+The user-facing status model is:
+
+- **Checked in** — the next check-in is in the future
+- **Awaiting check-in** — the due time has passed but the configured response/reminder window remains open
+- **Overdue** — that complete window elapsed without a check-in
+- **Escalated** — the latest persisted check cycle records recipient notification
+- **Paused** — the schedule is deliberately suspended
+
+The notification engine is not active in 0.4.2, so this release can display an existing escalated cycle but does not create one or send mail itself.
+
 The interface converts UTC timestamps to `PULSE_DISPLAY_TIMEZONE`, which defaults to `Europe/Berlin`.
 
 ## Configuration
@@ -132,7 +146,7 @@ Production mode forces debug output off unless the environment is explicitly non
 
 Application bootstrap checks `schema_migrations`, verifies migration hashes, and applies pending `.sql` files in lexical order before handling the request. An up-to-date installation performs only the read-only version check. An installation that needs work acquires a database-specific advisory lock first, so simultaneous requests cannot apply a migration twice.
 
-For a pre-0.3.0 database with application tables but no migration history, it records migrations 001 and 002 as a legacy baseline and then applies 003. It never recreates or drops the existing application tables during that baseline operation.
+For a pre-0.3.0 database with application tables but no migration history, it records migrations 001 and 002 as a legacy baseline and then applies all later migrations in order. It never recreates or drops the existing application tables during that baseline operation.
 
 `tools/migrate.php` remains available as an optional command-line diagnostic for development environments. It is not required for installation or upgrades.
 
@@ -149,4 +163,4 @@ New uploads are:
 - assigned filesystem mode `0600`
 - delivered only through an authenticated, ownership-checked controller
 
-This prevents direct web access and executable filename behavior. It is not encryption. The 0.4.0 design will add authenticated encryption and key versioning.
+This prevents direct web access and executable filename behavior. It is not encryption. Messages and editable text documents are also unencrypted database values in 0.4.2. A later secure-storage release will add authenticated encryption and key versioning without changing the recipient-assignment model.

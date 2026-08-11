@@ -73,6 +73,17 @@ final class Request
 	}
 
 	/**
+	 * @brief Returns the safe local request target, including its query string.
+	 * @return string
+	 */
+	public function Target(): string
+	{
+		$uri = (string)($this->_server['REQUEST_URI'] ?? '/');
+
+		return SafeRedirect::Normalize($uri, $this->Path());
+	}
+
+	/**
 	 * @brief Returns a trimmed POST string with a maximum length.
 	 * @param string $name Input name.
 	 * @param int $maximumLength Maximum returned byte length.

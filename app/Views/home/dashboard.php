@@ -40,9 +40,11 @@ ob_start();
 	<?php else: ?>
 		<div class="due-monitor-list">
 			<?php foreach ($dueMonitors as $monitor): ?>
+				<?php $monitorStatus = monitor_status($monitor); ?>
 				<div class="due-monitor-card">
 					<div>
-						<strong><?= e((string)$monitor['name']) ?></strong><br>
+						<strong><?= e((string)$monitor['name']) ?></strong>
+						<span class="status-badge status-<?= e($monitorStatus) ?>"><?= e__('monitors.status.' . $monitorStatus) ?></span><br>
 						<small><?= e__('dashboard.monitors.due_since', ['date' => format_datetime(isset($monitor['next_check_due_at']) ? (string)$monitor['next_check_due_at'] : null)]) ?></small>
 					</div>
 					<form method="post" action="<?= e($base_url) ?>/monitors/check-in">

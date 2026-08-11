@@ -1,4 +1,4 @@
--- Pulse 0.3.1 reference database schema
+-- Pulse 0.4.2 reference database schema
 -- MySQL 8+ / MariaDB 10.6+
 -- Pulse applies database/migrations automatically. Do not import this reference file over an existing database.
 -- ----
@@ -36,6 +36,7 @@ CREATE TABLE contacts
 	user_id BIGINT UNSIGNED NOT NULL,
 	name VARCHAR(255) NOT NULL,
 	email VARCHAR(255) NOT NULL,
+	email_checked_at DATETIME NULL,
 	cell_phone VARCHAR(50) NULL,
 	notes TEXT NULL,
 	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -49,6 +50,8 @@ CREATE TABLE monitors
 	user_id BIGINT UNSIGNED NOT NULL,
 	name VARCHAR(255) NOT NULL,
 	description TEXT NULL,
+	default_message_subject VARCHAR(255) NULL,
+	default_message_body LONGTEXT NULL,
 	check_interval_days INT NOT NULL,
 	response_window_days INT NOT NULL,
 	reminder_interval_days INT NOT NULL,
@@ -78,6 +81,7 @@ CREATE TABLE contact_messages
 	monitor_contact_id BIGINT UNSIGNED NOT NULL,
 	subject VARCHAR(255) NOT NULL,
 	body_text LONGTEXT NOT NULL,
+	UNIQUE KEY uq_contact_messages_monitor_contact (monitor_contact_id),
 	FOREIGN KEY (monitor_contact_id)
 		REFERENCES monitor_contacts(id)
 		ON DELETE CASCADE

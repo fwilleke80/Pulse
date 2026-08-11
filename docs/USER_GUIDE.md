@@ -2,19 +2,20 @@
 
 ## Current scope
 
-Pulse 0.3.1 lets you:
+Pulse 0.4.2 lets you:
 
 - sign in and update your profile
-- create and edit trusted contacts
-- create monitors and assign contacts
-- upload approved document types to a monitor
-- choose document recipients from that monitor’s contacts
-- see whether monitors are scheduled, due, or paused
+- create and edit trusted contacts and confirm that you checked their addresses
+- configure monitors in four focused editor tabs
+- prepare a default delivery message and optional recipient-specific messages
+- create editable text documents or upload approved file types
+- assign text and file documents to individual monitor recipients
+- see whether monitors are checked in, awaiting check-in, overdue, escalated, or paused
 - manually confirm a due monitor
 
 Automatic reminder mail, escalation, contact notifications, and recipient document access are not active yet.
 
-Uploaded files are private from normal website visitors, but they are not encrypted at rest in this version. Do not upload your final highly sensitive documents until the encrypted-storage release is complete.
+Uploaded files are private from normal website visitors, but files, messages, and editable text documents are not encrypted at rest in this version. Do not store your final highly sensitive material until the encrypted-storage release is complete.
 
 ## Contacts
 
@@ -22,15 +23,32 @@ A contact is someone who may later receive a message or document. Create contact
 
 Editing a contact updates the shared contact record. Removing a contact also removes that contact’s monitor assignments through database relationships.
 
+Pulse requires you to confirm that you carefully checked a contact's email address. This is not consent or remote verification: the checkbox records only your review. Pulse does not send an invitation, approval request, or verification email. If the address resembles a common domain typo, Pulse displays a suggestion but leaves the decision to you.
+
+Contacts created before 0.4.0 initially show **Not yet checked**. In a monitor editor, open **Recipients**, select **Check address** beside the contact, review the address, tick the confirmation box, and save. Pulse returns to the same monitor tab and records the new status.
+
 ## Monitors
 
-A monitor describes how frequently you intend to confirm that you are active. Its editor contains future reminder/escalation settings as well as its contact assignments.
+A monitor describes how frequently you intend to confirm that you are active. Its editor contains four sections:
+
+1. **Schedule** — monitor identity, check-in interval, response window, and reminder settings
+2. **Recipients** — contacts assigned to this monitor and their address-check state
+3. **Messages & documents** — delivery wording and recipient document assignments
+4. **Review & activation** — a configuration summary, warnings, and the paused state
+
+The sticky save action stores schedule, recipient selection, and activation together. **Cancel** returns to the monitor overview without saving changes to those settings. Messages and individual documents have their own explicit save actions.
+
+Select a monitor's linked title in the overview to open its editor.
 
 The monitor overview focuses on runtime state:
 
-- **Scheduled** — no confirmation is currently required
-- **Due** — the monitor can be confirmed now
+- **Checked in** — the next confirmation is still in the future
+- **Awaiting check-in** — confirmation is due and the response/reminder window remains open
+- **Overdue** — that complete window elapsed without a response
+- **Escalated** — a persisted check cycle records that recipients were contacted
 - **Paused** — no confirmation is currently expected
+
+Pulse 0.4.2 does not yet run the reminder and notification engine. It presents the complete status vocabulary and timing calculation, but it does not send escalation mail.
 
 The displayed timestamps use the configured local display timezone. Storage and comparisons use UTC.
 
@@ -40,9 +58,17 @@ When a monitor is due, **Check in now** appears on the dashboard and monitor ove
 
 The action is intentionally one click, but it is accepted only for a due, active monitor owned by the signed-in user.
 
+## Messages
+
+The default subject and message apply to every assigned recipient. Enable a personal override for a recipient only when that person should receive different wording. A personal message requires both its own subject and body.
+
+Removing a recipient from a monitor also removes that assignment's personal message and document links. The contact itself remains available elsewhere in Pulse.
+
 ## Documents
 
-Open a monitor’s editor to upload documents and assign recipients.
+Open **Messages & documents** in a monitor editor to create text documents, upload files, and assign either type to one or more recipients.
+
+Editable text documents are stored in the database. They can be changed directly in the editor. Uploaded document contents are stored as server files outside the public web directory; the database contains their safe storage identifiers and metadata rather than a file BLOB.
 
 The default upload policy accepts PDF, RTF, OpenDocument Text, Word `.docx`, JPEG, PNG, and plain text files up to 25 MiB. Administrators can change the size and MIME allowlists in `.env`.
 

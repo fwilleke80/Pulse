@@ -23,6 +23,7 @@ use Pulse\Core\View;
 use Pulse\Repositories\ContactRepository;
 use Pulse\Repositories\DocumentRepository;
 use Pulse\Repositories\LoginThrottleRepository;
+use Pulse\Repositories\MessageRepository;
 use Pulse\Repositories\MonitorRepository;
 use Pulse\Repositories\UserRepository;
 use Pulse\Services\AuthService;
@@ -92,6 +93,7 @@ $userRepository = new UserRepository($database);
 $contactRepository = new ContactRepository($database);
 $monitorRepository = new MonitorRepository($database);
 $documentRepository = new DocumentRepository($database);
+$messageRepository = new MessageRepository($database);
 $loginThrottleRepository = new LoginThrottleRepository($database);
 $loginThrottle = new LoginThrottleService($loginThrottleRepository, (array)$appConfig['security']);
 $auth = new AuthService($userRepository, $session, $logger);
@@ -124,7 +126,7 @@ $view->SetGlobals([
 	'currentUser' => $auth->GetCurrentUser(),
 	'locale' => $locale,
 	'base_url' => $appConfig['base_url'],
-	'currentPath' => $request->Path(),
+	'currentTarget' => $request->Target(),
 ]);
 
 return [
@@ -143,6 +145,7 @@ return [
 	'contactRepository' => $contactRepository,
 	'monitorRepository' => $monitorRepository,
 	'documentRepository' => $documentRepository,
+	'messageRepository' => $messageRepository,
 	'documentService' => $documentService,
 	'loginThrottle' => $loginThrottle,
 ];

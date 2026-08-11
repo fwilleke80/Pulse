@@ -41,6 +41,8 @@ class MonitorRepository
 				id,
 				name,
 				description,
+				default_message_subject,
+				default_message_body,
 				check_interval_days,
 				response_window_days,
 				reminder_interval_days,
@@ -49,7 +51,22 @@ class MonitorRepository
 				last_confirmed_at,
 				next_check_due_at,
 				created_at,
-				updated_at
+				updated_at,
+				(
+					SELECT cc.status
+					FROM check_cycles cc
+					WHERE cc.monitor_id = monitors.id
+					  AND (monitors.last_confirmed_at IS NULL OR cc.started_at > monitors.last_confirmed_at)
+					ORDER BY cc.started_at DESC, cc.id DESC
+					LIMIT 1
+				) AS latest_cycle_status,
+				(
+					SELECT COUNT(*)
+					FROM monitor_contacts warning_mc
+					INNER JOIN contacts warning_c ON warning_c.id = warning_mc.contact_id
+					WHERE warning_mc.monitor_id = monitors.id
+					  AND warning_c.email_checked_at IS NULL
+				) AS unchecked_contact_count
 			FROM monitors
 			WHERE user_id = :user_id
 			ORDER BY name ASC
@@ -77,6 +94,8 @@ class MonitorRepository
 				id,
 				name,
 				description,
+				default_message_subject,
+				default_message_body,
 				check_interval_days,
 				response_window_days,
 				reminder_interval_days,
@@ -85,7 +104,15 @@ class MonitorRepository
 				last_confirmed_at,
 				next_check_due_at,
 				created_at,
-				updated_at
+				updated_at,
+				(
+					SELECT cc.status
+					FROM check_cycles cc
+					WHERE cc.monitor_id = monitors.id
+					  AND (monitors.last_confirmed_at IS NULL OR cc.started_at > monitors.last_confirmed_at)
+					ORDER BY cc.started_at DESC, cc.id DESC
+					LIMIT 1
+				) AS latest_cycle_status
 			FROM monitors
 			WHERE id = :id
 			  AND user_id = :user_id
@@ -468,6 +495,7 @@ class MonitorRepository
 				mc.sort_order,
 				c.name,
 				c.email,
+				c.email_checked_at,
 				c.cell_phone,
 				c.notes
 			FROM monitor_contacts mc

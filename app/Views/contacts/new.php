@@ -20,11 +20,19 @@ ob_start();
 	<label for="name"><?= e__('contacts.add.name') ?></label>
 	<input type="text" id="name" name="name" required>
 	<label for="email"><?= e__('contacts.add.email') ?></label>
-	<input type="email" id="email" name="email" required>
+	<input type="email" id="email" name="email" data-contact-email required>
+	<p class="email-suggestion is-hidden" data-email-suggestion data-suggestion-template="<?= e__('contacts.email.suggestion') ?>" role="status"></p>
+	<div class="checkbox-row contact-email-check">
+		<label>
+			<input type="checkbox" name="email_checked" data-email-checked required>
+			<?= e__('contacts.email_checked.label') ?>
+		</label>
+		<small><?= e__('contacts.email_checked.hint') ?></small>
+	</div>
 	<label for="cell_phone"><?= e__('contacts.add.cell_phone') ?></label>
 	<input type="text" id="cell_phone" name="cell_phone">
 	<label for="notes"><?= e__('contacts.add.notes') ?></label>
-	<input type="text" id="notes" name="notes">
+	<textarea id="notes" name="notes" rows="3"></textarea>
 	<button type="submit"><?= e__('contacts.add.submit') ?></button>
 </form>
 

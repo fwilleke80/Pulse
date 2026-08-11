@@ -2,9 +2,9 @@
 
 Pulse is a small, framework-free PHP application for personal emergency check-ins. It lets a user configure monitors, trusted contacts, and recipient-specific documents in preparation for a later staged notification and delivery workflow.
 
-Version **0.3.1** is the shared-hosting update to the 0.3 security-and-foundation release. It adds safe automatic database migrations, so installation and upgrades require neither shell nor terminal access. Automated reminders, escalation, recipient delivery, MFA, and document encryption are not implemented yet.
+Version **0.4.2** completes monitor configuration. It adds a tabbed monitor editor, default and recipient-specific messages, editable text documents, document-recipient assignment, owner-confirmed contact address checks, and clearer monitor states. Automated reminders, notification delivery, recipient access, MFA, and document encryption are not implemented yet.
 
-> **Important:** Pulse 0.3.1 stores uploaded documents outside the public web root, but it does not encrypt them at rest. Do not treat this release as the finished secure vault for highly sensitive documents. Encryption is the primary goal of 0.4.0.
+> **Important:** Pulse 0.4.2 stores uploaded files outside the public web root, but files, messages, and editable text documents are not encrypted at rest. Do not treat this release as the finished secure vault for highly sensitive material. Secure storage is planned for a later release.
 
 ## Requirements
 
@@ -40,10 +40,10 @@ Pulse/bootstrap.php
 
 `public/index.php` does not search its own directory for the application. Its `dirname(__DIR__)` expression resolves the parent Pulse directory, then loads the root `bootstrap.php`.
 
-## Upgrading from 0.2.9 or 0.3.0
+## Upgrading to 0.4.2
 
 1. Back up the database and `storage/` directory.
-2. Extract the 0.3.1 source ZIP over the existing Pulse project directory.
+2. Extract the 0.4.2 source ZIP over the existing Pulse project directory.
 3. When upgrading from 0.2.9, create `.env` from `.env.example`; do not copy credentials back into `config/database.php`.
 4. Rotate the former database and application passwords if this was not already done.
 5. Confirm that the server document root is `public/`.
@@ -51,6 +51,20 @@ Pulse/bootstrap.php
 7. Delete any old `__MACOSX`, `.DS_Store`, and `__pycache__` material left by earlier archives.
 
 The migration runner detects a pre-migration Pulse database, records the consolidated legacy baseline, and applies only the required migrations. Existing user, contact, monitor, and document data is retained. A database-level advisory lock prevents concurrent requests from applying the same migration twice.
+
+Existing contacts begin with an unchecked address state because Pulse cannot know whether you previously reviewed their email addresses. In a monitor editor, open **Recipients**, choose **Check address** beside the contact, review the address, tick the confirmation box, and save. This confirmation is local to your account; Pulse does not send the contact any message.
+
+## 0.4 complete configuration
+
+- The monitor editor is organized into Schedule, Recipients, Messages & documents, and Review & activation tabs.
+- A monitor can define one default delivery subject and message.
+- Each assigned recipient can optionally override the default message.
+- Editable text documents can be created directly in Pulse and assigned to recipients.
+- Uploaded files and text documents share the same recipient-assignment model.
+- Contact email addresses require an explicit owner check and receive conservative common-domain typo warnings.
+- Adding or checking a contact never sends an invitation, approval request, or verification email.
+- Monitor state now distinguishes Checked in, Awaiting check-in, Overdue, Escalated, and Paused.
+- The upload notification now displays the actual uploaded filename when its optional title is empty.
 
 ## 0.3 security foundation
 

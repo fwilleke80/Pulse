@@ -173,6 +173,69 @@ class DocumentRepository
 	}
 
 	/**
+	 * @brief Creates an editable text document for a monitor.
+	 * @param int $monitorId Monitor ID.
+	 * @param string $title Document title.
+	 * @param string $textContent Document body.
+	 * @return int New document ID.
+	 */
+	public function CreateTextDocumentForMonitor(int $monitorId, string $title, string $textContent): int
+	{
+		$statement = $this->_database->GetConnection()->prepare('
+			INSERT INTO documents
+			(
+				monitor_id,
+				title,
+				storage_type,
+				text_content,
+				created_at,
+				updated_at
+			)
+			VALUES
+			(
+				:monitor_id,
+				:title,
+				:text_storage_type,
+				:text_content,
+				UTC_TIMESTAMP(),
+				UTC_TIMESTAMP()
+			)
+		');
+		$statement->execute([
+			'monitor_id' => $monitorId,
+			'title' => $title,
+			'text_storage_type' => 'text',
+			'text_content' => $textContent,
+		]);
+
+		return (int)$this->_database->GetConnection()->lastInsertId();
+	}
+
+	/**
+	 * @brief Updates an editable text document.
+	 * @param int $documentId Document ID.
+	 * @param string $title Document title.
+	 * @param string $textContent Document body.
+	 */
+	public function UpdateTextDocument(int $documentId, string $title, string $textContent): void
+	{
+		$statement = $this->_database->GetConnection()->prepare('
+			UPDATE documents
+			SET title = :title,
+				text_content = :text_content,
+				updated_at = UTC_TIMESTAMP()
+			WHERE id = :document_id
+			  AND storage_type = :text_storage_type
+		');
+		$statement->execute([
+			'document_id' => $documentId,
+			'title' => $title,
+			'text_content' => $textContent,
+			'text_storage_type' => 'text',
+		]);
+	}
+
+	/**
 	 * @brief Deletes a document by ID.
 	 * @param int $documentId Document ID.
 	 */

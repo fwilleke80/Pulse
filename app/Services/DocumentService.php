@@ -159,6 +159,89 @@ class DocumentService
 	}
 
 	/**
+	 * @brief Creates an editable text document and its recipient assignments.
+	 * @param int $userId Owner user ID.
+	 * @param int $monitorId Monitor ID.
+	 * @param string $title Document title.
+	 * @param string $textContent Document content.
+	 * @param array<int> $recipientIds Requested monitor-contact IDs.
+	 * @return int New document ID.
+	 */
+	public function CreateTextForUser(
+		int $userId,
+		int $monitorId,
+		string $title,
+		string $textContent,
+		array $recipientIds
+	): int
+	{
+		if ($this->_monitorRepository->FindByIdForUser($monitorId, $userId) === null)
+		{
+			throw new DocumentException('monitors.documents.flash.monitor_not_found');
+		}
+
+		if ($title === '' || trim($textContent) === '')
+		{
+			throw new DocumentException('monitors.documents.flash.text_required');
+		}
+
+		$documentId = $this->_documentRepository->CreateTextDocumentForMonitor($monitorId, $title, $textContent);
+		$this->_documentRepository->ReplaceRecipientsForDocument(
+			$documentId,
+			$this->FilterRecipientIds($userId, $monitorId, $recipientIds)
+		);
+		$this->_logger->Info('Text document created', [
+			'user_id' => $userId,
+			'monitor_id' => $monitorId,
+			'document_id' => $documentId,
+		]);
+
+		return $documentId;
+	}
+
+	/**
+	 * @brief Updates an editable text document and its recipients.
+	 * @param int $userId Owner user ID.
+	 * @param int $monitorId Monitor ID.
+	 * @param int $documentId Document ID.
+	 * @param string $title Document title.
+	 * @param string $textContent Document content.
+	 * @param array<int> $recipientIds Requested monitor-contact IDs.
+	 */
+	public function UpdateTextForUser(
+		int $userId,
+		int $monitorId,
+		int $documentId,
+		string $title,
+		string $textContent,
+		array $recipientIds
+	): void
+	{
+		$document = $this->_documentRepository->FindByIdForMonitorAndUser($documentId, $monitorId, $userId);
+
+		if ($document === null || (string)$document['storage_type'] !== 'text')
+		{
+			throw new DocumentException('monitors.documents.flash.document_not_found');
+		}
+
+		if ($title === '' || trim($textContent) === '')
+		{
+			throw new DocumentException('monitors.documents.flash.text_required');
+		}
+
+		$this->_documentRepository->UpdateTextDocument($documentId, $title, $textContent);
+		$this->_documentRepository->ReplaceRecipientsForDocument(
+			$documentId,
+			$this->FilterRecipientIds($userId, $monitorId, $recipientIds)
+		);
+		$this->_logger->Info('Text document updated', [
+			'user_id' => $userId,
+			'monitor_id' => $monitorId,
+			'document_id' => $documentId,
+		]);
+	}
+
+	/**
 	 * @brief Replaces recipients after validating ownership and assignment scope.
 	 * @param int $userId Owner user ID.
 	 * @param int $monitorId Monitor ID.

@@ -25,6 +25,7 @@ ob_start();
 			<tr>
 				<th><?= e__('contacts.index.table.name') ?></th>
 				<th><?= e__('contacts.index.table.email') ?></th>
+				<th><?= e__('contacts.index.table.address_status') ?></th>
 				<th><?= e__('contacts.index.table.cell_phone') ?></th>
 				<th><?= e__('contacts.index.table.notes') ?></th>
 				<th></th>
@@ -35,6 +36,13 @@ ob_start();
 				<tr>
 					<td><?= e((string)$contact['name']) ?></td>
 					<td><a href="mailto:<?= e((string)$contact['email']) ?>"><?= e((string)$contact['email']) ?></a></td>
+					<td>
+						<?php if (!empty($contact['email_checked_at'])): ?>
+							<span class="status-badge status-checked-in"><?= e__('contacts.status.checked') ?></span>
+						<?php else: ?>
+							<span class="status-badge status-overdue"><?= e__('contacts.status.not_checked') ?></span>
+						<?php endif; ?>
+					</td>
 					<td><a href="tel:<?= e((string)($contact['cell_phone'] ?? '')) ?>"><?= e((string)($contact['cell_phone'] ?? '')) ?></a></td>
 					<td><?= e(abbrev((string)$contact['notes'], 40)) ?></td>
 					<td>

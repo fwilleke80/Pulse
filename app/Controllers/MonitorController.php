@@ -16,6 +16,7 @@ use Pulse\Core\Session;
 use Pulse\Core\View;
 use Pulse\Repositories\ContactRepository;
 use Pulse\Repositories\DocumentRepository;
+use Pulse\Repositories\MessageRepository;
 use Pulse\Repositories\MonitorRepository;
 use Pulse\Services\AuthService;
 use Pulse\Services\DocumentService;
@@ -28,6 +29,7 @@ class MonitorController extends BaseController
 	private MonitorRepository $_monitorRepository;
 	private ContactRepository $_contactRepository;
 	private DocumentRepository $_documentRepository;
+	private MessageRepository $_messageRepository;
 	private DocumentService $_documentService;
 	private bool $_allowForceDue;
 
@@ -41,6 +43,7 @@ class MonitorController extends BaseController
 	 * @param MonitorRepository $monitorRepository Monitor repository.
 	 * @param ContactRepository $contactRepository Contact repository.
 	 * @param DocumentRepository $documentRepository Document repository.
+	 * @param MessageRepository $messageRepository Message repository.
 	 * @param DocumentService $documentService Document service.
 	 * @param bool $allowForceDue Whether the development-only action is enabled.
 	 */
@@ -53,6 +56,7 @@ class MonitorController extends BaseController
 		MonitorRepository $monitorRepository,
 		ContactRepository $contactRepository,
 		DocumentRepository $documentRepository,
+		MessageRepository $messageRepository,
 		DocumentService $documentService,
 		bool $allowForceDue
 	)
@@ -61,6 +65,7 @@ class MonitorController extends BaseController
 		$this->_monitorRepository = $monitorRepository;
 		$this->_contactRepository = $contactRepository;
 		$this->_documentRepository = $documentRepository;
+		$this->_messageRepository = $messageRepository;
 		$this->_documentService = $documentService;
 		$this->_allowForceDue = $allowForceDue;
 	}
@@ -113,7 +118,7 @@ class MonitorController extends BaseController
 		$this->_monitorRepository->ReplaceContactsForMonitor($monitorId, (int)$user['id'], $contactIds);
 		$this->_logger->Info('Monitor created', ['user_id' => (int)$user['id'], 'monitor_id' => $monitorId]);
 		$this->Flash('success', __('monitors.add.flash.created', ['name' => $values['name']]));
-		$this->Redirect('/monitors');
+		$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=recipients');
 	}
 
 	/** @brief Displays the monitor editor and related document metadata. @return string */
@@ -130,6 +135,7 @@ class MonitorController extends BaseController
 		}
 
 		$documents = $this->_documentRepository->FindAllByMonitorIdForUser($monitorId, (int)$user['id']);
+		$messageOverrides = $this->_messageRepository->FindByMonitorIdForUser($monitorId, (int)$user['id']);
 
 		foreach ($documents as &$document)
 		{
@@ -144,6 +150,8 @@ class MonitorController extends BaseController
 			'assignedContactIds' => $this->_monitorRepository->FindContactIdsByMonitorId($monitorId),
 			'monitorContacts' => $this->_monitorRepository->FindMonitorContactsByMonitorIdForUser($monitorId, (int)$user['id']),
 			'documents' => $documents,
+			'messageOverrides' => $messageOverrides,
+			'activeTab' => $this->ActiveEditorTab(),
 		]);
 	}
 
@@ -162,7 +170,7 @@ class MonitorController extends BaseController
 
 		$values = $this->MonitorInput();
 
-		if (!$this->ValidateMonitorInput($values, '/monitors/edit?id=' . $monitorId, $monitorId))
+		if (!$this->ValidateMonitorInput($values, '/monitors/edit?id=' . $monitorId . '&tab=schedule', $monitorId))
 		{
 			return;
 		}
@@ -185,7 +193,68 @@ class MonitorController extends BaseController
 		);
 		$this->_logger->Info('Monitor updated', ['user_id' => (int)$user['id'], 'monitor_id' => $monitorId]);
 		$this->Flash('success', __('monitors.edit.flash.updated', ['name' => $values['name']]));
-		$this->Redirect('/monitors');
+		$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=review');
+	}
+
+	/** @brief Updates the default and recipient-specific delivery messages. */
+	public function UpdateMessages(): void
+	{
+		$user = $this->RequireUser();
+		$userId = (int)$user['id'];
+		$monitorId = $this->_request->PostInt('monitor_id');
+
+		if ($this->_monitorRepository->FindByIdForUser($monitorId, $userId) === null)
+		{
+			$this->Flash('error', __('monitors.edit.flash.notfound'));
+			$this->Redirect('/monitors');
+		}
+
+		$defaultSubject = $this->_request->PostString('default_message_subject', 255);
+		$defaultBody = $this->_request->PostString('default_message_body', 1000000, false);
+
+		if (($defaultSubject === '') !== (trim($defaultBody) === ''))
+		{
+			$this->Flash('error', __('monitors.messages.flash.default_incomplete'));
+			$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=messages');
+		}
+
+		$overrides = [];
+		$monitorContacts = $this->_monitorRepository->FindMonitorContactsByMonitorIdForUser($monitorId, $userId);
+
+		foreach ($monitorContacts as $monitorContact)
+		{
+			$monitorContactId = (int)$monitorContact['id'];
+
+			if (!$this->_request->PostBool('message_override_' . $monitorContactId))
+			{
+				continue;
+			}
+
+			$subject = $this->_request->PostString('message_subject_' . $monitorContactId, 255);
+			$body = $this->_request->PostString('message_body_' . $monitorContactId, 1000000, false);
+
+			if ($subject === '' || trim($body) === '')
+			{
+				$this->Flash('error', __('monitors.messages.flash.override_incomplete', ['name' => (string)$monitorContact['name']]));
+				$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=messages');
+			}
+
+			$overrides[$monitorContactId] = [
+				'subject' => $subject,
+				'body_text' => $body,
+			];
+		}
+
+		$this->_messageRepository->ReplaceForMonitor(
+			$monitorId,
+			$userId,
+			$defaultSubject !== '' ? $defaultSubject : null,
+			trim($defaultBody) !== '' ? $defaultBody : null,
+			$overrides
+		);
+		$this->_logger->Info('Monitor messages updated', ['user_id' => $userId, 'monitor_id' => $monitorId]);
+		$this->Flash('success', __('monitors.messages.flash.updated'));
+		$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=messages');
 	}
 
 	/** @brief Deletes an owned monitor and all of its physical document files. */
@@ -306,5 +375,13 @@ class MonitorController extends BaseController
 		$target = $this->_request->PostString('redirect', 100);
 
 		return in_array($target, ['/', '/monitors'], true) ? $target : '/monitors';
+	}
+
+	/** @brief Returns a supported monitor editor tab from the query. @return string */
+	private function ActiveEditorTab(): string
+	{
+		$tab = $this->_request->QueryString('tab', 20);
+
+		return in_array($tab, ['schedule', 'recipients', 'messages', 'review'], true) ? $tab : 'schedule';
 	}
 }

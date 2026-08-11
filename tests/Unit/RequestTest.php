@@ -26,10 +26,19 @@ class RequestTest extends TestCase
 
 		self::assertSame('POST', $request->Method());
 		self::assertSame('/monitors/edit', $request->Path());
+		self::assertSame('/monitors/edit?id=42', $request->Target());
 		self::assertSame(42, $request->QueryInt('id'));
 		self::assertSame('Pulse', $request->PostString('name'));
 		self::assertSame([2, 5], $request->PostIntArray('ids'));
 		self::assertTrue($request->PostBool('enabled'));
 		self::assertSame('127.0.0.1', $request->ClientIp());
+	}
+
+	public function testTargetRejectsAnExternalRequestUri(): void
+	{
+		$request = new Request([], [], [], ['REQUEST_URI' => 'https://attacker.example/monitors']);
+
+		self::assertSame('/monitors', $request->Path());
+		self::assertSame('/monitors', $request->Target());
 	}
 }

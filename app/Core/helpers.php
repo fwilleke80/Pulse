@@ -130,19 +130,44 @@ function format_datetime(?string $value, string $fallback = '—'): string
  */
 function is_monitor_due(array $monitor): bool
 {
+	return in_array(monitor_status($monitor), ['awaiting', 'overdue', 'escalated'], true);
+}
+
+/**
+ * @brief Returns the user-facing monitor state identifier.
+ * @param array<string, mixed> $monitor Monitor row.
+ * @return string One of checked-in, awaiting, overdue, escalated, or paused.
+ */
+function monitor_status(array $monitor): string
+{
 	if (!empty($monitor['is_paused']))
 	{
-		return false;
+		return 'paused';
+	}
+
+	if (($monitor['latest_cycle_status'] ?? null) === 'escalated')
+	{
+		return 'escalated';
 	}
 
 	$nextDue = $monitor['next_check_due_at'] ?? null;
 
 	if (!is_string($nextDue) || $nextDue === '')
 	{
-		return true;
+		return 'awaiting';
 	}
 
-	$timestamp = strtotime($nextDue . ' UTC');
+	$dueTimestamp = strtotime($nextDue . ' UTC');
 
-	return $timestamp !== false && $timestamp <= time();
+	if ($dueTimestamp === false || $dueTimestamp > time())
+	{
+		return 'checked-in';
+	}
+
+	$responseDays = max(0, (int)($monitor['response_window_days'] ?? 0));
+	$reminderDays = max(0, (int)($monitor['reminder_interval_days'] ?? 0));
+	$maximumReminders = max(0, (int)($monitor['max_reminders'] ?? 0));
+	$overdueTimestamp = $dueTimestamp + (($responseDays + ($reminderDays * $maximumReminders)) * 86400);
+
+	return time() >= $overdueTimestamp ? 'overdue' : 'awaiting';
 }

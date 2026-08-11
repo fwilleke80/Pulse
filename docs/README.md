@@ -10,4 +10,4 @@ Detailed documents:
 - [Upgrade guide](UPGRADING.md)
 - [Changelog](../CHANGELOG.md)
 
-Pulse 0.3.1 is the shared-hosting update to the security-and-foundation release. It supports automatic database migration, private outside-webroot file storage, runtime monitor status, and manual due-monitor check-ins. It does not yet implement encrypted document storage, reminders, escalation, recipient access, or automated delivery.
+Pulse 0.4.2 is the complete-configuration release. It supports a tabbed monitor editor, owner-checked recipient addresses, default and recipient-specific messages, editable text documents, file documents, recipient assignment, automatic database migration, and manual due-monitor check-ins. It does not yet implement encrypted storage, reminder processing, notification delivery, or recipient access.

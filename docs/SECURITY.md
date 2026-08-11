@@ -1,8 +1,8 @@
 # Pulse security model
 
-## 0.3.0 protection goals
+## Current protection goals
 
-Pulse 0.3.0 is designed to protect against common web application failures:
+Pulse 0.4.2 retains the security foundation introduced in 0.3.0 and protects against common web application failures:
 
 - cross-user access to contacts, monitors, and documents
 - cross-site request forgery
@@ -14,7 +14,13 @@ Pulse 0.3.0 is designed to protect against common web application failures:
 - credential leakage through committed configuration
 - accidental recipient-data deletion during monitor edits
 
-The release does not claim to protect document confidentiality after a hosting-account or filesystem compromise because document encryption is not implemented yet.
+The release does not claim to protect message or document confidentiality after a hosting-account, database, or filesystem compromise because encryption is not implemented yet.
+
+## Silent contact validation
+
+Contact address checking is deliberately owner-side. Pulse validates email syntax, offers a small set of conservative common-domain typo suggestions, and stores the time at which the signed-in owner confirmed reviewing the address.
+
+It does not contact the address owner, request consent, verify mailbox ownership, or promise deliverability. Those actions would both disclose the future-delivery setup and conflict with the intended surprise-delivery use case.
 
 ## Secrets
 
@@ -44,6 +50,8 @@ The upload allowlist and maximum size are controlled through `.env`. Content is 
 
 Allowed files are still untrusted content. Downloads therefore use attachment disposition, `nosniff`, and no-store caching headers.
 
+Editable text documents, default messages, and recipient-specific messages are stored as unencrypted database text. Uploaded file contents are stored as unencrypted private files outside the public web root. The interface identifies this limitation where content is edited.
+
 ## Known limitations
 
 Before Pulse is suitable for final sensitive documents, it still needs:
@@ -69,5 +77,5 @@ Application-level encryption protects database dumps, filesystem copies, and man
 - Restrict `.env`, storage, backup, and database permissions.
 - Rotate credentials that existed before 0.3.0.
 - Back up the database before extracting an update; Pulse applies pending migrations automatically on the first request.
-- Keep off-site backups, but do not assume unencrypted 0.3.0 document backups are confidential.
+- Keep off-site backups, but do not assume unencrypted message or document backups are confidential.
 - Review logs without copying sensitive document or contact data into them.

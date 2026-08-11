@@ -5,7 +5,7 @@ declare(strict_types=1);
 /** @var string $appVersion */
 /** @var string $locale */
 /** @var string $base_url */
-/** @var string $currentPath */
+/** @var string $currentTarget */
 /** @var bool $isAuthenticated */
 /** @var array<string, mixed>|null $currentUser */
 /** @var array<string, string>|null $flash */
@@ -18,9 +18,9 @@ declare(strict_types=1);
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title><?= htmlspecialchars((isset($title) ? ($title . " :: ") : "") . $appName, ENT_QUOTES, 'UTF-8') ?></title>
-	<link rel="stylesheet" href="<?= e($base_url) ?>/assets/style.css">
+	<link rel="stylesheet" href="<?= e($base_url) ?>/assets/style.css?v=<?= e(rawurlencode((string)$appVersion)) ?>">
 	<link rel="icon" href="<?= e($base_url) ?>/favicon.png">
-	<script src="<?= e($base_url) ?>/assets/app.js" defer></script>
+	<script src="<?= e($base_url) ?>/assets/app.js?v=<?= e(rawurlencode((string)$appVersion)) ?>" defer></script>
 </head>
 <body>
 
@@ -31,10 +31,10 @@ declare(strict_types=1);
 </header>
 
 <?php if (!empty($isAuthenticated)): ?>
-<nav class="main-nav">
+<nav class="main-nav" aria-label="<?= e__('nav.primary') ?>">
 	<a href="<?= e($base_url) ?>/"><?= e__('nav.dashboard') ?></a>
-	<a href="<?= e($base_url) ?>/contacts"><?= e__('nav.contacts') ?></a>
 	<a href="<?= e($base_url) ?>/monitors"><?= e__('nav.monitors') ?></a>
+	<a href="<?= e($base_url) ?>/contacts"><?= e__('nav.contacts') ?></a>
 	<a href="<?= e($base_url) ?>/profile"><?= e__('nav.profile') ?></a>
 	<form method="post" action="<?= e($base_url) ?>/logout" class="nav-form">
 		<?= csrf_field() ?>
@@ -55,24 +55,24 @@ declare(strict_types=1);
 </main>
 
 <footer>
-	<nav class="footer-nav">
-		<span class="language-switcher">
+	<nav class="footer-nav" aria-label="<?= e__('footer.links') ?>">
+		<div class="language-switcher">
 			<?= e__('footer.language') ?> [
 			<form method="post" action="<?= e($base_url) ?>/language/set">
 				<?= csrf_field() ?>
 				<input type="hidden" name="locale" value="en">
-				<input type="hidden" name="redirect" value="<?= e($currentPath) ?>">
+				<input type="hidden" name="redirect" value="<?= e($currentTarget) ?>">
 				<button type="submit" class="link-button"><?= e__('footer.language.en') ?></button>
 			</form>
 			|
 			<form method="post" action="<?= e($base_url) ?>/language/set">
 				<?= csrf_field() ?>
 				<input type="hidden" name="locale" value="de">
-				<input type="hidden" name="redirect" value="<?= e($currentPath) ?>">
+				<input type="hidden" name="redirect" value="<?= e($currentTarget) ?>">
 				<button type="submit" class="link-button"><?= e__('footer.language.de') ?></button>
 			</form>
 			]
-		</span>
+		</div>
 		<a href="<?= e($base_url) ?>/about"><?= e__('footer.about') ?></a>
 		<a href="<?= e($base_url) ?>/imprint"><?= e__('footer.imprint') ?></a>
 	</nav>
