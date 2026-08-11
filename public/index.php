@@ -38,6 +38,8 @@ $documentService = $container['documentService'];
 $userRepository = $container['userRepository'];
 $loginThrottle = $container['loginThrottle'];
 $mailQueueRepository = $container['mailQueueRepository'];
+$mailQueueWorker = $container['mailQueueWorker'];
+$notificationScheduler = $container['notificationScheduler'];
 $testNotificationService = $container['testNotificationService'];
 $notificationLanguage = $container['notificationLanguage'];
 
@@ -97,7 +99,10 @@ $monitorController = new MonitorController(
 	$messageRepository,
 	$documentService,
 	$monitorExecutionService,
-	(bool)$config['development']['allow_force_due']
+	$notificationScheduler,
+	$mailQueueWorker,
+	(bool)$config['debug'],
+	(bool)$config['mail']['enabled']
 );
 $documentController = new DocumentController($view, $session, $auth, $logger, $request, $documentService);
 
@@ -132,6 +137,7 @@ $router->Post('/monitors/check-in', [$monitorController, 'CheckIn']);
 $router->Post('/monitors/pause', [$monitorController, 'Pause']);
 $router->Post('/monitors/resume', [$monitorController, 'Resume']);
 $router->Post('/monitors/force-due', [$monitorController, 'ForceDue']);
+$router->Post('/monitors/send-due-notice', [$monitorController, 'SendDueNotice']);
 
 $router->Post('/monitors/documents/upload', [$documentController, 'Upload']);
 $router->Post('/monitors/documents/text/create', [$documentController, 'CreateText']);

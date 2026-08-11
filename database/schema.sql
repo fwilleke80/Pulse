@@ -1,4 +1,4 @@
--- Pulse 0.6.3 reference database schema
+-- Pulse 0.6.4 reference database schema
 -- MySQL 8+ / MariaDB 10.6+
 -- Pulse applies database/migrations automatically. Do not import this reference file over an existing database.
 -- ----

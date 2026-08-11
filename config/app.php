@@ -69,7 +69,4 @@ return [
 	'cron' => [
 		'token' => Environment::Get('PULSE_CRON_TOKEN'),
 	],
-	'development' => [
-		'allow_force_due' => !$isProduction && Environment::GetBool('PULSE_ALLOW_FORCE_DUE', false),
-	],
 ];

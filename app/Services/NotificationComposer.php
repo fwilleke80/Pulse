@@ -52,12 +52,19 @@ final class NotificationComposer
 	public function ComposeOwnerDueNotice(array $cycle): array
 	{
 		$locale = $this->_languages->Resolve(isset($cycle['notification_locale']) ? (string)$cycle['notification_locale'] : null);
+		$responseWindowDays = $this->ResponseWindowDays($cycle);
 		$params = [
 			'app' => $this->_appName,
 			'name' => (string)$cycle['display_name'],
 			'monitor' => (string)$cycle['monitor_name'],
 			'due' => $this->FormatUtc((string)$cycle['due_at']),
 			'deadline' => $this->FormatUtc((string)$cycle['response_deadline_at']),
+			'response_window' => $this->Translate(
+				$locale,
+				$responseWindowDays === 1 ? 'mail.duration.day' : 'mail.duration.days',
+				['count' => $responseWindowDays]
+			),
+			'max_followup_reminders' => (int)$cycle['max_reminders'],
 			'url' => $this->_baseUrl . '/login',
 		];
 
@@ -69,6 +76,27 @@ final class NotificationComposer
 			'subject' => $this->Translate($locale, 'mail.owner_due_notice.subject', $params),
 			'body_text' => $this->Translate($locale, $bodyKey, $params),
 		];
+	}
+
+	/** @brief Resolves the configured response window for mail copy. */
+	private function ResponseWindowDays(array $cycle): int
+	{
+		if (isset($cycle['response_window_days']) && (int)$cycle['response_window_days'] > 0)
+		{
+			return (int)$cycle['response_window_days'];
+		}
+
+		try
+		{
+			$due = new DateTimeImmutable((string)$cycle['due_at'], new DateTimeZone('UTC'));
+			$deadline = new DateTimeImmutable((string)$cycle['response_deadline_at'], new DateTimeZone('UTC'));
+			$days = $due->diff($deadline)->days;
+			return max(1, is_int($days) ? $days : 1);
+		}
+		catch (Throwable)
+		{
+			return 1;
+		}
 	}
 
 	/**

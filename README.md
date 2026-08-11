@@ -2,9 +2,9 @@
 
 Pulse is a small, framework-free PHP application for personal emergency check-ins. It lets a user configure monitors, trusted contacts, and recipient-specific documents in preparation for a later staged notification and delivery workflow.
 
-Version **0.6.3** sends an immediate owner notification when a monitor becomes due. The response window now starts after that visible due notice; configured reminders are follow-ups sent only after the window closes. Notification language remains recipient-specific, and recipient delivery itself remains inactive until the later secure-delivery milestone.
+Version **0.6.4** sends an immediate owner notification when a monitor becomes due. The notice states the configured response window and maximum follow-up count; the German and English messages use the same readable action-and-link structure. Notification language remains recipient-specific, and recipient delivery itself remains inactive until the later secure-delivery milestone.
 
-> **Important:** Pulse 0.6.3 stores uploaded files outside the public web root, but files, messages, and editable text documents are not encrypted at rest. Do not treat this release as the finished secure vault for highly sensitive material. Secure storage is planned for a later release.
+> **Important:** Pulse 0.6.4 stores uploaded files outside the public web root, but files, messages, and editable text documents are not encrypted at rest. Do not treat this release as the finished secure vault for highly sensitive material. Secure storage is planned for a later release.
 
 ## Requirements
 
@@ -44,10 +44,10 @@ Pulse/bootstrap.php
 
 The separate `public/cron/cron.php` endpoint loads the same application root for protected background notification runs.
 
-## Upgrading to 0.6.3
+## Upgrading to 0.6.4
 
 1. Back up the database and `storage/` directory.
-2. Extract the 0.6.3 source ZIP over the existing Pulse project directory.
+2. Extract the 0.6.4 source ZIP over the existing Pulse project directory.
 3. When upgrading from 0.2.9, create `.env` from `.env.example`; do not copy credentials back into `config/database.php`.
 4. Rotate the former database and application passwords if this was not already done.
 5. Confirm that the server document root is `public/`.
@@ -184,16 +184,15 @@ composer check-style
 
 The MySQL integration test runs only when `PULSE_TEST_DB_DATABASE` names a dedicated database ending in `_test`. This guard prevents accidental modification of a normal database.
 
-To expose the development-only **Force due now** action, use a non-production environment and set:
+To expose the lifecycle test actions, use a non-production environment and set:
 
 ```dotenv
 PULSE_ENV=development
 PULSE_DEBUG=true
 PULSE_COOKIE_SECURE=false
-PULSE_ALLOW_FORCE_DUE=true
 ```
 
-Never enable this action in production.
+For a checked-in monitor, **Force due now** opens the normal awaiting cycle. The same row then offers **Send due notification now**, which queues and immediately attempts the real SMTP message without waiting for cron. Pulse ignores `PULSE_DEBUG=true` when `PULSE_ENV=production`. The future recipient-delivery test action will use this same debug boundary once recipient delivery exists.
 
 ## Documentation
 

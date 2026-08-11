@@ -2,7 +2,7 @@
 
 ## Current scope
 
-Pulse 0.6.3 lets you:
+Pulse 0.6.4 lets you:
 
 - sign in and update your profile
 - create and edit trusted contacts and confirm that you checked their addresses
@@ -18,7 +18,7 @@ Pulse 0.6.3 lets you:
 - test SMTP delivery and inspect or retry failed notifications from the profile page
 - choose a separate notification language for yourself and every contact
 
-Recipient contact notifications, delivery messages, document release, and recipient access are not active yet. Version 0.6.3 sends only check-in due notices and reminders to the owner's own profile address.
+Recipient contact notifications, delivery messages, document release, and recipient access are not active yet. Version 0.6.4 sends only check-in due notices and reminders to the owner's own profile address.
 
 Uploaded files are private from normal website visitors, but files, messages, and editable text documents are not encrypted at rest in this version. Do not store your final highly sensitive material until the encrypted-storage release is complete.
 
@@ -57,6 +57,8 @@ The monitor overview focuses on runtime state:
 
 The cron scheduler sends an immediate owner notification when the monitor becomes due. The configured response window then gives you time to check in. If it closes without a check-in, Pulse sends reminder 1 and follows the configured reminder interval for any remaining follow-ups. **Maximum follow-up reminders** does not include the initial due notice. A monitor becomes **Overdue** only after the due notice and all configured reminders were accepted by SMTP and the final response/reminder interval elapsed. **Escalated** remains inactive until recipient delivery is implemented.
 
+The initial email states the exact response-window length, its deadline, and the maximum follow-up count. Its sign-in URL appears on a separate line in both notification languages.
+
 If a due notice or reminder exhausts all delivery attempts, the monitor remains **Awaiting check-in** and displays a red **Check-in email delivery failed** warning. This is intentional: Pulse will not pretend a notification was delivered. Open **Profile → Notifications** to see failed jobs and queue them for another attempt after correcting the SMTP problem.
 
 ## Notifications
@@ -70,6 +72,8 @@ When mail is disabled, Pulse shows a critical warning on the Dashboard and a vis
 Delivery attempts retry automatically according to the server configuration. A permanently failed message can be requeued with **Retry failed notifications**. The normal cron worker performs the new attempt.
 
 Changing a profile email affects newly queued reminders. Messages already in the queue retain the address and content snapshot that existed when they were created.
+
+In a non-production environment, `PULSE_DEBUG=true` exposes lifecycle test actions on the monitor overview. **Force due now** changes a checked-in monitor to **Awaiting check-in**. **Send due notification now** then sends that cycle's initial notice through the real queue and SMTP worker immediately. Production always suppresses these actions. Recipient-notification testing will be added to the same debug-only workflow when recipient delivery is implemented.
 
 The displayed timestamps use the configured local display timezone. Storage and comparisons use UTC.
 

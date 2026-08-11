@@ -74,6 +74,21 @@ class NotificationInfrastructureSourceTest extends TestCase
 		self::assertStringContainsString("'owner-due-notice:'", $scheduler);
 	}
 
+	public function testDebugModeOwnsLifecycleTestActionsWithoutASecondEnvironmentFlag(): void
+	{
+		$config = (string)file_get_contents(dirname(__DIR__, 2) . '/config/app.php');
+		$routes = (string)file_get_contents(dirname(__DIR__, 2) . '/public/index.php');
+		$controller = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Controllers/MonitorController.php');
+		$view = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Views/monitors/index.php');
+
+		self::assertStringNotContainsString('PULSE_ALLOW_FORCE_DUE', $config);
+		self::assertStringContainsString('(bool)$config[\'debug\']', $routes);
+		self::assertStringContainsString("Post('/monitors/send-due-notice'", $routes);
+		self::assertStringContainsString('QueueDueNoticeForMonitorForUser', $controller);
+		self::assertStringContainsString('$debugEnabled', $view);
+		self::assertStringContainsString('/monitors/send-due-notice', $view);
+	}
+
 	public function testPermanentReminderFailureIsVisibleWithoutChangingLifecycleState(): void
 	{
 		$repository = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Repositories/MonitorRepository.php');

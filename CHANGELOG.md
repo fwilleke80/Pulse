@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.6.4 — 2026-08-12
+
+### Notification copy and development controls
+
+- Expanded the initial due notice with the configured response-window length and maximum number of follow-up reminders.
+- Reworked the German due-notification copy into readable paragraphs with the same explicit sign-in link and action structure as the English message.
+- Removed `PULSE_ALLOW_FORCE_DUE`; non-production `PULSE_DEBUG=true` now controls all development-only lifecycle actions.
+- Added **Send due notification now** after **Force due now**, using the real transactional queue and SMTP worker without waiting for the next cron tick.
+- Kept development actions unavailable in production even if `PULSE_DEBUG=true` is accidentally configured.
+- Added localized interface feedback, mail-copy tests, debug-boundary regression coverage, and updated documentation.
+
 ## 0.6.3 — 2026-08-12
 
 ### Immediate due notifications

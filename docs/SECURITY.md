@@ -2,7 +2,7 @@
 
 ## Current protection goals
 
-Pulse 0.6.3 retains the security foundation introduced in 0.3.0 and protects against common web application failures:
+Pulse 0.6.4 retains the security foundation introduced in 0.3.0 and protects against common web application failures:
 
 - cross-user access to contacts, monitors, and documents
 - cross-site request forgery

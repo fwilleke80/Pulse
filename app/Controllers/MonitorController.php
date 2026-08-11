@@ -20,7 +20,9 @@ use Pulse\Repositories\MessageRepository;
 use Pulse\Repositories\MonitorRepository;
 use Pulse\Services\AuthService;
 use Pulse\Services\DocumentService;
+use Pulse\Services\MailQueueWorker;
 use Pulse\Services\MonitorExecutionService;
+use Pulse\Services\NotificationScheduler;
 
 /**
  * @brief Handles monitor configuration without owning document HTTP actions.
@@ -33,7 +35,10 @@ class MonitorController extends BaseController
 	private MessageRepository $_messageRepository;
 	private DocumentService $_documentService;
 	private MonitorExecutionService $_monitorExecutionService;
-	private bool $_allowForceDue;
+	private NotificationScheduler $_notificationScheduler;
+	private MailQueueWorker $_mailQueueWorker;
+	private bool $_debugEnabled;
+	private bool $_mailEnabled;
 
 	/**
 	 * @brief Constructs the monitor controller.
@@ -48,7 +53,10 @@ class MonitorController extends BaseController
 	 * @param MessageRepository $messageRepository Message repository.
 	 * @param DocumentService $documentService Document service.
 	 * @param MonitorExecutionService $monitorExecutionService Check-in lifecycle service.
-	 * @param bool $allowForceDue Whether the development-only action is enabled.
+	 * @param NotificationScheduler $notificationScheduler Owner-notification scheduler.
+	 * @param MailQueueWorker $mailQueueWorker Transactional mail worker.
+	 * @param bool $debugEnabled Whether development actions are enabled.
+	 * @param bool $mailEnabled Whether mail delivery is enabled.
 	 */
 	public function __construct(
 		View $view,
@@ -62,7 +70,10 @@ class MonitorController extends BaseController
 		MessageRepository $messageRepository,
 		DocumentService $documentService,
 		MonitorExecutionService $monitorExecutionService,
-		bool $allowForceDue
+		NotificationScheduler $notificationScheduler,
+		MailQueueWorker $mailQueueWorker,
+		bool $debugEnabled,
+		bool $mailEnabled
 	)
 	{
 		parent::__construct($view, $session, $auth, $logger, $request);
@@ -72,7 +83,10 @@ class MonitorController extends BaseController
 		$this->_messageRepository = $messageRepository;
 		$this->_documentService = $documentService;
 		$this->_monitorExecutionService = $monitorExecutionService;
-		$this->_allowForceDue = $allowForceDue;
+		$this->_notificationScheduler = $notificationScheduler;
+		$this->_mailQueueWorker = $mailQueueWorker;
+		$this->_debugEnabled = $debugEnabled;
+		$this->_mailEnabled = $mailEnabled;
 	}
 
 	/** @brief Displays the runtime-oriented monitor list. @return string */
@@ -84,7 +98,8 @@ class MonitorController extends BaseController
 		return $this->_view->Render('monitors.index', [
 			'user' => $user,
 			'monitors' => $this->_monitorRepository->FindAllByUserId((int)$user['id']),
-			'allowForceDue' => $this->_allowForceDue,
+			'debugEnabled' => $this->_debugEnabled,
+			'mailEnabled' => $this->_mailEnabled,
 		]);
 	}
 
@@ -345,12 +360,12 @@ class MonitorController extends BaseController
 		$this->Redirect($this->RuntimeRedirect());
 	}
 
-	/** @brief Forces a monitor due when the explicit development setting is enabled. */
+	/** @brief Forces a monitor due when application debug mode is enabled. */
 	public function ForceDue(): void
 	{
 		$user = $this->RequireUser();
 
-		if (!$this->_allowForceDue)
+		if (!$this->_debugEnabled)
 		{
 			http_response_code(404);
 			exit;
@@ -367,6 +382,46 @@ class MonitorController extends BaseController
 			$this->Flash('warning', __('monitors.force_due.unavailable'));
 		}
 
+		$this->Redirect($this->RuntimeRedirect());
+	}
+
+	/** @brief Queues and immediately attempts the current monitor's due notification in debug mode. */
+	public function SendDueNotice(): void
+	{
+		$user = $this->RequireUser();
+
+		if (!$this->_debugEnabled)
+		{
+			http_response_code(404);
+			exit;
+		}
+
+		if (!$this->_mailEnabled)
+		{
+			$this->Flash('warning', __('monitors.send_due_notice.mail_disabled'));
+			$this->Redirect($this->RuntimeRedirect());
+		}
+
+		$monitorId = $this->_request->PostInt('id');
+		$jobId = $this->_notificationScheduler->QueueDueNoticeForMonitorForUser($monitorId, (int)$user['id']);
+
+		if ($jobId === null)
+		{
+			$this->Flash('warning', __('monitors.send_due_notice.unavailable'));
+			$this->Redirect($this->RuntimeRedirect());
+		}
+
+		$outcome = $this->_mailQueueWorker->ProcessById($jobId);
+		$key = match ($outcome)
+		{
+			'sent' => 'monitors.send_due_notice.sent',
+			'retrying' => 'monitors.send_due_notice.retrying',
+			'failed' => 'monitors.send_due_notice.failed',
+			'cancelled' => 'monitors.send_due_notice.cancelled',
+			default => 'monitors.send_due_notice.queued',
+		};
+		$type = $outcome === 'sent' ? 'success' : ($outcome === 'failed' ? 'error' : 'warning');
+		$this->Flash($type, __($key));
 		$this->Redirect($this->RuntimeRedirect());
 	}
 

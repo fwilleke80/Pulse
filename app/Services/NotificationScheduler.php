@@ -69,21 +69,7 @@ final class NotificationScheduler
 
 				if ($scheduledAt <= $now)
 				{
-					$content = $this->_composer->ComposeOwnerDueNotice($cycle);
-					$this->_queue->Enqueue([
-						'user_id' => (int)$cycle['user_id'],
-						'check_cycle_id' => (int)$cycle['id'],
-						'monitor_id' => (int)$cycle['monitor_id'],
-						'contact_id' => null,
-						'mail_type' => 'owner_due_notice',
-						'idempotency_key' => 'owner-due-notice:' . (int)$cycle['id'],
-						'reminder_number' => null,
-						'recipient_email' => (string)$cycle['email'],
-						'subject' => $content['subject'],
-						'body_text' => $content['body_text'],
-						'max_attempts' => $this->_maxAttempts,
-						'available_at' => $scheduledAt->format('Y-m-d H:i:s'),
-					]);
+					$this->EnqueueDueNotice($cycle, $scheduledAt);
 					$dueNoticesReady++;
 				}
 
@@ -144,6 +130,23 @@ final class NotificationScheduler
 		];
 	}
 
+	/**
+	 * @brief Queues one owned monitor's eligible due notice for immediate debug delivery.
+	 * @return int|null Queue job ID, or null when no unsent awaiting due notice exists.
+	 */
+	public function QueueDueNoticeForMonitorForUser(int $monitorId, int $userId): ?int
+	{
+		$this->_executionService->SynchronizeMonitorForUser($monitorId, $userId);
+		$cycle = $this->FindAwaitingCycleForMonitorForUser($monitorId, $userId);
+
+		if (!is_array($cycle))
+		{
+			return null;
+		}
+
+		return $this->EnqueueDueNotice($cycle, new DateTimeImmutable('now', new DateTimeZone('UTC')));
+	}
+
 	/** @brief Synchronizes due cycles for every active account. */
 	private function SynchronizeAllUsers(): int
 	{
@@ -178,6 +181,7 @@ final class NotificationScheduler
 				cc.due_notice_sent_at,
 				m.user_id,
 				m.name AS monitor_name,
+				m.response_window_days,
 				u.email,
 				u.display_name,
 				u.notification_locale
@@ -191,6 +195,64 @@ final class NotificationScheduler
 		')->fetchAll(PDO::FETCH_ASSOC);
 
 		return is_array($rows) ? $rows : [];
+	}
+
+	/** @return array<string, mixed>|null @brief Finds one owned awaiting cycle without a delivered due notice. */
+	private function FindAwaitingCycleForMonitorForUser(int $monitorId, int $userId): ?array
+	{
+		$statement = $this->_database->GetConnection()->prepare('
+			SELECT
+				cc.id,
+				cc.monitor_id,
+				cc.due_at,
+				cc.response_deadline_at,
+				cc.reminder_interval_days,
+				cc.max_reminders,
+				cc.reminders_sent,
+				cc.due_notice_sent_at,
+				m.user_id,
+				m.name AS monitor_name,
+				m.response_window_days,
+				u.email,
+				u.display_name,
+				u.notification_locale
+			FROM check_cycles cc
+			INNER JOIN monitors m ON m.id = cc.monitor_id
+			INNER JOIN users u ON u.id = m.user_id
+			WHERE cc.monitor_id = :monitor_id
+				AND m.user_id = :user_id
+				AND cc.status = \'awaiting\'
+				AND cc.due_notice_sent_at IS NULL
+				AND m.is_paused = 0
+				AND u.is_active = 1
+			ORDER BY cc.id DESC
+			LIMIT 1
+		');
+		$statement->execute(['monitor_id' => $monitorId, 'user_id' => $userId]);
+		$row = $statement->fetch(PDO::FETCH_ASSOC);
+
+		return is_array($row) ? $row : null;
+	}
+
+	/** @brief Freezes and idempotently queues an initial due notice. */
+	private function EnqueueDueNotice(array $cycle, DateTimeImmutable $availableAt): int
+	{
+		$content = $this->_composer->ComposeOwnerDueNotice($cycle);
+
+		return $this->_queue->Enqueue([
+			'user_id' => (int)$cycle['user_id'],
+			'check_cycle_id' => (int)$cycle['id'],
+			'monitor_id' => (int)$cycle['monitor_id'],
+			'contact_id' => null,
+			'mail_type' => 'owner_due_notice',
+			'idempotency_key' => 'owner-due-notice:' . (int)$cycle['id'],
+			'reminder_number' => null,
+			'recipient_email' => (string)$cycle['email'],
+			'subject' => $content['subject'],
+			'body_text' => $content['body_text'],
+			'max_attempts' => $this->_maxAttempts,
+			'available_at' => $availableAt->format('Y-m-d H:i:s'),
+		]);
 	}
 
 	/** @brief Calculates the scheduled time of a one-based reminder. */

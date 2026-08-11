@@ -62,6 +62,14 @@ class MonitorRepository
 					LIMIT 1
 				) AS latest_cycle_status,
 				(
+					SELECT cc.due_notice_sent_at
+					FROM check_cycles cc
+					WHERE cc.monitor_id = monitors.id
+					  AND cc.status IN (\'scheduled\',\'awaiting\',\'overdue\',\'escalated\')
+					ORDER BY cc.id DESC
+					LIMIT 1
+				) AS due_notice_sent_at,
+				(
 					SELECT COUNT(*)
 					FROM monitor_contacts warning_mc
 					INNER JOIN contacts warning_c ON warning_c.id = warning_mc.contact_id

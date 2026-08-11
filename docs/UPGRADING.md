@@ -1,6 +1,6 @@
 # Upgrading Pulse
 
-## Upgrade from 0.2.9–0.6.2 to 0.6.3
+## Upgrade from 0.2.9–0.6.3 to 0.6.4
 
 ### Before extraction
 
@@ -11,7 +11,7 @@
 
 ### Install the source
 
-Extract the complete `Pulse_0.6.3_source.zip` archive over the Pulse project directory. The archive paths begin with `app/`, `config/`, `public/`, and the other project-root entries; it does not add an extra `Pulse/` directory.
+Extract the complete `Pulse_0.6.4_source.zip` archive over the Pulse project directory. The archive paths begin with `app/`, `config/`, `public/`, and the other project-root entries; it does not add an extra `Pulse/` directory.
 
 Extraction overwrites the old public password utility files with inert 404 stubs. You may delete `public/secret0410` entirely after extraction.
 
@@ -110,8 +110,8 @@ Overlapping invocations are safe because queue jobs use database row locks and e
 11. Check in and confirm that every active monitor receives the same last-confirmed time but keeps its own next-due interval.
 12. Pause one monitor and verify its next due date becomes suspended and global check-in leaves it unchanged.
 13. Resume it and verify a fresh interval begins from the resume time.
-14. In a development environment, enable **Force due now** and verify the selected cycle changes to **Awaiting check-in**.
-15. Call the notification cron and verify the owner immediately receives the check-in due notice, without waiting for the response window.
+14. In a development environment, set `PULSE_DEBUG=true`, use **Force due now**, and verify the selected cycle changes to **Awaiting check-in**.
+15. Use **Send due notification now** and verify the owner immediately receives the check-in due notice through the real queue and SMTP worker.
 16. Confirm recent lifecycle activity records check-ins, pauses, resumes, due changes, and the sent due notice.
 17. Save monitor settings from each tab and confirm Pulse returns to the same tab.
 18. Configure SMTP and send a successful test from **Profile → Notifications**.

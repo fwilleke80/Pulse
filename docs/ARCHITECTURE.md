@@ -218,4 +218,4 @@ New uploads are:
 - assigned filesystem mode `0600`
 - delivered only through an authenticated, ownership-checked controller
 
-This prevents direct web access and executable filename behavior. It is not encryption. Messages and editable text documents are also unencrypted database values in 0.6.3. A later secure-storage release will add authenticated encryption and key versioning without changing the recipient-assignment model.
+This prevents direct web access and executable filename behavior. It is not encryption. Messages and editable text documents are also unencrypted database values in 0.6.4. A later secure-storage release will add authenticated encryption and key versioning without changing the recipient-assignment model.
