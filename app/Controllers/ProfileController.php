@@ -7,6 +7,7 @@ namespace Pulse\Controllers;
 use Pulse\Core\Session;
 use Pulse\Core\View;
 use Pulse\Core\Logger;
+use Pulse\Core\Request;
 use Pulse\Repositories\UserRepository;
 use Pulse\Services\AuthService;
 
@@ -16,6 +17,7 @@ use Pulse\Services\AuthService;
 class ProfileController extends BaseController
 {
 	private UserRepository $_userRepository;
+	private int $_passwordMinimumLength;
 
 	/**
 	 * @brief Constructs the profile controller.
@@ -23,18 +25,23 @@ class ProfileController extends BaseController
 	 * @param Session $session Session service.
 	 * @param AuthService $auth Authentication service.
 	 * @param Logger $logger Application logger.
+	 * @param Request $request Current request.
 	 * @param UserRepository $userRepository User repository.
+	 * @param int $passwordMinimumLength Minimum accepted password length.
 	 */
 	public function __construct(
 		View $view,
 		Session $session,
 		AuthService $auth,
 		Logger $logger,
-		UserRepository $userRepository
+		Request $request,
+		UserRepository $userRepository,
+		int $passwordMinimumLength
 	)
 	{
-		parent::__construct($view, $session, $auth, $logger);
+		parent::__construct($view, $session, $auth, $logger, $request);
 		$this->_userRepository = $userRepository;
+		$this->_passwordMinimumLength = $passwordMinimumLength;
 	}
 
 	/**
@@ -58,8 +65,8 @@ class ProfileController extends BaseController
 		$user = $this->RequireUser();
 		$userId = (int)$user['id'];
 
-		$displayName = trim((string)($_POST['display_name'] ?? ''));
-		$email = trim((string)($_POST['email'] ?? ''));
+		$displayName = $this->_request->PostString('display_name', 255);
+		$email = $this->_request->PostString('email', 255);
 
 		if ($displayName === '' || $email === '')
 		{
@@ -70,7 +77,7 @@ class ProfileController extends BaseController
 
 		if (!filter_var($email, FILTER_VALIDATE_EMAIL))
 		{
-			$this->_logger->Warning('Profile update failed due to invalid email format', ['user_id' => $userId, 'email' => $email]);
+			$this->_logger->Warning('Profile update failed due to invalid email format', ['user_id' => $userId]);
 			$this->Flash('error', __('profile.flash.update.invalid_email'));
 			$this->Redirect('/profile');
 		}
@@ -79,7 +86,7 @@ class ProfileController extends BaseController
 
 		if ($existingUser !== null)
 		{
-			$this->_logger->Warning('Profile update failed due to email already taken', ['user_id' => $userId, 'email' => $email]);
+			$this->_logger->Warning('Profile update failed due to email already taken', ['user_id' => $userId]);
 			$this->Flash('error', __('profile.flash.update.email_taken'));
 			$this->Redirect('/profile');
 		}
@@ -99,9 +106,9 @@ class ProfileController extends BaseController
 		$user = $this->RequireUser();
 		$userId = (int)$user['id'];
 
-		$currentPassword = (string)($_POST['current_password'] ?? '');
-		$newPassword = (string)($_POST['new_password'] ?? '');
-		$confirmPassword = (string)($_POST['confirm_password'] ?? '');
+		$currentPassword = $this->_request->PostString('current_password', 4096, false);
+		$newPassword = $this->_request->PostString('new_password', 4096, false);
+		$confirmPassword = $this->_request->PostString('confirm_password', 4096, false);
 
 		if ($currentPassword === '' || $newPassword === '' || $confirmPassword === '')
 		{
@@ -126,10 +133,10 @@ class ProfileController extends BaseController
 			$this->Redirect('/profile');
 		}
 
-		if (strlen($newPassword) < 8)
+		if (strlen($newPassword) < $this->_passwordMinimumLength)
 		{
 			$this->_logger->Warning('Password change failed due to new password being too short', ['user_id' => $userId]);
-			$this->Flash('error', __('profile.flash.password.too_short'));
+			$this->Flash('error', __('profile.flash.password.too_short', ['minimum' => $this->_passwordMinimumLength]));
 			$this->Redirect('/profile');
 		}
 

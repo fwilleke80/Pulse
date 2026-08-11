@@ -50,6 +50,11 @@ class Database
 		$username = (string)$this->_config['username'];
 		$password = (string)$this->_config['password'];
 
+		if ($database === '' || $username === '')
+		{
+			throw new RuntimeException('Database configuration is incomplete.');
+		}
+
 		$dsn = sprintf(
 			'mysql:host=%s;port=%d;dbname=%s;charset=%s',
 			$host,
@@ -70,10 +75,12 @@ class Database
 					PDO::ATTR_EMULATE_PREPARES => false,
 				]
 			);
+
+			$this->_pdo->exec("SET time_zone = '+00:00'");
 		}
 		catch (PDOException $exception)
 		{
-			throw new RuntimeException('Database connection failed: ' . $exception->getMessage(), 0, $exception);
+			throw new RuntimeException('Database connection failed.', 0, $exception);
 		}
 
 		return $this->_pdo;

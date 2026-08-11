@@ -1,0 +1,38 @@
+{
+	"name": "punga/pulse",
+	"description": "A privacy-conscious emergency check-in and document delivery application.",
+	"type": "project",
+	"license": "MIT",
+	"require": {
+		"php": ">=8.4",
+		"ext-fileinfo": "*",
+		"ext-json": "*",
+		"ext-pdo": "*"
+	},
+	"require-dev": {
+		"friendsofphp/php-cs-fixer": "^3.0",
+		"phpstan/phpstan": "^2.2",
+		"phpunit/phpunit": "^13.1"
+	},
+	"autoload": {
+		"psr-4": {
+			"Pulse\\": "app/"
+		},
+		"files": [
+			"app/Core/helpers.php"
+		]
+	},
+	"autoload-dev": {
+		"psr-4": {
+			"Pulse\\Tests\\": "tests/"
+		}
+	},
+	"scripts": {
+		"test": "phpunit",
+		"analyse": "phpstan analyse",
+		"check-style": "php-cs-fixer check --diff"
+	},
+	"config": {
+		"sort-packages": true
+	}
+}

@@ -7,6 +7,7 @@ namespace Pulse\Controllers;
 use \Pulse\Core\View;
 use \Pulse\Core\Session;
 use \Pulse\Core\Logger;
+use \Pulse\Core\Request;
 use \Pulse\Services\AuthService;
 use Pulse\Repositories\ContactRepository;
 
@@ -23,6 +24,7 @@ class ContactController extends BaseController
 	 * @param \Pulse\Core\Session $session Session service.
 	 * @param \Pulse\Services\AuthService $auth Authentication service.
 	 * @param \Pulse\Core\Logger $logger Application logger.
+	 * @param Request $request Current request.
 	 * @param ContactRepository $contactRepository Contact repository.
 	 */
 	public function __construct(
@@ -30,10 +32,11 @@ class ContactController extends BaseController
 		Session $session,
 		AuthService $auth,
 		Logger $logger,
+		Request $request,
 		ContactRepository $contactRepository
 	)
 	{
-		parent::__construct($view, $session, $auth, $logger);
+		parent::__construct($view, $session, $auth, $logger, $request);
 		$this->_contactRepository = $contactRepository;
 	}
 
@@ -73,10 +76,10 @@ class ContactController extends BaseController
 	{
 		$user = $this->RequireUser();
 
-		$name = trim((string)($_POST['name'] ?? ''));
-		$email = trim((string)($_POST['email'] ?? ''));
-		$cellPhone = trim((string)($_POST['cell_phone'] ?? ''));
-		$notes = trim((string)($_POST['notes'] ?? ''));
+		$name = $this->_request->PostString('name', 255);
+		$email = $this->_request->PostString('email', 255);
+		$cellPhone = $this->_request->PostString('cell_phone', 50);
+		$notes = $this->_request->PostString('notes', 10000);
 
 		if ($name === '' || $email === '')
 		{
@@ -98,7 +101,7 @@ class ContactController extends BaseController
 			$notes !== '' ? $notes : null
 		);
 
-		$this->_logger->Info('Created new contact for user ID ' . $user['id'] . ': ' . $name . ' (' . $email . ')');
+		$this->_logger->Info('Contact created', ['user_id' => (int)$user['id']]);
 		$this->Flash('success', e__('contacts.add.flash.created', ['name' => $name]));
 		$this->Redirect('/contacts');
 	}
@@ -109,7 +112,7 @@ class ContactController extends BaseController
 	public function Delete(): void
 	{
 		$user = $this->RequireUser();
-		$contactId = (int)($_POST['id'] ?? 0);
+		$contactId = $this->_request->PostInt('id');
 
 		if ($contactId > 0)
 		{
@@ -129,7 +132,7 @@ class ContactController extends BaseController
 	public function Edit(): string
 	{
 		$user = $this->RequireUser();
-		$contactId = (int)($_GET['id'] ?? 0);
+		$contactId = $this->_request->QueryInt('id');
 
 		if ($contactId <= 0)
 		{
@@ -158,11 +161,11 @@ class ContactController extends BaseController
 	{
 		$user = $this->RequireUser();
 
-		$contactId = (int)($_POST['id'] ?? 0);
-		$name = trim((string)($_POST['name'] ?? ''));
-		$email = trim((string)($_POST['email'] ?? ''));
-		$cellPhone = trim((string)($_POST['cell_phone'] ?? ''));
-		$notes = trim((string)($_POST['notes'] ?? ''));
+		$contactId = $this->_request->PostInt('id');
+		$name = $this->_request->PostString('name', 255);
+		$email = $this->_request->PostString('email', 255);
+		$cellPhone = $this->_request->PostString('cell_phone', 50);
+		$notes = $this->_request->PostString('notes', 10000);
 
 		if ($contactId <= 0)
 		{
@@ -189,7 +192,7 @@ class ContactController extends BaseController
 
 		if (!filter_var($email, FILTER_VALIDATE_EMAIL))
 		{
-			$this->_logger->Warning('User ID ' . $user['id'] . ' attempted to update contact ID ' . $contactId . ' with invalid email: ' . $email);
+			$this->_logger->Warning('Contact update rejected due to invalid email', ['user_id' => (int)$user['id'], 'contact_id' => $contactId]);
 			$this->Flash('error', e__('contacts.edit.flash.invalidemail'));
 			$this->Redirect('/contacts/edit?id=' . $contactId);
 		}
@@ -203,7 +206,7 @@ class ContactController extends BaseController
 			$notes !== '' ? $notes : null
 		);
 
-		$this->_logger->Info('Updated contact with ID ' . $contactId . ' for user ID ' . $user['id'] . ': ' . $name . ' (' . $email . ')');
+		$this->_logger->Info('Contact updated', ['user_id' => (int)$user['id'], 'contact_id' => $contactId]);
 		$this->Flash('success', e__('contacts.edit.flash.updated', ['name' => $name]));
 		$this->Redirect('/contacts');
 	}

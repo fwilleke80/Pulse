@@ -15,6 +15,7 @@ ob_start();
 <h1><?= e__('monitors.edit.heading') ?></h1>
 
 <form method="post" action="<?= e($base_url) ?>/monitors/update">
+	<?= csrf_field() ?>
 	<input type="hidden" name="id" value="<?= (int)$monitor['id'] ?>">
 
 	<label for="name"><?= e__('monitors.edit.name') ?></label>
@@ -83,6 +84,7 @@ ob_start();
 	<div class="monitor-document-card">
 		<h3><?= e__('monitors.documents.upload.heading') ?></h3>
 		<form method="post" action="<?= e($base_url) ?>/monitors/documents/upload" enctype="multipart/form-data" class="document-upload-form">
+			<?= csrf_field() ?>
 			<input type="hidden" name="monitor_id" value="<?= (int)$monitor['id'] ?>">
 
 			<label for="document_title"><?= e__('monitors.documents.upload.title') ?></label>
@@ -149,6 +151,7 @@ ob_start();
 					<?php endif; ?>
 
 					<form method="post" action="<?= e($base_url) ?>/monitors/documents/recipients">
+						<?= csrf_field() ?>
 						<input type="hidden" name="monitor_id" value="<?= (int)$monitor['id'] ?>">
 						<input type="hidden" name="document_id" value="<?= (int)$document['id'] ?>">
 
@@ -193,7 +196,8 @@ ob_start();
 								<?= e__('monitors.documents.download.submit') ?>
 							</button>
 						</form>
-						<form method="post" action="<?= e($base_url) ?>/monitors/documents/delete" onsubmit="return confirm('<?= e__('monitors.documents.flash.delete_confirm') ?>');">
+						<form method="post" action="<?= e($base_url) ?>/monitors/documents/delete" data-confirm="<?= e__('monitors.documents.flash.delete_confirm') ?>">
+							<?= csrf_field() ?>
 							<input type="hidden" name="monitor_id" value="<?= (int)$monitor['id'] ?>">
 							<input type="hidden" name="document_id" value="<?= (int)$document['id'] ?>">
 							<button type="submit"><?= e__('monitors.documents.delete.submit') ?></button>

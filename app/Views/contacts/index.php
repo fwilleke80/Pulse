@@ -43,7 +43,8 @@ ob_start();
 								<input type="hidden" name="id" value="<?= (int)$contact['id'] ?>">
 								<button type="submit" class="btn-table-inline"><?= e__('contacts.index.table.buttons.edit') ?></button>
 							</form>
-							<form method="post" action="<?= e($base_url) ?>/contacts/delete" onsubmit="return confirm('<?= e__('contacts.index.flash.delete_confirm', ['name' => $contact['name']]) ?>');">
+							<form method="post" action="<?= e($base_url) ?>/contacts/delete" data-confirm="<?= e__('contacts.index.flash.delete_confirm', ['name' => $contact['name']]) ?>">
+								<?= csrf_field() ?>
 								<input type="hidden" name="id" value="<?= (int)$contact['id'] ?>">
 								<button type="submit" class="btn-table-inline"><?= e__('contacts.index.table.buttons.delete') ?></button>
 							</form>

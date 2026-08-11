@@ -164,6 +164,8 @@ class MonitorRepository
 				reminder_interval_days,
 				max_reminders,
 				is_paused,
+				last_confirmed_at,
+				next_check_due_at,
 				created_at,
 				updated_at
 			)
@@ -177,8 +179,10 @@ class MonitorRepository
 				:reminder_interval_days,
 				:max_reminders,
 				:is_paused,
-				NOW(),
-				NOW()
+				UTC_TIMESTAMP(),
+				TIMESTAMPADD(DAY, :next_check_interval_days, UTC_TIMESTAMP()),
+				UTC_TIMESTAMP(),
+				UTC_TIMESTAMP()
 			)
 		';
 
@@ -192,64 +196,106 @@ class MonitorRepository
 			'reminder_interval_days' => $reminderIntervalDays,
 			'max_reminders' => $maxReminders,
 			'is_paused' => $isPaused ? 1 : 0,
+			'next_check_interval_days' => $checkIntervalDays,
 		]);
 
 		return (int)$this->_database->GetConnection()->lastInsertId();
 	}
 
 	/**
-	 * @brief Replaces all assigned contacts for a monitor.
+	 * @brief Synchronizes assigned contacts while preserving retained monitor_contact IDs.
 	 * @param int $monitorId Monitor ID.
+	 * @param int $userId Owner user ID.
 	 * @param array<int> $contactIds Contact IDs.
 	 */
-	public function ReplaceContactsForMonitor(int $monitorId, array $contactIds): void
+	public function ReplaceContactsForMonitor(int $monitorId, int $userId, array $contactIds): void
 	{
 		$connection = $this->_database->GetConnection();
 		$connection->beginTransaction();
 
 		try
 		{
-			$deleteSql = '
-				DELETE FROM monitor_contacts
-				WHERE monitor_id = :monitor_id
-			';
+			$ownerStatement = $connection->prepare('
+				SELECT id
+				FROM monitors
+				WHERE id = :monitor_id AND user_id = :user_id
+				FOR UPDATE
+			');
+			$ownerStatement->execute(['monitor_id' => $monitorId, 'user_id' => $userId]);
 
-			$deleteStatement = $connection->prepare($deleteSql);
-			$deleteStatement->execute([
-				'monitor_id' => $monitorId,
-			]);
-
-			if ($contactIds !== [])
+			if ($ownerStatement->fetchColumn() === false)
 			{
-				$insertSql = '
-					INSERT INTO monitor_contacts
-					(
-						monitor_id,
-						contact_id,
-						sort_order
-					)
-					VALUES
-					(
-						:monitor_id,
-						:contact_id,
-						:sort_order
-					)
-				';
+				throw new \RuntimeException('Owned monitor not found during contact synchronization.');
+			}
 
-				$insertStatement = $connection->prepare($insertSql);
+			$allowedStatement = $connection->prepare('
+				SELECT id
+				FROM contacts
+				WHERE user_id = :user_id
+			');
+			$allowedStatement->execute(['user_id' => $userId]);
+			$allowedContactIds = array_map('intval', $allowedStatement->fetchAll(PDO::FETCH_COLUMN));
+			$contactIds = array_values(array_filter(
+				array_unique($contactIds),
+				static fn (int $contactId): bool => in_array($contactId, $allowedContactIds, true)
+			));
 
-				$sortOrder = 1;
+			$selectStatement = $connection->prepare('
+				SELECT id, contact_id
+				FROM monitor_contacts
+				WHERE monitor_id = :monitor_id
+				FOR UPDATE
+			');
+			$selectStatement->execute(['monitor_id' => $monitorId]);
+			$rows = $selectStatement->fetchAll(PDO::FETCH_ASSOC);
+			$existingByContactId = [];
 
-				foreach ($contactIds as $contactId)
+			foreach (is_array($rows) ? $rows : [] as $row)
+			{
+				$existingByContactId[(int)$row['contact_id']] = (int)$row['id'];
+			}
+
+			$removedContactIds = array_diff(array_keys($existingByContactId), $contactIds);
+
+			if ($removedContactIds !== [])
+			{
+				$placeholders = implode(',', array_fill(0, count($removedContactIds), '?'));
+				$deleteStatement = $connection->prepare('
+					DELETE FROM monitor_contacts
+					WHERE monitor_id = ?
+					  AND contact_id IN (' . $placeholders . ')
+				');
+				$deleteStatement->execute([$monitorId, ...array_values($removedContactIds)]);
+			}
+
+			$insertStatement = $connection->prepare('
+				INSERT INTO monitor_contacts (monitor_id, contact_id, sort_order)
+				VALUES (:monitor_id, :contact_id, :sort_order)
+			');
+			$updateStatement = $connection->prepare('
+				UPDATE monitor_contacts
+				SET sort_order = :sort_order
+				WHERE id = :id
+			');
+
+			foreach (array_values($contactIds) as $index => $contactId)
+			{
+				$sortOrder = $index + 1;
+
+				if (isset($existingByContactId[$contactId]))
 				{
-					$insertStatement->execute([
-						'monitor_id' => $monitorId,
-						'contact_id' => $contactId,
+					$updateStatement->execute([
+						'id' => $existingByContactId[$contactId],
 						'sort_order' => $sortOrder,
 					]);
-
-					++$sortOrder;
+					continue;
 				}
+
+				$insertStatement->execute([
+					'monitor_id' => $monitorId,
+					'contact_id' => $contactId,
+					'sort_order' => $sortOrder,
+				]);
 			}
 
 			$connection->commit();
@@ -294,7 +340,8 @@ class MonitorRepository
 				reminder_interval_days = :reminder_interval_days,
 				max_reminders = :max_reminders,
 				is_paused = :is_paused,
-				updated_at = NOW()
+				next_check_due_at = TIMESTAMPADD(DAY, :next_check_interval_days, COALESCE(last_confirmed_at, UTC_TIMESTAMP())),
+				updated_at = UTC_TIMESTAMP()
 			WHERE id = :id
 			  AND user_id = :user_id
 		';
@@ -310,7 +357,56 @@ class MonitorRepository
 			'reminder_interval_days' => $reminderIntervalDays,
 			'max_reminders' => $maxReminders,
 			'is_paused' => $isPaused ? 1 : 0,
+			'next_check_interval_days' => $checkIntervalDays,
 		]);
+	}
+
+	/**
+	 * @brief Confirms a monitor when it is due and schedules its next check.
+	 * @param int $monitorId Monitor ID.
+	 * @param int $userId User ID.
+	 * @return bool True when the monitor was due and confirmed.
+	 */
+	public function ConfirmDueForUser(int $monitorId, int $userId): bool
+	{
+		$statement = $this->_database->GetConnection()->prepare('
+			UPDATE monitors
+			SET
+				last_confirmed_at = UTC_TIMESTAMP(),
+				next_check_due_at = TIMESTAMPADD(DAY, check_interval_days, UTC_TIMESTAMP()),
+				updated_at = UTC_TIMESTAMP()
+			WHERE id = :id
+			  AND user_id = :user_id
+			  AND is_paused = 0
+			  AND (next_check_due_at IS NULL OR next_check_due_at <= UTC_TIMESTAMP())
+		');
+		$statement->execute([
+			'id' => $monitorId,
+			'user_id' => $userId,
+		]);
+
+		return $statement->rowCount() === 1;
+	}
+
+	/**
+	 * @brief Forces a monitor due for development testing.
+	 * @param int $monitorId Monitor ID.
+	 * @param int $userId User ID.
+	 * @return bool True when an owned monitor was updated.
+	 */
+	public function ForceDueForUser(int $monitorId, int $userId): bool
+	{
+		$statement = $this->_database->GetConnection()->prepare('
+			UPDATE monitors
+			SET next_check_due_at = UTC_TIMESTAMP(), updated_at = UTC_TIMESTAMP()
+			WHERE id = :id AND user_id = :user_id
+		');
+		$statement->execute([
+			'id' => $monitorId,
+			'user_id' => $userId,
+		]);
+
+		return $statement->rowCount() === 1;
 	}
 
 	/**

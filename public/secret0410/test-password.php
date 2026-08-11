@@ -1,10 +1,12 @@
 <?php
 
+/**
+ * @file test-password.php
+ * @brief Disabled legacy public utility retained only to overwrite unsafe pre-0.3.0 deployments.
+ * @author Frank Willeke
+ */
+
 declare(strict_types=1);
 
-$password = 'SuperSecretPulsePassword1980to9999!';
-$hash = '$2y$12$P7NdHvKZfM7GeZ6i0Lk3/eAa8zgix2mwNvpQDXj.cMwxc0ZvEgEty';
-
-echo '<pre>';
-var_dump(password_verify($password, $hash));
-echo '</pre>';
+http_response_code(404);
+exit;

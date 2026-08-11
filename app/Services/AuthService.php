@@ -19,6 +19,8 @@ use Pulse\Repositories\UserRepository;
  */
 class AuthService
 {
+	private const DUMMY_PASSWORD_HASH = '$2y$12$Zl/fapXT2oA15HFG.e9O2egnXQBhHEh9nL632fHBVf2bRewV2EskC';
+
 	private UserRepository $_userRepository;
 	private Session $_session;
 	private Logger $_logger;
@@ -48,11 +50,14 @@ class AuthService
 
 		if ($user === null)
 		{
+			password_verify($password, self::DUMMY_PASSWORD_HASH);
 			return false;
 		}
 
 		if (!(bool)$user['is_active'])
 		{
+			password_verify($password, (string)$user['password_hash']);
+			$this->_logger->Warning('Login failed for inactive account');
 			return false;
 		}
 
@@ -60,21 +65,22 @@ class AuthService
 
 		if (!password_verify($password, $passwordHash))
 		{
-			$this->_logger->Warning('Login failed', [
-				'email' => $email,
-			]);
+			$this->_logger->Warning('Login failed');
 			return false;
 		}
 
 		$userId = (int)$user['id'];
+
+		if (password_needs_rehash($passwordHash, PASSWORD_DEFAULT))
+		{
+			$this->_userRepository->UpdatePasswordHash($userId, password_hash($password, PASSWORD_DEFAULT));
+		}
+
 		$this->_session->Regenerate();
 		$this->_session->LoginUser($userId);
 		$this->_userRepository->UpdateLastLoginAt($userId);
 
-		$this->_logger->Info('Login successful', [
-			'user_id' => $userId,
-			'email' => $email,
-		]);
+		$this->_logger->Info('Login successful', ['user_id' => $userId]);
 		return true;
 	}
 

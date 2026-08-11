@@ -1,476 +1,152 @@
-# Pulse Architecture
+# Pulse architecture
 
-This document provides a concise technical overview of Pulse’s current architecture and data model.
+## Deployment boundary
 
-It is intended for developers working on the codebase.
+The project has one intentionally public directory:
 
----
+```text
+Pulse/
+├── app/                 Application code, never public
+├── config/              Environment-backed configuration, never public
+├── database/            Schema and migrations, never public
+├── docs/                Documentation, never public
+├── public/              Web-server document root
+│   ├── assets/
+│   └── index.php
+├── storage/             Logs and private documents, never public
+├── tests/               Development tests, never public
+├── tools/               Command-line tools, never public
+└── bootstrap.php
+```
 
-# High-Level Overview
+The web server must use `Pulse/public` as its document root. A URL such as `/monitors` is internally rewritten to `public/index.php`.
 
-Pulse is a PHP web application that prepares structured emergency information for future automated delivery.
+The front controller reaches the rest of the application explicitly:
 
-The application currently supports:
+```php
+$container = require dirname(__DIR__) . '/bootstrap.php';
+```
 
-- user authentication
-- contact management
-- monitor management
-- assignment of contacts to monitors
-- document upload to monitors
-- assignment of documents to specific monitor contacts
-
-The future goal is to add:
-
-- explicit check-ins
-- reminder emails
-- escalation workflows
-- background processing through cron jobs
-
----
-
-# Architectural Style
-
-Pulse uses a lightweight layered architecture.
+In that expression, `__DIR__` is `Pulse/public`; `dirname(__DIR__)` is therefore `Pulse`. Root `bootstrap.php` then resolves `app`, `config`, and `storage` relative to its own directory. URL rewriting and PHP filesystem resolution are separate mechanisms.
 
 ## Request flow
 
-```txt
-HTTP Request
+```text
+HTTP request
+    ↓
+public/.htaccess
     ↓
 public/index.php
+    ├── trusted-host validation
+    ├── security headers
+    └── CSRF validation for POST
     ↓
 Router
     ↓
 Controller
     ↓
-Repository / Service
+Service / Repository
     ↓
-View
+View or download response
 ```
 
-## Main layers
+`public/index.php` remains deliberately thin. The root bootstrap builds the services and repositories; the front controller defines routes and performs cross-cutting HTTP checks.
+
+## Layers
+
+### Core
+
+`app/Core` contains framework-like infrastructure:
+
+- `Environment` — process and optional `.env` values
+- `Request` — typed, immutable request input
+- `Session` — cookie policy and session lifetime
+- `CsrfTokenManager` — session-bound CSRF tokens
+- `SecurityHeaders` — central response policy and host validation
+- `ErrorHandler` — production-safe diagnostics
+- `MigrationRunner` — ordered SQL migrations and checksums
+- `Database`, `Router`, `View`, `Translator`, and `Logger`
 
 ### Controllers
 
-Controllers handle request flow and user actions.
+Controllers enforce authentication and ownership, validate request-level intent, invoke services/repositories, and render or redirect.
 
-Examples:
-
-- AuthController
-- ContactController
-- MonitorController
-- ProfileController
-- HomeController
-- LanguageController
-
-Controllers should:
-
-- validate request input
-- enforce authentication / ownership
-- call repositories and services
-- prepare view data
-- redirect or render views
-
-Controllers should not contain SQL.
-
-### Repositories
-
-Repositories encapsulate database access.
-
-Examples:
-
-- UserRepository
-- ContactRepository
-- MonitorRepository
-- DocumentRepository
-
-Repositories should:
-
-- perform SQL queries
-- return rows as arrays
-- persist data
-- stay focused on one domain area
-
-Repositories should not perform rendering.
+Document actions have their own `DocumentController`; they are no longer mixed into the monitor controller.
 
 ### Services
 
-Services contain reusable business logic that is not tied to a single HTTP request.
+- `AuthService` verifies credentials and maintains authentication state.
+- `LoginThrottleService` applies account and network limits through opaque hashes.
+- `DocumentService` owns upload policy and private filesystem operations.
 
-At the moment, the main example is:
+Later releases will add `MonitorExecutionService`, notification delivery, and encryption/key services.
 
-- AuthService
+### Repositories
 
-Future service candidates include:
+Repositories own prepared SQL. Ownership-sensitive queries bind the current user through the relevant parent record.
 
-- MailService
-- MonitorExecutionService
-- CheckinService
+`MonitorRepository::ReplaceContactsForMonitor()` now synchronizes assignments:
 
-### Views
+- retained contacts keep the same `monitor_contacts.id`
+- new contacts receive a new assignment row
+- only removed contacts are deleted
+- ordering is updated in place
 
-Views are PHP templates under:
+This is essential because recipient messages and document-recipient links reference the assignment ID.
 
-app/Views
+## Domain model
 
-They receive data from controllers through the View class.
-
-Views should:
-
-- render HTML
-- use escaped output by default
-- avoid complex application logic
-
-### Core Infrastructure
-
-The app/Core namespace contains reusable framework-like infrastructure:
-
-- Router
-- Database
-- Session
-- View
-- Translator
-- helpers
-
-## Current Domain Model
-
-The most important entities in Pulse are described below.
-
-### User
-
-A user owns all other top-level data.
-
-A user can have:
-
-- many contacts
-- many monitors
-
-### Contact
-
-A contact represents a person who may later receive notifications.
-
-Fields currently include:
-
-- name
-- email
-- cell phone
-- notes
-
-A contact belongs to exactly one user.
-
-A contact can be assigned to multiple monitors.
-
-### Monitor
-
-A monitor represents a rule that watches the user’s activity.
-
-Conceptually, a monitor answers:
-
-> “If I stop confirming my status, who should receive what?”
-
-Fields currently include configuration values such as:
-
-- name
-- description
-- check interval
-- response window
-- reminder interval
-- max reminders
-- paused state
-
-A monitor belongs to exactly one user.
-
-A monitor can have multiple assigned contacts.
-
-### Monitor Contact
-
-`monitor_contacts` is the join table between monitors and contacts.
-
-This is a very important concept in Pulse.
-
-A monitor contact does not just mean:
-
-> “this contact belongs to this monitor”
-
-It also acts as the anchor point for per-recipient configuration.
-
-That is why other tables relate to `monitor_contact_id`.
-
-Examples of things that belong to a monitor contact:
-
-- recipient-specific messages
-- recipient assignment for documents
-
-### Contact Message
-
-`contact_messages` stores a message for a specific monitor contact.
-
-This means each assigned contact inside a monitor can receive different text.
-
-That is the correct model, because messaging is recipient-specific.
-
-### Document
-
-A document belongs to a monitor.
-
-This is deliberate.
-
-A document is first attached to the monitor, because the document itself belongs to the overall situation, not inherently to one specific person.
-
-Examples:
-
-- legal instructions
-- account information
-- a letter
-- emergency notes
-
-A document can be stored as:
-
-- uploaded file
-- text content
-
-### Document Recipient Assignment
-
-`document_monitor_contacts` connects documents to specific monitor contacts.
-
-This means:
-
-- a document can be sent to one contact
-- a document can be sent to several contacts
-- the same document does not need to be uploaded multiple times
-
-This is the key reason the document model is:
-
-```txt
-Monitor
- ├─ Documents
- └─ Monitor Contacts
-      └─ Recipient assignments
-```
-
-instead of storing documents separately under each monitor contact.
-
-## Core Data Relationships
-
-The current data model can be understood like this:
-
-```txt
+```text
 User
- ├─ Contacts
- └─ Monitors
-      ├─ Monitor Contacts
-      │    └─ Contact Messages
-      └─ Documents
-           └─ Document Recipient Assignments
+├── Contacts
+└── Monitors
+    ├── Monitor contacts
+    │   └── Recipient-specific messages
+    └── Documents
+        └── Document-recipient assignments
 ```
 
-Or more explicitly:
+Documents belong to monitors. Delivery selection is modeled independently through `document_monitor_contacts`, allowing one document to be assigned to several recipients without duplicate storage.
 
-```txt
-users
- ├─ contacts
- └─ monitors
-      ├─ monitor_contacts
-      │    └─ contact_messages
-      └─ documents
-           └─ document_monitor_contacts
-```
+## Monitor timing
 
-## Why Documents Belong to Monitors
+Database timestamps are UTC. `last_confirmed_at` and `next_check_due_at` describe the current lightweight runtime state.
 
-This is one of the most important design decisions in the current codebase.
+A manual check-in is accepted only when the monitor:
 
-A document belongs to the monitor, not directly to a monitor contact.
+- belongs to the active user
+- is not paused
+- is due or has no due timestamp
 
-Why:
+Confirmation sets `last_confirmed_at` to the current UTC time and schedules `next_check_due_at` by the monitor’s configured check interval. Cron evaluation, reminders, response windows, and escalation are deliberately deferred.
 
-- the same document may be relevant to multiple recipients
-- uploading the same file multiple times would be redundant
-- recipient assignment should be flexible
+The interface converts UTC timestamps to `PULSE_DISPLAY_TIMEZONE`, which defaults to `Europe/Berlin`.
 
-So the workflow is:
+## Configuration
 
-1. upload document to monitor
-2. choose which monitor contacts should receive it
+Committed configuration files contain no credentials. `Environment` reads process variables first and then values from an ignored root `.env` file. Process variables always win.
 
-This is cleaner than:
+Production mode forces debug output off unless the environment is explicitly non-production. Session, throttle, upload, host, and development controls are centralized in `config/app.php`.
 
-1. upload document separately inside each recipient section
+## Migrations
 
-## Current Request Ownership Rules
+Application bootstrap checks `schema_migrations`, verifies migration hashes, and applies pending `.sql` files in lexical order before handling the request. An up-to-date installation performs only the read-only version check. An installation that needs work acquires a database-specific advisory lock first, so simultaneous requests cannot apply a migration twice.
 
-Whenever an object is accessed, ownership must be validated through the user.
+For a pre-0.3.0 database with application tables but no migration history, it records migrations 001 and 002 as a legacy baseline and then applies 003. It never recreates or drops the existing application tables during that baseline operation.
 
-Examples:
+`tools/migrate.php` remains available as an optional command-line diagnostic for development environments. It is not required for installation or upgrades.
 
-- a contact must belong to the current user
-- a monitor must belong to the current user
-- a document must belong to a monitor owned by the current user
+Applied migration files must never be edited after release; create a new migration instead.
 
-This is especially important for:
+## Document storage
 
-- edit routes
-- delete routes
-- document download routes
+New uploads are:
 
-## File Storage Model
+- validated using actual file size and Fileinfo MIME detection
+- limited by a configurable allowlist
+- renamed to a 64-hex-character random basename with a `.bin` suffix
+- stored under `storage/uploads/monitor-documents`
+- assigned filesystem mode `0600`
+- delivered only through an authenticated, ownership-checked controller
 
-Uploaded files are stored under:  
-`storage/uploads/monitor-documents`
-
-Important rules:
-
-- the stored filename is generated uniquely
-- the original filename is preserved separately as metadata
-- users never access files by direct filesystem path
-- downloads are always routed through application logic
-
-This avoids:
-
-- filename collisions
-- accidental overwrite
-- leaking filesystem paths
-
-Current Routing Style
-
-Routes are defined centrally in:  
-`public/index.php`
-
-The router dispatches to controller methods.
-
-Examples:
-
-- `GET /contacts`
-- `POST /contacts/create`
-- `GET /monitors/edit`
-- `POST /monitors/documents/upload`
-
-Current route style is explicit and simple.
-
-## Translation Model
-
-Pulse uses a lightweight translation system.
-
-Language files live in:
-
-```txt
-app/Lang/en.php
-app/Lang/de.php
-```
-
-Helpers include:
-
-- `__()` for translated output
-- `e__()` for escaped translated output
-- `e()` for escaped plain strings
-
-The current locale is stored in the session and applied during bootstrap.
-
-## Versioning Model
-
-Pulse does not hardcode the application version in `config/app.php`.
-
-Instead, version information is generated locally using:  
-`tools/write_version.py`
-
-This writes the derived version string to:  
-`config/version.php`
-
-This approach fits the deployment model where the `.git` directory is not present on the server.
-
-## What Is Not Implemented Yet
-
-The following important parts are still planned:
-
-### Check-in
-
-A monitor currently has timing-related configuration, but there is not yet a completed check-in workflow.
-
-Planned check-in sources include:
-
-- manual confirmation in the UI
-- secure confirmation through an email link
-
-### Monitor Execution
-
-Pulse does not yet automatically evaluate monitors.
-
-That future logic will likely:
-
-- detect overdue monitors
-- send reminders
-- trigger escalation
-- log monitor events
-
-### Mail Delivery
-
-Mail delivery is not yet implemented.
-
-Later, mail generation will need to combine:
-
-- monitor
-- assigned contact
-- contact-specific message
-- documents assigned to that monitor contact
-
-### Cron Processing
-
-Scheduled execution is planned for future versions.
-
-## Recommended Future Architectural Direction
-
-As the project grows, the next logical service layer additions are:
-
-- CheckinService
-- MailService
-- MonitorExecutionService
-
-These services should keep business rules out of controllers.
-
-Likewise, future event/audit logging will likely justify its own repository or service.
-
-## Design Principles for Future Work
-
-When extending Pulse, these rules should remain true.
-
-### 1. Keep ownership checks strict
-
-Never access a monitor, contact, or document without validating user ownership.
-
-### 2. Keep business logic out of views
-
-Views should remain presentation-only.
-
-### 3. Keep SQL inside repositories
-
-Controllers should orchestrate, not query the database directly.
-
-### 4. Prefer explicit data models over implicit conventions
-
-If the real-world feature has a relationship, it should be represented in the schema.
-
-### 5. Avoid duplication in document delivery
-
-Documents should continue to be attached to monitors and assigned to recipients separately.
-
-That model is both flexible and efficient.
-
-## Summary
-
-Pulse currently consists of a solid configuration platform built around four central concepts:
-
-- contacts
-- monitors
-- monitor contacts
-- documents
-
-The most important structural rule is:
-
-> Documents belong to monitors, and recipient delivery is assigned separately through monitor contacts.
-
-This model gives Pulse a clean foundation for the next development steps:
-
-- check-in
-- mail delivery
-- reminder processing
-- cron execution
+This prevents direct web access and executable filename behavior. It is not encryption. The 0.4.0 design will add authenticated encryption and key versioning.

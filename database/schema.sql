@@ -1,5 +1,6 @@
--- Pulse initial database schema
--- MySQL 8+
+-- Pulse 0.3.1 reference database schema
+-- MySQL 8+ / MariaDB 10.6+
+-- Pulse applies database/migrations automatically. Do not import this reference file over an existing database.
 -- ----
 -- Core user and contact data
 -- Monitor configuration and monitor-contact assignments
@@ -9,6 +10,13 @@
 
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
+
+CREATE TABLE schema_migrations
+(
+	migration VARCHAR(255) NOT NULL PRIMARY KEY,
+	checksum CHAR(64) NOT NULL,
+	applied_at DATETIME NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE users
 (
@@ -184,6 +192,17 @@ CREATE TABLE app_settings
 	setting_key VARCHAR(100) NOT NULL,
 	setting_value TEXT NULL,
 	UNIQUE(user_id, setting_key)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE login_attempts
+(
+	attempt_key CHAR(64) NOT NULL PRIMARY KEY,
+	attempts INT UNSIGNED NOT NULL DEFAULT 0,
+	window_started_at DATETIME NOT NULL,
+	blocked_until DATETIME NULL,
+	updated_at DATETIME NOT NULL,
+	INDEX idx_login_attempts_blocked_until (blocked_until),
+	INDEX idx_login_attempts_updated_at (updated_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 SET FOREIGN_KEY_CHECKS = 1;

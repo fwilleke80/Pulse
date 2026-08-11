@@ -7,6 +7,8 @@ namespace Pulse\Controllers;
 use Pulse\Core\Session;
 use Pulse\Core\View;
 use Pulse\Core\Logger;
+use Pulse\Core\Request;
+use Pulse\Core\SafeRedirect;
 use Pulse\Services\AuthService;
 
 /**
@@ -18,6 +20,7 @@ abstract class BaseController
 	protected Session $_session;
 	protected AuthService $_auth;
 	protected Logger $_logger;
+	protected Request $_request;
 
 	/**
 	 * @brief Constructs the base controller.
@@ -25,18 +28,21 @@ abstract class BaseController
 	 * @param Session $session Session service.
 	 * @param AuthService $auth Authentication service.
 	 * @param Logger $logger Application logger.
+	 * @param Request $request Current request.
 	 */
 	public function __construct(
 		View $view,
 		Session $session,
 		AuthService $auth,
-		Logger $logger
+		Logger $logger,
+		Request $request
 	)
 	{
 		$this->_view = $view;
 		$this->_session = $session;
 		$this->_auth = $auth;
 		$this->_logger = $logger;
+		$this->_request = $request;
 	}
 
 	/**
@@ -45,7 +51,7 @@ abstract class BaseController
 	 */
 	protected function Redirect(string $path): void
 	{
-		header('Location: ' . $path);
+		header('Location: ' . SafeRedirect::Normalize($path));
 		exit;
 	}
 

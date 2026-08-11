@@ -16,6 +16,7 @@ ob_start();
 <h1><?= e__('login.heading') ?></h1>
 <p><?= e__('login.message') ?></p>
 <form method="post" action="<?= e($base_url) ?>/login">
+	<?= csrf_field() ?>
 	<label for="email"><?= e__('login.email') ?></label>
 	<input type="email" id="email" name="email" required>
 	<label for="password"><?= e__('login.password') ?></label>

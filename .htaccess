@@ -1,0 +1,4 @@
+# Pulse must be served with public/ as the web root.
+<IfModule mod_authz_core.c>
+	Require all denied
+</IfModule>

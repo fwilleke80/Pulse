@@ -2,79 +2,99 @@
 
 /**
  * @file index.php
- * @brief Front controller: bootstraps the application, registers routes, and dispatches the current request.
+ * @brief Thin front controller: security policy, routes, and dispatch.
  * @author Frank Willeke
  */
 
 declare(strict_types=1);
 
-use Pulse\Controllers\HomeController;
 use Pulse\Controllers\AuthController;
 use Pulse\Controllers\ContactController;
+use Pulse\Controllers\DocumentController;
+use Pulse\Controllers\HomeController;
 use Pulse\Controllers\LanguageController;
-use Pulse\Controllers\ProfileController;
 use Pulse\Controllers\MonitorController;
+use Pulse\Controllers\ProfileController;
 use Pulse\Core\NotFoundException;
+use Pulse\Core\SecurityHeaders;
 
-// Load dependencies and initialize services
 $container = require dirname(__DIR__) . '/bootstrap.php';
 
-/** @var Pulse\Core\Database $db */
-$db = $container['db'];
-
-/** @var Pulse\Core\Router $router */
-$router = $container['router'];
-
-/** @var Pulse\Core\View $view */
-$view = $container['view'];
-
-/** @var Pulse\Core\Session $session */
-$session = $container['session'];
-
-/** @var Pulse\Services\AuthService $auth */
-$auth = $container['auth'];
-
-/** @var Pulse\Repositories\ContactRepository $contactRepository */
-$contactRepository = $container['contactRepository'];
-
-/** @var Pulse\Repositories\MonitorRepository $monitorRepository */
-$monitorRepository = $container['monitorRepository'];
-
-/** @var Pulse\Repositories\DocumentRepository $documentRepository */
-$documentRepository = $container['documentRepository'];
-
-/** @var Pulse\Core\Translator $translator */
-$translator = $container['translator'];
-
-/** @var Pulse\Repositories\UserRepository $userRepository */
-$userRepository = $container['userRepository'];
-
-/** @var Pulse\Core\Logger $logger */
-$logger = $container['logger'];
-
-/* @var array<string, mixed> $config */
 $config = $container['config'];
+$db = $container['db'];
+$router = $container['router'];
+$view = $container['view'];
+$request = $container['request'];
+$session = $container['session'];
+$csrf = $container['csrf'];
+$auth = $container['auth'];
+$logger = $container['logger'];
+$contactRepository = $container['contactRepository'];
+$monitorRepository = $container['monitorRepository'];
+$documentRepository = $container['documentRepository'];
+$documentService = $container['documentService'];
+$userRepository = $container['userRepository'];
+$loginThrottle = $container['loginThrottle'];
 
-// ----- Set global variables for views -----
-$view->SetGlobals([
-	'flash' => $session->PullFlash(),
-], true);
+(new SecurityHeaders())->Apply($request, (array)$config['security']);
+header('Cache-Control: no-store');
 
-// ----- Initialize controllers -----
-$homeController = new HomeController($view, $session, $auth, $logger, $db, $config, $contactRepository, $monitorRepository);
-$authController = new AuthController($view, $session, $auth, $logger);
-$contactController = new ContactController($view, $session, $auth, $logger, $contactRepository);
-$languageController = new LanguageController($view, $session, $auth, $logger, $translator, $config['supported_locales'] ?? ['en', 'de']);
-$profileController = new ProfileController($view, $session, $auth, $logger, $userRepository);
-$monitorController = new MonitorController($view, $session, $auth, $logger, $monitorRepository, $contactRepository, $documentRepository);
+$view->SetGlobals(['flash' => $session->PullFlash()], true);
 
-// ----- Home routes -----
+if ($request->Method() === 'POST' && !$csrf->IsValid($request->PostString('_csrf_token', 128)))
+{
+	$logger->Warning('Rejected request with invalid CSRF token', ['path' => $request->Path()]);
+	http_response_code(419);
+	echo $view->Render('home.error', [
+		'heading' => __('error.csrf.heading'),
+		'message' => __('error.csrf.message'),
+	]);
+	exit;
+}
+
+$homeController = new HomeController(
+	$view,
+	$session,
+	$auth,
+	$logger,
+	$request,
+	$db,
+	$config,
+	$contactRepository,
+	$monitorRepository
+);
+$authController = new AuthController($view, $session, $auth, $logger, $request, $loginThrottle, $csrf);
+$contactController = new ContactController($view, $session, $auth, $logger, $request, $contactRepository);
+$languageController = new LanguageController($view, $session, $auth, $logger, $request, (array)$config['available_locales']);
+$profileController = new ProfileController(
+	$view,
+	$session,
+	$auth,
+	$logger,
+	$request,
+	$userRepository,
+	(int)$config['security']['password_minimum_length']
+);
+$monitorController = new MonitorController(
+	$view,
+	$session,
+	$auth,
+	$logger,
+	$request,
+	$monitorRepository,
+	$contactRepository,
+	$documentRepository,
+	$documentService,
+	(bool)$config['development']['allow_force_due']
+);
+$documentController = new DocumentController($view, $session, $auth, $logger, $request, $documentService);
+
 $router->Get('/', [$homeController, 'Dashboard']);
 $router->Get('/about', [$homeController, 'About']);
 $router->Get('/imprint', [$homeController, 'Imprint']);
 $router->Get('/health', [$homeController, 'Health']);
+$router->Get('/health/readiness', [$homeController, 'Readiness']);
 
-// ----- Contact management routes -----
 $router->Get('/contacts', [$contactController, 'Index']);
 $router->Get('/contacts/new', [$contactController, 'New']);
 $router->Get('/contacts/edit', [$contactController, 'Edit']);
@@ -82,44 +102,32 @@ $router->Post('/contacts/update', [$contactController, 'Update']);
 $router->Post('/contacts/create', [$contactController, 'Create']);
 $router->Post('/contacts/delete', [$contactController, 'Delete']);
 
-// ----- Profile routes -----
 $router->Get('/profile', [$profileController, 'Index']);
 $router->Post('/profile/update', [$profileController, 'Update']);
 $router->Post('/profile/password', [$profileController, 'ChangePassword']);
 
-// ----- Monitor management routes -----
 $router->Get('/monitors', [$monitorController, 'Index']);
 $router->Get('/monitors/new', [$monitorController, 'New']);
-$router->Post('/monitors/create', [$monitorController, 'Create']);
 $router->Get('/monitors/edit', [$monitorController, 'Edit']);
+$router->Post('/monitors/create', [$monitorController, 'Create']);
 $router->Post('/monitors/update', [$monitorController, 'Update']);
 $router->Post('/monitors/delete', [$monitorController, 'Delete']);
-$router->Post('/monitors/documents/upload', [$monitorController, 'UploadDocument']);
-$router->Post('/monitors/documents/recipients', [$monitorController, 'UpdateDocumentRecipients']);
-$router->Post('/monitors/documents/delete', [$monitorController, 'DeleteDocument']);
-$router->Get('/monitors/documents/download', [$monitorController, 'DownloadDocument']);
+$router->Post('/monitors/check-in', [$monitorController, 'CheckIn']);
+$router->Post('/monitors/force-due', [$monitorController, 'ForceDue']);
 
-// ----- Authentication routes -----
+$router->Post('/monitors/documents/upload', [$documentController, 'Upload']);
+$router->Post('/monitors/documents/recipients', [$documentController, 'UpdateRecipients']);
+$router->Post('/monitors/documents/delete', [$documentController, 'Delete']);
+$router->Get('/monitors/documents/download', [$documentController, 'Download']);
+
 $router->Get('/login', [$authController, 'ShowLogin']);
 $router->Post('/login', [$authController, 'Login']);
-$router->Get('/logout', [$authController, 'Logout']);
-
-// ----- Language switcher route -----
-$router->Get('/language/set', [$languageController, 'Set']);
-
-// ----- Dispatch request -----
-$requestMethod = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-$requestUri = $_SERVER['REQUEST_URI'] ?? '/';
-$requestPath = parse_url($requestUri, PHP_URL_PATH);
-
-if (!is_string($requestPath) || $requestPath === '')
-{
-	$requestPath = '/';
-}
+$router->Post('/logout', [$authController, 'Logout']);
+$router->Post('/language/set', [$languageController, 'Set']);
 
 try
 {
-	$response = $router->Dispatch($requestMethod, $requestPath);
+	$response = $router->Dispatch($request->Method(), $request->Path());
 
 	if (is_string($response))
 	{

@@ -11,6 +11,7 @@ ob_start();
 <h1><?= e__('monitors.add.heading') ?></h1>
 
 <form method="post" action="<?= e($base_url) ?>/monitors/create">
+	<?= csrf_field() ?>
 	<label for="name"><?= e__('monitors.add.name') ?></label>
 	<input type="text" id="name" name="name" required>
 

@@ -1,9 +1,12 @@
 <?php
 
+/**
+ * @file make-password.php
+ * @brief Disabled legacy public utility retained only to overwrite unsafe pre-0.3.0 deployments.
+ * @author Frank Willeke
+ */
+
 declare(strict_types=1);
 
-$password = 'SuperSecretPulsePassword1980to9999!';
-
-echo '<pre>';
-echo htmlspecialchars(password_hash($password, PASSWORD_DEFAULT), ENT_QUOTES, 'UTF-8');
-echo '</pre>';
+http_response_code(404);
+exit;

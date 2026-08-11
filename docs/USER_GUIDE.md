@@ -1,192 +1,65 @@
-# Pulse User Guide
+# Pulse user guide
 
-Pulse helps you prepare important information that will be delivered to trusted contacts if you stop checking in.
+## Current scope
 
-The system allows you to define monitors, assign contacts, and attach documents.
+Pulse 0.3.1 lets you:
 
----
+- sign in and update your profile
+- create and edit trusted contacts
+- create monitors and assign contacts
+- upload approved document types to a monitor
+- choose document recipients from that monitor’s contacts
+- see whether monitors are scheduled, due, or paused
+- manually confirm a due monitor
 
-## Basic Concepts
+Automatic reminder mail, escalation, contact notifications, and recipient document access are not active yet.
 
-Understanding Pulse requires a few key concepts.
+Uploaded files are private from normal website visitors, but they are not encrypted at rest in this version. Do not upload your final highly sensitive documents until the encrypted-storage release is complete.
 
-### Contact
+## Contacts
 
-A **contact** is a person who may receive notifications and documents if a monitor eventually triggers.
+A contact is someone who may later receive a message or document. Create contacts before assigning them to monitors.
 
-Examples:
+Editing a contact updates the shared contact record. Removing a contact also removes that contact’s monitor assignments through database relationships.
 
-- family members
-- close friends
-- lawyers
-- colleagues
+## Monitors
 
-Each contact can include:
+A monitor describes how frequently you intend to confirm that you are active. Its editor contains future reminder/escalation settings as well as its contact assignments.
 
-- name
-- email address
-- phone number
-- notes
+The monitor overview focuses on runtime state:
 
----
+- **Scheduled** — no confirmation is currently required
+- **Due** — the monitor can be confirmed now
+- **Paused** — no confirmation is currently expected
 
-### Monitor
+The displayed timestamps use the configured local display timezone. Storage and comparisons use UTC.
 
-A **monitor** watches your activity.
+## Manual check-in
 
-If you stop confirming that you are active for a certain period, the monitor will eventually trigger.
+When a monitor is due, **Check in now** appears on the dashboard and monitor overview. Confirming it records the current time and schedules the next due date from the check interval.
 
-Examples:
+The action is intentionally one click, but it is accepted only for a due, active monitor owned by the signed-in user.
 
-- a weekly activity check
-- a long-term inactivity monitor
-- a travel safety monitor
+## Documents
 
-Each monitor can have multiple contacts assigned.
+Open a monitor’s editor to upload documents and assign recipients.
 
----
+The default upload policy accepts PDF, RTF, OpenDocument Text, Word `.docx`, JPEG, PNG, and plain text files up to 25 MiB. Administrators can change the size and MIME allowlists in `.env`.
 
-### Monitor Contact
+Pulse detects the file type from the uploaded content rather than trusting the filename. Files are renamed and stored outside the public web directory. Downloads always pass through authentication and ownership checks.
 
-A **monitor contact** is the assignment of a contact to a monitor.
+Deleting a document removes its database record and stored file. Deleting a monitor removes all files attached to it.
 
-This allows a single contact to participate in multiple monitors.
+## Passwords and sessions
 
----
+The default minimum password length is 12 characters. Sessions expire after inactivity and after an absolute lifetime; these limits are configurable by the administrator.
 
-### Document
-
-Documents are files or text notes attached to a monitor.
-
-Examples:
-
-- account instructions
-- legal documents
-- letters to loved ones
-- emergency contact lists
-
-Documents belong to the **monitor**, not directly to contacts.
-
----
-
-### Document Recipients
-
-Each document can be assigned to specific monitor contacts.
-
-This allows you to control who receives which information.
-
-For example:
-
-- one contact may receive legal documents
-- another contact may receive personal messages
-
----
-
-## Getting Started
-
-### Step 1 – Create Contacts
-
-Before creating monitors, add the people you want to notify.
-
-Go to:
-
-Contacts → New Contact
-
-Enter the contact’s details and save.
-
----
-
-### Step 2 – Create a Monitor
-
-Create a monitor that defines when a check-in is required.
-
-Go to:
-
-Monitors → New Monitor
-
-Configure:
-
-- title
-- description
-- monitoring interval
-- assigned contacts
-
----
-
-### Step 3 – Upload Documents
-
-Open the monitor and upload documents.
-
-Each document can be assigned to one or more monitor contacts.
-
-Example:
-
-Document: emergency-instructions.pdf
-Recipients: Alice, Bob
-
----
-
-### Step 4 – Assign Recipients
-
-For each document, choose which contacts should receive it.
-
-This allows different people to receive different information.
-
----
-
-## Editing and Managing Documents
-
-Inside the monitor edit page you can:
-
-- upload new documents
-- change recipient assignments
-- download documents
-- delete documents
-
----
+Repeated failed sign-ins are temporarily blocked. The response does not reveal whether an email address belongs to an account.
 
 ## Languages
 
-Pulse currently supports:
+English and German are available from the footer. Language changes use the same security protection as other state changes and return only to a local Pulse page.
 
-- English
-- German
+## Health checks
 
-You can switch the interface language using the language selector.
-
----
-
-## Health Page
-
-A simple health page is available at:
-
-/health
-
-This page reports:
-
-- database status
-- PHP version
-
-It is mainly intended for administrators.
-
----
-
-## Planned Features
-
-Future versions of Pulse will add:
-
-- periodic check-in confirmations
-- email reminders
-- automatic notifications to contacts
-- escalation workflows
-- background processing via cron
-
-These features will turn Pulse into a fully automated monitoring and notification system.
-
----
-
-## Important Note
-
-Pulse currently provides the **preparation infrastructure**.
-
-Notification and check-in automation will be introduced in future versions.
+`/health` is a minimal public liveness endpoint and returns only a status value. Signed-in users can access `/health/readiness` for database and storage readiness.

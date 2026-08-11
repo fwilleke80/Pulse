@@ -16,6 +16,7 @@ ob_start();
 
 <h1><?= e__('contacts.edit.heading') ?></h1>
 <form method="post" action="<?= e($base_url) ?>/contacts/update">
+	<?= csrf_field() ?>
 	<input type="hidden" name="id" value="<?= (int)$contact['id'] ?>">
 
 	<label for="name"><?= e__('contacts.edit.name') ?></label>

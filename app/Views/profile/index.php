@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 /** @var array<string, mixed> $user */
+/** @var string $base_url */
 
 ob_start();
 ?>
@@ -12,7 +13,8 @@ ob_start();
 <section class="stack">
 	<h2><?= e__('profile.data.heading') ?></h2>
 
-	<form method="post" action="/profile/update" class="stack">
+	<form method="post" action="<?= e($base_url) ?>/profile/update" class="stack">
+		<?= csrf_field() ?>
 		<div>
 			<label for="display_name"><?= e__('profile.data.display_name') ?></label><br>
 			<input
@@ -46,7 +48,8 @@ ob_start();
 <section class="stack">
 	<h2><?= e__('profile.password.heading') ?></h2>
 
-	<form method="post" action="/profile/password" class="stack">
+	<form method="post" action="<?= e($base_url) ?>/profile/password" class="stack">
+		<?= csrf_field() ?>
 		<div>
 			<label for="current_password"><?= e__('profile.password.current') ?></label><br>
 			<input
@@ -75,7 +78,7 @@ ob_start();
 				name="confirm_password"
 				required>
 		</div>
-		<div id="password_mismatch_warning" class="password-warning" style="display:none;">
+		<div id="password_mismatch_warning" class="password-warning is-hidden">
 			<?= e__('profile.password.mismatch_warning') ?>
 		</div>
 		<div class="password-toggle">
@@ -88,77 +91,6 @@ ob_start();
 			<button type="submit"><?= e__('profile.password.submit') ?></button>
 		</div>
 	</form>
-	<script>
-		document.addEventListener('DOMContentLoaded', function ()
-		{
-			const toggle = document.getElementById('show_passwords');
-			const fields = [
-				document.getElementById('current_password'),
-				document.getElementById('new_password'),
-				document.getElementById('confirm_password')
-			];
-
-			if (!toggle)
-			{
-				return;
-			}
-
-			toggle.addEventListener('change', function ()
-			{
-				const newType = toggle.checked ? 'text' : 'password';
-
-				for (const field of fields)
-				{
-					if (field)
-					{
-						field.type = newType;
-					}
-				}
-			});
-		});
-
-		document.addEventListener("DOMContentLoaded", function ()
-		{
-			const newPassword = document.getElementById("new_password");
-			const confirmPassword = document.getElementById("confirm_password");
-			const warning = document.getElementById("password_mismatch_warning");
-
-			if (!newPassword || !confirmPassword)
-			{
-				return;
-			}
-
-			function checkPasswords()
-			{
-				const p1 = newPassword.value;
-				const p2 = confirmPassword.value;
-
-				if (p1 === "" && p2 === "")
-				{
-					warning.style.display = "none";
-					newPassword.classList.remove("password-error");
-					confirmPassword.classList.remove("password-error");
-					return;
-				}
-
-				if (p1 !== p2)
-				{
-					warning.style.display = "block";
-					newPassword.classList.add("password-error");
-					confirmPassword.classList.add("password-error");
-				}
-				else
-				{
-					warning.style.display = "none";
-					newPassword.classList.remove("password-error");
-					confirmPassword.classList.remove("password-error");
-				}
-			}
-
-			newPassword.addEventListener("input", checkPasswords);
-			confirmPassword.addEventListener("input", checkPasswords);
-		});
-	</script>
 </section>
 
 <?php

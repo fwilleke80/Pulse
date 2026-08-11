@@ -8,6 +8,7 @@ use Pulse\Core\Database;
 use Pulse\Core\Session;
 use Pulse\Core\View;
 use Pulse\Core\Logger;
+use Pulse\Core\Request;
 use Pulse\Services\AuthService;
 
 /**
@@ -29,6 +30,7 @@ class HomeController extends BaseController
 	 * @param \Pulse\Core\Session $session Session service.
 	 * @param \Pulse\Services\AuthService $auth Authentication service.
 	 * @param \Pulse\Core\Logger $logger Application logger.
+	 * @param Request $request Current request.
 	 * @param Database $db Database service.
 	 * @param array<string, mixed> $config Application configuration.
 	 * @param \Pulse\Repositories\ContactRepository $contactRepository Contact repository.
@@ -39,13 +41,14 @@ class HomeController extends BaseController
 		Session $session,
 		AuthService $auth,
 		Logger $logger,
+		Request $request,
 		Database $db,
 		array $config,
 		\Pulse\Repositories\ContactRepository $contactRepository,
 		\Pulse\Repositories\MonitorRepository $monitorRepository
 	)
 	{
-		parent::__construct($view, $session, $auth, $logger);
+		parent::__construct($view, $session, $auth, $logger, $request);
 		$this->_db = $db;
 		$this->_config = $config;
 		$this->_contactRepository = $contactRepository;
@@ -61,6 +64,7 @@ class HomeController extends BaseController
 		$user = $this->RequireUser();
 		$contactCount = $this->_contactRepository->CountByUserId((int)$user['id']);
 		$monitorCount = $this->_monitorRepository->CountByUserId((int)$user['id']);
+		$monitors = $this->_monitorRepository->FindAllByUserId((int)$user['id']);
 
 		$this->_logger->Info('User ID ' . $user['id'] . ' accessed dashboard');
 
@@ -68,11 +72,13 @@ class HomeController extends BaseController
 			'user' => $user,
 			'contactCount' => $contactCount,
 			'monitorCount' => $monitorCount,
+			'monitors' => $monitors,
+			'allowForceDue' => (bool)($this->_config['development']['allow_force_due'] ?? false),
 		]);
 	}
 
 	/**
-	 * @brief Displays the imprint page.
+	 * @brief Displays the about page.
 	 * @return string
 	 */
 	public function About(): string
@@ -94,11 +100,19 @@ class HomeController extends BaseController
 	 */
 	public function Health(): void
 	{
-		$databaseOk = $this->_db->CanConnect();
+		header('Content-Type: application/json; charset=utf-8');
+		header('Cache-Control: no-store');
+		echo json_encode(['status' => 'ok'], JSON_UNESCAPED_SLASHES);
+	}
 
-		$configOk =
-			isset($this->_config['name']) &&
-			isset($this->_config['timezone']);
+	/**
+	 * @brief Returns authenticated operational readiness details.
+	 */
+	public function Readiness(): void
+	{
+		$this->RequireAuth();
+		$databaseOk = $this->_db->CanConnect();
+		$configOk = isset($this->_config['name'], $this->_config['timezone']);
 
 		$storageDirs = [
 			'storage' => dirname(__DIR__, 2) . '/storage',
@@ -113,12 +127,6 @@ class HomeController extends BaseController
 		{
 			$directories[$name] = is_dir($path) && is_writable($path);
 		}
-
-		$this->_logger->Info('Health check performed', [
-			'database' => $databaseOk ? 'ok' : 'error',
-			'config' => $configOk ? 'ok' : 'error',
-			'directories' => $directories,
-		]);
 
 		$directoriesOk = !in_array(false, $directories, true);
 		$status = ($databaseOk && $directoriesOk && $configOk) ? 'ok' : 'error';
@@ -135,7 +143,6 @@ class HomeController extends BaseController
 					'database' => $databaseOk ? 'ok' : 'error',
 					'directories' => $directories,
 				],
-				'php' => PHP_VERSION,
 				'time' => gmdate('c'),
 			],
 			JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES

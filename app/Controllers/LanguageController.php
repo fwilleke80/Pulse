@@ -1,77 +1,59 @@
 <?php
+
 /**
  * @file LanguageController.php
- * @brief Controller for language switching.
+ * @brief CSRF-protected language switching with local redirects only.
+ * @author Frank Willeke
  */
 
 declare(strict_types=1);
 
 namespace Pulse\Controllers;
 
-use Pulse\Core\Session;
-use Pulse\Core\Translator;
-use Pulse\Core\View;
 use Pulse\Core\Logger;
+use Pulse\Core\Request;
+use Pulse\Core\SafeRedirect;
+use Pulse\Core\Session;
+use Pulse\Core\View;
 use Pulse\Services\AuthService;
 
 /**
- * @brief Controller for language switching.
+ * @brief Changes the active UI locale.
  */
 class LanguageController extends BaseController
 {
-	private Translator $_translator;
-
-	/** @var string[] */
+	/** @var array<int, string> */
 	private array $_supportedLocales;
 
-	/**
-	 * @brief Constructs the language controller.
-	 * @param View $view View renderer.
-	 * @param Session $session Session service.
-	 * @param AuthService $auth Authentication service.
-	 * @param Logger $logger Application logger.
-	 * @param Translator $translator Translator service.
-	 * @param string[] $supportedLocales List of allowed locales.
-	 */
+	/** @brief Constructs the controller. @param View $view View. @param Session $session Session. @param AuthService $auth Authentication. @param Logger $logger Logger. @param Request $request Request. @param array<int, string> $supportedLocales Allowed locales. */
 	public function __construct(
 		View $view,
 		Session $session,
 		AuthService $auth,
 		Logger $logger,
-		Translator $translator,
+		Request $request,
 		array $supportedLocales
 	)
 	{
-		parent::__construct($view, $session, $auth, $logger);
-		$this->_translator = $translator;
+		parent::__construct($view, $session, $auth, $logger, $request);
 		$this->_supportedLocales = $supportedLocales;
 	}
 
-	/**
-	 * @brief Changes the active locale stored in the session.
-	 */
+	/** @brief Changes the active locale stored in the session. */
 	public function Set(): void
 	{
-		$locale = trim((string)($_GET['locale'] ?? ''));
+		$locale = $this->_request->PostString('locale', 10);
+		$redirect = SafeRedirect::Normalize($this->_request->PostString('redirect', 2048), '/');
 
-		if ($locale === '' || !in_array($locale, $this->_supportedLocales, true))
+		if (!in_array($locale, $this->_supportedLocales, true))
 		{
-			$this->Flash('error', 'Unsupported language.');
-			$this->Redirect($this->GetRedirectTarget());
+			$this->Flash('error', __('flash.language_unsupported'));
+			$this->Redirect($redirect);
 		}
 
-		$this->_logger->Info('Changing language', ['locale' => $locale]);
 		$this->_session->Set('locale', $locale);
-		$this->Flash('success', e__('flash.languageswitched', ['locale' => $locale]));
-		$this->Redirect($this->GetRedirectTarget());
-	}
-
-	/**
-	 * @brief Returns the path to redirect back to.
-	 * @return string
-	 */
-	private function GetRedirectTarget(): string
-	{
-		return trim((string)($_GET['redirect'] ?? ((string)($_SERVER['HTTP_REFERER'] ?? '/'))));
+		$this->_logger->Info('UI language changed', ['locale' => $locale]);
+		$this->Flash('success', __('flash.languageswitched', ['locale' => $locale]));
+		$this->Redirect($redirect);
 	}
 }
