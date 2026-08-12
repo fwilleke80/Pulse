@@ -165,7 +165,7 @@ class NotificationComposerTest extends TestCase
 		self::assertStringContainsString('/safety/confirm?token=', $message['body_text']);
 	}
 
-	public function testRecipientNotificationContainsConfiguredMessageButNoDocumentAccess(): void
+	public function testRecipientNotificationExpandsConfiguredPlaceholdersButAddsNoWrapper(): void
 	{
 		$composer = $this->Composer();
 		$message = $composer->ComposeRecipientNotification([
@@ -173,14 +173,31 @@ class NotificationComposerTest extends TestCase
 			'owner_name' => 'Owner',
 			'monitor_name' => 'Weekly check',
 			'notification_locale' => 'en',
-			'message_subject' => 'Personal note',
-			'message_body' => 'This is the configured message.',
+			'message_subject' => '{app}: note from {owner} for {name}',
+			'message_body' => 'Hello {name}. This concerns {monitor}.',
 		]);
 
-		self::assertSame('Personal note', $message['subject']);
-		self::assertSame('This is the configured message.', $message['body_text']);
+		self::assertSame('Pulse: note from Owner for Recipient', $message['subject']);
+		self::assertSame('Hello Recipient. This concerns Weekly check.', $message['body_text']);
 		self::assertStringNotContainsString('/documents/', $message['body_text']);
 		self::assertStringNotContainsString('/access', $message['body_text']);
+	}
+
+	public function testRecipientNotificationUsesLocalizedPulseDefaultWhenCustomTextIsEmpty(): void
+	{
+		$composer = $this->Composer();
+		$message = $composer->ComposeRecipientNotification([
+			'recipient_name' => 'Empfänger',
+			'owner_name' => 'Frank',
+			'monitor_name' => 'Wichtiger Monitor',
+			'notification_locale' => 'de',
+			'message_subject' => '',
+			'message_body' => '',
+		]);
+
+		self::assertSame('[Pulse] Nachricht von Frank', $message['subject']);
+		self::assertStringContainsString('Hallo Empfänger', $message['body_text']);
+		self::assertStringContainsString('Wichtiger Monitor', $message['body_text']);
 	}
 
 	private function Composer(): NotificationComposer

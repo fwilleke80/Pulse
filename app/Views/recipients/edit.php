@@ -12,7 +12,8 @@ declare(strict_types=1);
 /** @var array<int, array<string, mixed>> $documents */
 /** @var array<int> $assignedDocumentIds */
 /** @var array<int, array<string, mixed>> $deliveryHistory */
-/** @var array{subject: string, body_text: string}|null $preview */
+/** @var array{subject: string, body_text: string} $preview */
+/** @var array{subject: string, body_text: string} $defaultPreview */
 /** @var string $base_url */
 
 $hasOverride = trim((string)($recipient['override_subject'] ?? '')) !== '' || trim((string)($recipient['override_body'] ?? '')) !== '';
@@ -64,6 +65,13 @@ ob_start();
 			<input type="text" id="message_subject" name="message_subject" value="<?= e((string)($recipient['override_subject'] ?? '')) ?>">
 			<label for="message_body"><?= e__('monitors.messages.body') ?></label>
 			<textarea id="message_body" name="message_body" rows="10"><?= e((string)($recipient['override_body'] ?? '')) ?></textarea>
+			<p class="form-hint"><?= e__('recipients.message.placeholders') ?> <code>{app}</code> <code>{name}</code> <code>{owner}</code> <code>{monitor}</code></p>
+			<p class="form-hint"><?= e__('recipients.message.custom_hint') ?></p>
+		</div>
+		<div class="mail-default-template">
+			<strong><?= e__('recipients.message.default_preview.heading') ?></strong>
+			<div><strong><?= e__('recipients.preview.subject') ?>:</strong> <?= e($defaultPreview['subject']) ?></div>
+			<pre><?= e($defaultPreview['body_text']) ?></pre>
 		</div>
 	</section>
 
@@ -80,6 +88,9 @@ ob_start();
 						<span>
 							<strong><?= e((string)$document['title']) ?></strong><br>
 							<small><?= e__('monitors.documents.type.' . (string)$document['storage_type']) ?></small>
+							<?php if (trim((string)($document['description'] ?? '')) !== ''): ?>
+								<br><small><?= e((string)$document['description']) ?></small>
+							<?php endif; ?>
 						</span>
 					</label>
 				<?php endforeach; ?>
@@ -96,15 +107,11 @@ ob_start();
 
 <section class="configuration-block">
 	<h2><?= e__('recipients.preview.heading') ?></h2>
-	<?php if (is_array($preview)): ?>
-		<p class="form-hint"><?= e__('recipients.preview.exact_hint') ?></p>
-		<div class="mail-preview">
-			<strong><?= e__('recipients.preview.subject') ?>:</strong> <?= e($preview['subject']) ?>
-			<pre><?= e($preview['body_text']) ?></pre>
-		</div>
-	<?php else: ?>
-		<p><?= e__('recipients.preview.unavailable') ?></p>
-	<?php endif; ?>
+	<p class="form-hint"><?= e__('recipients.preview.exact_hint') ?></p>
+	<div class="mail-preview">
+		<strong><?= e__('recipients.preview.subject') ?>:</strong> <?= e($preview['subject']) ?>
+		<pre><?= e($preview['body_text']) ?></pre>
+	</div>
 </section>
 
 <section class="configuration-block">

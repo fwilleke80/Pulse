@@ -24,8 +24,7 @@ $uncheckedContactCount = count(array_filter(
 ));
 $currentStatus = monitor_status($monitor);
 $messageOverrideCount = count($messageOverrides);
-$hasCompleteMessageCoverage = !empty($monitor['default_message_body'])
-	|| ($monitorContacts !== [] && $messageOverrideCount === count($monitorContacts));
+$hasCompleteMessageCoverage = true;
 $tabDefinitions = [
 	'schedule' => 'monitors.tabs.schedule',
 	'recipients' => 'monitors.tabs.recipients',
@@ -195,6 +194,15 @@ ob_start();
 
 				<label for="default_message_body"><?= e__('monitors.messages.body') ?></label>
 				<textarea id="default_message_body" name="default_message_body" rows="8"><?= e((string)($monitor['default_message_body'] ?? '')) ?></textarea>
+				<p class="form-hint"><?= e__('monitors.messages.placeholders') ?> <code>{app}</code> <code>{name}</code> <code>{owner}</code> <code>{monitor}</code></p>
+				<p class="form-hint"><?= e__('monitors.messages.custom_hint') ?></p>
+
+				<div class="mail-default-template">
+					<strong><?= e__('monitors.messages.default_preview.heading') ?></strong>
+					<p class="form-hint"><?= e__('monitors.messages.default_preview.hint') ?></p>
+					<div><strong><?= e__('monitors.messages.subject') ?>:</strong> <?= e(__('mail.recipient_notification.subject')) ?></div>
+					<pre><?= e(__('mail.recipient_notification.body')) ?></pre>
+				</div>
 
 				<p class="form-hint"><?= e__('monitors.messages.recipient_pages_hint') ?></p>
 
@@ -228,6 +236,9 @@ ob_start();
 						<input type="hidden" name="monitor_id" value="<?= (int)$monitor['id'] ?>">
 						<label for="document_title"><?= e__('monitors.documents.upload.title') ?></label>
 						<input type="text" id="document_title" name="title">
+						<label for="document_description"><?= e__('monitors.documents.description') ?></label>
+						<textarea id="document_description" name="description" rows="3"></textarea>
+						<p class="form-hint"><?= e__('monitors.documents.description_hint') ?></p>
 						<label for="document_file"><?= e__('monitors.documents.upload.file') ?></label>
 						<input type="file" id="document_file" name="document_file" required>
 						<?php require __DIR__ . '/partials/document-recipients.php'; ?>
@@ -271,13 +282,18 @@ ob_start();
 									<span><?= e((string)($document['mime_type'] ?? '')) ?></span>
 									<span><?= number_format((int)($document['file_size_bytes'] ?? 0)) ?> bytes</span>
 								</div>
-								<form method="post" action="<?= e($base_url) ?>/monitors/documents/recipients">
+								<form method="post" action="<?= e($base_url) ?>/monitors/documents/file/update">
 									<?= csrf_field() ?>
 									<input type="hidden" name="monitor_id" value="<?= (int)$monitor['id'] ?>">
 									<input type="hidden" name="document_id" value="<?= (int)$document['id'] ?>">
+									<label for="file_title_<?= (int)$document['id'] ?>"><?= e__('monitors.documents.upload.title') ?></label>
+									<input type="text" id="file_title_<?= (int)$document['id'] ?>" name="title" value="<?= e((string)$document['title']) ?>" required>
+									<label for="file_description_<?= (int)$document['id'] ?>"><?= e__('monitors.documents.description') ?></label>
+									<textarea id="file_description_<?= (int)$document['id'] ?>" name="description" rows="3"><?= e((string)($document['description'] ?? '')) ?></textarea>
+									<p class="form-hint"><?= e__('monitors.documents.description_hint') ?></p>
 									<?php $assignedMonitorContactIds = $document['assigned_monitor_contact_ids']; ?>
 									<?php require __DIR__ . '/partials/document-recipients.php'; ?>
-									<button type="submit"><?= e__('monitors.documents.recipients.submit') ?></button>
+									<button type="submit"><?= e__('monitors.documents.file.update.submit') ?></button>
 								</form>
 							<?php endif; ?>
 
@@ -368,12 +384,24 @@ ob_start();
 					<input type="text" id="safety_invitation_subject" name="safety_invitation_subject" form="monitor-settings-form" value="<?= e((string)($monitor['safety_invitation_subject'] ?? '')) ?>">
 					<label for="safety_invitation_body"><?= e__('monitors.messages.body') ?></label>
 					<textarea id="safety_invitation_body" name="safety_invitation_body" form="monitor-settings-form" rows="8"><?= e((string)($monitor['safety_invitation_body'] ?? '')) ?></textarea>
+					<div class="mail-default-template">
+						<strong><?= e__('monitors.escalation.messages.default_heading') ?></strong>
+						<p class="form-hint"><?= e__('monitors.escalation.messages.default_hint') ?></p>
+						<div><strong><?= e__('monitors.messages.subject') ?>:</strong> <?= e(__('mail.safety_invitation.subject')) ?></div>
+						<pre><?= e(__('mail.safety_invitation.body')) ?></pre>
+					</div>
 
 					<h4><?= e__('monitors.escalation.messages.reminder.heading') ?></h4>
 					<label for="safety_reminder_subject"><?= e__('monitors.messages.subject') ?></label>
 					<input type="text" id="safety_reminder_subject" name="safety_reminder_subject" form="monitor-settings-form" value="<?= e((string)($monitor['safety_reminder_subject'] ?? '')) ?>">
 					<label for="safety_reminder_body"><?= e__('monitors.messages.body') ?></label>
 					<textarea id="safety_reminder_body" name="safety_reminder_body" form="monitor-settings-form" rows="8"><?= e((string)($monitor['safety_reminder_body'] ?? '')) ?></textarea>
+					<div class="mail-default-template">
+						<strong><?= e__('monitors.escalation.messages.default_heading') ?></strong>
+						<p class="form-hint"><?= e__('monitors.escalation.messages.default_hint') ?></p>
+						<div><strong><?= e__('monitors.messages.subject') ?>:</strong> <?= e(__('mail.safety_reminder.subject')) ?></div>
+						<pre><?= e(__('mail.safety_reminder.body')) ?></pre>
+					</div>
 
 			</div>
 		</section>

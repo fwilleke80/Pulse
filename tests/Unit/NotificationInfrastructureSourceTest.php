@@ -163,6 +163,23 @@ class NotificationInfrastructureSourceTest extends TestCase
 		self::assertStringContainsString('activity.pagination.page', $history);
 	}
 
+	public function testRecipientTemplatesAndFileMetadataAreExposedInTheEditor(): void
+	{
+		$composer = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Services/NotificationComposer.php');
+		$monitorView = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Views/monitors/edit.php');
+		$recipientView = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Views/recipients/edit.php');
+		$routes = (string)file_get_contents(dirname(__DIR__, 2) . '/public/index.php');
+		$migration = (string)file_get_contents(dirname(__DIR__, 2) . '/database/migrations/011_document_descriptions.sql');
+
+		self::assertStringContainsString("'mail.recipient_notification.subject'", $composer);
+		self::assertStringContainsString("'owner' =>", $composer);
+		self::assertStringContainsString('<code>{monitor}</code>', $monitorView);
+		self::assertStringContainsString('mail-default-template', $monitorView);
+		self::assertStringContainsString('recipients.message.placeholders', $recipientView);
+		self::assertStringContainsString('/monitors/documents/file/update', $routes);
+		self::assertStringContainsString('ADD COLUMN description TEXT NULL', $migration);
+	}
+
 	public function testDisabledMailIsReportedAndCannotSubmitATest(): void
 	{
 		$controller = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Controllers/HomeController.php');

@@ -69,19 +69,22 @@ final class RecipientController extends BaseController
 		$effectiveBody = trim((string)($recipient['override_body'] ?? '')) !== ''
 			? (string)$recipient['override_body']
 			: (string)($recipient['default_message_body'] ?? '');
-		$preview = null;
-
-		if ($effectiveSubject !== '' && trim($effectiveBody) !== '')
-		{
-			$preview = $this->_composer->ComposeRecipientNotification([
-				'recipient_name' => (string)$recipient['name'],
-				'notification_locale' => (string)$recipient['notification_locale'],
-				'owner_name' => (string)$recipient['owner_name'],
-				'monitor_name' => (string)$recipient['monitor_name'],
-				'message_subject' => $effectiveSubject,
-				'message_body' => $effectiveBody,
-			]);
-		}
+		$preview = $this->_composer->ComposeRecipientNotification([
+			'recipient_name' => (string)$recipient['name'],
+			'notification_locale' => (string)$recipient['notification_locale'],
+			'owner_name' => (string)$recipient['owner_name'],
+			'monitor_name' => (string)$recipient['monitor_name'],
+			'message_subject' => $effectiveSubject,
+			'message_body' => $effectiveBody,
+		]);
+		$defaultPreview = $this->_composer->ComposeRecipientNotification([
+			'recipient_name' => (string)$recipient['name'],
+			'notification_locale' => (string)$recipient['notification_locale'],
+			'owner_name' => (string)$recipient['owner_name'],
+			'monitor_name' => (string)$recipient['monitor_name'],
+			'message_subject' => (string)($recipient['default_message_subject'] ?? ''),
+			'message_body' => (string)($recipient['default_message_body'] ?? ''),
+		]);
 
 		return $this->_view->Render('recipients.edit', [
 			'user' => $user,
@@ -90,6 +93,7 @@ final class RecipientController extends BaseController
 			'assignedDocumentIds' => $this->_recipientRepository->FindAssignedDocumentIdsForUser((int)$recipient['id'], (int)$user['id']),
 			'deliveryHistory' => $this->_recipientRepository->FindDeliveryHistoryForUser((int)$recipient['id'], (int)$user['id']),
 			'preview' => $preview,
+			'defaultPreview' => $defaultPreview,
 		]);
 	}
 

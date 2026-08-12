@@ -159,6 +159,8 @@ For genuinely time-critical danger, an email-based multi-day workflow is the wro
 
 ## Write a useful recipient message
 
+Pulse provides a localized built-in recipient email, so a monitor can operate without custom wording. If you write a custom monitor or recipient-specific message, the editor shows the supported placeholders: `{app}`, `{name}`, `{owner}`, and `{monitor}`.
+
 A recipient should be able to understand the email without hidden context. Consider including:
 
 - who configured the message

@@ -42,6 +42,7 @@ class DocumentRepository
 				d.id,
 				d.monitor_id,
 				d.title,
+				d.description,
 				d.storage_type,
 				d.text_content,
 				d.stored_filename,
@@ -82,6 +83,7 @@ class DocumentRepository
 				d.id,
 				d.monitor_id,
 				d.title,
+				d.description,
 				d.storage_type,
 				d.text_content,
 				d.stored_filename,
@@ -114,6 +116,7 @@ class DocumentRepository
 	 * @brief Creates a file document for a monitor.
 	 * @param int $monitorId Monitor ID.
 	 * @param string $title Document title.
+	 * @param string|null $description Optional document description.
 	 * @param string $storedFilename Stored unique filename.
 	 * @param string $originalFilename Original uploaded filename.
 	 * @param string $mimeType MIME type.
@@ -123,6 +126,7 @@ class DocumentRepository
 	public function CreateFileDocumentForMonitor(
 		int $monitorId,
 		string $title,
+		?string $description,
 		string $storedFilename,
 		string $originalFilename,
 		string $mimeType,
@@ -134,6 +138,7 @@ class DocumentRepository
 			(
 				monitor_id,
 				title,
+				description,
 				storage_type,
 				text_content,
 				stored_filename,
@@ -147,6 +152,7 @@ class DocumentRepository
 			(
 				:monitor_id,
 				:title,
+				:description,
 				:file_storage_type,
 				NULL,
 				:stored_filename,
@@ -162,6 +168,7 @@ class DocumentRepository
 		$statement->execute([
 			'monitor_id' => $monitorId,
 			'title' => $title,
+			'description' => $description,
 			'file_storage_type' => 'file',
 			'stored_filename' => $storedFilename,
 			'original_filename' => $originalFilename,
@@ -209,6 +216,30 @@ class DocumentRepository
 		]);
 
 		return (int)$this->_database->GetConnection()->lastInsertId();
+	}
+
+	/**
+	 * @brief Updates editable metadata for an uploaded file document.
+	 * @param int $documentId Document ID.
+	 * @param string $title Display title.
+	 * @param string|null $description Optional short description.
+	 */
+	public function UpdateFileDocumentMetadata(int $documentId, string $title, ?string $description): void
+	{
+		$statement = $this->_database->GetConnection()->prepare('
+			UPDATE documents
+			SET title = :title,
+				description = :description,
+				updated_at = UTC_TIMESTAMP()
+			WHERE id = :document_id
+			  AND storage_type = :file_storage_type
+		');
+		$statement->execute([
+			'document_id' => $documentId,
+			'title' => $title,
+			'description' => $description,
+			'file_storage_type' => 'file',
+		]);
 	}
 
 	/**

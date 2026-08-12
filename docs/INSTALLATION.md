@@ -32,7 +32,7 @@ This creates `config/version.php`. Upload that file together with the rest of th
 If you need to set the release value explicitly, use:
 
 ```bash
-PULSE_VERSION=0.7.2  
+PULSE_VERSION=0.7.3  
 python3 tools/write_version.py
 ```
 

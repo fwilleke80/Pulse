@@ -173,6 +173,7 @@ $router->Post('/monitors/recipients/remove', [$recipientController, 'Remove']);
 $router->Post('/monitors/documents/upload', [$documentController, 'Upload']);
 $router->Post('/monitors/documents/text/create', [$documentController, 'CreateText']);
 $router->Post('/monitors/documents/text/update', [$documentController, 'UpdateText']);
+$router->Post('/monitors/documents/file/update', [$documentController, 'UpdateFile']);
 $router->Post('/monitors/documents/recipients', [$documentController, 'UpdateRecipients']);
 $router->Post('/monitors/documents/delete', [$documentController, 'Delete']);
 $router->Get('/monitors/documents/download', [$documentController, 'Download']);

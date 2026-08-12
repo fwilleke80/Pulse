@@ -803,10 +803,6 @@ final class EscalationService
 				return 'unchecked_recipient';
 			}
 
-			if (trim((string)($recipient['message_subject'] ?? '')) === '' || trim((string)($recipient['message_body'] ?? '')) === '')
-			{
-				return 'missing_message';
-			}
 		}
 
 		return null;

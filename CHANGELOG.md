@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.7.3 — 2026-08-12
+
+### Recipient templates and document metadata
+
+- Added `{app}`, `{name}`, `{owner}`, and `{monitor}` placeholder expansion to monitor-default and recipient-specific final-recipient emails.
+- Added a localized built-in recipient email fallback, selected from each contact’s Pulse interface language, so monitors no longer require custom recipient prose before escalation can proceed.
+- Showed the supported placeholders directly beside recipient message editors and displayed the exact Pulse fallback templates for recipient and safety-contact mail in the UI.
+- Kept custom recipient text wrapper-free: when custom subject/body are configured, Pulse sends only the expanded text the owner wrote.
+- Added editable display titles and optional descriptions for uploaded file documents without renaming the private stored file.
+- Combined uploaded-file title, description, and recipient assignment editing in one document form.
+- Added migration `011_document_descriptions.sql`.
+
 ## 0.7.2 — 2026-08-12
 
 ### Custom safety-contact mail text

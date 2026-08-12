@@ -59,6 +59,7 @@ class DocumentService
 	 * @param int $userId Owner user ID.
 	 * @param int $monitorId Monitor ID.
 	 * @param string $title Requested title.
+	 * @param string $description Optional document description.
 	 * @param array<string, mixed> $file PHP upload entry.
 	 * @param array<int> $recipientIds Requested monitor-contact IDs.
 	 * @return int New document ID.
@@ -67,6 +68,7 @@ class DocumentService
 		int $userId,
 		int $monitorId,
 		string $title,
+		string $description,
 		array $file,
 		array $recipientIds
 	): int
@@ -136,6 +138,7 @@ class DocumentService
 			$documentId = $this->_documentRepository->CreateFileDocumentForMonitor(
 				$monitorId,
 				$title !== '' ? $title : $originalFilename,
+				trim($description) !== '' ? $description : null,
 				$storedFilename,
 				$originalFilename,
 				$mimeType,
@@ -235,6 +238,52 @@ class DocumentService
 			$this->FilterRecipientIds($userId, $monitorId, $recipientIds)
 		);
 		$this->_logger->Info('Text document updated', [
+			'user_id' => $userId,
+			'monitor_id' => $monitorId,
+			'document_id' => $documentId,
+		]);
+	}
+
+	/**
+	 * @brief Updates an uploaded file's display metadata and recipient assignments.
+	 * @param int $userId Owner user ID.
+	 * @param int $monitorId Monitor ID.
+	 * @param int $documentId Document ID.
+	 * @param string $title Display title.
+	 * @param string $description Optional short description.
+	 * @param array<int> $recipientIds Requested monitor-contact IDs.
+	 */
+	public function UpdateFileForUser(
+		int $userId,
+		int $monitorId,
+		int $documentId,
+		string $title,
+		string $description,
+		array $recipientIds
+	): void
+	{
+		$document = $this->_documentRepository->FindByIdForMonitorAndUser($documentId, $monitorId, $userId);
+
+		if ($document === null || (string)$document['storage_type'] !== 'file')
+		{
+			throw new DocumentException('monitors.documents.flash.document_not_found');
+		}
+
+		if ($title === '')
+		{
+			throw new DocumentException('monitors.documents.flash.title_required');
+		}
+
+		$this->_documentRepository->UpdateFileDocumentMetadata(
+			$documentId,
+			$title,
+			trim($description) !== '' ? $description : null
+		);
+		$this->_documentRepository->ReplaceRecipientsForDocument(
+			$documentId,
+			$this->FilterRecipientIds($userId, $monitorId, $recipientIds)
+		);
+		$this->_logger->Info('File document updated', [
 			'user_id' => $userId,
 			'monitor_id' => $monitorId,
 			'document_id' => $documentId,

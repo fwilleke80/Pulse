@@ -1,4 +1,4 @@
--- Pulse 0.7.0 reference database schema
+-- Pulse 0.7.3 reference database schema
 -- MySQL 8+ / MariaDB 10.6+
 -- Pulse applies database/migrations automatically. Do not import this reference file over an existing database.
 -- ----
@@ -119,6 +119,7 @@ CREATE TABLE documents
 	id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
 	monitor_id BIGINT UNSIGNED NOT NULL,
 	title VARCHAR(255) NOT NULL,
+	description TEXT NULL,
 	storage_type ENUM('text','file') NOT NULL,
 	text_content LONGTEXT NULL,
 	stored_filename VARCHAR(255) NULL,

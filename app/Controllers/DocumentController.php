@@ -54,6 +54,7 @@ class DocumentController extends BaseController
 				(int)$user['id'],
 				$monitorId,
 				$this->_request->PostString('title', 255),
+				$this->_request->PostString('description', 4000, false),
 				$file,
 				$this->_request->PostIntArray('document_monitor_contact_ids')
 			);
@@ -119,6 +120,33 @@ class DocumentController extends BaseController
 		}
 
 		$this->Flash('success', __('monitors.documents.flash.text_updated'));
+		$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=messages');
+	}
+
+	/** @brief Updates an uploaded file's display metadata and recipients. */
+	public function UpdateFile(): void
+	{
+		$user = $this->RequireUser();
+		$monitorId = $this->_request->PostInt('monitor_id');
+
+		try
+		{
+			$this->_documentService->UpdateFileForUser(
+				(int)$user['id'],
+				$monitorId,
+				$this->_request->PostInt('document_id'),
+				$this->_request->PostString('title', 255),
+				$this->_request->PostString('description', 4000, false),
+				$this->_request->PostIntArray('document_monitor_contact_ids')
+			);
+		}
+		catch (DocumentException $exception)
+		{
+			$this->Flash('error', __($exception->TranslationKey()));
+			$this->Redirect($monitorId > 0 ? '/monitors/edit?id=' . $monitorId . '&tab=messages' : '/monitors');
+		}
+
+		$this->Flash('success', __('monitors.documents.flash.file_updated'));
 		$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=messages');
 	}
 

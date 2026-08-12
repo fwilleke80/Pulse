@@ -1764,3 +1764,29 @@ footer
 		flex: 1 1 0;
 	}
 }
+
+.mail-default-template
+{
+	margin-top: 0.9rem;
+	padding: 0.9rem 1rem;
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	background: var(--surface-subtle);
+}
+
+.mail-default-template > strong
+{
+	display: block;
+	margin-bottom: 0.35rem;
+}
+
+.mail-default-template pre
+{
+	margin: 0.6rem 0 0;
+	padding: 0.8rem;
+	border: 1px solid var(--border);
+	border-radius: 7px;
+	background: var(--surface);
+	font: inherit;
+	white-space: pre-wrap;
+}

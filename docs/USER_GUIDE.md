@@ -109,9 +109,9 @@ Editing a contact updates the reusable contact record. Removing a contact also r
 
 ## Recipient messages
 
-Each monitor has a default message for its recipients. A recipient can either use that default or have a personal subject and body.
+Each monitor can have a custom default message for its recipients. A recipient can either use that monitor default or have a personal subject and body. If the monitor default is left empty, Pulse uses its built-in localized recipient message instead. The editor shows that fallback text so it is never hidden.
 
-The recipient page shows the exact message Pulse will queue. Pulse does not silently add a second explanatory message around the text you wrote.
+Custom recipient subject/body templates support `{app}`, `{name}`, `{owner}`, and `{monitor}`. The editor lists the supported placeholders beside the text fields. The recipient page shows the exact expanded message Pulse will queue. Pulse does not silently add a second explanatory wrapper around custom text.
 
 A useful message should make sense on its own. Consider explaining:
 
@@ -149,7 +149,7 @@ If the required confirmation is not reached before the safety-contact stage ends
 
 ### Custom safety-contact email text
 
-On **Safety & escalation**, you can replace the default subject and body used for the first safety-contact email and for later reminders. The templates support `{app}`, `{name}`, `{owner}`, `{monitor}`, and `{url}`; reminder text also supports `{number}` and `{total}`. Leave both fields for a mail type empty to use Pulse's localized default wording. The contact's **Pulse interface language** is still used for the safety-confirmation page and, later, the recipient portal.
+On **Safety & escalation**, you can replace the default subject and body used for the first safety-contact email and for later reminders. The templates support `{app}`, `{name}`, `{owner}`, `{monitor}`, and `{url}`; reminder text also supports `{number}` and `{total}`. Leave both fields for a mail type empty to use Pulse's localized default wording. The editor displays that default subject and body in the current interface language. The contact's **Pulse interface language** is still used for the safety-confirmation page and, later, the recipient portal.
 
 ## Notifications and failed mail
 
@@ -164,7 +164,7 @@ Open **Profile → Notifications** to:
 
 A failed email does not count as successfully delivered. Pulse shows a warning rather than pretending the notification happened.
 
-Your profile has its own **Notification language** for Pulse-authored owner due notices, reminders, and test mail. Contacts have a **Pulse interface language** for Pulse-owned pages such as safety confirmation and the future recipient portal. If you leave custom safety-contact mail text empty, that language also selects the localized Pulse fallback text for those safety emails.
+Your profile has its own **Notification language** for Pulse-authored owner due notices, reminders, and test mail. Contacts have a **Pulse interface language** for Pulse-owned pages such as safety confirmation and the future recipient portal. That language also selects localized Pulse fallback text when safety-contact or recipient mail is left at its built-in default.
 
 If SMTP settings are changed, send another test before relying on the system.
 
@@ -197,7 +197,7 @@ Pulse supports two kinds of monitor documents:
 - editable text documents stored in the database
 - uploaded files stored privately outside the public web directory
 
-You can assign documents to individual recipients from the recipient configuration page or document form.
+You can assign documents to individual recipients from the recipient configuration page or document form. Uploaded files have a separate display title and optional short description. Both can be edited later without renaming or moving the private stored file.
 
 The default upload policy accepts PDF, RTF, OpenDocument Text, Word `.docx`, JPEG, PNG, and plain text files up to 25 MiB. The server administrator can change the upload limits and MIME allowlist in `.env`.
 
@@ -205,7 +205,7 @@ Pulse inspects the uploaded content rather than trusting the filename. Stored fi
 
 ### Important current limitation
 
-Recipient document delivery is **not active** in Pulse 0.7.2. Assigning a document to a recipient prepares that relationship for the future secure document portal, but current recipient emails contain:
+Recipient document delivery is **not active** in Pulse 0.7.3. Assigning a document to a recipient prepares that relationship for the future secure document portal, but current recipient emails contain:
 
 - no attachment
 - no document content

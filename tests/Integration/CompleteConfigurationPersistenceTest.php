@@ -119,6 +119,27 @@ class CompleteConfigurationPersistenceTest extends TestCase
 		self::assertSame([$assignmentId], $this->_documentRepository->FindAssignedMonitorContactIds($documentId));
 	}
 
+	public function testUploadedFileMetadataCanBeEditedWithoutChangingStorageIdentity(): void
+	{
+		self::assertInstanceOf(DocumentRepository::class, $this->_documentRepository);
+		$documentId = $this->_documentRepository->CreateFileDocumentForMonitor(
+			1,
+			'Original title',
+			null,
+			'random-storage.bin',
+			'original.pdf',
+			'application/pdf',
+			1234
+		);
+		$this->_documentRepository->UpdateFileDocumentMetadata($documentId, 'Readable title', 'Short description');
+
+		$document = $this->_documentRepository->FindByIdForMonitorAndUser($documentId, 1, 1);
+		self::assertSame('Readable title', $document['title'] ?? null);
+		self::assertSame('Short description', $document['description'] ?? null);
+		self::assertSame('random-storage.bin', $document['stored_filename'] ?? null);
+		self::assertSame('original.pdf', $document['original_filename'] ?? null);
+	}
+
 	/** @return array<int, int> */
 	private function AssignmentIds(): array
 	{
@@ -142,7 +163,7 @@ class CompleteConfigurationPersistenceTest extends TestCase
 		$this->_connection->exec('CREATE TABLE monitors (id BIGINT UNSIGNED PRIMARY KEY, user_id BIGINT UNSIGNED NOT NULL, default_message_subject VARCHAR(255) NULL, default_message_body LONGTEXT NULL, updated_at DATETIME NULL) ENGINE=InnoDB');
 		$this->_connection->exec('CREATE TABLE monitor_contacts (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, monitor_id BIGINT UNSIGNED NOT NULL, contact_id BIGINT UNSIGNED NOT NULL, sort_order INT NOT NULL, UNIQUE KEY (monitor_id, contact_id), FOREIGN KEY (monitor_id) REFERENCES monitors(id) ON DELETE CASCADE, FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE) ENGINE=InnoDB');
 		$this->_connection->exec('CREATE TABLE contact_messages (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, monitor_contact_id BIGINT UNSIGNED NOT NULL UNIQUE, subject VARCHAR(255) NOT NULL, body_text LONGTEXT NOT NULL, FOREIGN KEY (monitor_contact_id) REFERENCES monitor_contacts(id) ON DELETE CASCADE) ENGINE=InnoDB');
-		$this->_connection->exec("CREATE TABLE documents (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, monitor_id BIGINT UNSIGNED NOT NULL, title VARCHAR(255) NOT NULL, storage_type ENUM('text','file') NOT NULL, text_content LONGTEXT NULL, stored_filename VARCHAR(255) NULL, original_filename VARCHAR(255) NULL, mime_type VARCHAR(255) NULL, file_size_bytes BIGINT NULL, created_at DATETIME NOT NULL, updated_at DATETIME NOT NULL, FOREIGN KEY (monitor_id) REFERENCES monitors(id) ON DELETE CASCADE) ENGINE=InnoDB");
+		$this->_connection->exec("CREATE TABLE documents (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, monitor_id BIGINT UNSIGNED NOT NULL, title VARCHAR(255) NOT NULL, description TEXT NULL, storage_type ENUM('text','file') NOT NULL, text_content LONGTEXT NULL, stored_filename VARCHAR(255) NULL, original_filename VARCHAR(255) NULL, mime_type VARCHAR(255) NULL, file_size_bytes BIGINT NULL, created_at DATETIME NOT NULL, updated_at DATETIME NOT NULL, FOREIGN KEY (monitor_id) REFERENCES monitors(id) ON DELETE CASCADE) ENGINE=InnoDB");
 		$this->_connection->exec('CREATE TABLE document_monitor_contacts (document_id BIGINT UNSIGNED NOT NULL, monitor_contact_id BIGINT UNSIGNED NOT NULL, PRIMARY KEY (document_id, monitor_contact_id), FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE CASCADE, FOREIGN KEY (monitor_contact_id) REFERENCES monitor_contacts(id) ON DELETE CASCADE) ENGINE=InnoDB');
 		$this->_connection->exec('INSERT INTO users (id) VALUES (1)');
 		$this->_connection->exec("INSERT INTO contacts (id, user_id, name, email) VALUES (1, 1, 'First', 'first@example.org'), (2, 1, 'Second', 'second@example.org')");

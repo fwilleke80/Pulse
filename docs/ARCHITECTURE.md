@@ -203,6 +203,6 @@ Uploaded document content is:
 - stored under private `storage/uploads` space outside `public/`
 - downloaded only through an authenticated ownership-checked controller
 
-Editable text documents and message text are stored in the database.
+Editable text documents and message text are stored in the database. Uploaded-file records also store an editable display title and optional description separately from the immutable internal storage basename.
 
 This private storage model prevents direct public file access, but it is not encryption. The current release does not yet provide encrypted document/message storage or recipient document delivery.
