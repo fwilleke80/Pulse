@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.7.1 — 2026-08-12
+
+### Recipient and escalation interface fixes
+
+- Reworked recipient overview cards into a balanced three-column layout with readable identity, email configuration, document count, and a compact edit action.
+- Fixed legacy or empty contact notification locales so the interface shows the resolved language name instead of an internal `notification.language` key.
+- Renamed the ambiguous recipient message state to **Email text: Recipient-specific** or **Email text: Monitor default** and linked recipient configuration to **Safety & escalation**.
+- Replaced recipient document cards with a compact, scrollable checkbox list that remains manageable with many documents.
+- Fixed the direct/safety escalation selectors so each radio button, title, and explanatory text stays inside one fully clickable option card; radio inputs are excluded from the global full-width form-control rule.
+- Changed recipient delivery so the configured subject and email body are the exact outgoing email; Pulse no longer adds an unseen localized wrapper around the owner's text.
+- Prevented **Awaiting check-in** status pills from wrapping and gave the monitor status column enough room for the full label.
+- Replaced the Dashboard **Monitors** total card with **Paused monitors**, alongside **Active monitors**.
+
 ## 0.7.0 — 2026-08-12
 
 ### Recipient notification

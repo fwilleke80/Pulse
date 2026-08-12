@@ -1,6 +1,6 @@
 # Upgrading Pulse
 
-## Upgrade from 0.2.9–0.6.4 to 0.7.0
+## Upgrade from 0.2.9–0.7.0 to 0.7.1
 
 ### Before extraction
 
@@ -20,14 +20,14 @@ python3 tools/write_version.py
 The command generates `config/version.php`, which must be uploaded with the application. In a Git checkout it uses `git describe`; in a packaged source archive without `.git`, it retains the packaged value already present in `config/version.php`. To create an explicit release value, run:
 
 ```bash
-PULSE_VERSION=0.7.0 python3 tools/write_version.py
+PULSE_VERSION=0.7.1 python3 tools/write_version.py
 ```
 
 If `config/version.php` is accidentally absent, Pulse does not fail: the interface displays **version unavailable** and uses an `unversioned` asset cache key. This fallback is operational protection, not a substitute for running the generator before deployment.
 
 ### Install the source
 
-Extract `Pulse_0.7.0_source.zip` locally, run the version generator there, then upload the extracted tree over the Pulse project directory. The archive paths begin with `app/`, `config/`, `public/`, and the other project-root entries; it does not add an extra `Pulse/` directory. Ensure the generated `config/version.php` is included in the uploaded files.
+Extract `Pulse_0.7.1_source.zip` locally, run the version generator there, then upload the extracted tree over the Pulse project directory. The archive paths begin with `app/`, `config/`, `public/`, and the other project-root entries; it does not add an extra `Pulse/` directory. Ensure the generated `config/version.php` is included in the uploaded files.
 
 Extraction overwrites the old public password utility files with inert 404 stubs. You may delete `public/secret0410` entirely after extraction.
 

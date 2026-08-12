@@ -20,6 +20,10 @@ $activeMonitors = array_values(array_filter(
 	$monitors,
 	static fn (array $monitor): bool => empty($monitor['is_paused'])
 ));
+$pausedMonitors = array_values(array_filter(
+	$monitors,
+	static fn (array $monitor): bool => !empty($monitor['is_paused'])
+));
 $attentionCount = count(array_filter(
 	$activeMonitors,
 	static fn (array $monitor): bool => in_array(monitor_status($monitor), ['awaiting', 'safety-pending', 'overdue', 'escalated'], true)
@@ -62,12 +66,12 @@ ob_start();
 
 <div class="dashboard-stats">
 	<a href="<?= e($base_url) ?>/monitors" class="dashboard-stat">
-		<div class="dashboard-stat-title"><?= e__('dashboard.stats.monitors') ?></div>
-		<div class="dashboard-stat-value"><?= (int)$monitorCount ?></div>
-	</a>
-	<a href="<?= e($base_url) ?>/monitors" class="dashboard-stat">
 		<div class="dashboard-stat-title"><?= e__('dashboard.stats.active') ?></div>
 		<div class="dashboard-stat-value"><?= count($activeMonitors) ?></div>
+	</a>
+	<a href="<?= e($base_url) ?>/monitors" class="dashboard-stat">
+		<div class="dashboard-stat-title"><?= e__('dashboard.stats.paused') ?></div>
+		<div class="dashboard-stat-value"><?= count($pausedMonitors) ?></div>
 	</a>
 	<a href="<?= e($base_url) ?>/monitors" class="dashboard-stat">
 		<div class="dashboard-stat-title"><?= e__('dashboard.stats.attention') ?></div>

@@ -2,9 +2,9 @@
 
 Pulse is a small, framework-free PHP application for personal emergency check-ins. It lets a user configure monitors, recipients, optional safety contacts, messages, and recipient-specific documents.
 
-Version **0.7.0** adds actual recipient notification emails, an optional per-monitor safety-contact gate, and dedicated recipient configuration pages with message preview, document assignment, and immutable delivery history. Recipient emails contain the configured message, but no document content or document-access link. Documents remain gated for a later secure portal release.
+Version **0.7.1** adds actual recipient notification emails, an optional per-monitor safety-contact gate, and dedicated recipient configuration pages with exact email preview, compact document assignment, and immutable delivery history. Recipient email subjects and bodies are sent exactly as configured; Pulse does not prepend or append hidden explanatory text. Recipient emails still contain no document content or document-access link. Documents remain gated for a later secure portal release.
 
-> **Important:** Pulse 0.7.0 can send real, irreversible email to recipients and safety contacts. Test configuration with non-sensitive addresses first. Uploaded files remain outside the public web root, but files, messages, and editable text documents are not encrypted at rest. Do not treat this release as the finished secure vault for highly sensitive material.
+> **Important:** Pulse 0.7.1 can send real, irreversible email to recipients and safety contacts. Test configuration with non-sensitive addresses first. Uploaded files remain outside the public web root, but files, messages, and editable text documents are not encrypted at rest. Do not treat this release as the finished secure vault for highly sensitive material.
 
 ## Requirements
 
@@ -19,7 +19,7 @@ Composer is used for development tools. The application retains a small PSR-4 fa
 ## Installation
 
 1. Extract the complete source archive locally into the Pulse project directory.
-2. Before uploading any PHP files, run `python3 tools/write_version.py`. This generates `config/version.php`; upload that generated file with the application. In a tagged Git checkout the script derives the version from Git, while a packaged archive retains its packaged version. Set `PULSE_VERSION=0.7.0` for an explicit release value when needed.
+2. Before uploading any PHP files, run `python3 tools/write_version.py`. This generates `config/version.php`; upload that generated file with the application. In a tagged Git checkout the script derives the version from Git, while a packaged archive retains its packaged version. Set `PULSE_VERSION=0.7.1` for an explicit release value when needed.
 3. Copy `.env.example` to `.env` and enter the real URL and database credentials.
 4. Create an empty database.
 5. Upload the project and ensure `storage/logs`, `storage/tmp`, and `storage/uploads` are writable by PHP but not publicly accessible.
@@ -47,10 +47,10 @@ Pulse/bootstrap.php
 
 The separate `public/cron/cron.php` endpoint loads the same application root for protected background notification runs.
 
-## Upgrading to 0.7.0
+## Upgrading to 0.7.1
 
 1. Back up the database and `storage/` directory.
-2. Extract the 0.7.0 source ZIP into a local working directory.
+2. Extract the 0.7.1 source ZIP into a local working directory.
 3. Run `python3 tools/write_version.py` **before uploading the PHP files**, and include the generated `config/version.php` in the upload.
 4. Upload the source over the existing Pulse project directory without replacing `.env` or `storage/`.
 5. When upgrading from 0.2.9, create `.env` from `.env.example`; do not copy credentials back into `config/database.php`.
@@ -82,8 +82,8 @@ Migration `009_recipient_escalation.sql` adds per-monitor escalation policy, opt
 - Merely opening a safety link changes nothing. The contact must submit an explicit CSRF-protected response. Tokens are random, purpose-bound, resolved through stored hashes, and expire. The raw link exists in the queued email while retries are possible and is redacted from the queue after success or cancellation.
 - Recipient address, language, subject, and body are snapshotted before queueing. Later edits affect only future releases.
 - A monitor becomes **Escalated** only after SMTP accepts the first recipient message. If every recipient attempt fails, it remains truthfully **Overdue** with a visible delivery warning.
-- Recipient pages separate reusable contact details from monitor-specific messages, document assignments, localized preview, and delivery history.
-- Documents are still inaccessible to recipients in 0.7.0. Assignments are configuration for a future secure portal; recipient mail explicitly says no documents are attached or accessible.
+- Recipient pages separate reusable contact details from monitor-specific email text, compact document assignments, exact preview, and delivery history.
+- Documents are still inaccessible to recipients in 0.7.1. Assignments are configuration for a future secure portal; recipient delivery never attaches document content or adds a document-access link.
 - The scheduler and worker remain idempotent, leased, retryable, and safe to overlap.
 
 ## 0.6 notification infrastructure
@@ -158,9 +158,9 @@ php tools/pulse.php mail:retry-failed --limit=100
 
 ## 0.4 complete configuration
 
-- The monitor editor is organized into Schedule, Recipients, Messages & documents, and Review & activation tabs.
+- The monitor editor is organized into Schedule, Recipients, Messages & documents, Safety & escalation, and Review & activation tabs.
 - A monitor can define one default delivery subject and message.
-- Each assigned recipient can optionally override the default message.
+- Each assigned recipient can optionally override the default email subject and body. The configured subject and body are the exact recipient email; Pulse does not add a hidden wrapper.
 - Editable text documents can be created directly in Pulse and assigned to recipients.
 - Uploaded files and text documents share the same recipient-assignment model.
 - Contact email addresses require an explicit owner check and receive conservative common-domain typo warnings.

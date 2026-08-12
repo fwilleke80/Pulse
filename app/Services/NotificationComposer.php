@@ -174,25 +174,15 @@ final class NotificationComposer
 	}
 
 	/**
-	 * @brief Wraps the owner's configured message in localized recipient context.
+	 * @brief Uses the owner's configured recipient email verbatim.
 	 * @param array<string, mixed> $recipient Immutable recipient and message snapshot.
 	 * @return array{subject: string, body_text: string}
 	 */
 	public function ComposeRecipientNotification(array $recipient): array
 	{
-		$locale = $this->_languages->Resolve(isset($recipient['notification_locale']) ? (string)$recipient['notification_locale'] : null);
-		$params = [
-			'app' => $this->_appName,
-			'name' => (string)$recipient['recipient_name'],
-			'owner' => (string)$recipient['owner_name'],
-			'monitor' => (string)$recipient['monitor_name'],
-			'message_subject' => (string)$recipient['message_subject'],
-			'message_body' => (string)$recipient['message_body'],
-		];
-
 		return [
-			'subject' => $this->Translate($locale, 'mail.recipient_notification.subject', $params),
-			'body_text' => $this->Translate($locale, 'mail.recipient_notification.body', $params),
+			'subject' => (string)$recipient['message_subject'],
+			'body_text' => (string)$recipient['message_body'],
 		];
 	}
 

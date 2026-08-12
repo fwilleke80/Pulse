@@ -2,7 +2,7 @@
 
 ## Current protection goals
 
-Pulse 0.7.0 retains the security foundation introduced in 0.3.0 and protects against common web application failures:
+Pulse 0.7.1 retains the security foundation introduced in 0.3.0 and protects against common web application failures:
 
 - cross-user access to contacts, monitors, and documents
 - cross-site request forgery
@@ -79,11 +79,11 @@ A safety contact can move `safety_pending` only to a postponed, confirmed cycle 
 
 Production SMTP configuration requires implicit TLS or STARTTLS with peer and hostname verification. SMTP passwords are never logged. Queue and attempt logs intentionally omit body content, while the queue itself stores the immutable body needed for retries.
 
-Owner, safety, and recipient messages use separate idempotency keys and linked state. Recipient release staging snapshots the checked address, recipient name, language, localized subject, and body inside one database transaction before queueing. Later contact or message edits do not mutate a pending or historical release. Safety requests likewise snapshot the contact identity used for that cycle.
+Owner, safety, and recipient messages use separate idempotency keys and linked state. Recipient release staging snapshots the checked address, recipient name, language, configured subject, and body inside one database transaction before queueing. Later contact or message edits do not mutate a pending or historical release. Safety requests likewise snapshot the contact identity used for that cycle.
 
 Idempotency keys prevent the scheduler from creating the same numbered reminder twice. Workers use `FOR UPDATE SKIP LOCKED` and expiring leases, so overlapping cron runs do not deliberately process the same row. A reminder count advances only after SMTP accepts the completed message.
 
-Recipient email is an irreversible disclosure boundary. Once SMTP accepts a message, Pulse cannot recall it from the provider or recipient mailbox. The message is also exposed to those mail systems. Do not include passwords, cryptographic recovery material, or document secrets. No 0.7.0 recipient or safety message contains document content or a document-access URL.
+Recipient email is an irreversible disclosure boundary. Once SMTP accepts a message, Pulse cannot recall it from the provider or recipient mailbox. The message is also exposed to those mail systems. Do not include passwords, cryptographic recovery material, or document secrets. No 0.7.1 recipient or safety message contains document content or a document-access URL.
 
 SMTP does not provide a fully atomic transaction with the Pulse database. If a worker loses the database connection immediately after the SMTP server accepts a message but before Pulse commits `sent`, lease recovery may retry that message and produce a duplicate. This is the standard at-least-once boundary of SMTP queues; messages should therefore remain harmless if received twice.
 

@@ -71,7 +71,7 @@ ob_start();
 						<td class="monitor-description">
 							<?= !empty($monitor['description']) ? e(abbrev((string)$monitor['description'], 120)) : '<span aria-hidden="true">—</span>' ?>
 						</td>
-						<td>
+						<td class="monitor-status-cell">
 							<span class="status-badge status-<?= e($statusClass) ?>"><?= e__($statusKey) ?></span>
 							<?php if ($failedNotificationCount > 0): ?>
 								<small class="table-warning table-warning-critical"><?= e__('monitors.notifications.delivery_failed_short') ?></small>

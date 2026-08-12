@@ -136,8 +136,8 @@ For genuinely time-critical risk, a multi-day email workflow may be the wrong me
 2. Review every address, select the intended notification language, tick the local address-confirmation box, and save.
 3. Create or open the monitor and set its timing under **Schedule**.
 4. Open **Recipients**, add the contacts who should receive the final notification, and open each dedicated recipient page.
-5. On each recipient page, choose the default message or enable a personal override. Review the localized preview.
-6. Assign any documents that should belong to that recipient in a future secure portal. In 0.7.0 these assignments do not grant access and no document link is emailed.
+5. On each recipient page, choose the default email or enable a recipient-specific override. Review the exact outgoing email preview.
+6. Assign any documents that should belong to that recipient in a future secure portal. In 0.7.1 these assignments do not grant access and no document link is emailed.
 7. Open **Escalation** and choose Direct or Safety-contact gate.
 8. For a gate, select only checked safety contacts, set the confirmation quorum, response window, reminders, and postponement duration.
 9. Open **Review & activation** and resolve every warning.

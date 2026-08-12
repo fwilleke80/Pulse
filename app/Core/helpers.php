@@ -9,10 +9,12 @@
 declare(strict_types=1);
 
 use Pulse\Core\CsrfTokenManager;
+use Pulse\Core\NotificationLanguage;
 use Pulse\Core\Translator;
 
 $__pulseTranslator = null;
 $__pulseCsrfTokenManager = null;
+$__pulseNotificationLanguage = null;
 $__pulseDisplayTimezone = 'Europe/Berlin';
 
 /** @brief Escapes a string for safe HTML output. @param string $value Input string. @return string */
@@ -40,6 +42,36 @@ function setDisplayTimezone(string $timezone): void
 {
 	global $__pulseDisplayTimezone;
 	$__pulseDisplayTimezone = $timezone;
+}
+
+/** @brief Registers the notification-language resolver used by views. @param NotificationLanguage $resolver Notification-language resolver. */
+function setNotificationLanguageResolver(NotificationLanguage $resolver): void
+{
+	global $__pulseNotificationLanguage;
+	$__pulseNotificationLanguage = $resolver;
+}
+
+/**
+ * @brief Returns a translated language name with the deployment default as fallback.
+ * @param string|null $locale Stored notification locale.
+ * @return string Human-readable language name.
+ */
+function notification_language_name(?string $locale): string
+{
+	global $__pulseNotificationLanguage;
+
+	if ($__pulseNotificationLanguage instanceof NotificationLanguage)
+	{
+		$locale = $__pulseNotificationLanguage->Resolve($locale);
+	}
+	else
+	{
+		$locale = is_string($locale) && trim($locale) !== '' ? trim($locale) : 'de';
+	}
+
+	$key = 'notification.language.' . $locale;
+	$translated = __($key);
+	return $translated !== $key ? $translated : (string)$locale;
 }
 
 /**

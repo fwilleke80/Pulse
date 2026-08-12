@@ -86,7 +86,7 @@ Document actions have their own `DocumentController`; they are no longer mixed i
 - `MonitorExecutionService` owns cycle creation, UTC scheduling, global check-in, pause/resume, notification-state transitions, and lifecycle audit entries.
 - `NotificationScheduler` opens due cycles and coordinates owner notices, optional safety gates, overdue transitions, and recipient release staging.
 - `MailQueueWorker` claims jobs with expiring leases, invokes the transport outside the database transaction, then atomically records success or retry state.
-- `NotificationComposer` freezes owner, safety-contact, recipient, and test-message content in the actual addressee's stored language before queueing.
+- `NotificationComposer` localizes owner, safety-contact, and test notifications in the actual addressee's stored language before queueing. Recipient delivery instead snapshots the configured subject and body verbatim so the preview and outgoing email are identical.
 - `EscalationService` starts fail-closed safety gates, stores hashed tokens, records deliberate responses, postpones qualified cycles, expires fully delivered gates, and stages immutable recipient releases.
 - `TestNotificationService` exercises the same queue and worker path from the authenticated profile action.
 
@@ -193,7 +193,7 @@ Direct recipient staging happens after the owner phase. Safety-gated staging hap
 
 ## Notification queue
 
-Each queue row is an immutable delivery snapshot: recipient address, already-localized subject and body, type, cycle, reminder number, and idempotency key. Editing a profile, contact, or notification language after enqueueing does not rewrite an already pending message.
+Each queue row is an immutable delivery snapshot: recipient address, already-finalized subject and body, type, cycle, reminder number, and idempotency key. Editing a profile, contact, or notification language after enqueueing does not rewrite an already pending message.
 
 The once-per-minute `notifications:run` command and the protected `/cron/cron.php` web endpoint perform the same two bounded phases:
 
@@ -239,4 +239,4 @@ New uploads are:
 - assigned filesystem mode `0600`
 - delivered only through an authenticated, ownership-checked controller
 
-This prevents direct web access and executable filename behavior. It is not encryption. Messages and editable text documents are also unencrypted database values in 0.7.0. Recipient notification mail contains only the effective message; document assignments never create a public link. A later secure-storage release will add authenticated encryption, key versioning, and a recipient document portal without changing the assignment model.
+This prevents direct web access and executable filename behavior. It is not encryption. Messages and editable text documents are also unencrypted database values in 0.7.1. Recipient notification mail contains only the effective message; document assignments never create a public link. A later secure-storage release will add authenticated encryption, key versioning, and a recipient document portal without changing the assignment model.

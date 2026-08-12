@@ -2,7 +2,7 @@
 
 ## Current scope
 
-Pulse 0.7.0 lets you:
+Pulse 0.7.1 lets you:
 
 - sign in and update your profile
 - create and edit trusted contacts and confirm that you checked their addresses
@@ -17,12 +17,12 @@ Pulse 0.7.0 lets you:
 - receive an immediate owner email when a check-in becomes due, followed by configured reminders after the response window closes
 - test SMTP delivery and inspect or retry failed notifications from the profile page
 - choose a separate notification language for yourself and every contact
-- send actual localized recipient notification emails containing the configured message
+- send actual recipient notification emails using the configured subject and body exactly as written
 - choose direct recipient notification or an optional safety-contact gate per monitor
 - require one or more checked safety contacts to confirm recent direct contact before a monitor is postponed
 - configure each monitor recipient on a dedicated page with personal wording, document assignments, preview, and delivery history
 
-Recipient message email is active in 0.7.0. Document release and recipient document access are not active: recipient emails contain no attachment, document content, or document-access link. Document assignments prepare the data model for a later secure portal.
+Recipient message email is active in 0.7.1. Document release and recipient document access are not active: recipient emails contain no attachment, document content, or document-access link. Document assignments prepare the data model for a later secure portal.
 
 Uploaded files are private from normal website visitors, but files, messages, and editable text documents are not encrypted at rest in this version. Do not store your final highly sensitive material until the encrypted-storage release is complete.
 
@@ -97,7 +97,7 @@ Open **Recipients**, add an existing contact, then choose **Configure recipient*
 - the reusable contact summary and a link to edit it globally
 - a switch between the monitor's default message and a personal subject/body override
 - document assignments for the future secure portal
-- a localized preview of the actual email wrapper and configured message
+- an exact preview of the configured outgoing email
 - immutable queued, sent, failed, or cancelled delivery history
 
 When a release becomes eligible, Pulse validates every recipient fail-closed. It snapshots the contact identity, checked address, notification language, localized subject, and body before queueing. Editing the recipient afterward affects only future releases; it cannot rewrite or recall the current snapshot.
@@ -144,7 +144,7 @@ The dashboard shows the latest 10 lifecycle entries. Use **View complete activit
 
 ## Messages
 
-The default subject and message apply to every assigned recipient. Open a dedicated recipient page and enable a personal override only when that person should receive different wording. A personal message requires both its own subject and body. The preview shows the localized wrapper around the effective configured message.
+The default subject and email body apply to every assigned recipient. Open a dedicated recipient page and enable a recipient-specific override only when that person should receive different wording. An override requires both its own subject and body. The preview is the exact outgoing email: Pulse does not add an unseen introduction, footer, or localized wrapper.
 
 Removing a recipient from a monitor also removes that assignment's personal message and document links. The contact itself remains available elsewhere in Pulse.
 
@@ -160,7 +160,7 @@ Pulse detects the file type from the uploaded content rather than trusting the f
 
 Deleting a document removes its database record and stored file. Deleting a monitor removes all files attached to it.
 
-Recipients cannot download or discover these documents in 0.7.0. No recipient or safety email includes a document token or URL. Continue to treat assignments as future configuration only.
+Recipients cannot download or discover these documents in 0.7.1. No recipient or safety email includes a document token or URL. Continue to treat assignments as future configuration only.
 
 ## Passwords and sessions
 

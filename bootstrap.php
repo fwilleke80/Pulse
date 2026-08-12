@@ -179,6 +179,7 @@ $testNotificationService = new TestNotificationService(
 );
 setTranslator($translator);
 setCsrfTokenManager($csrf);
+setNotificationLanguageResolver($notificationLanguage);
 setDisplayTimezone((string)$appConfig['display_timezone']);
 
 $view->SetGlobals([

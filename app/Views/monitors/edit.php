@@ -122,13 +122,13 @@ ob_start();
 					<?php foreach ($monitorContacts as $monitorContact): ?>
 						<?php $override = $messageOverrides[(int)$monitorContact['id']] ?? null; ?>
 						<article class="recipient-overview-card">
-							<div>
+							<div class="recipient-overview-identity">
 								<strong><?= e((string)$monitorContact['name']) ?></strong>
 								<small><?= e((string)$monitorContact['email']) ?></small>
 							</div>
 							<div class="recipient-overview-meta">
-								<span><?= e__('recipients.overview.language') ?>: <?= e__('notification.language.' . (string)$monitorContact['notification_locale']) ?></span>
-								<span><?= e__('recipients.overview.message') ?>: <?= e__(is_array($override) ? 'recipients.overview.personal' : 'recipients.overview.default') ?></span>
+								<span><strong><?= e__('recipients.overview.language') ?>:</strong> <?= e(notification_language_name(isset($monitorContact['notification_locale']) ? (string)$monitorContact['notification_locale'] : null)) ?></span>
+								<span><strong><?= e__('recipients.overview.message') ?>:</strong> <?= e__(is_array($override) ? 'recipients.overview.personal' : 'recipients.overview.default') ?></span>
 								<span><?= e__('recipients.overview.documents', ['count' => (int)$monitorContact['document_count']]) ?></span>
 								<?php if (!empty($monitorContact['latest_delivery_status'])): ?>
 									<span class="mini-status mini-status-<?= e((string)$monitorContact['latest_delivery_status']) ?>"><?= e__('recipients.delivery.status.' . (string)$monitorContact['latest_delivery_status']) ?></span>
@@ -139,6 +139,11 @@ ob_start();
 					<?php endforeach; ?>
 				</div>
 			<?php endif; ?>
+
+			<p class="form-hint recipient-safety-hint">
+				<?= e__('recipients.overview.safety_hint') ?>
+				<a href="<?= e($base_url) ?>/monitors/edit?id=<?= (int)$monitor['id'] ?>&amp;tab=escalation"><?= e__('recipients.overview.safety_action') ?></a>
+			</p>
 
 			<div class="configuration-block recipient-add-block">
 				<h3><?= e__('recipients.add.heading') ?></h3>
@@ -298,11 +303,11 @@ ob_start();
 			<div class="escalation-policy-grid">
 				<label class="policy-option">
 					<input type="radio" name="escalation_policy" form="monitor-settings-form" value="direct" <?= (string)$monitor['escalation_policy'] === 'direct' ? 'checked' : '' ?>>
-					<span><strong><?= e__('monitors.escalation.direct.heading') ?></strong><small><?= e__('monitors.escalation.direct.hint') ?></small></span>
+					<span class="policy-option-content"><strong><?= e__('monitors.escalation.direct.heading') ?></strong><small><?= e__('monitors.escalation.direct.hint') ?></small></span>
 				</label>
 				<label class="policy-option">
 					<input type="radio" name="escalation_policy" form="monitor-settings-form" value="safety_contact" <?= (string)$monitor['escalation_policy'] === 'safety_contact' ? 'checked' : '' ?>>
-					<span><strong><?= e__('monitors.escalation.safety.heading') ?></strong><small><?= e__('monitors.escalation.safety.hint') ?></small></span>
+					<span class="policy-option-content"><strong><?= e__('monitors.escalation.safety.heading') ?></strong><small><?= e__('monitors.escalation.safety.hint') ?></small></span>
 				</label>
 			</div>
 

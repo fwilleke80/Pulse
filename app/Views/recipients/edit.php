@@ -42,7 +42,7 @@ ob_start();
 	<dl class="recipient-summary-list">
 		<div><dt><?= e__('recipients.contact.name') ?></dt><dd><?= e((string)$recipient['name']) ?></dd></div>
 		<div><dt><?= e__('recipients.contact.email') ?></dt><dd><?= e((string)$recipient['email']) ?></dd></div>
-		<div><dt><?= e__('recipients.contact.language') ?></dt><dd><?= e__('notification.language.' . (string)$recipient['notification_locale']) ?></dd></div>
+		<div><dt><?= e__('recipients.contact.language') ?></dt><dd><?= e(notification_language_name(isset($recipient['notification_locale']) ? (string)$recipient['notification_locale'] : null)) ?></dd></div>
 		<div><dt><?= e__('recipients.contact.address_status') ?></dt><dd><?= e__(!empty($recipient['email_checked_at']) ? 'contacts.status.checked' : 'contacts.status.not_checked') ?></dd></div>
 	</dl>
 	<a href="<?= e($base_url) ?>/contacts/edit?id=<?= (int)$recipient['contact_id'] ?>&amp;return_monitor_id=<?= (int)$recipient['monitor_id'] ?>"><?= e__('recipients.contact.edit_global') ?></a>
@@ -73,9 +73,9 @@ ob_start();
 		<?php if ($documents === []): ?>
 			<p><?= e__('recipients.documents.none') ?></p>
 		<?php else: ?>
-			<div class="assignment-list assignment-grid">
+			<div class="recipient-document-checklist">
 				<?php foreach ($documents as $document): ?>
-					<label class="assignment-item">
+					<label class="recipient-document-row">
 						<input type="checkbox" name="document_ids[]" value="<?= (int)$document['id'] ?>" <?= in_array((int)$document['id'], $assignedDocumentIds, true) ? 'checked' : '' ?>>
 						<span>
 							<strong><?= e((string)$document['title']) ?></strong><br>
@@ -97,6 +97,7 @@ ob_start();
 <section class="configuration-block">
 	<h2><?= e__('recipients.preview.heading') ?></h2>
 	<?php if (is_array($preview)): ?>
+		<p class="form-hint"><?= e__('recipients.preview.exact_hint') ?></p>
 		<div class="mail-preview">
 			<strong><?= e__('recipients.preview.subject') ?>:</strong> <?= e($preview['subject']) ?>
 			<pre><?= e($preview['body_text']) ?></pre>

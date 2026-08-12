@@ -141,8 +141,8 @@ class NotificationComposerTest extends TestCase
 			'message_body' => 'This is the configured message.',
 		]);
 
-		self::assertStringContainsString('Personal note', $message['subject']);
-		self::assertStringContainsString('This is the configured message.', $message['body_text']);
+		self::assertSame('Personal note', $message['subject']);
+		self::assertSame('This is the configured message.', $message['body_text']);
 		self::assertStringNotContainsString('/documents/', $message['body_text']);
 		self::assertStringNotContainsString('/access', $message['body_text']);
 	}
