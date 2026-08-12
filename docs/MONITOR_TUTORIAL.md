@@ -1,6 +1,6 @@
 # Choosing a monitor setup
 
-A Pulse monitor is not just a timer. Its check-in interval, reminder window, recipients, wording, and optional safety contacts determine what happens if you stop responding.
+A Pulse monitor is not just a timer, it's meant to monitor your responsiveness. Its check-in interval, reminder window, recipients, wording, and optional safety contacts determine what happens if you stop responding.
 
 The examples below are starting points, not guarantees. Email can be delayed, filtered, or unavailable. Pulse is not an emergency service and should not replace emergency services, professional welfare checks, medical response plans, or legal procedures when those are appropriate.
 
@@ -151,7 +151,7 @@ For genuinely time-critical danger, an email-based multi-day workflow is the wro
 3. Create the monitor and choose its timing under **Schedule**.
 4. Add the final recipients under **Recipients**.
 5. Open each recipient and review the exact outgoing message.
-6. Add document assignments only if useful for future document delivery; current Pulse does not send the documents.
+6. Add document assignments if useful for future delivery.
 7. Choose **Direct recipient notification** or **Safety-contact confirmation** under **Escalation**.
 8. If using safety contacts, choose the contacts, required confirmation count, timing, and postponement period.
 9. Review every warning under **Review & activation**.
