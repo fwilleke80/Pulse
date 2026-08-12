@@ -30,12 +30,12 @@ If `config/version.php` is missing, Pulse remains operational and displays **ver
 
 ## Documentation
 
-- [Architecture](docs/ARCHITECTURE.md)
-- [User guide](docs/USER_GUIDE.md)
-- [Monitor seriousness tutorial](docs/MONITOR_TUTORIAL.md)
-- [Security model](docs/SECURITY.md)
-- [Upgrade guide](docs/UPGRADING.md)
-- [Changelog](CHANGELOG.md)
+- [Installation and upgrading](INSTALLATION.md) — server requirements, deployment, `.env`, SMTP, cron, verification, and updates
+- [User guide](USER_GUIDE.md) — contacts, monitors, check-ins, recipients, safety contacts, messages, documents, and notifications
+- [Monitor tutorial](MONITOR_TUTORIAL.md) — practical examples for choosing monitor timing and escalation rules
+- [Security model](SECURITY.md) — security assumptions, protections, limitations, and production checklist
+- [Architecture](ARCHITECTURE.md) — application structure and the main runtime flows
+- [Changelog](../CHANGELOG.md) — release history
 
 ## License
 
