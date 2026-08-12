@@ -1,8 +1,8 @@
 # Pulse
 
-Pulse is a self-hosted personal dead man’s switch that makes sure trusted people receive important information and documents if you stop checking in.
+Pulse is designed for situations in which something could happen to you and the people who need to know might otherwise not be informed for some time. You might use it to make sure family, friends, or other trusted people are contacted if you die or become seriously ill, or as an additional safety measure while travelling alone, going on an expedition, or spending time somewhere where help may be difficult to reach.
 
-You define recurring check-ins, reminders, escalation rules, recipients, optional safety contacts, messages, and recipient-specific documents.
+You tell Pulse how often you expect to check in. As long as you continue to do so, nothing happens. If you stop responding, Pulse first tries to reach you and, if necessary, eventually contacts the people you selected and sends them the messages you prepared in advance.
 
 ## Requirements
 

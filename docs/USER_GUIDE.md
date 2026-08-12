@@ -1,6 +1,8 @@
 # Pulse user guide
 
-Pulse is built around a simple idea: you periodically confirm that you are still able to respond. If you stop checking in, Pulse reminds you and can eventually notify people you chose in advance.
+Pulse is designed for situations in which something could happen to you and the people who need to know might otherwise not be informed for some time. You might use it to make sure family, friends, or other trusted people are contacted if you die or become seriously ill, or as an additional safety measure while travelling alone, going on an expedition, or spending time somewhere where help may be difficult to reach.
+
+You tell Pulse how often you expect to check in. As long as you continue to do so, nothing happens. If you stop responding, Pulse first tries to reach you and, if necessary, eventually contacts the people you selected and sends them the messages you prepared in advance.
 
 For server setup, SMTP, and cron configuration, see [Installing Pulse](INSTALLATION.md).
 
@@ -11,7 +13,7 @@ A typical setup looks like this:
 1. Add the people you may want Pulse to contact.
 2. Create a monitor and choose how often you want to check in.
 3. Choose the recipients for that monitor.
-4. Write the message they should receive.
+4. Write the message they should receive in case you stop checking in.
 5. Optionally add safety contacts who get a chance to confirm that they recently heard from you before recipient notification begins.
 6. Review the monitor and activate it.
 7. Check in periodically from the dashboard.
@@ -45,7 +47,7 @@ Pulse does not mark a monitor overdue merely because time passed. Required remin
 
 ## Creating and editing a monitor
 
-A monitor editor is divided into five sections.
+The monitor editor is divided into five sections.
 
 ### Schedule
 
@@ -75,8 +77,6 @@ Add an existing contact, then use **Configure recipient** to control that person
 A monitor has one default recipient message. Individual recipients can override it with their own subject and body.
 
 Documents also belong to a monitor. You can create text documents or upload supported files and assign them to selected recipients.
-
-Document delivery is not active yet; see [Documents](#documents).
 
 ### Escalation
 

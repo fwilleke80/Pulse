@@ -8,5 +8,3 @@ The project root [README](../README.md) gives the short overview. The documents 
 - [Security model](SECURITY.md) — security assumptions, protections, limitations, and production checklist
 - [Architecture](ARCHITECTURE.md) — application structure and the main runtime flows
 - [Changelog](../CHANGELOG.md) — release history
-
-Pulse currently sends recipient message emails, but it does not yet release documents to recipients. Uploaded documents and message text are also not encrypted at rest. See the [user guide](USER_GUIDE.md#documents) and [security model](SECURITY.md#current-limitations) before storing sensitive material.

@@ -19,7 +19,9 @@ Composer is not required to install or run Pulse.
 
 Extract the complete Pulse source archive on your computer.
 
-Before uploading any PHP files, generate the version file from the project root:
+If you downloaded the complete source .zip, before uploading any PHP files, generate the version file from the project root. If you are using a release .zip, you can skip this step.
+
+Generating the version file works like this:
 
 ```bash
 python3 tools/write_version.py
@@ -30,7 +32,8 @@ This creates `config/version.php`. Upload that file together with the rest of th
 If you need to set the release value explicitly, use:
 
 ```bash
-PULSE_VERSION=0.7.1 python3 tools/write_version.py
+PULSE_VERSION=0.7.1  
+python3 tools/write_version.py
 ```
 
 Pulse still starts if `config/version.php` is missing, but it displays **version unavailable** and cannot use the release number for asset cache keys. A normal deployment should therefore generate the file first.
@@ -204,11 +207,11 @@ The [monitor tutorial](MONITOR_TUTORIAL.md) contains example configurations and 
 
 ## Upgrading Pulse
 
-Upgrading is intentionally simple:
+Upgrading is simple:
 
 1. Back up the database and `storage/uploads`.
 2. Extract the new release locally.
-3. Run `python3 tools/write_version.py` before uploading the PHP files.
+3. If you're working with the project source, run `python3 tools/write_version.py` to update the version number before uploading the PHP files. If you downloaded a release .zip, this isn't necessary.
 4. Keep the existing server `.env` and private storage data.
 5. Upload the complete new application over the existing Pulse installation.
 6. Open Pulse in a browser. Any pending database migrations are applied automatically.
