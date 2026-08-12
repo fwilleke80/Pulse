@@ -19,6 +19,7 @@ final class MonitorStateMachine
 {
 	public const SCHEDULED = 'scheduled';
 	public const AWAITING = 'awaiting';
+	public const SAFETY_PENDING = 'safety_pending';
 	public const OVERDUE = 'overdue';
 	public const ESCALATED = 'escalated';
 	public const CONFIRMED = 'confirmed';
@@ -34,7 +35,8 @@ final class MonitorStateMachine
 	{
 		$transitions = [
 			self::SCHEDULED => [self::AWAITING, self::CONFIRMED, self::CANCELLED],
-			self::AWAITING => [self::OVERDUE, self::CONFIRMED, self::CANCELLED],
+			self::AWAITING => [self::SAFETY_PENDING, self::OVERDUE, self::CONFIRMED, self::CANCELLED],
+			self::SAFETY_PENDING => [self::OVERDUE, self::CONFIRMED, self::CANCELLED],
 			self::OVERDUE => [self::ESCALATED, self::CONFIRMED, self::CANCELLED],
 			self::ESCALATED => [self::CONFIRMED, self::CANCELLED],
 			self::CONFIRMED => [],
@@ -63,6 +65,6 @@ final class MonitorStateMachine
 	 */
 	public static function OpenStates(): array
 	{
-		return [self::SCHEDULED, self::AWAITING, self::OVERDUE, self::ESCALATED];
+		return [self::SCHEDULED, self::AWAITING, self::SAFETY_PENDING, self::OVERDUE, self::ESCALATED];
 	}
 }

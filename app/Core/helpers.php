@@ -130,13 +130,13 @@ function format_datetime(?string $value, string $fallback = '—'): string
  */
 function is_monitor_due(array $monitor): bool
 {
-	return in_array(monitor_status($monitor), ['awaiting', 'overdue', 'escalated'], true);
+	return in_array(monitor_status($monitor), ['awaiting', 'safety-pending', 'overdue', 'escalated'], true);
 }
 
 /**
  * @brief Returns the user-facing monitor state identifier.
  * @param array<string, mixed> $monitor Monitor row.
- * @return string One of checked-in, awaiting, overdue, escalated, or paused.
+ * @return string One of checked-in, awaiting, safety-pending, overdue, escalated, or paused.
  */
 function monitor_status(array $monitor): string
 {
@@ -150,6 +150,11 @@ function monitor_status(array $monitor): string
 	if ($cycleStatus === 'scheduled')
 	{
 		return 'checked-in';
+	}
+
+	if ($cycleStatus === 'safety_pending')
+	{
+		return 'safety-pending';
 	}
 
 	if (in_array($cycleStatus, ['awaiting', 'overdue', 'escalated'], true))

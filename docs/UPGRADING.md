@@ -1,6 +1,6 @@
 # Upgrading Pulse
 
-## Upgrade from 0.2.9–0.6.3 to 0.6.4
+## Upgrade from 0.2.9–0.6.4 to 0.7.0
 
 ### Before extraction
 
@@ -9,9 +9,25 @@
 3. Back up `storage/uploads` separately.
 4. Record the current hosting document-root configuration.
 
+### Generate the version before upload
+
+Run this in the extracted local source tree **before uploading any PHP files to the server**:
+
+```bash
+python3 tools/write_version.py
+```
+
+The command generates `config/version.php`, which must be uploaded with the application. In a Git checkout it uses `git describe`; in a packaged source archive without `.git`, it retains the packaged value already present in `config/version.php`. To create an explicit release value, run:
+
+```bash
+PULSE_VERSION=0.7.0 python3 tools/write_version.py
+```
+
+If `config/version.php` is accidentally absent, Pulse does not fail: the interface displays **version unavailable** and uses an `unversioned` asset cache key. This fallback is operational protection, not a substitute for running the generator before deployment.
+
 ### Install the source
 
-Extract the complete `Pulse_0.6.4_source.zip` archive over the Pulse project directory. The archive paths begin with `app/`, `config/`, `public/`, and the other project-root entries; it does not add an extra `Pulse/` directory.
+Extract `Pulse_0.7.0_source.zip` locally, run the version generator there, then upload the extracted tree over the Pulse project directory. The archive paths begin with `app/`, `config/`, `public/`, and the other project-root entries; it does not add an extra `Pulse/` directory. Ensure the generated `config/version.php` is included in the uploaded files.
 
 Extraction overwrites the old public password utility files with inert 404 stubs. You may delete `public/secret0410` entirely after extraction.
 
@@ -54,6 +70,17 @@ Migration `006_notification_infrastructure.sql` upgrades the provisional `mail_q
 Migration `007_recipient_notification_languages.sql` adds nullable notification-language fields to the user and contact tables. Existing recipients use `PULSE_DEFAULT_LOCALE` until their own setting is saved; no language is inferred from a browser session.
 
 Migration `008_immediate_due_notifications.sql` adds a separate successful-delivery timestamp for the initial check-in due notice. An awaiting cycle that has not yet delivered any 0.6.2 reminder receives the new due notice on the next notification run. A cycle that already delivered a reminder is marked as already notified during migration, preventing a duplicate late due notice.
+
+Migration `009_recipient_escalation.sql` then:
+
+- adds a direct or safety-contact escalation policy and safety timing fields to every monitor
+- extends cycle snapshots with the policy, safety timing, gate progress, and `safety_pending` state
+- adds per-monitor safety-contact assignments
+- stores immutable safety requests and multiple hashed, expiring link tokens
+- stores immutable recipient releases and per-recipient delivery snapshots
+- links safety and recipient jobs to the durable mail queue
+
+Existing monitors use **Direct recipient notification** by default. This is intentionally functional: after their owner-notification phase completes, eligible monitors can now send actual recipient email. Review all active monitors, recipients, checked addresses, and messages immediately after upgrade. Pause a monitor first if its configuration is not ready.
 
 Existing contacts receive a null `email_checked_at` value. This is intentional: Pulse cannot infer that an address was reviewed before the feature existed. Reviewing a contact updates the local timestamp without sending anything to that contact.
 
@@ -101,8 +128,8 @@ Overlapping invocations are safe because queue jobs use database row locks and e
 2. Sign in and open `/health/readiness`.
 3. Verify contacts and monitors are present.
 4. Open each monitor editor tab and confirm existing contacts and documents are present.
-5. Review an existing contact, confirm its address, and verify its checked status appears in the monitor editor.
-6. Save a default message and one recipient-specific override.
+5. Review an existing contact, confirm its address, and verify its checked status appears in the monitor editor and dedicated recipient page.
+6. Save a default message, open one dedicated recipient page, save a personal override, and review the localized preview.
 7. Create, edit, assign, and delete a non-sensitive text document.
 8. Upload a non-sensitive test PDF without a title and verify the success message contains its filename.
 9. Download and delete that PDF, then confirm its storage file is removed.
@@ -112,12 +139,19 @@ Overlapping invocations are safe because queue jobs use database row locks and e
 13. Resume it and verify a fresh interval begins from the resume time.
 14. In a development environment, set `PULSE_DEBUG=true`, use **Force due now**, and verify the selected cycle changes to **Awaiting check-in**.
 15. Use **Send due notification now** and verify the owner immediately receives the check-in due notice through the real queue and SMTP worker.
-16. Confirm recent lifecycle activity records check-ins, pauses, resumes, due changes, and the sent due notice.
-17. Save monitor settings from each tab and confirm Pulse returns to the same tab.
-18. Configure SMTP and send a successful test from **Profile → Notifications**.
-19. Set the owner and contact notification languages, change the footer language, and verify another test still uses the stored owner language.
-20. Call the configured web-cron URL once and verify it returns `OK`, or run the equivalent command-line notification operation.
-21. Confirm production pages do not show stack traces.
+16. On a disposable monitor, choose **Safety-contact gate**, select only checked contacts, and verify the confirmation quorum does not exceed the number selected.
+17. Let a non-sensitive safety request run normally. Verify that opening its link changes nothing and that only an explicit submitted confirmation postpones the monitor.
+18. Verify a safety contact cannot access recipient messages or documents and cannot accelerate release.
+19. In development only, read the warning and use **Send recipient notification now** with non-sensitive test recipients. Verify each dedicated recipient page records its immutable delivery state.
+20. Confirm the monitor changes to **Escalated** only after the first recipient SMTP success. With an intentionally failed test delivery, confirm it remains **Overdue** and shows a failure.
+21. Confirm a recipient email contains the configured message but no attachment, document content, or document-access link.
+22. Confirm recent lifecycle activity records check-ins, pauses, resumes, due changes, safety stages, and recipient delivery.
+23. Save monitor settings from each of the five tabs and confirm Pulse returns to the same tab.
+24. Configure SMTP and send a successful test from **Profile → Notifications**.
+25. Set the owner and contact notification languages, change the footer language, and verify another test still uses the stored owner language.
+26. Call the configured web-cron URL once and verify it returns `OK`, or run the equivalent command-line notification operation.
+27. Temporarily move `config/version.php` out of the project, verify the footer says **version unavailable** without an application failure, then restore the generated file.
+28. Confirm production pages do not show stack traces.
 
 ### Old archive debris
 

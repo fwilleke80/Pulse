@@ -1,10 +1,10 @@
 # Pulse
 
-Pulse is a small, framework-free PHP application for personal emergency check-ins. It lets a user configure monitors, trusted contacts, and recipient-specific documents in preparation for a later staged notification and delivery workflow.
+Pulse is a small, framework-free PHP application for personal emergency check-ins. It lets a user configure monitors, recipients, optional safety contacts, messages, and recipient-specific documents.
 
-Version **0.6.4** sends an immediate owner notification when a monitor becomes due. The notice states the configured response window and maximum follow-up count; the German and English messages use the same readable action-and-link structure. Notification language remains recipient-specific, and recipient delivery itself remains inactive until the later secure-delivery milestone.
+Version **0.7.0** adds actual recipient notification emails, an optional per-monitor safety-contact gate, and dedicated recipient configuration pages with message preview, document assignment, and immutable delivery history. Recipient emails contain the configured message, but no document content or document-access link. Documents remain gated for a later secure portal release.
 
-> **Important:** Pulse 0.6.4 stores uploaded files outside the public web root, but files, messages, and editable text documents are not encrypted at rest. Do not treat this release as the finished secure vault for highly sensitive material. Secure storage is planned for a later release.
+> **Important:** Pulse 0.7.0 can send real, irreversible email to recipients and safety contacts. Test configuration with non-sensitive addresses first. Uploaded files remain outside the public web root, but files, messages, and editable text documents are not encrypted at rest. Do not treat this release as the finished secure vault for highly sensitive material.
 
 ## Requirements
 
@@ -18,15 +18,18 @@ Composer is used for development tools. The application retains a small PSR-4 fa
 
 ## Installation
 
-1. Extract the complete source archive into the Pulse project directory.
-2. Copy `.env.example` to `.env` and enter the real URL and database credentials.
-3. Create an empty database.
-4. Ensure `storage/logs`, `storage/tmp`, and `storage/uploads` are writable by PHP but not publicly accessible.
-5. Configure the site’s document root as the project’s `public/` directory.
-6. Serve the application exclusively over HTTPS.
-7. Open Pulse in a browser. The first request creates and migrates the database automatically.
-8. Configure SMTP, enable mail, and send a test from **Profile → Notifications**.
-9. Install either the web-cron URL or command-line cron job shown below.
+1. Extract the complete source archive locally into the Pulse project directory.
+2. Before uploading any PHP files, run `python3 tools/write_version.py`. This generates `config/version.php`; upload that generated file with the application. In a tagged Git checkout the script derives the version from Git, while a packaged archive retains its packaged version. Set `PULSE_VERSION=0.7.0` for an explicit release value when needed.
+3. Copy `.env.example` to `.env` and enter the real URL and database credentials.
+4. Create an empty database.
+5. Upload the project and ensure `storage/logs`, `storage/tmp`, and `storage/uploads` are writable by PHP but not publicly accessible.
+6. Configure the site’s document root as the project’s `public/` directory.
+7. Serve the application exclusively over HTTPS.
+8. Open Pulse in a browser. The first request creates and migrates the database automatically.
+9. Configure SMTP, enable mail, and send a test from **Profile → Notifications**.
+10. Install either the web-cron URL or command-line cron job shown below.
+
+If `config/version.php` is missing, Pulse remains operational and displays **version unavailable** instead of failing. Generate the file before deployment so asset cache keys and the displayed release are accurate.
 
 The public entry point finds the application through this explicit chain:
 
@@ -44,19 +47,22 @@ Pulse/bootstrap.php
 
 The separate `public/cron/cron.php` endpoint loads the same application root for protected background notification runs.
 
-## Upgrading to 0.6.4
+## Upgrading to 0.7.0
 
 1. Back up the database and `storage/` directory.
-2. Extract the 0.6.4 source ZIP over the existing Pulse project directory.
-3. When upgrading from 0.2.9, create `.env` from `.env.example`; do not copy credentials back into `config/database.php`.
-4. Rotate the former database and application passwords if this was not already done.
-5. Confirm that the server document root is `public/`.
-6. Open Pulse in a browser. Pending migrations are applied automatically before the request is handled.
-7. Delete any old `__MACOSX`, `.DS_Store`, and `__pycache__` material left by earlier archives.
+2. Extract the 0.7.0 source ZIP into a local working directory.
+3. Run `python3 tools/write_version.py` **before uploading the PHP files**, and include the generated `config/version.php` in the upload.
+4. Upload the source over the existing Pulse project directory without replacing `.env` or `storage/`.
+5. When upgrading from 0.2.9, create `.env` from `.env.example`; do not copy credentials back into `config/database.php`.
+6. Rotate the former database and application passwords if this was not already done.
+7. Confirm that the server document root is `public/`.
+8. Open Pulse in a browser. Pending migrations are applied automatically before the request is handled.
+9. Review every recipient message and every safety-contact selection before relying on a monitor.
+10. Delete any old `__MACOSX`, `.DS_Store`, and `__pycache__` material left by earlier archives.
 
 The migration runner detects a pre-migration Pulse database, records the consolidated legacy baseline, and applies only the required migrations. Existing user, contact, monitor, and document data is retained. A database-level advisory lock prevents concurrent requests from applying the same migration twice.
 
-Existing contacts begin with an unchecked address state because Pulse cannot know whether you previously reviewed their email addresses. In a monitor editor, open **Recipients**, choose **Check address** beside the contact, review the address, tick the confirmation box, and save. This confirmation is local to your account; Pulse does not send the contact any message.
+Existing contacts begin with an unchecked address state because Pulse cannot know whether you previously reviewed their email addresses. Open **Contacts**, edit the contact, review the address, tick the confirmation box, and save. This confirmation is local to your account; the address-check action itself sends no message.
 
 Migration `005_check_in_lifecycle.sql` converts existing lightweight timing data into persisted cycles. Active monitors receive a scheduled or awaiting cycle based on their existing next due time; paused monitors remain paused. Existing duplicate open cycles, if any, are reduced to one current cycle without deleting their history.
 
@@ -65,6 +71,20 @@ Migration `006_notification_infrastructure.sql` upgrades the provisional mail ta
 Migration `007_recipient_notification_languages.sql` adds an optional notification language to the owner profile and every contact. Existing null values use `PULSE_DEFAULT_LOCALE` until explicitly saved.
 
 Migration `008_immediate_due_notifications.sql` records successful initial due notices separately from follow-up reminders. Existing cycles that already delivered a 0.6.2 reminder are marked as already notified so an upgrade does not send them a duplicate late due notice.
+
+Migration `009_recipient_escalation.sql` adds per-monitor escalation policy, optional safety-contact assignments and requests, hashed safety-link tokens, immutable recipient releases and deliveries, and queue links for the new mail types. Existing monitors default to **Direct recipient notification**, so review active configurations promptly after upgrading.
+
+## 0.7 recipient escalation
+
+- Each monitor chooses **Direct recipient notification** or an optional **Safety-contact gate**.
+- Direct monitors stage recipient emails after the owner due notice, response window, and all configured owner reminders have completed without a check-in.
+- Safety-gated monitors first email one or more checked safety contacts. A configurable confirmation quorum can postpone the monitor; a safety contact can never accelerate recipient delivery.
+- Merely opening a safety link changes nothing. The contact must submit an explicit CSRF-protected response. Tokens are random, purpose-bound, resolved through stored hashes, and expire. The raw link exists in the queued email while retries are possible and is redacted from the queue after success or cancellation.
+- Recipient address, language, subject, and body are snapshotted before queueing. Later edits affect only future releases.
+- A monitor becomes **Escalated** only after SMTP accepts the first recipient message. If every recipient attempt fails, it remains truthfully **Overdue** with a visible delivery warning.
+- Recipient pages separate reusable contact details from monitor-specific messages, document assignments, localized preview, and delivery history.
+- Documents are still inaccessible to recipients in 0.7.0. Assignments are configuration for a future secure portal; recipient mail explicitly says no documents are attached or accessible.
+- The scheduler and worker remain idempotent, leased, retryable, and safe to overlap.
 
 ## 0.6 notification infrastructure
 
@@ -76,8 +96,8 @@ Migration `008_immediate_due_notifications.sql` records successful initial due n
 - Permanently failed owner notifications leave the monitor truthfully at **Awaiting check-in** and add a visible delivery-failure warning. They can be requeued from **Profile → Notifications**.
 - Test notifications use the same queue, SMTP transport, retry state, and delivery log as real reminders.
 - Owner reminders and tests use the owner recipient's stored notification language, independently of the active interface language.
-- Each contact stores a separate language for the later recipient-delivery workflow.
-- Recipient messages and documents are not mailed in this release.
+- Each contact stores a separate language used for safety-contact and recipient mail.
+- Recipient messages are mailed after the configured escalation process; documents are not attached or accessible.
 
 Configure `.env` using the `PULSE_SMTP_*` and `PULSE_MAIL_*` examples:
 
@@ -192,12 +212,13 @@ PULSE_DEBUG=true
 PULSE_COOKIE_SECURE=false
 ```
 
-For a checked-in monitor, **Force due now** opens the normal awaiting cycle. The same row then offers **Send due notification now**, which queues and immediately attempts the real SMTP message without waiting for cron. Pulse ignores `PULSE_DEBUG=true` when `PULSE_ENV=production`. The future recipient-delivery test action will use this same debug boundary once recipient delivery exists.
+For a checked-in monitor, **Force due now** opens the normal awaiting cycle. The same row then offers **Send due notification now**, which queues and immediately attempts the real SMTP message without waiting for cron. After that notice is recorded, **Send recipient notification now** can deliberately bypass the remaining owner and safety waiting periods, snapshot the real recipient messages, and attempt real delivery. It requires an explicit confirmation and exists only in non-production debug mode. Pulse ignores `PULSE_DEBUG=true` when `PULSE_ENV=production`.
 
 ## Documentation
 
 - [Architecture](docs/ARCHITECTURE.md)
 - [User guide](docs/USER_GUIDE.md)
+- [Monitor seriousness tutorial](docs/MONITOR_TUTORIAL.md)
 - [Security model](docs/SECURITY.md)
 - [Upgrade guide](docs/UPGRADING.md)
 - [Changelog](CHANGELOG.md)

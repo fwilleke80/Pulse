@@ -1,0 +1,1033 @@
+<?php
+
+/**
+ * @file EscalationService.php
+ * @brief Optional safety-contact gate and immutable recipient-mail release staging.
+ * @author Frank Willeke
+ */
+
+declare(strict_types=1);
+
+namespace Pulse\Services;
+
+use DateInterval;
+use DateTimeImmutable;
+use DateTimeZone;
+use PDO;
+use Pulse\Core\Database;
+use Pulse\Core\Logger;
+use RuntimeException;
+use Throwable;
+
+/**
+ * @brief Advances escalation only through explicit, audited, fail-closed stages.
+ */
+final class EscalationService
+{
+	private Database $_database;
+	private MonitorStateMachine $_stateMachine;
+	private NotificationComposer $_composer;
+	private Logger $_logger;
+	private int $_maxAttempts;
+
+	/** @brief Constructs the escalation service. */
+	public function __construct(
+		Database $database,
+		MonitorStateMachine $stateMachine,
+		NotificationComposer $composer,
+		Logger $logger,
+		int $maxAttempts
+	)
+	{
+		$this->_database = $database;
+		$this->_stateMachine = $stateMachine;
+		$this->_composer = $composer;
+		$this->_logger = $logger;
+		$this->_maxAttempts = $maxAttempts;
+	}
+
+	/**
+	 * @brief Starts a safety gate and transactionally queues every initial request.
+	 * @return int Number of safety-contact requests created, or zero when configuration blocks the gate.
+	 */
+	public function StartSafetyGate(int $cycleId): int
+	{
+		$connection = $this->_database->GetConnection();
+		$connection->beginTransaction();
+
+		try
+		{
+			$cycle = $this->LockCycle($connection, $cycleId);
+
+			if (!is_array($cycle) || (string)$cycle['status'] !== MonitorStateMachine::AWAITING)
+			{
+				$connection->commit();
+				return 0;
+			}
+
+			if ((string)$cycle['escalation_policy_snapshot'] !== 'safety_contact')
+			{
+				$connection->commit();
+				return 0;
+			}
+
+			$contacts = $this->FindSafetyContacts($connection, (int)$cycle['monitor_id']);
+			$required = (int)$cycle['safety_required_confirmations'];
+
+			if ($contacts === [] || $required < 1 || $required > count($contacts))
+			{
+				$this->WriteAudit($connection, $cycle, 'monitor.safety_blocked', ['reason' => 'invalid_configuration']);
+				$connection->commit();
+				return 0;
+			}
+
+			foreach ($contacts as $contact)
+			{
+				if (empty($contact['email_checked_at']))
+				{
+					$this->WriteAudit($connection, $cycle, 'monitor.safety_blocked', ['reason' => 'unchecked_safety_contact']);
+					$connection->commit();
+					return 0;
+				}
+			}
+
+			$this->_stateMachine->AssertTransition(MonitorStateMachine::AWAITING, MonitorStateMachine::SAFETY_PENDING);
+			$now = $this->Now();
+			$update = $connection->prepare('
+				UPDATE check_cycles
+				SET status = :status, updated_at = :updated_at
+				WHERE id = :id
+			');
+			$update->execute([
+				'status' => MonitorStateMachine::SAFETY_PENDING,
+				'updated_at' => $now,
+				'id' => $cycleId,
+			]);
+
+			foreach ($contacts as $contact)
+			{
+				$rawToken = bin2hex(random_bytes(32));
+				$expiresAt = $this->SafetyTokenExpiry($cycle);
+				$insertRequest = $connection->prepare('
+					INSERT INTO safety_contact_requests
+					(
+						check_cycle_id, monitor_id, contact_id, contact_name, contact_email,
+						notification_locale, status, created_at, updated_at
+					)
+					VALUES
+					(
+						:check_cycle_id, :monitor_id, :contact_id, :contact_name, :contact_email,
+						:notification_locale, \'pending\', :created_at, :updated_at
+					)
+				');
+				$insertRequest->execute([
+					'check_cycle_id' => $cycleId,
+					'monitor_id' => (int)$cycle['monitor_id'],
+					'contact_id' => (int)$contact['id'],
+					'contact_name' => (string)$contact['name'],
+					'contact_email' => (string)$contact['email'],
+					'notification_locale' => (string)$contact['notification_locale'],
+					'created_at' => $now,
+					'updated_at' => $now,
+				]);
+				$requestId = (int)$connection->lastInsertId();
+				$this->InsertSafetyToken($connection, $requestId, $rawToken, $expiresAt);
+				$content = $this->_composer->ComposeSafetyInvitation([
+					'contact_name' => (string)$contact['name'],
+					'notification_locale' => (string)$contact['notification_locale'],
+					'owner_name' => (string)$cycle['owner_name'],
+					'monitor_name' => (string)$cycle['monitor_name'],
+				], $rawToken);
+				$this->InsertQueue($connection, [
+					'user_id' => (int)$cycle['user_id'],
+					'check_cycle_id' => $cycleId,
+					'monitor_id' => (int)$cycle['monitor_id'],
+					'contact_id' => (int)$contact['id'],
+					'safety_request_id' => $requestId,
+					'recipient_delivery_id' => null,
+					'mail_type' => 'safety_invitation',
+					'idempotency_key' => 'safety-invitation:' . $cycleId . ':' . (int)$contact['id'],
+					'reminder_number' => null,
+					'recipient_email' => (string)$contact['email'],
+					'subject' => $content['subject'],
+					'body_text' => $content['body_text'],
+					'available_at' => $now,
+				]);
+			}
+
+			$this->WriteAudit($connection, $cycle, 'monitor.safety_requested', [
+				'contact_count' => count($contacts),
+				'required_confirmations' => $required,
+			]);
+			$connection->commit();
+			$this->_logger->Info('Safety-contact gate started', ['cycle_id' => $cycleId, 'contact_count' => count($contacts)]);
+
+			return count($contacts);
+		}
+		catch (Throwable $throwable)
+		{
+			$connection->rollBack();
+			throw $throwable;
+		}
+	}
+
+	/**
+	 * @brief Queues due safety reminders and expires fully delivered unanswered gates.
+	 * @return array{reminders_ready: int, expired: int}
+	 */
+	public function RunSafetyGates(): array
+	{
+		$remindersReady = 0;
+		$expired = 0;
+		$now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
+		$cycles = $this->_database->GetConnection()->query('
+			SELECT cc.*, m.user_id, m.name AS monitor_name, u.display_name AS owner_name
+			FROM check_cycles cc
+			INNER JOIN monitors m ON m.id = cc.monitor_id
+			INNER JOIN users u ON u.id = m.user_id
+			WHERE cc.status = \'safety_pending\' AND m.is_paused = 0 AND u.is_active = 1
+			ORDER BY cc.id ASC
+		')->fetchAll(PDO::FETCH_ASSOC);
+
+		foreach (is_array($cycles) ? $cycles : [] as $cycle)
+		{
+			if (empty($cycle['safety_gate_started_at']) || empty($cycle['safety_gate_deadline_at']))
+			{
+				continue;
+			}
+
+			$requests = $this->FindSafetyRequests((int)$cycle['id']);
+
+			foreach ($requests as $request)
+			{
+				if ((string)$request['status'] !== 'pending')
+				{
+					continue;
+				}
+
+				$sent = (int)$request['reminders_sent'];
+				$maximum = (int)$cycle['safety_max_reminders'];
+
+				if ($sent >= $maximum)
+				{
+					continue;
+				}
+
+				$number = $sent + 1;
+				$scheduledAt = $this->SafetyReminderTime($cycle, $number);
+
+				if ($scheduledAt <= $now && $this->QueueSafetyReminder($cycle, $request, $number))
+				{
+					$remindersReady++;
+				}
+			}
+
+			$deadline = new DateTimeImmutable((string)$cycle['safety_gate_deadline_at'], new DateTimeZone('UTC'));
+
+			if ($deadline <= $now && $this->ExpireSafetyGate((int)$cycle['id']))
+			{
+				$expired++;
+			}
+		}
+
+		return ['reminders_ready' => $remindersReady, 'expired' => $expired];
+	}
+
+	/**
+	 * @brief Stages immutable recipient messages and queue jobs for one overdue cycle.
+	 * @return array{status: string, queued: int, release_id: int}
+	 */
+	public function StageRecipientRelease(int $cycleId): array
+	{
+		$connection = $this->_database->GetConnection();
+		$connection->beginTransaction();
+
+		try
+		{
+			$cycle = $this->LockCycle($connection, $cycleId);
+
+			if (!is_array($cycle) || !in_array((string)$cycle['status'], [MonitorStateMachine::OVERDUE, MonitorStateMachine::ESCALATED], true))
+			{
+				$connection->commit();
+				return ['status' => 'unavailable', 'queued' => 0, 'release_id' => 0];
+			}
+
+			$existing = $connection->prepare('SELECT * FROM recipient_releases WHERE check_cycle_id = :cycle_id FOR UPDATE');
+			$existing->execute(['cycle_id' => $cycleId]);
+			$release = $existing->fetch(PDO::FETCH_ASSOC);
+
+			if (is_array($release) && (string)$release['status'] !== 'blocked')
+			{
+				$count = $connection->prepare('SELECT COUNT(*) FROM recipient_release_deliveries WHERE release_id = :release_id');
+				$count->execute(['release_id' => (int)$release['id']]);
+				$connection->commit();
+				return ['status' => (string)$release['status'], 'queued' => (int)$count->fetchColumn(), 'release_id' => (int)$release['id']];
+			}
+
+			$recipients = $this->FindReleaseRecipients($connection, (int)$cycle['monitor_id']);
+			$blockedReason = $this->ReleaseBlockedReason($recipients);
+
+			if ($blockedReason !== null)
+			{
+				if (is_array($release) && (string)$release['blocked_reason'] === $blockedReason)
+				{
+					$connection->commit();
+					return ['status' => 'blocked', 'queued' => 0, 'release_id' => (int)$release['id']];
+				}
+
+				$releaseId = $this->UpsertBlockedRelease($connection, $cycle, $blockedReason);
+				$this->WriteAudit($connection, $cycle, 'recipient.release_blocked', ['reason' => $blockedReason]);
+				$connection->commit();
+				return ['status' => 'blocked', 'queued' => 0, 'release_id' => $releaseId];
+			}
+
+			$now = $this->Now();
+
+			if (is_array($release))
+			{
+				$releaseId = (int)$release['id'];
+				$updateRelease = $connection->prepare('
+					UPDATE recipient_releases
+					SET status = \'pending\', blocked_reason = NULL, staged_at = :staged_at, updated_at = :updated_at
+					WHERE id = :id
+				');
+				$updateRelease->execute(['staged_at' => $now, 'updated_at' => $now, 'id' => $releaseId]);
+			}
+			else
+			{
+				$insertRelease = $connection->prepare('
+					INSERT INTO recipient_releases
+					(check_cycle_id, monitor_id, user_id, status, created_at, staged_at, updated_at)
+					VALUES (:check_cycle_id, :monitor_id, :user_id, \'pending\', :created_at, :staged_at, :updated_at)
+				');
+				$insertRelease->execute([
+					'check_cycle_id' => $cycleId,
+					'monitor_id' => (int)$cycle['monitor_id'],
+					'user_id' => (int)$cycle['user_id'],
+					'created_at' => $now,
+					'staged_at' => $now,
+					'updated_at' => $now,
+				]);
+				$releaseId = (int)$connection->lastInsertId();
+			}
+
+			foreach ($recipients as $recipient)
+			{
+				$content = $this->_composer->ComposeRecipientNotification([
+					'recipient_name' => (string)$recipient['name'],
+					'notification_locale' => (string)$recipient['notification_locale'],
+					'owner_name' => (string)$cycle['owner_name'],
+					'monitor_name' => (string)$cycle['monitor_name'],
+					'message_subject' => (string)$recipient['message_subject'],
+					'message_body' => (string)$recipient['message_body'],
+				]);
+				$insertDelivery = $connection->prepare('
+					INSERT INTO recipient_release_deliveries
+					(
+						release_id, check_cycle_id, monitor_id, contact_id, recipient_name,
+						recipient_email, notification_locale, subject, body_text, status, created_at, updated_at
+					)
+					VALUES
+					(
+						:release_id, :check_cycle_id, :monitor_id, :contact_id, :recipient_name,
+						:recipient_email, :notification_locale, :subject, :body_text, \'queued\', :created_at, :updated_at
+					)
+				');
+				$insertDelivery->execute([
+					'release_id' => $releaseId,
+					'check_cycle_id' => $cycleId,
+					'monitor_id' => (int)$cycle['monitor_id'],
+					'contact_id' => (int)$recipient['contact_id'],
+					'recipient_name' => (string)$recipient['name'],
+					'recipient_email' => (string)$recipient['email'],
+					'notification_locale' => (string)$recipient['notification_locale'],
+					'subject' => $content['subject'],
+					'body_text' => $content['body_text'],
+					'created_at' => $now,
+					'updated_at' => $now,
+				]);
+				$deliveryId = (int)$connection->lastInsertId();
+				$queueId = $this->InsertQueue($connection, [
+					'user_id' => (int)$cycle['user_id'],
+					'check_cycle_id' => $cycleId,
+					'monitor_id' => (int)$cycle['monitor_id'],
+					'contact_id' => (int)$recipient['contact_id'],
+					'safety_request_id' => null,
+					'recipient_delivery_id' => $deliveryId,
+					'mail_type' => 'recipient_notification',
+					'idempotency_key' => 'recipient-notification:' . $cycleId . ':' . (int)$recipient['contact_id'],
+					'reminder_number' => null,
+					'recipient_email' => (string)$recipient['email'],
+					'subject' => $content['subject'],
+					'body_text' => $content['body_text'],
+					'available_at' => $now,
+				]);
+				$updateDelivery = $connection->prepare('UPDATE recipient_release_deliveries SET queue_id = :queue_id WHERE id = :id');
+				$updateDelivery->execute(['queue_id' => $queueId, 'id' => $deliveryId]);
+			}
+
+			$this->WriteAudit($connection, $cycle, 'recipient.release_staged', [
+				'release_id' => $releaseId,
+				'recipient_count' => count($recipients),
+			]);
+			$connection->commit();
+			$this->_logger->Info('Recipient release staged', ['cycle_id' => $cycleId, 'recipient_count' => count($recipients)]);
+
+			return ['status' => 'pending', 'queued' => count($recipients), 'release_id' => $releaseId];
+		}
+		catch (Throwable $throwable)
+		{
+			$connection->rollBack();
+			throw $throwable;
+		}
+	}
+
+	/** @return array<string, mixed>|null @brief Resolves a current safety request without consuming its token. */
+	public function FindSafetyRequestByToken(string $rawToken): ?array
+	{
+		if (!$this->IsTokenShapeValid($rawToken))
+		{
+			return null;
+		}
+
+		$statement = $this->_database->GetConnection()->prepare('
+			SELECT scr.*, m.name AS monitor_name, u.display_name AS owner_name
+			FROM safety_contact_requests scr
+			INNER JOIN check_cycles cc ON cc.id = scr.check_cycle_id
+			INNER JOIN monitors m ON m.id = scr.monitor_id
+			INNER JOIN users u ON u.id = m.user_id
+			INNER JOIN safety_request_tokens srt ON srt.safety_request_id = scr.id
+			WHERE srt.token_hash = :token_hash
+				AND scr.status = \'pending\'
+				AND srt.expires_at >= UTC_TIMESTAMP()
+				AND cc.status = \'safety_pending\'
+			LIMIT 1
+		');
+		$statement->execute(['token_hash' => hash('sha256', $rawToken)]);
+		$row = $statement->fetch(PDO::FETCH_ASSOC);
+
+		return is_array($row) ? $row : null;
+	}
+
+	/**
+	 * @brief Records a deliberate safety-contact response and optionally postpones the monitor.
+	 * @return string invalid, confirmed_waiting, confirmed_postponed, or declined.
+	 */
+	public function RespondToSafetyToken(string $rawToken, string $decision): string
+	{
+		if (!$this->IsTokenShapeValid($rawToken) || !in_array($decision, ['confirm', 'decline'], true))
+		{
+			return 'invalid';
+		}
+
+		$connection = $this->_database->GetConnection();
+		$connection->beginTransaction();
+
+		try
+		{
+			$statement = $connection->prepare('
+				SELECT scr.*, cc.status AS cycle_status, cc.safety_required_confirmations,
+					cc.safety_confirmation_days, m.user_id, m.name AS monitor_name,
+					m.check_interval_days, m.response_window_days, m.reminder_interval_days,
+					m.max_reminders, m.escalation_policy, m.safety_response_window_days,
+					m.safety_reminder_interval_days, m.safety_max_reminders,
+					m.safety_required_confirmations AS monitor_required_confirmations,
+					m.safety_confirmation_days AS monitor_confirmation_days
+				FROM safety_contact_requests scr
+				INNER JOIN safety_request_tokens srt ON srt.safety_request_id = scr.id
+				INNER JOIN check_cycles cc ON cc.id = scr.check_cycle_id
+				INNER JOIN monitors m ON m.id = scr.monitor_id
+				WHERE srt.token_hash = :token_hash
+					AND scr.status = \'pending\'
+					AND srt.expires_at >= UTC_TIMESTAMP()
+				FOR UPDATE
+			');
+			$statement->execute(['token_hash' => hash('sha256', $rawToken)]);
+			$request = $statement->fetch(PDO::FETCH_ASSOC);
+
+			if (!is_array($request) || (string)$request['cycle_status'] !== MonitorStateMachine::SAFETY_PENDING)
+			{
+				$connection->commit();
+				return 'invalid';
+			}
+
+			$now = $this->Now();
+
+			if ($decision === 'decline')
+			{
+				$update = $connection->prepare('
+					UPDATE safety_contact_requests
+					SET status = \'declined\', declined_at = :responded_at, updated_at = :updated_at
+					WHERE id = :id
+				');
+				$update->execute(['responded_at' => $now, 'updated_at' => $now, 'id' => (int)$request['id']]);
+				$this->WriteAudit($connection, $request, 'safety_contact.cannot_confirm', ['contact_id' => $request['contact_id']]);
+				$connection->commit();
+				return 'declined';
+			}
+
+			$update = $connection->prepare('
+				UPDATE safety_contact_requests
+				SET status = \'confirmed\', confirmed_at = :responded_at, updated_at = :updated_at
+				WHERE id = :id
+			');
+			$update->execute(['responded_at' => $now, 'updated_at' => $now, 'id' => (int)$request['id']]);
+			$count = $connection->prepare('
+				SELECT COUNT(*) FROM safety_contact_requests
+				WHERE check_cycle_id = :cycle_id AND status = \'confirmed\'
+			');
+			$count->execute(['cycle_id' => (int)$request['check_cycle_id']]);
+			$confirmations = (int)$count->fetchColumn();
+			$updateCount = $connection->prepare('
+				UPDATE check_cycles SET safety_confirmation_count = :count, updated_at = :updated_at WHERE id = :id
+			');
+			$updateCount->execute(['count' => $confirmations, 'updated_at' => $now, 'id' => (int)$request['check_cycle_id']]);
+			$this->WriteAudit($connection, $request, 'safety_contact.confirmed', ['contact_id' => $request['contact_id'], 'confirmation_count' => $confirmations]);
+
+			if ($confirmations < (int)$request['safety_required_confirmations'])
+			{
+				$connection->commit();
+				return 'confirmed_waiting';
+			}
+
+			$this->PostponeCycle($connection, $request, $now, $confirmations);
+			$connection->commit();
+			return 'confirmed_postponed';
+		}
+		catch (Throwable $throwable)
+		{
+			$connection->rollBack();
+			throw $throwable;
+		}
+	}
+
+	/**
+	 * @brief Debug-only helper that advances an open cycle to Overdue before staging recipients.
+	 * @return int|null Current cycle ID, or null when unavailable.
+	 */
+	public function PrepareDebugRecipientReleaseForUser(int $monitorId, int $userId): ?int
+	{
+		$connection = $this->_database->GetConnection();
+		$connection->beginTransaction();
+
+		try
+		{
+			$statement = $connection->prepare('
+				SELECT cc.*, m.user_id, m.name AS monitor_name
+				FROM check_cycles cc
+				INNER JOIN monitors m ON m.id = cc.monitor_id
+				WHERE cc.monitor_id = :monitor_id AND m.user_id = :user_id
+					AND cc.status IN (\'awaiting\', \'safety_pending\', \'overdue\')
+				ORDER BY cc.id DESC LIMIT 1 FOR UPDATE
+			');
+			$statement->execute(['monitor_id' => $monitorId, 'user_id' => $userId]);
+			$cycle = $statement->fetch(PDO::FETCH_ASSOC);
+
+			if (!is_array($cycle))
+			{
+				$connection->commit();
+				return null;
+			}
+
+			if ((string)$cycle['status'] !== MonitorStateMachine::OVERDUE)
+			{
+				$this->_stateMachine->AssertTransition((string)$cycle['status'], MonitorStateMachine::OVERDUE);
+				$now = $this->Now();
+				$update = $connection->prepare('
+					UPDATE check_cycles SET status = \'overdue\', overdue_at = :overdue_at, updated_at = :updated_at WHERE id = :id
+				');
+				$update->execute(['overdue_at' => $now, 'updated_at' => $now, 'id' => (int)$cycle['id']]);
+				$this->CancelCycleWork($connection, (int)$cycle['id'], $now);
+				$this->WriteAudit($connection, $cycle, 'monitor.debug_recipient_release');
+			}
+
+			$connection->commit();
+			return (int)$cycle['id'];
+		}
+		catch (Throwable $throwable)
+		{
+			$connection->rollBack();
+			throw $throwable;
+		}
+	}
+
+	/** @return array<int> @brief Returns queued recipient jobs for an immutable release. */
+	public function FindPendingQueueIdsForRelease(int $releaseId): array
+	{
+		$statement = $this->_database->GetConnection()->prepare('
+			SELECT mq.id
+			FROM mail_queue mq
+			INNER JOIN recipient_release_deliveries rrd ON rrd.queue_id = mq.id
+			WHERE rrd.release_id = :release_id AND mq.status IN (\'queued\', \'retrying\')
+			ORDER BY mq.id ASC
+		');
+		$statement->execute(['release_id' => $releaseId]);
+		$rows = $statement->fetchAll(PDO::FETCH_COLUMN);
+
+		return is_array($rows) ? array_map('intval', $rows) : [];
+	}
+
+	/** @return array<string, mixed>|null @brief Locks one cycle with monitor and owner configuration. */
+	private function LockCycle(PDO $connection, int $cycleId): ?array
+	{
+		$statement = $connection->prepare('
+			SELECT cc.*, m.user_id, m.name AS monitor_name, m.is_paused, u.display_name AS owner_name
+			FROM check_cycles cc
+			INNER JOIN monitors m ON m.id = cc.monitor_id
+			INNER JOIN users u ON u.id = m.user_id
+			WHERE cc.id = :id
+			FOR UPDATE
+		');
+		$statement->execute(['id' => $cycleId]);
+		$row = $statement->fetch(PDO::FETCH_ASSOC);
+
+		return is_array($row) ? $row : null;
+	}
+
+	/** @return array<int, array<string, mixed>> @brief Returns configured safety contacts. */
+	private function FindSafetyContacts(PDO $connection, int $monitorId): array
+	{
+		$statement = $connection->prepare('
+			SELECT c.id, c.name, c.email, c.notification_locale, c.email_checked_at
+			FROM monitor_safety_contacts msc
+			INNER JOIN contacts c ON c.id = msc.contact_id
+			WHERE msc.monitor_id = :monitor_id
+			ORDER BY msc.sort_order ASC, msc.id ASC
+		');
+		$statement->execute(['monitor_id' => $monitorId]);
+		$rows = $statement->fetchAll(PDO::FETCH_ASSOC);
+
+		return is_array($rows) ? $rows : [];
+	}
+
+	/** @return array<int, array<string, mixed>> @brief Returns safety requests for one cycle. */
+	private function FindSafetyRequests(int $cycleId): array
+	{
+		$statement = $this->_database->GetConnection()->prepare('
+			SELECT scr.*
+			FROM safety_contact_requests scr
+			WHERE scr.check_cycle_id = :cycle_id
+			ORDER BY scr.id ASC
+		');
+		$statement->execute(['cycle_id' => $cycleId]);
+		$rows = $statement->fetchAll(PDO::FETCH_ASSOC);
+
+		return is_array($rows) ? $rows : [];
+	}
+
+	/** @brief Queues one safety reminder with an additional expiring token. */
+	private function QueueSafetyReminder(array $cycle, array $request, int $number): bool
+	{
+		$connection = $this->_database->GetConnection();
+		$connection->beginTransaction();
+
+		try
+		{
+			$key = 'safety-reminder:' . (int)$request['id'] . ':' . $number;
+			$existing = $connection->prepare('SELECT id FROM mail_queue WHERE idempotency_key = :key LIMIT 1');
+			$existing->execute(['key' => $key]);
+
+			if ($existing->fetchColumn() !== false)
+			{
+				$connection->commit();
+				return false;
+			}
+
+			$locked = $connection->prepare('
+				SELECT * FROM safety_contact_requests
+				WHERE id = :id AND status = \'pending\' AND reminders_sent = :previous
+				FOR UPDATE
+			');
+			$locked->execute(['id' => (int)$request['id'], 'previous' => $number - 1]);
+			$current = $locked->fetch(PDO::FETCH_ASSOC);
+
+			if (!is_array($current))
+			{
+				$connection->commit();
+				return false;
+			}
+
+			$rawToken = bin2hex(random_bytes(32));
+			$this->InsertSafetyToken(
+				$connection,
+				(int)$request['id'],
+				$rawToken,
+				$this->SafetyTokenExpiry($cycle)
+			);
+			$content = $this->_composer->ComposeSafetyReminder([
+				'contact_name' => (string)$request['contact_name'],
+				'notification_locale' => (string)$request['notification_locale'],
+				'owner_name' => (string)$cycle['owner_name'],
+				'monitor_name' => (string)$cycle['monitor_name'],
+				'safety_max_reminders' => (int)$cycle['safety_max_reminders'],
+			], $rawToken, $number);
+			$this->InsertQueue($connection, [
+				'user_id' => (int)$cycle['user_id'],
+				'check_cycle_id' => (int)$cycle['id'],
+				'monitor_id' => (int)$cycle['monitor_id'],
+				'contact_id' => $request['contact_id'],
+				'safety_request_id' => (int)$request['id'],
+				'recipient_delivery_id' => null,
+				'mail_type' => 'safety_reminder',
+				'idempotency_key' => $key,
+				'reminder_number' => $number,
+				'recipient_email' => (string)$request['contact_email'],
+				'subject' => $content['subject'],
+				'body_text' => $content['body_text'],
+				'available_at' => $this->Now(),
+			]);
+			$connection->commit();
+
+			return true;
+		}
+		catch (Throwable $throwable)
+		{
+			$connection->rollBack();
+			throw $throwable;
+		}
+	}
+
+	/** @brief Expires a fully notified safety gate and moves it to Overdue. */
+	private function ExpireSafetyGate(int $cycleId): bool
+	{
+		$connection = $this->_database->GetConnection();
+		$connection->beginTransaction();
+
+		try
+		{
+			$cycle = $this->LockCycle($connection, $cycleId);
+
+			if (!is_array($cycle) || (string)$cycle['status'] !== MonitorStateMachine::SAFETY_PENDING)
+			{
+				$connection->commit();
+				return false;
+			}
+
+			if (empty($cycle['safety_gate_deadline_at']) || (string)$cycle['safety_gate_deadline_at'] > $this->Now())
+			{
+				$connection->commit();
+				return false;
+			}
+
+			$blocked = $connection->prepare('
+				SELECT COUNT(*)
+				FROM safety_contact_requests
+				WHERE check_cycle_id = :cycle_id
+					AND
+					(
+						invitation_sent_at IS NULL
+						OR (status = \'pending\' AND reminders_sent < :maximum)
+					)
+			');
+			$blocked->execute([
+				'cycle_id' => $cycleId,
+				'maximum' => (int)$cycle['safety_max_reminders'],
+			]);
+
+			if ((int)$blocked->fetchColumn() > 0)
+			{
+				$connection->commit();
+				return false;
+			}
+
+			$this->_stateMachine->AssertTransition(MonitorStateMachine::SAFETY_PENDING, MonitorStateMachine::OVERDUE);
+			$now = $this->Now();
+			$updateRequests = $connection->prepare('
+				UPDATE safety_contact_requests
+				SET status = \'expired\', updated_at = :updated_at
+				WHERE check_cycle_id = :cycle_id AND status = \'pending\'
+			');
+			$updateRequests->execute(['updated_at' => $now, 'cycle_id' => $cycleId]);
+			$updateCycle = $connection->prepare('
+				UPDATE check_cycles
+				SET status = \'overdue\', overdue_at = :overdue_at, updated_at = :updated_at
+				WHERE id = :id
+			');
+			$updateCycle->execute(['overdue_at' => $now, 'updated_at' => $now, 'id' => $cycleId]);
+			$this->WriteAudit($connection, $cycle, 'monitor.safety_expired', ['cycle_id' => $cycleId]);
+			$this->WriteAudit($connection, $cycle, 'monitor.overdue', ['cycle_id' => $cycleId]);
+			$connection->commit();
+
+			return true;
+		}
+		catch (Throwable $throwable)
+		{
+			$connection->rollBack();
+			throw $throwable;
+		}
+	}
+
+	/** @return array<int, array<string, mixed>> @brief Resolves current recipient/message configuration. */
+	private function FindReleaseRecipients(PDO $connection, int $monitorId): array
+	{
+		$statement = $connection->prepare('
+			SELECT
+				mc.contact_id, c.name, c.email, c.notification_locale, c.email_checked_at,
+				COALESCE(cm.subject, m.default_message_subject) AS message_subject,
+				COALESCE(cm.body_text, m.default_message_body) AS message_body
+			FROM monitor_contacts mc
+			INNER JOIN monitors m ON m.id = mc.monitor_id
+			INNER JOIN contacts c ON c.id = mc.contact_id
+			LEFT JOIN contact_messages cm ON cm.monitor_contact_id = mc.id
+			WHERE mc.monitor_id = :monitor_id
+			ORDER BY mc.sort_order ASC, mc.id ASC
+		');
+		$statement->execute(['monitor_id' => $monitorId]);
+		$rows = $statement->fetchAll(PDO::FETCH_ASSOC);
+
+		return is_array($rows) ? $rows : [];
+	}
+
+	/** @brief Returns a fail-closed release configuration problem. */
+	private function ReleaseBlockedReason(array $recipients): ?string
+	{
+		if ($recipients === [])
+		{
+			return 'no_recipients';
+		}
+
+		foreach ($recipients as $recipient)
+		{
+			if (empty($recipient['email_checked_at']))
+			{
+				return 'unchecked_recipient';
+			}
+
+			if (trim((string)($recipient['message_subject'] ?? '')) === '' || trim((string)($recipient['message_body'] ?? '')) === '')
+			{
+				return 'missing_message';
+			}
+		}
+
+		return null;
+	}
+
+	/** @brief Inserts or updates a blocked release marker. */
+	private function UpsertBlockedRelease(PDO $connection, array $cycle, string $reason): int
+	{
+		$statement = $connection->prepare('
+			INSERT INTO recipient_releases
+			(check_cycle_id, monitor_id, user_id, status, blocked_reason, created_at, updated_at)
+			VALUES (:check_cycle_id, :monitor_id, :user_id, \'blocked\', :blocked_reason, UTC_TIMESTAMP(), UTC_TIMESTAMP())
+			ON DUPLICATE KEY UPDATE status = \'blocked\', blocked_reason = VALUES(blocked_reason), updated_at = UTC_TIMESTAMP(), id = LAST_INSERT_ID(id)
+		');
+		$statement->execute([
+			'check_cycle_id' => (int)$cycle['id'],
+			'monitor_id' => (int)$cycle['monitor_id'],
+			'user_id' => (int)$cycle['user_id'],
+			'blocked_reason' => $reason,
+		]);
+		$lookup = $connection->prepare('SELECT id FROM recipient_releases WHERE check_cycle_id = :cycle_id');
+		$lookup->execute(['cycle_id' => (int)$cycle['id']]);
+
+		return (int)$lookup->fetchColumn();
+	}
+
+	/** @brief Completes an external confirmation without claiming an owner check-in. */
+	private function PostponeCycle(PDO $connection, array $request, string $now, int $confirmations): void
+	{
+		$this->_stateMachine->AssertTransition(MonitorStateMachine::SAFETY_PENDING, MonitorStateMachine::CONFIRMED);
+		$cycleId = (int)$request['check_cycle_id'];
+		$monitorId = (int)$request['monitor_id'];
+		$days = max(1, (int)$request['safety_confirmation_days']);
+		$startedAt = new DateTimeImmutable($now, new DateTimeZone('UTC'));
+		$dueAt = $startedAt->add(new DateInterval('P' . $days . 'D'));
+		$responseDeadline = $dueAt->add(new DateInterval('P' . max(1, (int)$request['response_window_days']) . 'D'));
+		$close = $connection->prepare('
+			UPDATE check_cycles
+			SET status = \'confirmed\', confirmed_at = :confirmed_at, safety_confirmed_at = :safety_confirmed_at,
+				safety_confirmation_count = :confirmation_count, updated_at = :updated_at
+			WHERE id = :id
+		');
+		$close->execute([
+			'confirmed_at' => $now,
+			'safety_confirmed_at' => $now,
+			'confirmation_count' => $confirmations,
+			'updated_at' => $now,
+			'id' => $cycleId,
+		]);
+		$this->CancelCycleWork($connection, $cycleId, $now);
+		$cancelRequests = $connection->prepare('
+			UPDATE safety_contact_requests SET status = \'cancelled\', updated_at = :updated_at
+			WHERE check_cycle_id = :cycle_id AND status = \'pending\'
+		');
+		$cancelRequests->execute(['updated_at' => $now, 'cycle_id' => $cycleId]);
+		$insert = $connection->prepare('
+			INSERT INTO check_cycles
+			(
+				monitor_id, status, started_at, due_at, response_deadline_at,
+				reminder_interval_days, max_reminders, escalation_policy_snapshot,
+				safety_response_window_days, safety_reminder_interval_days, safety_max_reminders,
+				safety_required_confirmations, safety_confirmation_days, reminders_sent, updated_at
+			)
+			VALUES
+			(
+				:monitor_id, \'scheduled\', :started_at, :due_at, :response_deadline_at,
+				:reminder_interval_days, :max_reminders, :escalation_policy_snapshot,
+				:safety_response_window_days, :safety_reminder_interval_days, :safety_max_reminders,
+				:safety_required_confirmations, :safety_confirmation_days, 0, :updated_at
+			)
+		');
+		$insert->execute([
+			'monitor_id' => $monitorId,
+			'started_at' => $now,
+			'due_at' => $dueAt->format('Y-m-d H:i:s'),
+			'response_deadline_at' => $responseDeadline->format('Y-m-d H:i:s'),
+			'reminder_interval_days' => (int)$request['reminder_interval_days'],
+			'max_reminders' => (int)$request['max_reminders'],
+			'escalation_policy_snapshot' => (string)$request['escalation_policy'],
+			'safety_response_window_days' => (int)$request['safety_response_window_days'],
+			'safety_reminder_interval_days' => (int)$request['safety_reminder_interval_days'],
+			'safety_max_reminders' => (int)$request['safety_max_reminders'],
+			'safety_required_confirmations' => (int)$request['monitor_required_confirmations'],
+			'safety_confirmation_days' => max(1, (int)($request['monitor_confirmation_days'] ?? $request['check_interval_days'])),
+			'updated_at' => $now,
+		]);
+		$updateMonitor = $connection->prepare('
+			UPDATE monitors
+			SET last_safety_confirmed_at = :confirmed_at, last_safety_contact_id = :contact_id,
+				next_check_due_at = :next_due_at, updated_at = :updated_at
+			WHERE id = :id
+		');
+		$updateMonitor->execute([
+			'confirmed_at' => $now,
+			'contact_id' => $request['contact_id'],
+			'next_due_at' => $dueAt->format('Y-m-d H:i:s'),
+			'updated_at' => $now,
+			'id' => $monitorId,
+		]);
+		$this->WriteAudit($connection, $request, 'monitor.safety_confirmed', [
+			'contact_id' => $request['contact_id'],
+			'confirmation_count' => $confirmations,
+			'next_due_at' => $dueAt->format('Y-m-d H:i:s'),
+		]);
+	}
+
+	/** @brief Cancels queued work rendered obsolete by a closed or debug-advanced cycle. */
+	private function CancelCycleWork(PDO $connection, int $cycleId, string $now): void
+	{
+		$cancel = $connection->prepare('
+			UPDATE mail_queue
+			SET status = \'cancelled\',
+				body_text = CASE
+					WHEN mail_type IN (\'safety_invitation\', \'safety_reminder\') THEN \'[Safety link redacted after cancellation]\'
+					ELSE body_text
+				END,
+				cancelled_at = :cancelled_at, updated_at = :updated_at
+			WHERE check_cycle_id = :cycle_id
+				AND status IN (\'queued\', \'retrying\', \'failed\')
+		');
+		$cancel->execute(['cancelled_at' => $now, 'updated_at' => $now, 'cycle_id' => $cycleId]);
+	}
+
+	/** @brief Inserts one immutable queue job inside the caller's transaction. @return int Queue ID. */
+	private function InsertQueue(PDO $connection, array $message): int
+	{
+		$statement = $connection->prepare('
+			INSERT INTO mail_queue
+			(
+				user_id, check_cycle_id, monitor_id, contact_id, safety_request_id, recipient_delivery_id,
+				mail_type, idempotency_key, reminder_number, recipient_email, subject, body_text,
+				status, attempt_count, max_attempts, available_at, created_at, updated_at
+			)
+			VALUES
+			(
+				:user_id, :check_cycle_id, :monitor_id, :contact_id, :safety_request_id, :recipient_delivery_id,
+				:mail_type, :idempotency_key, :reminder_number, :recipient_email, :subject, :body_text,
+				\'queued\', 0, :max_attempts, :available_at, UTC_TIMESTAMP(), UTC_TIMESTAMP()
+			)
+			ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)
+		');
+		$statement->execute([
+			'user_id' => (int)$message['user_id'],
+			'check_cycle_id' => $message['check_cycle_id'],
+			'monitor_id' => $message['monitor_id'],
+			'contact_id' => $message['contact_id'],
+			'safety_request_id' => $message['safety_request_id'],
+			'recipient_delivery_id' => $message['recipient_delivery_id'],
+			'mail_type' => (string)$message['mail_type'],
+			'idempotency_key' => (string)$message['idempotency_key'],
+			'reminder_number' => $message['reminder_number'],
+			'recipient_email' => (string)$message['recipient_email'],
+			'subject' => (string)$message['subject'],
+			'body_text' => (string)$message['body_text'],
+			'max_attempts' => $this->_maxAttempts,
+			'available_at' => (string)$message['available_at'],
+		]);
+		$lookup = $connection->prepare('SELECT id FROM mail_queue WHERE idempotency_key = :key LIMIT 1');
+		$lookup->execute(['key' => (string)$message['idempotency_key']]);
+		$queueId = (int)$lookup->fetchColumn();
+
+		if ($queueId <= 0)
+		{
+			throw new RuntimeException('Escalation queue job could not be resolved.');
+		}
+
+		return $queueId;
+	}
+
+	/** @brief Stores one expiring safety-link token as a hash inside the caller's transaction. */
+	private function InsertSafetyToken(PDO $connection, int $requestId, string $rawToken, string $expiresAt): void
+	{
+		$statement = $connection->prepare('
+			INSERT INTO safety_request_tokens (safety_request_id, token_hash, expires_at, created_at)
+			VALUES (:safety_request_id, :token_hash, :expires_at, UTC_TIMESTAMP())
+		');
+		$statement->execute([
+			'safety_request_id' => $requestId,
+			'token_hash' => hash('sha256', $rawToken),
+			'expires_at' => $expiresAt,
+		]);
+	}
+
+	/** @brief Writes a content-free audit entry. */
+	private function WriteAudit(PDO $connection, array $context, string $eventType, array $eventContext = []): void
+	{
+		$statement = $connection->prepare('
+			INSERT INTO audit_log
+			(user_id, event_type, entity_type, entity_id, message, context_json, created_at)
+			VALUES (:user_id, :event_type, \'monitor\', :entity_id, :message, :context_json, UTC_TIMESTAMP())
+		');
+		$statement->execute([
+			'user_id' => (int)$context['user_id'],
+			'event_type' => $eventType,
+			'entity_id' => (int)$context['monitor_id'],
+			'message' => $eventType,
+			'context_json' => $eventContext === [] ? null : json_encode($eventContext, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES),
+		]);
+	}
+
+	/** @brief Calculates the due time of a numbered safety reminder. */
+	private function SafetyReminderTime(array $cycle, int $number): DateTimeImmutable
+	{
+		$start = new DateTimeImmutable((string)$cycle['safety_gate_started_at'], new DateTimeZone('UTC'));
+		$days = (int)$cycle['safety_response_window_days']
+			+ ((int)$cycle['safety_reminder_interval_days'] * max(0, $number - 1));
+
+		return $start->add(new DateInterval('P' . max(0, $days) . 'D'));
+	}
+
+	/** @brief Gives safety links enough lifetime for the configured gate plus operational delay. */
+	private function SafetyTokenExpiry(array $cycle): string
+	{
+		$days = (int)$cycle['safety_response_window_days']
+			+ ((int)$cycle['safety_reminder_interval_days'] * (int)$cycle['safety_max_reminders'])
+			+ 30;
+
+		return (new DateTimeImmutable('now', new DateTimeZone('UTC')))
+			->add(new DateInterval('P' . max(1, $days) . 'D'))
+			->format('Y-m-d H:i:s');
+	}
+
+	/** @brief Checks the exact representation of generated tokens before hashing. */
+	private function IsTokenShapeValid(string $rawToken): bool
+	{
+		return preg_match('/^[a-f0-9]{64}$/D', $rawToken) === 1;
+	}
+
+	/** @brief Returns the current UTC database timestamp. */
+	private function Now(): string
+	{
+		return (new DateTimeImmutable('now', new DateTimeZone('UTC')))->format('Y-m-d H:i:s');
+	}
+}

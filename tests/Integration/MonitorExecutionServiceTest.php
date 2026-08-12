@@ -57,7 +57,7 @@ class MonitorExecutionServiceTest extends TestCase
 
 		$this->_connection->exec('SET FOREIGN_KEY_CHECKS = 0');
 
-		foreach (['mail_queue', 'audit_log', 'check_cycles', 'monitors', 'users'] as $table)
+		foreach (['recipient_release_deliveries', 'recipient_releases', 'safety_contact_requests', 'mail_queue', 'audit_log', 'check_cycles', 'monitors', 'users'] as $table)
 		{
 			$this->_connection->exec('DROP TABLE IF EXISTS `' . $table . '`');
 		}
@@ -148,6 +148,12 @@ class MonitorExecutionServiceTest extends TestCase
 				response_window_days INT UNSIGNED NOT NULL,
 				reminder_interval_days INT UNSIGNED NOT NULL,
 				max_reminders INT UNSIGNED NOT NULL,
+				escalation_policy ENUM(\'direct\',\'safety_contact\') NOT NULL DEFAULT \'direct\',
+				safety_response_window_days INT UNSIGNED NOT NULL DEFAULT 3,
+				safety_reminder_interval_days INT UNSIGNED NOT NULL DEFAULT 1,
+				safety_max_reminders INT UNSIGNED NOT NULL DEFAULT 1,
+				safety_required_confirmations INT UNSIGNED NOT NULL DEFAULT 1,
+				safety_confirmation_days INT UNSIGNED NULL,
 				is_paused TINYINT(1) NOT NULL DEFAULT 0,
 				paused_at DATETIME NULL,
 				last_confirmed_at DATETIME NULL,
@@ -162,14 +168,25 @@ class MonitorExecutionServiceTest extends TestCase
 			(
 				id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
 				monitor_id BIGINT UNSIGNED NOT NULL,
-				status ENUM(\'scheduled\',\'awaiting\',\'overdue\',\'escalated\',\'confirmed\',\'cancelled\') NOT NULL,
+				status ENUM(\'scheduled\',\'awaiting\',\'safety_pending\',\'overdue\',\'escalated\',\'confirmed\',\'cancelled\') NOT NULL,
 				started_at DATETIME NOT NULL,
 				due_at DATETIME NOT NULL,
 				response_deadline_at DATETIME NOT NULL,
 				reminder_interval_days INT UNSIGNED NOT NULL,
 				max_reminders INT UNSIGNED NOT NULL,
+				escalation_policy_snapshot ENUM(\'direct\',\'safety_contact\') NOT NULL DEFAULT \'direct\',
+				safety_response_window_days INT UNSIGNED NOT NULL DEFAULT 3,
+				safety_reminder_interval_days INT UNSIGNED NOT NULL DEFAULT 1,
+				safety_max_reminders INT UNSIGNED NOT NULL DEFAULT 1,
+				safety_required_confirmations INT UNSIGNED NOT NULL DEFAULT 1,
+				safety_confirmation_days INT UNSIGNED NOT NULL DEFAULT 1,
 				reminders_sent INT UNSIGNED NOT NULL DEFAULT 0,
 				due_notice_sent_at DATETIME NULL,
+				last_reminder_sent_at DATETIME NULL,
+				safety_gate_started_at DATETIME NULL,
+				safety_gate_deadline_at DATETIME NULL,
+				safety_confirmed_at DATETIME NULL,
+				safety_confirmation_count INT UNSIGNED NOT NULL DEFAULT 0,
 				confirmed_at DATETIME NULL,
 				overdue_at DATETIME NULL,
 				escalated_at DATETIME NULL,
@@ -196,12 +213,38 @@ class MonitorExecutionServiceTest extends TestCase
 			id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
 			check_cycle_id BIGINT UNSIGNED NULL,
 			mail_type VARCHAR(50) NOT NULL,
+			body_text LONGTEXT NOT NULL,
 			status ENUM('queued','retrying','processing','sent','failed','cancelled') NOT NULL,
 			cancelled_at DATETIME NULL,
 			updated_at DATETIME NOT NULL
 		) ENGINE=InnoDB");
+		$this->_connection->exec("CREATE TABLE safety_contact_requests
+		(
+			id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+			check_cycle_id BIGINT UNSIGNED NOT NULL,
+			status ENUM('pending','confirmed','declined','expired','cancelled') NOT NULL,
+			updated_at DATETIME NOT NULL
+		) ENGINE=InnoDB");
+		$this->_connection->exec("CREATE TABLE recipient_releases
+		(
+			id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+			check_cycle_id BIGINT UNSIGNED NOT NULL,
+			status ENUM('blocked','pending','partial','sent','failed','cancelled') NOT NULL,
+			cancelled_at DATETIME NULL,
+			updated_at DATETIME NOT NULL
+		) ENGINE=InnoDB");
+		$this->_connection->exec("CREATE TABLE recipient_release_deliveries
+		(
+			id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+			check_cycle_id BIGINT UNSIGNED NOT NULL,
+			status ENUM('queued','sent','failed','cancelled') NOT NULL,
+			cancelled_at DATETIME NULL,
+			updated_at DATETIME NOT NULL
+		) ENGINE=InnoDB");
 		$this->_connection->exec('INSERT INTO users (id) VALUES (1)');
-		$this->_connection->exec("INSERT INTO monitors VALUES
+		$this->_connection->exec("INSERT INTO monitors
+			(id, user_id, check_interval_days, response_window_days, reminder_interval_days, max_reminders, is_paused, paused_at, last_confirmed_at, next_check_due_at, created_at, updated_at)
+			VALUES
 			(1, 1, 3, 2, 1, 2, 0, NULL, UTC_TIMESTAMP(), TIMESTAMPADD(DAY, 3, UTC_TIMESTAMP()), UTC_TIMESTAMP(), UTC_TIMESTAMP()),
 			(2, 1, 10, 2, 1, 2, 0, NULL, UTC_TIMESTAMP(), TIMESTAMPADD(DAY, 10, UTC_TIMESTAMP()), UTC_TIMESTAMP(), UTC_TIMESTAMP()),
 			(3, 1, 7, 2, 1, 2, 1, UTC_TIMESTAMP(), UTC_TIMESTAMP(), NULL, UTC_TIMESTAMP(), UTC_TIMESTAMP())");

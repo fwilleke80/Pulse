@@ -1,4 +1,4 @@
--- Pulse 0.6.4 reference database schema
+-- Pulse 0.7.0 reference database schema
 -- MySQL 8+ / MariaDB 10.6+
 -- Pulse applies database/migrations automatically. Do not import this reference file over an existing database.
 -- ----
@@ -6,7 +6,7 @@
 -- Monitor configuration and monitor-contact assignments
 -- Per-contact monitor messages
 -- Monitor documents and document recipient assignments
--- Persisted check-in lifecycle plus future mail and recipient-access tables
+-- Persisted check-in, safety-contact, recipient-mail, and future document-access tables
 
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
@@ -58,13 +58,33 @@ CREATE TABLE monitors
 	response_window_days INT NOT NULL,
 	reminder_interval_days INT NOT NULL,
 	max_reminders INT NOT NULL DEFAULT 0,
+	escalation_policy ENUM('direct','safety_contact') NOT NULL DEFAULT 'direct',
+	safety_response_window_days INT UNSIGNED NOT NULL DEFAULT 3,
+	safety_reminder_interval_days INT UNSIGNED NOT NULL DEFAULT 1,
+	safety_max_reminders INT UNSIGNED NOT NULL DEFAULT 1,
+	safety_required_confirmations INT UNSIGNED NOT NULL DEFAULT 1,
+	safety_confirmation_days INT UNSIGNED NULL,
 	is_paused TINYINT(1) NOT NULL DEFAULT 0,
 	paused_at DATETIME NULL,
 	last_confirmed_at DATETIME NULL,
+	last_safety_confirmed_at DATETIME NULL,
+	last_safety_contact_id BIGINT UNSIGNED NULL,
 	next_check_due_at DATETIME NULL,
 	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE monitor_safety_contacts
+(
+	id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+	monitor_id BIGINT UNSIGNED NOT NULL,
+	contact_id BIGINT UNSIGNED NOT NULL,
+	sort_order INT UNSIGNED NOT NULL DEFAULT 1,
+	UNIQUE KEY uq_monitor_safety_contacts_monitor_contact (monitor_id, contact_id),
+	INDEX idx_monitor_safety_contacts_contact (contact_id),
+	FOREIGN KEY (monitor_id) REFERENCES monitors(id) ON DELETE CASCADE,
+	FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE monitor_contacts
@@ -126,15 +146,25 @@ CREATE TABLE check_cycles
 (
 	id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
 	monitor_id BIGINT UNSIGNED NOT NULL,
-	status ENUM('scheduled','awaiting','overdue','escalated','confirmed','cancelled') NOT NULL DEFAULT 'scheduled',
+	status ENUM('scheduled','awaiting','safety_pending','overdue','escalated','confirmed','cancelled') NOT NULL DEFAULT 'scheduled',
 	started_at DATETIME NOT NULL,
 	due_at DATETIME NOT NULL,
 	response_deadline_at DATETIME NOT NULL,
 	reminder_interval_days INT UNSIGNED NOT NULL DEFAULT 1,
 	max_reminders INT UNSIGNED NOT NULL DEFAULT 0,
+	escalation_policy_snapshot ENUM('direct','safety_contact') NOT NULL DEFAULT 'direct',
+	safety_response_window_days INT UNSIGNED NOT NULL DEFAULT 3,
+	safety_reminder_interval_days INT UNSIGNED NOT NULL DEFAULT 1,
+	safety_max_reminders INT UNSIGNED NOT NULL DEFAULT 1,
+	safety_required_confirmations INT UNSIGNED NOT NULL DEFAULT 1,
+	safety_confirmation_days INT UNSIGNED NOT NULL DEFAULT 1,
 	reminders_sent INT UNSIGNED NOT NULL DEFAULT 0,
 	due_notice_sent_at DATETIME NULL,
 	last_reminder_sent_at DATETIME NULL,
+	safety_gate_started_at DATETIME NULL,
+	safety_gate_deadline_at DATETIME NULL,
+	safety_confirmed_at DATETIME NULL,
+	safety_confirmation_count INT UNSIGNED NOT NULL DEFAULT 0,
 	confirmed_at DATETIME NULL,
 	overdue_at DATETIME NULL,
 	escalated_at DATETIME NULL,
@@ -145,6 +175,92 @@ CREATE TABLE check_cycles
 	FOREIGN KEY (monitor_id)
 		REFERENCES monitors(id)
 		ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE safety_contact_requests
+(
+	id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+	check_cycle_id BIGINT UNSIGNED NOT NULL,
+	monitor_id BIGINT UNSIGNED NOT NULL,
+	contact_id BIGINT UNSIGNED NULL,
+	contact_name VARCHAR(255) NOT NULL,
+	contact_email VARCHAR(255) NOT NULL,
+	notification_locale VARCHAR(10) NOT NULL,
+	status ENUM('pending','confirmed','declined','expired','cancelled') NOT NULL DEFAULT 'pending',
+	invitation_sent_at DATETIME NULL,
+	reminders_sent INT UNSIGNED NOT NULL DEFAULT 0,
+	last_reminder_sent_at DATETIME NULL,
+	confirmed_at DATETIME NULL,
+	declined_at DATETIME NULL,
+	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+	UNIQUE KEY uq_safety_contact_requests_cycle_contact (check_cycle_id, contact_id),
+	INDEX idx_safety_contact_requests_runtime (check_cycle_id, status),
+	FOREIGN KEY (check_cycle_id) REFERENCES check_cycles(id) ON DELETE CASCADE,
+	FOREIGN KEY (monitor_id) REFERENCES monitors(id) ON DELETE CASCADE,
+	FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE safety_request_tokens
+(
+	id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+	safety_request_id BIGINT UNSIGNED NOT NULL,
+	token_hash CHAR(64) NOT NULL,
+	expires_at DATETIME NOT NULL,
+	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	UNIQUE KEY uq_safety_request_tokens_hash (token_hash),
+	INDEX idx_safety_request_tokens_request (safety_request_id),
+	FOREIGN KEY (safety_request_id) REFERENCES safety_contact_requests(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE recipient_releases
+(
+	id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+	check_cycle_id BIGINT UNSIGNED NOT NULL,
+	monitor_id BIGINT UNSIGNED NOT NULL,
+	user_id BIGINT UNSIGNED NOT NULL,
+	status ENUM('blocked','pending','partial','sent','failed','cancelled') NOT NULL DEFAULT 'pending',
+	blocked_reason VARCHAR(100) NULL,
+	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	staged_at DATETIME NULL,
+	first_sent_at DATETIME NULL,
+	completed_at DATETIME NULL,
+	cancelled_at DATETIME NULL,
+	updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+	UNIQUE KEY uq_recipient_releases_cycle (check_cycle_id),
+	INDEX idx_recipient_releases_monitor (monitor_id, created_at),
+	FOREIGN KEY (check_cycle_id) REFERENCES check_cycles(id) ON DELETE CASCADE,
+	FOREIGN KEY (monitor_id) REFERENCES monitors(id) ON DELETE CASCADE,
+	FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE recipient_release_deliveries
+(
+	id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+	release_id BIGINT UNSIGNED NOT NULL,
+	check_cycle_id BIGINT UNSIGNED NOT NULL,
+	monitor_id BIGINT UNSIGNED NOT NULL,
+	contact_id BIGINT UNSIGNED NULL,
+	recipient_name VARCHAR(255) NOT NULL,
+	recipient_email VARCHAR(255) NOT NULL,
+	notification_locale VARCHAR(10) NOT NULL,
+	subject VARCHAR(255) NOT NULL,
+	body_text LONGTEXT NOT NULL,
+	status ENUM('queued','sent','failed','cancelled') NOT NULL DEFAULT 'queued',
+	queue_id BIGINT UNSIGNED NULL,
+	last_error TEXT NULL,
+	sent_at DATETIME NULL,
+	failed_at DATETIME NULL,
+	cancelled_at DATETIME NULL,
+	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+	UNIQUE KEY uq_recipient_release_deliveries_release_contact (release_id, contact_id),
+	INDEX idx_recipient_release_deliveries_contact (monitor_id, contact_id, created_at),
+	INDEX idx_recipient_release_deliveries_status (release_id, status),
+	FOREIGN KEY (release_id) REFERENCES recipient_releases(id) ON DELETE CASCADE,
+	FOREIGN KEY (check_cycle_id) REFERENCES check_cycles(id) ON DELETE CASCADE,
+	FOREIGN KEY (monitor_id) REFERENCES monitors(id) ON DELETE CASCADE,
+	FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE access_tokens
@@ -169,6 +285,8 @@ CREATE TABLE mail_queue
 	check_cycle_id BIGINT UNSIGNED NULL,
 	monitor_id BIGINT UNSIGNED NULL,
 	contact_id BIGINT UNSIGNED NULL,
+	safety_request_id BIGINT UNSIGNED NULL,
+	recipient_delivery_id BIGINT UNSIGNED NULL,
 	mail_type VARCHAR(50) NOT NULL,
 	idempotency_key VARCHAR(191) NOT NULL,
 	reminder_number INT UNSIGNED NULL,
@@ -193,6 +311,8 @@ CREATE TABLE mail_queue
 	INDEX idx_mail_queue_delivery (status, available_at),
 	INDEX idx_mail_queue_claim (status, available_at, locked_until),
 	INDEX idx_mail_queue_cycle (check_cycle_id, mail_type, reminder_number),
+	INDEX idx_mail_queue_safety_request (safety_request_id),
+	INDEX idx_mail_queue_recipient_delivery (recipient_delivery_id),
 	INDEX idx_mail_queue_user_created (user_id, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

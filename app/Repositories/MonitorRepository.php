@@ -47,9 +47,17 @@ class MonitorRepository
 				response_window_days,
 				reminder_interval_days,
 				max_reminders,
+				escalation_policy,
+				safety_response_window_days,
+				safety_reminder_interval_days,
+				safety_max_reminders,
+				safety_required_confirmations,
+				safety_confirmation_days,
 				is_paused,
 				paused_at,
 				last_confirmed_at,
+				last_safety_confirmed_at,
+				last_safety_contact_id,
 				next_check_due_at,
 				created_at,
 				updated_at,
@@ -57,7 +65,7 @@ class MonitorRepository
 					SELECT cc.status
 					FROM check_cycles cc
 					WHERE cc.monitor_id = monitors.id
-					  AND cc.status IN (\'scheduled\',\'awaiting\',\'overdue\',\'escalated\')
+					  AND cc.status IN (\'scheduled\',\'awaiting\',\'safety_pending\',\'overdue\',\'escalated\')
 					ORDER BY cc.id DESC
 					LIMIT 1
 				) AS latest_cycle_status,
@@ -65,7 +73,7 @@ class MonitorRepository
 					SELECT cc.due_notice_sent_at
 					FROM check_cycles cc
 					WHERE cc.monitor_id = monitors.id
-					  AND cc.status IN (\'scheduled\',\'awaiting\',\'overdue\',\'escalated\')
+					  AND cc.status IN (\'scheduled\',\'awaiting\',\'safety_pending\',\'overdue\',\'escalated\')
 					ORDER BY cc.id DESC
 					LIMIT 1
 				) AS due_notice_sent_at,
@@ -81,10 +89,24 @@ class MonitorRepository
 					FROM mail_queue failed_mq
 					INNER JOIN check_cycles failed_cc ON failed_cc.id = failed_mq.check_cycle_id
 					WHERE failed_cc.monitor_id = monitors.id
-					  AND failed_cc.status = \'awaiting\'
-					  AND failed_mq.mail_type IN (\'owner_due_notice\', \'owner_reminder\')
+					  AND failed_cc.status IN (\'awaiting\', \'safety_pending\', \'overdue\', \'escalated\')
+					  AND failed_mq.mail_type IN (\'owner_due_notice\', \'owner_reminder\', \'safety_invitation\', \'safety_reminder\', \'recipient_notification\')
 					  AND failed_mq.status = \'failed\'
-				) AS failed_notification_count
+				) AS failed_notification_count,
+				(
+					SELECT rr.status
+					FROM recipient_releases rr
+					WHERE rr.monitor_id = monitors.id
+					ORDER BY rr.id DESC
+					LIMIT 1
+				) AS latest_release_status,
+				(
+					SELECT rr.blocked_reason
+					FROM recipient_releases rr
+					WHERE rr.monitor_id = monitors.id
+					ORDER BY rr.id DESC
+					LIMIT 1
+				) AS latest_release_blocked_reason
 			FROM monitors
 			WHERE user_id = :user_id
 			ORDER BY name ASC
@@ -118,9 +140,17 @@ class MonitorRepository
 				response_window_days,
 				reminder_interval_days,
 				max_reminders,
+				escalation_policy,
+				safety_response_window_days,
+				safety_reminder_interval_days,
+				safety_max_reminders,
+				safety_required_confirmations,
+				safety_confirmation_days,
 				is_paused,
 				paused_at,
 				last_confirmed_at,
+				last_safety_confirmed_at,
+				last_safety_contact_id,
 				next_check_due_at,
 				created_at,
 				updated_at,
@@ -128,7 +158,7 @@ class MonitorRepository
 					SELECT cc.status
 					FROM check_cycles cc
 					WHERE cc.monitor_id = monitors.id
-					  AND cc.status IN (\'scheduled\',\'awaiting\',\'overdue\',\'escalated\')
+					  AND cc.status IN (\'scheduled\',\'awaiting\',\'safety_pending\',\'overdue\',\'escalated\')
 					ORDER BY cc.id DESC
 					LIMIT 1
 				) AS latest_cycle_status
@@ -369,7 +399,13 @@ class MonitorRepository
 		int $checkIntervalDays,
 		int $responseWindowDays,
 		int $reminderIntervalDays,
-		int $maxReminders
+		int $maxReminders,
+		string $escalationPolicy,
+		int $safetyResponseWindowDays,
+		int $safetyReminderIntervalDays,
+		int $safetyMaxReminders,
+		int $safetyRequiredConfirmations,
+		?int $safetyConfirmationDays
 	): void
 	{
 		$sql = '
@@ -381,6 +417,12 @@ class MonitorRepository
 				response_window_days = :response_window_days,
 				reminder_interval_days = :reminder_interval_days,
 				max_reminders = :max_reminders,
+				escalation_policy = :escalation_policy,
+				safety_response_window_days = :safety_response_window_days,
+				safety_reminder_interval_days = :safety_reminder_interval_days,
+				safety_max_reminders = :safety_max_reminders,
+				safety_required_confirmations = :safety_required_confirmations,
+				safety_confirmation_days = :safety_confirmation_days,
 				updated_at = UTC_TIMESTAMP()
 			WHERE id = :id
 			  AND user_id = :user_id
@@ -396,7 +438,84 @@ class MonitorRepository
 			'response_window_days' => $responseWindowDays,
 			'reminder_interval_days' => $reminderIntervalDays,
 			'max_reminders' => $maxReminders,
+			'escalation_policy' => $escalationPolicy,
+			'safety_response_window_days' => $safetyResponseWindowDays,
+			'safety_reminder_interval_days' => $safetyReminderIntervalDays,
+			'safety_max_reminders' => $safetyMaxReminders,
+			'safety_required_confirmations' => $safetyRequiredConfirmations,
+			'safety_confirmation_days' => $safetyConfirmationDays,
 		]);
+	}
+
+	/**
+	 * @brief Returns configured safety-contact IDs for an owned monitor.
+	 * @return array<int>
+	 */
+	public function FindSafetyContactIdsByMonitorIdForUser(int $monitorId, int $userId): array
+	{
+		$statement = $this->_database->GetConnection()->prepare('
+			SELECT msc.contact_id
+			FROM monitor_safety_contacts msc
+			INNER JOIN monitors m ON m.id = msc.monitor_id
+			WHERE msc.monitor_id = :monitor_id AND m.user_id = :user_id
+			ORDER BY msc.sort_order ASC, msc.id ASC
+		');
+		$statement->execute(['monitor_id' => $monitorId, 'user_id' => $userId]);
+		$rows = $statement->fetchAll(PDO::FETCH_COLUMN);
+
+		return is_array($rows) ? array_map('intval', $rows) : [];
+	}
+
+	/**
+	 * @brief Replaces one monitor's optional safety-contact assignments.
+	 * @param array<int> $contactIds Contact IDs owned by the monitor owner.
+	 */
+	public function ReplaceSafetyContactsForMonitor(int $monitorId, int $userId, array $contactIds): void
+	{
+		$connection = $this->_database->GetConnection();
+		$connection->beginTransaction();
+
+		try
+		{
+			$monitor = $connection->prepare('SELECT id FROM monitors WHERE id = :id AND user_id = :user_id FOR UPDATE');
+			$monitor->execute(['id' => $monitorId, 'user_id' => $userId]);
+
+			if ($monitor->fetchColumn() === false)
+			{
+				throw new \RuntimeException('Owned monitor not found during safety-contact synchronization.');
+			}
+
+			$allowed = $connection->prepare('SELECT id FROM contacts WHERE user_id = :user_id');
+			$allowed->execute(['user_id' => $userId]);
+			$allowedIds = array_map('intval', $allowed->fetchAll(PDO::FETCH_COLUMN));
+			$contactIds = array_values(array_filter(
+				array_unique(array_map('intval', $contactIds)),
+				static fn (int $contactId): bool => in_array($contactId, $allowedIds, true)
+			));
+
+			$delete = $connection->prepare('DELETE FROM monitor_safety_contacts WHERE monitor_id = :monitor_id');
+			$delete->execute(['monitor_id' => $monitorId]);
+			$insert = $connection->prepare('
+				INSERT INTO monitor_safety_contacts (monitor_id, contact_id, sort_order)
+				VALUES (:monitor_id, :contact_id, :sort_order)
+			');
+
+			foreach ($contactIds as $index => $contactId)
+			{
+				$insert->execute([
+					'monitor_id' => $monitorId,
+					'contact_id' => $contactId,
+					'sort_order' => $index + 1,
+				]);
+			}
+
+			$connection->commit();
+		}
+		catch (\Throwable $throwable)
+		{
+			$connection->rollBack();
+			throw $throwable;
+		}
 	}
 
 	/**
@@ -458,9 +577,22 @@ class MonitorRepository
 				mc.sort_order,
 				c.name,
 				c.email,
+				c.notification_locale,
 				c.email_checked_at,
 				c.cell_phone,
-				c.notes
+				c.notes,
+				(
+					SELECT COUNT(*)
+					FROM document_monitor_contacts dmc
+					WHERE dmc.monitor_contact_id = mc.id
+				) AS document_count,
+				(
+					SELECT rrd.status
+					FROM recipient_release_deliveries rrd
+					WHERE rrd.monitor_id = mc.monitor_id AND rrd.contact_id = mc.contact_id
+					ORDER BY rrd.id DESC
+					LIMIT 1
+				) AS latest_delivery_status
 			FROM monitor_contacts mc
 			INNER JOIN monitors m
 				ON m.id = mc.monitor_id

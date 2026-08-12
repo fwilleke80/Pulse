@@ -1,5 +1,40 @@
 # Changelog
 
+## 0.7.0 — 2026-08-12
+
+### Recipient notification
+
+- Added actual recipient notification email after the complete owner and optional safety-contact process.
+- Snapshot the recipient name, checked address, language, subject, and body into immutable release deliveries before queueing.
+- Localize the final wrapper in the recipient's stored language while preserving the owner's configured message.
+- Keep documents gated: no recipient or safety email contains document content, an attachment, or a document-access URL.
+- Record **Escalated** only after SMTP accepts the first recipient message; a total delivery failure remains truthfully **Overdue**.
+- Added blocked, pending, partial, sent, failed, and cancelled release state plus per-recipient delivery history and retry recovery.
+
+### Optional safety-contact gate
+
+- Added a direct or safety-contact policy to each monitor with independent response, reminder, quorum, and postponement settings.
+- Added one-or-more checked safety-contact assignments and an **Awaiting safety contact** lifecycle state.
+- Added random 256-bit response tokens resolved through SHA-256 hashes, with expiry and support for valid invitation and reminder links; successful or cancelled safety mail redacts the raw URL from the queue body.
+- Made safety GET pages scanner-safe and read-only; only an explicit CSRF-protected POST records confirmation or inability to confirm.
+- Allowed the configured confirmation quorum to postpone a cycle while preventing safety contacts from accelerating delivery or accessing recipient content.
+- Started and expired the safety clock only from successfully delivered mail state.
+
+### Recipient configuration and operations
+
+- Added dedicated monitor-recipient pages with reusable contact details, default or personal messages, future document assignments, localized preview, and immutable delivery history.
+- Added blocked-release and generic notification-failure warnings to the dashboard and monitor overview.
+- Added safety and recipient events to recent and complete activity history.
+- Added a non-production debug action that can deliberately bypass remaining wait periods and send real recipient messages after an explicit warning.
+- Added migration `009_recipient_escalation.sql`, expanded bilingual UI and mail copy, and regression coverage for lifecycle, token, delivery, and rendering boundaries.
+
+### Documentation and version resilience
+
+- Added a monitor-seriousness tutorial with gentle, important, and high-consequence timing profiles.
+- Extended the installation, upgrade, user, architecture, and security documentation for recipient delivery and safety contacts.
+- Documented the required pre-upload `python3 tools/write_version.py` step that generates `config/version.php`.
+- Made a missing generated version non-fatal and display a localized **version unavailable** label with a stable unversioned asset key.
+
 ## 0.6.4 — 2026-08-12
 
 ### Notification copy and development controls

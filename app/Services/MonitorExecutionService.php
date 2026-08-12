@@ -500,6 +500,9 @@ final class MonitorExecutionService
 				(
 					\'monitor.checked_in\',
 					\'monitor.awaiting\',
+					\'monitor.safety_requested\',
+					\'monitor.safety_expired\',
+					\'monitor.safety_confirmed\',
 					\'monitor.overdue\',
 					\'monitor.escalated\',
 					\'monitor.paused\',
@@ -507,6 +510,10 @@ final class MonitorExecutionService
 					\'monitor.forced_due\',
 					\'mail.due_notice_sent\',
 					\'mail.reminder_sent\'
+					,\'mail.safety_invitation_sent\'
+					,\'mail.safety_reminder_sent\'
+					,\'mail.recipient_sent\'
+					,\'mail.recipient_failed\'
 				)
 			ORDER BY a.created_at DESC, a.id DESC
 			LIMIT ' . $perPage . '
@@ -529,6 +536,9 @@ final class MonitorExecutionService
 				(
 					\'monitor.checked_in\',
 					\'monitor.awaiting\',
+					\'monitor.safety_requested\',
+					\'monitor.safety_expired\',
+					\'monitor.safety_confirmed\',
 					\'monitor.overdue\',
 					\'monitor.escalated\',
 					\'monitor.paused\',
@@ -536,6 +546,10 @@ final class MonitorExecutionService
 					\'monitor.forced_due\',
 					\'mail.due_notice_sent\',
 					\'mail.reminder_sent\'
+					,\'mail.safety_invitation_sent\'
+					,\'mail.safety_reminder_sent\'
+					,\'mail.recipient_sent\'
+					,\'mail.recipient_failed\'
 				)
 		');
 		$statement->execute(['user_id' => $userId]);
@@ -580,8 +594,14 @@ final class MonitorExecutionService
 		$cycleChanged = (string)$cycle['status'] !== $status
 			|| (string)$cycle['due_at'] !== $dueValue
 			|| (string)$cycle['response_deadline_at'] !== $responseDeadlineValue
-			|| (int)$cycle['reminder_interval_days'] !== (int)$monitor['reminder_interval_days']
-			|| (int)$cycle['max_reminders'] !== (int)$monitor['max_reminders'];
+				|| (int)$cycle['reminder_interval_days'] !== (int)$monitor['reminder_interval_days']
+				|| (int)$cycle['max_reminders'] !== (int)$monitor['max_reminders']
+				|| (string)$cycle['escalation_policy_snapshot'] !== (string)$monitor['escalation_policy']
+				|| (int)$cycle['safety_response_window_days'] !== (int)$monitor['safety_response_window_days']
+				|| (int)$cycle['safety_reminder_interval_days'] !== (int)$monitor['safety_reminder_interval_days']
+				|| (int)$cycle['safety_max_reminders'] !== (int)$monitor['safety_max_reminders']
+				|| (int)$cycle['safety_required_confirmations'] !== (int)$monitor['safety_required_confirmations']
+				|| (int)$cycle['safety_confirmation_days'] !== $this->SafetyConfirmationDays($monitor);
 
 		if ($cycleChanged)
 		{
@@ -593,6 +613,12 @@ final class MonitorExecutionService
 					response_deadline_at = :response_deadline_at,
 					reminder_interval_days = :reminder_interval_days,
 					max_reminders = :max_reminders,
+					escalation_policy_snapshot = :escalation_policy_snapshot,
+					safety_response_window_days = :safety_response_window_days,
+					safety_reminder_interval_days = :safety_reminder_interval_days,
+					safety_max_reminders = :safety_max_reminders,
+					safety_required_confirmations = :safety_required_confirmations,
+					safety_confirmation_days = :safety_confirmation_days,
 					updated_at = :updated_at
 				WHERE id = :id
 			');
@@ -602,6 +628,12 @@ final class MonitorExecutionService
 				'response_deadline_at' => $responseDeadlineValue,
 				'reminder_interval_days' => (int)$monitor['reminder_interval_days'],
 				'max_reminders' => (int)$monitor['max_reminders'],
+				'escalation_policy_snapshot' => (string)$monitor['escalation_policy'],
+				'safety_response_window_days' => (int)$monitor['safety_response_window_days'],
+				'safety_reminder_interval_days' => (int)$monitor['safety_reminder_interval_days'],
+				'safety_max_reminders' => (int)$monitor['safety_max_reminders'],
+				'safety_required_confirmations' => (int)$monitor['safety_required_confirmations'],
+				'safety_confirmation_days' => $this->SafetyConfirmationDays($monitor),
 				'updated_at' => $this->FormatUtc($now),
 				'id' => (int)$cycle['id'],
 			]);
@@ -661,8 +693,14 @@ final class MonitorExecutionService
 				due_at,
 				response_deadline_at,
 				reminder_interval_days,
-				max_reminders,
-				reminders_sent,
+					max_reminders,
+					escalation_policy_snapshot,
+					safety_response_window_days,
+					safety_reminder_interval_days,
+					safety_max_reminders,
+					safety_required_confirmations,
+					safety_confirmation_days,
+					reminders_sent,
 				updated_at
 			)
 			VALUES
@@ -673,8 +711,14 @@ final class MonitorExecutionService
 				:due_at,
 				:response_deadline_at,
 				:reminder_interval_days,
-				:max_reminders,
-				0,
+					:max_reminders,
+					:escalation_policy_snapshot,
+					:safety_response_window_days,
+					:safety_reminder_interval_days,
+					:safety_max_reminders,
+					:safety_required_confirmations,
+					:safety_confirmation_days,
+					0,
 				:updated_at
 			)
 		');
@@ -685,7 +729,13 @@ final class MonitorExecutionService
 			'due_at' => $this->FormatUtc($dueAt),
 			'response_deadline_at' => $this->FormatUtc($responseDeadline),
 			'reminder_interval_days' => (int)$monitor['reminder_interval_days'],
-			'max_reminders' => (int)$monitor['max_reminders'],
+				'max_reminders' => (int)$monitor['max_reminders'],
+				'escalation_policy_snapshot' => (string)$monitor['escalation_policy'],
+				'safety_response_window_days' => (int)$monitor['safety_response_window_days'],
+				'safety_reminder_interval_days' => (int)$monitor['safety_reminder_interval_days'],
+				'safety_max_reminders' => (int)$monitor['safety_max_reminders'],
+				'safety_required_confirmations' => (int)$monitor['safety_required_confirmations'],
+				'safety_confirmation_days' => $this->SafetyConfirmationDays($monitor),
 			'updated_at' => $this->FormatUtc($now),
 		]);
 
@@ -720,7 +770,13 @@ final class MonitorExecutionService
 			'due_at' => $this->FormatUtc($dueAt),
 			'response_deadline_at' => $this->FormatUtc($responseDeadline),
 			'reminder_interval_days' => (int)$monitor['reminder_interval_days'],
-			'max_reminders' => (int)$monitor['max_reminders'],
+				'max_reminders' => (int)$monitor['max_reminders'],
+				'escalation_policy_snapshot' => (string)$monitor['escalation_policy'],
+				'safety_response_window_days' => (int)$monitor['safety_response_window_days'],
+				'safety_reminder_interval_days' => (int)$monitor['safety_reminder_interval_days'],
+				'safety_max_reminders' => (int)$monitor['safety_max_reminders'],
+				'safety_required_confirmations' => (int)$monitor['safety_required_confirmations'],
+				'safety_confirmation_days' => $this->SafetyConfirmationDays($monitor),
 			'reminders_sent' => 0,
 		];
 	}
@@ -750,8 +806,14 @@ final class MonitorExecutionService
 				due_at,
 				response_deadline_at,
 				reminder_interval_days,
-				max_reminders,
-				reminders_sent,
+					max_reminders,
+					escalation_policy_snapshot,
+					safety_response_window_days,
+					safety_reminder_interval_days,
+					safety_max_reminders,
+					safety_required_confirmations,
+					safety_confirmation_days,
+					reminders_sent,
 				updated_at
 			)
 			VALUES
@@ -762,8 +824,14 @@ final class MonitorExecutionService
 				:due_at,
 				:response_deadline_at,
 				:reminder_interval_days,
-				:max_reminders,
-				0,
+					:max_reminders,
+					:escalation_policy_snapshot,
+					:safety_response_window_days,
+					:safety_reminder_interval_days,
+					:safety_max_reminders,
+					:safety_required_confirmations,
+					:safety_confirmation_days,
+					0,
 				:updated_at
 			)
 		');
@@ -774,7 +842,13 @@ final class MonitorExecutionService
 			'due_at' => $this->FormatUtc($dueAt),
 			'response_deadline_at' => $this->FormatUtc($responseDeadline),
 			'reminder_interval_days' => (int)$monitor['reminder_interval_days'],
-			'max_reminders' => (int)$monitor['max_reminders'],
+				'max_reminders' => (int)$monitor['max_reminders'],
+				'escalation_policy_snapshot' => (string)$monitor['escalation_policy'],
+				'safety_response_window_days' => (int)$monitor['safety_response_window_days'],
+				'safety_reminder_interval_days' => (int)$monitor['safety_reminder_interval_days'],
+				'safety_max_reminders' => (int)$monitor['safety_max_reminders'],
+				'safety_required_confirmations' => (int)$monitor['safety_required_confirmations'],
+				'safety_confirmation_days' => $this->SafetyConfirmationDays($monitor),
 			'updated_at' => $this->FormatUtc($startedAt),
 		]);
 
@@ -895,9 +969,15 @@ final class MonitorExecutionService
 				user_id,
 				check_interval_days,
 				response_window_days,
-				reminder_interval_days,
-				max_reminders,
-				is_paused,
+					reminder_interval_days,
+					max_reminders,
+					escalation_policy,
+					safety_response_window_days,
+					safety_reminder_interval_days,
+					safety_max_reminders,
+					safety_required_confirmations,
+					safety_confirmation_days,
+					is_paused,
 				paused_at,
 				last_confirmed_at,
 				next_check_due_at,
@@ -929,9 +1009,15 @@ final class MonitorExecutionService
 				user_id,
 				check_interval_days,
 				response_window_days,
-				reminder_interval_days,
-				max_reminders,
-				is_paused,
+					reminder_interval_days,
+					max_reminders,
+					escalation_policy,
+					safety_response_window_days,
+					safety_reminder_interval_days,
+					safety_max_reminders,
+					safety_required_confirmations,
+					safety_confirmation_days,
+					is_paused,
 				paused_at,
 				last_confirmed_at,
 				next_check_due_at,
@@ -963,12 +1049,18 @@ final class MonitorExecutionService
 				started_at,
 				due_at,
 				response_deadline_at,
-				reminder_interval_days,
-				max_reminders,
-				reminders_sent
+					reminder_interval_days,
+					max_reminders,
+					escalation_policy_snapshot,
+					safety_response_window_days,
+					safety_reminder_interval_days,
+					safety_max_reminders,
+					safety_required_confirmations,
+					safety_confirmation_days,
+					reminders_sent
 			FROM check_cycles
 			WHERE monitor_id = :monitor_id
-				AND status IN (\'scheduled\',\'awaiting\',\'overdue\',\'escalated\')
+					AND status IN (\'scheduled\',\'awaiting\',\'safety_pending\',\'overdue\',\'escalated\')
 			ORDER BY id DESC
 			LIMIT 1
 			FOR UPDATE
@@ -1023,9 +1115,13 @@ final class MonitorExecutionService
 	{
 		$statement = $connection->prepare('
 			UPDATE mail_queue
-			SET status = \'cancelled\', cancelled_at = :cancelled_at, updated_at = :updated_at
+			SET status = \'cancelled\',
+				body_text = CASE
+					WHEN mail_type IN (\'safety_invitation\', \'safety_reminder\') THEN \'[Safety link redacted after cancellation]\'
+					ELSE body_text
+				END,
+				cancelled_at = :cancelled_at, updated_at = :updated_at
 			WHERE check_cycle_id = :cycle_id
-				AND mail_type IN (\'owner_due_notice\', \'owner_reminder\')
 				AND status IN (\'queued\', \'retrying\', \'failed\')
 		');
 		$statement->execute([
@@ -1033,6 +1129,39 @@ final class MonitorExecutionService
 			'updated_at' => $cancelledAt,
 			'cycle_id' => $cycleId,
 		]);
+		$cancelSafety = $connection->prepare('
+			UPDATE safety_contact_requests
+			SET status = \'cancelled\', updated_at = :updated_at
+			WHERE check_cycle_id = :cycle_id AND status = \'pending\'
+		');
+		$cancelSafety->execute(['updated_at' => $cancelledAt, 'cycle_id' => $cycleId]);
+		$cancelDeliveries = $connection->prepare('
+			UPDATE recipient_release_deliveries
+			SET status = \'cancelled\', cancelled_at = :cancelled_at, updated_at = :updated_at
+			WHERE check_cycle_id = :cycle_id AND status IN (\'queued\', \'failed\')
+		');
+		$cancelDeliveries->execute([
+			'cancelled_at' => $cancelledAt,
+			'updated_at' => $cancelledAt,
+			'cycle_id' => $cycleId,
+		]);
+		$cancelRelease = $connection->prepare('
+			UPDATE recipient_releases
+			SET status = \'cancelled\', cancelled_at = :cancelled_at, updated_at = :updated_at
+			WHERE check_cycle_id = :cycle_id AND status IN (\'blocked\', \'pending\', \'failed\')
+		');
+		$cancelRelease->execute([
+			'cancelled_at' => $cancelledAt,
+			'updated_at' => $cancelledAt,
+			'cycle_id' => $cycleId,
+		]);
+	}
+
+	/** @brief Resolves external-confirmation duration, defaulting to the normal check interval. */
+	private function SafetyConfirmationDays(array $monitor): int
+	{
+		$configured = isset($monitor['safety_confirmation_days']) ? (int)$monitor['safety_confirmation_days'] : 0;
+		return $configured > 0 ? $configured : max(1, (int)$monitor['check_interval_days']);
 	}
 
 	/** @brief Returns the current UTC time. @return DateTimeImmutable */

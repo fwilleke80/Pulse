@@ -501,6 +501,12 @@ th
 	color: var(--warning);
 }
 
+.status-safety-pending
+{
+	background: color-mix(in srgb, var(--info) 15%, transparent);
+	color: var(--info);
+}
+
 .status-overdue
 {
 	background: color-mix(in srgb, var(--danger) 14%, transparent);
@@ -523,6 +529,11 @@ th
 .monitor-row-awaiting
 {
 	background: color-mix(in srgb, var(--warning) 5%, transparent);
+}
+
+.monitor-row-safety-pending
+{
+	background: color-mix(in srgb, var(--info) 5%, transparent);
 }
 
 .monitor-row-overdue
@@ -963,12 +974,112 @@ small
 .monitor-tabs
 {
 	display: grid;
-	grid-template-columns: repeat(4, minmax(0, 1fr));
+	grid-template-columns: repeat(5, minmax(0, 1fr));
 	gap: 0.35rem;
 	padding: 0.35rem;
 	border: 1px solid var(--border);
 	border-radius: 12px;
 	background: var(--surface-subtle);
+}
+
+.recipient-overview-list
+{
+	display: grid;
+	gap: 0.75rem;
+}
+
+.recipient-overview-card
+{
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	align-items: center;
+	gap: 0.8rem 1rem;
+	padding: 0.9rem 1rem;
+	border: 1px solid var(--border);
+	border-radius: 9px;
+	background: var(--surface-subtle);
+}
+
+.recipient-overview-meta
+{
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.35rem 0.8rem;
+	color: var(--muted);
+	font-size: 0.85rem;
+}
+
+.recipient-add-block
+{
+	margin-top: 1.25rem;
+}
+
+.escalation-policy-grid
+{
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 0.8rem;
+}
+
+.policy-option
+{
+	display: flex;
+	align-items: flex-start;
+	gap: 0.65rem;
+	margin: 0;
+	padding: 1rem;
+	border: 1px solid var(--border);
+	border-radius: 9px;
+	background: var(--surface-subtle);
+	font-weight: 650;
+}
+
+.recipient-summary-list
+{
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+	gap: 0.8rem;
+}
+
+.recipient-summary-list div
+{
+	min-width: 0;
+}
+
+.recipient-summary-list dt
+{
+	color: var(--muted);
+	font-size: 0.8rem;
+	font-weight: 650;
+	text-transform: uppercase;
+}
+
+.recipient-summary-list dd
+{
+	margin: 0.2rem 0 0;
+	overflow-wrap: anywhere;
+}
+
+.mail-preview pre
+{
+	margin-bottom: 0;
+	padding: 1rem;
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	background: var(--surface-subtle);
+	font: inherit;
+	white-space: pre-wrap;
+}
+
+.safety-response-page
+{
+	max-width: 720px;
+	margin-inline: auto;
+}
+
+.safety-confirmation-check
+{
+	margin-bottom: 1rem;
 }
 
 .monitor-tab-link
@@ -1503,7 +1614,13 @@ footer
 
 	.field-grid-four,
 	.document-create-grid,
+	.escalation-policy-grid,
 	.review-grid
+	{
+		grid-template-columns: 1fr;
+	}
+
+	.recipient-overview-card
 	{
 		grid-template-columns: 1fr;
 	}

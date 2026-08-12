@@ -17,6 +17,9 @@ declare(strict_types=1);
 $activityTranslationKeys = [
 	'monitor.checked_in' => 'dashboard.activity.checked_in',
 	'monitor.awaiting' => 'dashboard.activity.awaiting',
+	'monitor.safety_requested' => 'dashboard.activity.safety_requested',
+	'monitor.safety_expired' => 'dashboard.activity.safety_expired',
+	'monitor.safety_confirmed' => 'dashboard.activity.safety_confirmed',
 	'monitor.overdue' => 'dashboard.activity.overdue',
 	'monitor.escalated' => 'dashboard.activity.escalated',
 	'monitor.paused' => 'dashboard.activity.paused',
@@ -24,6 +27,10 @@ $activityTranslationKeys = [
 	'monitor.forced_due' => 'dashboard.activity.forced_due',
 	'mail.due_notice_sent' => 'dashboard.activity.due_notice_sent',
 	'mail.reminder_sent' => 'dashboard.activity.reminder_sent',
+	'mail.safety_invitation_sent' => 'dashboard.activity.safety_invitation_sent',
+	'mail.safety_reminder_sent' => 'dashboard.activity.safety_reminder_sent',
+	'mail.recipient_sent' => 'dashboard.activity.recipient_sent',
+	'mail.recipient_failed' => 'dashboard.activity.recipient_failed',
 ];
 
 ob_start();

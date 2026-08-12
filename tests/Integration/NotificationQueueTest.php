@@ -158,7 +158,7 @@ class NotificationQueueTest extends TestCase
 		(
 			id BIGINT UNSIGNED PRIMARY KEY,
 			monitor_id BIGINT UNSIGNED,
-			status ENUM('scheduled','awaiting','overdue','escalated','confirmed','cancelled'),
+			status ENUM('scheduled','awaiting','safety_pending','overdue','escalated','confirmed','cancelled'),
 			reminders_sent INT UNSIGNED NOT NULL DEFAULT 0,
 			due_notice_sent_at DATETIME NULL,
 			last_reminder_sent_at DATETIME NULL,
@@ -171,6 +171,8 @@ class NotificationQueueTest extends TestCase
 			check_cycle_id BIGINT UNSIGNED NULL,
 			monitor_id BIGINT UNSIGNED NULL,
 			contact_id BIGINT UNSIGNED NULL,
+			safety_request_id BIGINT UNSIGNED NULL,
+			recipient_delivery_id BIGINT UNSIGNED NULL,
 			mail_type VARCHAR(50) NOT NULL,
 			idempotency_key VARCHAR(191) NOT NULL UNIQUE,
 			reminder_number INT UNSIGNED NULL,

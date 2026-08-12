@@ -20,6 +20,7 @@ use Pulse\Repositories\MessageRepository;
 use Pulse\Repositories\MonitorRepository;
 use Pulse\Services\AuthService;
 use Pulse\Services\DocumentService;
+use Pulse\Services\EscalationService;
 use Pulse\Services\MailQueueWorker;
 use Pulse\Services\MonitorExecutionService;
 use Pulse\Services\NotificationScheduler;
@@ -37,6 +38,7 @@ class MonitorController extends BaseController
 	private MonitorExecutionService $_monitorExecutionService;
 	private NotificationScheduler $_notificationScheduler;
 	private MailQueueWorker $_mailQueueWorker;
+	private EscalationService $_escalationService;
 	private bool $_debugEnabled;
 	private bool $_mailEnabled;
 
@@ -55,6 +57,7 @@ class MonitorController extends BaseController
 	 * @param MonitorExecutionService $monitorExecutionService Check-in lifecycle service.
 	 * @param NotificationScheduler $notificationScheduler Owner-notification scheduler.
 	 * @param MailQueueWorker $mailQueueWorker Transactional mail worker.
+	 * @param EscalationService $escalationService Safety and recipient escalation service.
 	 * @param bool $debugEnabled Whether development actions are enabled.
 	 * @param bool $mailEnabled Whether mail delivery is enabled.
 	 */
@@ -72,6 +75,7 @@ class MonitorController extends BaseController
 		MonitorExecutionService $monitorExecutionService,
 		NotificationScheduler $notificationScheduler,
 		MailQueueWorker $mailQueueWorker,
+		EscalationService $escalationService,
 		bool $debugEnabled,
 		bool $mailEnabled
 	)
@@ -85,6 +89,7 @@ class MonitorController extends BaseController
 		$this->_monitorExecutionService = $monitorExecutionService;
 		$this->_notificationScheduler = $notificationScheduler;
 		$this->_mailQueueWorker = $mailQueueWorker;
+		$this->_escalationService = $escalationService;
 		$this->_debugEnabled = $debugEnabled;
 		$this->_mailEnabled = $mailEnabled;
 	}
@@ -170,6 +175,7 @@ class MonitorController extends BaseController
 			'monitor' => $monitor,
 			'contacts' => $this->_contactRepository->FindAllByUserId((int)$user['id']),
 			'assignedContactIds' => $this->_monitorRepository->FindContactIdsByMonitorId($monitorId),
+			'safetyContactIds' => $this->_monitorRepository->FindSafetyContactIdsByMonitorIdForUser($monitorId, (int)$user['id']),
 			'monitorContacts' => $this->_monitorRepository->FindMonitorContactsByMonitorIdForUser($monitorId, (int)$user['id']),
 			'documents' => $documents,
 			'messageOverrides' => $messageOverrides,
@@ -192,8 +198,12 @@ class MonitorController extends BaseController
 		}
 
 		$values = $this->MonitorInput();
+		$safetyContactIds = $this->AllowedContactIds((int)$user['id'], $this->_request->PostIntArray('safety_contact_ids'));
 
-		if (!$this->ValidateMonitorInput($values, '/monitors/edit?id=' . $monitorId . '&tab=schedule', $monitorId))
+		if (
+			!$this->ValidateMonitorInput($values, '/monitors/edit?id=' . $monitorId . '&tab=' . $returnTab, $monitorId)
+			|| !$this->ValidateSafetyConfiguration($values, $safetyContactIds, (int)$user['id'], '/monitors/edit?id=' . $monitorId . '&tab=escalation')
+		)
 		{
 			return;
 		}
@@ -206,20 +216,22 @@ class MonitorController extends BaseController
 			$values['check_interval_days'],
 			$values['response_window_days'],
 			$values['reminder_interval_days'],
-			$values['max_reminders']
+			$values['max_reminders'],
+			$values['escalation_policy'],
+			$values['safety_response_window_days'],
+			$values['safety_reminder_interval_days'],
+			$values['safety_max_reminders'],
+			$values['safety_required_confirmations'],
+			$values['safety_confirmation_days'] > 0 ? $values['safety_confirmation_days'] : null
 		);
 		$this->_monitorExecutionService->SynchronizeMonitorForUser($monitorId, (int)$user['id']);
-		$this->_monitorRepository->ReplaceContactsForMonitor(
-			$monitorId,
-			(int)$user['id'],
-			$this->AllowedContactIds((int)$user['id'], $this->_request->PostIntArray('contact_ids'))
-		);
+		$this->_monitorRepository->ReplaceSafetyContactsForMonitor($monitorId, (int)$user['id'], $safetyContactIds);
 		$this->_logger->Info('Monitor updated', ['user_id' => (int)$user['id'], 'monitor_id' => $monitorId]);
 		$this->Flash('success', __('monitors.edit.flash.updated', ['name' => $values['name']]));
 		$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=' . $returnTab);
 	}
 
-	/** @brief Updates the default and recipient-specific delivery messages. */
+	/** @brief Updates the monitor's default recipient message. */
 	public function UpdateMessages(): void
 	{
 		$user = $this->RequireUser();
@@ -241,39 +253,12 @@ class MonitorController extends BaseController
 			$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=messages');
 		}
 
-		$overrides = [];
-		$monitorContacts = $this->_monitorRepository->FindMonitorContactsByMonitorIdForUser($monitorId, $userId);
-
-		foreach ($monitorContacts as $monitorContact)
-		{
-			$monitorContactId = (int)$monitorContact['id'];
-
-			if (!$this->_request->PostBool('message_override_' . $monitorContactId))
-			{
-				continue;
-			}
-
-			$subject = $this->_request->PostString('message_subject_' . $monitorContactId, 255);
-			$body = $this->_request->PostString('message_body_' . $monitorContactId, 1000000, false);
-
-			if ($subject === '' || trim($body) === '')
-			{
-				$this->Flash('error', __('monitors.messages.flash.override_incomplete', ['name' => (string)$monitorContact['name']]));
-				$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=messages');
-			}
-
-			$overrides[$monitorContactId] = [
-				'subject' => $subject,
-				'body_text' => $body,
-			];
-		}
-
 		$this->_messageRepository->ReplaceForMonitor(
 			$monitorId,
 			$userId,
 			$defaultSubject !== '' ? $defaultSubject : null,
 			trim($defaultBody) !== '' ? $defaultBody : null,
-			$overrides
+			$this->_messageRepository->FindByMonitorIdForUser($monitorId, $userId)
 		);
 		$this->_logger->Info('Monitor messages updated', ['user_id' => $userId, 'monitor_id' => $monitorId]);
 		$this->Flash('success', __('monitors.messages.flash.updated'));
@@ -425,9 +410,69 @@ class MonitorController extends BaseController
 		$this->Redirect($this->RuntimeRedirect());
 	}
 
+	/** @brief Forces and sends an immutable recipient release through the real queue in debug mode. */
+	public function SendRecipientNotifications(): void
+	{
+		$user = $this->RequireUser();
+
+		if (!$this->_debugEnabled)
+		{
+			http_response_code(404);
+			exit;
+		}
+
+		if (!$this->_mailEnabled)
+		{
+			$this->Flash('warning', __('monitors.send_recipients.mail_disabled'));
+			$this->Redirect($this->RuntimeRedirect());
+		}
+
+		$cycleId = $this->_escalationService->PrepareDebugRecipientReleaseForUser(
+			$this->_request->PostInt('id'),
+			(int)$user['id']
+		);
+
+		if ($cycleId === null)
+		{
+			$this->Flash('warning', __('monitors.send_recipients.unavailable'));
+			$this->Redirect($this->RuntimeRedirect());
+		}
+
+		$release = $this->_escalationService->StageRecipientRelease($cycleId);
+
+		if ($release['status'] === 'blocked')
+		{
+			$this->Flash('error', __('monitors.send_recipients.blocked'));
+			$this->Redirect($this->RuntimeRedirect());
+		}
+
+		$sent = 0;
+		$failed = 0;
+
+		foreach ($this->_escalationService->FindPendingQueueIdsForRelease($release['release_id']) as $queueId)
+		{
+			$outcome = $this->_mailQueueWorker->ProcessById($queueId);
+
+			if ($outcome === 'sent')
+			{
+				$sent++;
+			}
+			elseif ($outcome === 'failed')
+			{
+				$failed++;
+			}
+		}
+
+		$key = $sent > 0
+			? 'monitors.send_recipients.sent'
+			: ($failed > 0 ? 'monitors.send_recipients.failed' : 'monitors.send_recipients.queued');
+		$this->Flash($sent > 0 ? 'success' : ($failed > 0 ? 'error' : 'warning'), __($key, ['count' => $sent]));
+		$this->Redirect($this->RuntimeRedirect());
+	}
+
 	/**
 	 * @brief Reads and bounds monitor configuration input.
-	 * @return array{name: string, description: string, check_interval_days: int, response_window_days: int, reminder_interval_days: int, max_reminders: int}
+	 * @return array{name: string, description: string, check_interval_days: int, response_window_days: int, reminder_interval_days: int, max_reminders: int, escalation_policy: string, safety_response_window_days: int, safety_reminder_interval_days: int, safety_max_reminders: int, safety_required_confirmations: int, safety_confirmation_days: int}
 	 */
 	private function MonitorInput(): array
 	{
@@ -438,6 +483,14 @@ class MonitorController extends BaseController
 			'response_window_days' => $this->_request->PostInt('response_window_days'),
 			'reminder_interval_days' => $this->_request->PostInt('reminder_interval_days'),
 			'max_reminders' => $this->_request->PostInt('max_reminders'),
+			'escalation_policy' => in_array($this->_request->PostString('escalation_policy', 30), ['direct', 'safety_contact'], true)
+				? $this->_request->PostString('escalation_policy', 30)
+				: 'direct',
+			'safety_response_window_days' => $this->_request->PostInt('safety_response_window_days', 3),
+			'safety_reminder_interval_days' => $this->_request->PostInt('safety_reminder_interval_days', 1),
+			'safety_max_reminders' => $this->_request->PostInt('safety_max_reminders', 1),
+			'safety_required_confirmations' => $this->_request->PostInt('safety_required_confirmations', 1),
+			'safety_confirmation_days' => $this->_request->PostInt('safety_confirmation_days', 0),
 		];
 	}
 
@@ -445,7 +498,7 @@ class MonitorController extends BaseController
 	private function PostedEditorTab(): string
 	{
 		$tab = $this->_request->PostString('active_tab', 20);
-		return in_array($tab, ['schedule', 'recipients', 'messages', 'review'], true) ? $tab : 'schedule';
+		return in_array($tab, ['schedule', 'recipients', 'messages', 'escalation', 'review'], true) ? $tab : 'schedule';
 	}
 
 	/**
@@ -469,11 +522,50 @@ class MonitorController extends BaseController
 			|| (int)$values['response_window_days'] < 1 || (int)$values['response_window_days'] > 365
 			|| (int)$values['reminder_interval_days'] < 1 || (int)$values['reminder_interval_days'] > 365
 			|| (int)$values['max_reminders'] < 0 || (int)$values['max_reminders'] > 100
+			|| (int)$values['safety_response_window_days'] < 1 || (int)$values['safety_response_window_days'] > 365
+			|| (int)$values['safety_reminder_interval_days'] < 1 || (int)$values['safety_reminder_interval_days'] > 365
+			|| (int)$values['safety_max_reminders'] < 0 || (int)$values['safety_max_reminders'] > 100
+			|| (int)$values['safety_required_confirmations'] < 1 || (int)$values['safety_required_confirmations'] > 100
+			|| (int)$values['safety_confirmation_days'] < 0 || (int)$values['safety_confirmation_days'] > 3650
 		)
 		{
 			$this->_logger->Warning('Monitor validation failed: invalid numeric bounds', ['monitor_id' => $monitorId]);
 			$this->Flash('error', __($monitorId > 0 ? 'monitors.edit.flash.invalidnumbers' : 'monitors.add.flash.invalidnumbers'));
 			$this->Redirect($redirect);
+		}
+
+		return true;
+	}
+
+	/** @brief Validates optional safety-contact configuration against current owned contacts. */
+	private function ValidateSafetyConfiguration(array $values, array $contactIds, int $userId, string $redirect): bool
+	{
+		if ((string)$values['escalation_policy'] !== 'safety_contact')
+		{
+			return true;
+		}
+
+		if ($contactIds === [] || (int)$values['safety_required_confirmations'] > count($contactIds))
+		{
+			$this->Flash('error', __('monitors.escalation.flash.invalid_contacts'));
+			$this->Redirect($redirect);
+		}
+
+		$contacts = $this->_contactRepository->FindAllByUserId($userId);
+		$byId = [];
+
+		foreach ($contacts as $contact)
+		{
+			$byId[(int)$contact['id']] = $contact;
+		}
+
+		foreach ($contactIds as $contactId)
+		{
+			if (!isset($byId[$contactId]) || empty($byId[$contactId]['email_checked_at']))
+			{
+				$this->Flash('error', __('monitors.escalation.flash.unchecked_contact'));
+				$this->Redirect($redirect);
+			}
 		}
 
 		return true;
@@ -509,6 +601,6 @@ class MonitorController extends BaseController
 	{
 		$tab = $this->_request->QueryString('tab', 20);
 
-		return in_array($tab, ['schedule', 'recipients', 'messages', 'review'], true) ? $tab : 'schedule';
+		return in_array($tab, ['schedule', 'recipients', 'messages', 'escalation', 'review'], true) ? $tab : 'schedule';
 	}
 }

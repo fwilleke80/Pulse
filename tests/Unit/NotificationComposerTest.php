@@ -114,4 +114,49 @@ class NotificationComposerTest extends TestCase
 		self::assertStringContainsString('Test notification', $english['subject']);
 		self::assertStringContainsString('Testbenachrichtigung', $german['subject']);
 	}
+
+	public function testSafetyInvitationUsesAScannerSafeConfirmationPage(): void
+	{
+		$composer = $this->Composer();
+		$message = $composer->ComposeSafetyInvitation([
+			'contact_name' => 'Trusted person',
+			'owner_name' => 'Owner',
+			'monitor_name' => 'Weekly check',
+			'notification_locale' => 'en',
+		], str_repeat('a', 64));
+
+		self::assertStringContainsString('/safety/confirm?token=', $message['body_text']);
+		self::assertStringContainsString('Opening the page does not confirm anything', $message['body_text']);
+	}
+
+	public function testRecipientNotificationContainsConfiguredMessageButNoDocumentAccess(): void
+	{
+		$composer = $this->Composer();
+		$message = $composer->ComposeRecipientNotification([
+			'recipient_name' => 'Recipient',
+			'owner_name' => 'Owner',
+			'monitor_name' => 'Weekly check',
+			'notification_locale' => 'en',
+			'message_subject' => 'Personal note',
+			'message_body' => 'This is the configured message.',
+		]);
+
+		self::assertStringContainsString('Personal note', $message['subject']);
+		self::assertStringContainsString('This is the configured message.', $message['body_text']);
+		self::assertStringNotContainsString('/documents/', $message['body_text']);
+		self::assertStringNotContainsString('/access', $message['body_text']);
+	}
+
+	private function Composer(): NotificationComposer
+	{
+		return new NotificationComposer(
+			new NotificationLanguage(['en', 'de'], 'en'),
+			dirname(__DIR__, 2) . '/app/Lang',
+			[
+				'name' => 'Pulse',
+				'base_url' => 'https://pulse.example.com',
+				'display_timezone' => 'Europe/Berlin',
+			]
+		);
+	}
 }

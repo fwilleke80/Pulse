@@ -17,7 +17,7 @@ use Pulse\Core\Translator;
 use Throwable;
 
 /**
- * @brief Creates localized plain-text mail without recipient-delivery content.
+ * @brief Creates localized immutable mail snapshots for owners, safety contacts, and recipients.
  */
 final class NotificationComposer
 {
@@ -121,6 +121,78 @@ final class NotificationComposer
 		return [
 			'subject' => $this->Translate($locale, 'mail.owner_reminder.subject', $params),
 			'body_text' => $this->Translate($locale, 'mail.owner_reminder.body', $params),
+		];
+	}
+
+	/**
+	 * @brief Composes a scanner-safe invitation for a safety contact.
+	 * @param array<string, mixed> $request Safety-contact request snapshot.
+	 * @param string $rawToken URL token whose resolver stores a hash; the raw value is embedded in the outgoing mail snapshot.
+	 * @return array{subject: string, body_text: string}
+	 */
+	public function ComposeSafetyInvitation(array $request, string $rawToken): array
+	{
+		$locale = $this->_languages->Resolve(isset($request['notification_locale']) ? (string)$request['notification_locale'] : null);
+		$params = [
+			'app' => $this->_appName,
+			'name' => (string)$request['contact_name'],
+			'owner' => (string)$request['owner_name'],
+			'monitor' => (string)$request['monitor_name'],
+			'url' => $this->_baseUrl . '/safety/confirm?token=' . rawurlencode($rawToken),
+		];
+
+		return [
+			'subject' => $this->Translate($locale, 'mail.safety_invitation.subject', $params),
+			'body_text' => $this->Translate($locale, 'mail.safety_invitation.body', $params),
+		];
+	}
+
+	/**
+	 * @brief Composes one numbered safety-contact reminder.
+	 * @param array<string, mixed> $request Safety-contact request snapshot.
+	 * @param string $rawToken URL token whose resolver stores a hash; the raw value is embedded in the outgoing mail snapshot.
+	 * @param int $reminderNumber One-based reminder number.
+	 * @return array{subject: string, body_text: string}
+	 */
+	public function ComposeSafetyReminder(array $request, string $rawToken, int $reminderNumber): array
+	{
+		$locale = $this->_languages->Resolve(isset($request['notification_locale']) ? (string)$request['notification_locale'] : null);
+		$params = [
+			'app' => $this->_appName,
+			'name' => (string)$request['contact_name'],
+			'owner' => (string)$request['owner_name'],
+			'monitor' => (string)$request['monitor_name'],
+			'number' => $reminderNumber,
+			'total' => (int)$request['safety_max_reminders'],
+			'url' => $this->_baseUrl . '/safety/confirm?token=' . rawurlencode($rawToken),
+		];
+
+		return [
+			'subject' => $this->Translate($locale, 'mail.safety_reminder.subject', $params),
+			'body_text' => $this->Translate($locale, 'mail.safety_reminder.body', $params),
+		];
+	}
+
+	/**
+	 * @brief Wraps the owner's configured message in localized recipient context.
+	 * @param array<string, mixed> $recipient Immutable recipient and message snapshot.
+	 * @return array{subject: string, body_text: string}
+	 */
+	public function ComposeRecipientNotification(array $recipient): array
+	{
+		$locale = $this->_languages->Resolve(isset($recipient['notification_locale']) ? (string)$recipient['notification_locale'] : null);
+		$params = [
+			'app' => $this->_appName,
+			'name' => (string)$recipient['recipient_name'],
+			'owner' => (string)$recipient['owner_name'],
+			'monitor' => (string)$recipient['monitor_name'],
+			'message_subject' => (string)$recipient['message_subject'],
+			'message_body' => (string)$recipient['message_body'],
+		];
+
+		return [
+			'subject' => $this->Translate($locale, 'mail.recipient_notification.subject', $params),
+			'body_text' => $this->Translate($locale, 'mail.recipient_notification.body', $params),
 		];
 	}
 

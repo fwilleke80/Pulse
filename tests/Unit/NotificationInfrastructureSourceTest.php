@@ -55,12 +55,49 @@ class NotificationInfrastructureSourceTest extends TestCase
 		self::assertStringContainsString('name="notification_locale"', $contactForm);
 	}
 
-	public function testSchedulerCreatesOnlyOwnerCheckInNotifications(): void
+	public function testSchedulerStagesOwnerSafetyAndRecipientNotifications(): void
 	{
 		$source = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Services/NotificationScheduler.php');
+		$escalation = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Services/EscalationService.php');
 		self::assertStringContainsString("'mail_type' => 'owner_due_notice'", $source);
 		self::assertStringContainsString("'mail_type' => 'owner_reminder'", $source);
-		self::assertStringNotContainsString("'mail_type' => 'recipient", $source);
+		self::assertStringContainsString('StartSafetyGate', $source);
+		self::assertStringContainsString('StageRecipientRelease', $source);
+		self::assertStringContainsString("'mail_type' => 'safety_invitation'", $escalation);
+		self::assertStringContainsString("'mail_type' => 'recipient_notification'", $escalation);
+	}
+
+	public function testRecipientEscalationMigrationUsesHashedMultiTokenSafetyLinksAndImmutableReleases(): void
+	{
+		$migration = (string)file_get_contents(dirname(__DIR__, 2) . '/database/migrations/009_recipient_escalation.sql');
+
+		self::assertStringContainsString('safety_request_tokens', $migration);
+		self::assertStringContainsString('token_hash', $migration);
+		self::assertStringContainsString('recipient_releases', $migration);
+		self::assertStringContainsString('recipient_release_deliveries', $migration);
+		self::assertStringContainsString("'safety_pending'", $migration);
+	}
+
+	public function testSafetyLinksAreRedactedAfterDeliveryOrCancellation(): void
+	{
+		$queue = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Repositories/MailQueueRepository.php');
+		$execution = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Services/MonitorExecutionService.php');
+
+		self::assertStringContainsString("mail_type IN (\\'safety_invitation\\', \\'safety_reminder\\')", $queue);
+		self::assertStringContainsString('Safety link redacted after delivery', $queue);
+		self::assertStringContainsString('Safety link redacted after cancellation', $queue);
+		self::assertStringContainsString('Safety link redacted after cancellation', $execution);
+	}
+
+	public function testSafetyGetIsReadOnlyAndResponseRequiresPost(): void
+	{
+		$routes = (string)file_get_contents(dirname(__DIR__, 2) . '/public/index.php');
+		$controller = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Controllers/SafetyController.php');
+
+		self::assertStringContainsString("Get('/safety/confirm'", $routes);
+		self::assertStringContainsString("Post('/safety/respond'", $routes);
+		self::assertStringContainsString('FindSafetyRequestByToken', $controller);
+		self::assertStringContainsString('RespondToSafetyToken', $controller);
 	}
 
 	public function testDueNoticePrecedesTheResponseWindowReminders(): void
@@ -87,6 +124,7 @@ class NotificationInfrastructureSourceTest extends TestCase
 		self::assertStringContainsString('QueueDueNoticeForMonitorForUser', $controller);
 		self::assertStringContainsString('$debugEnabled', $view);
 		self::assertStringContainsString('/monitors/send-due-notice', $view);
+		self::assertStringContainsString('/monitors/send-recipient-notifications', $view);
 	}
 
 	public function testPermanentReminderFailureIsVisibleWithoutChangingLifecycleState(): void

@@ -12,15 +12,20 @@ declare(strict_types=1);
 /** @var string $content */
 /** @var string|null $title */
 
+$assetVersion = trim((string)$appVersion) !== '' ? (string)$appVersion : 'unversioned';
+$versionLabel = trim((string)$appVersion) !== ''
+	? 'v' . (string)$appVersion
+	: __('footer.version_unavailable');
+
 ?><!DOCTYPE html>
 <html lang="<?= htmlspecialchars($locale, ENT_QUOTES, 'UTF-8') ?>">
 <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title><?= htmlspecialchars((isset($title) ? ($title . " :: ") : "") . $appName, ENT_QUOTES, 'UTF-8') ?></title>
-	<link rel="stylesheet" href="<?= e($base_url) ?>/assets/style.css?v=<?= e(rawurlencode((string)$appVersion)) ?>">
+	<link rel="stylesheet" href="<?= e($base_url) ?>/assets/style.css?v=<?= e(rawurlencode($assetVersion)) ?>">
 	<link rel="icon" href="<?= e($base_url) ?>/favicon.png">
-	<script src="<?= e($base_url) ?>/assets/app.js?v=<?= e(rawurlencode((string)$appVersion)) ?>" defer></script>
+	<script src="<?= e($base_url) ?>/assets/app.js?v=<?= e(rawurlencode($assetVersion)) ?>" defer></script>
 </head>
 <body>
 
@@ -76,7 +81,7 @@ declare(strict_types=1);
 		<a href="<?= e($base_url) ?>/about"><?= e__('footer.about') ?></a>
 		<a href="<?= e($base_url) ?>/imprint"><?= e__('footer.imprint') ?></a>
 	</nav>
-	<p><?= e($appName) ?> v<?= e((string)$appVersion) ?><br>&copy; <?= date('Y') ?> <a href="https://frankwilleke.de" target="_blank" rel="noopener noreferrer">frankwilleke.de</a>. <?= e__('footer.allrightsreserved') ?></p>
+	<p><?= e($appName) ?> <?= e($versionLabel) ?><br>&copy; <?= date('Y') ?> <a href="https://frankwilleke.de" target="_blank" rel="noopener noreferrer">frankwilleke.de</a>. <?= e__('footer.allrightsreserved') ?></p>
 </footer>
 
 </body>

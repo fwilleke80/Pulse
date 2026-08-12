@@ -2,11 +2,11 @@
 
 ## Current scope
 
-Pulse 0.6.4 lets you:
+Pulse 0.7.0 lets you:
 
 - sign in and update your profile
 - create and edit trusted contacts and confirm that you checked their addresses
-- configure monitors in four focused editor tabs
+- configure monitors in five focused editor tabs
 - prepare a default delivery message and optional recipient-specific messages
 - create editable text documents or upload approved file types
 - assign text and file documents to individual monitor recipients
@@ -17,8 +17,12 @@ Pulse 0.6.4 lets you:
 - receive an immediate owner email when a check-in becomes due, followed by configured reminders after the response window closes
 - test SMTP delivery and inspect or retry failed notifications from the profile page
 - choose a separate notification language for yourself and every contact
+- send actual localized recipient notification emails containing the configured message
+- choose direct recipient notification or an optional safety-contact gate per monitor
+- require one or more checked safety contacts to confirm recent direct contact before a monitor is postponed
+- configure each monitor recipient on a dedicated page with personal wording, document assignments, preview, and delivery history
 
-Recipient contact notifications, delivery messages, document release, and recipient access are not active yet. Version 0.6.4 sends only check-in due notices and reminders to the owner's own profile address.
+Recipient message email is active in 0.7.0. Document release and recipient document access are not active: recipient emails contain no attachment, document content, or document-access link. Document assignments prepare the data model for a later secure portal.
 
 Uploaded files are private from normal website visitors, but files, messages, and editable text documents are not encrypted at rest in this version. Do not store your final highly sensitive material until the encrypted-storage release is complete.
 
@@ -28,22 +32,23 @@ A contact is someone who may later receive a message or document. Create contact
 
 Editing a contact updates the shared contact record. Removing a contact also removes that contact’s monitor assignments through database relationships.
 
-Pulse requires you to confirm that you carefully checked a contact's email address. This is not consent or remote verification: the checkbox records only your review. Pulse does not send an invitation, approval request, or verification email. If the address resembles a common domain typo, Pulse displays a suggestion but leaves the decision to you.
+Pulse requires you to confirm that you carefully checked a contact's email address. This is not consent or remote verification: the checkbox records only your review. Creating, editing, or checking the address does not send an invitation, approval request, or verification email. Pulse can later send that address a recipient or safety-contact message only when an active monitor reaches the configured stage. If the address resembles a common domain typo, Pulse displays a suggestion but leaves the decision to you.
 
-Contacts created before 0.4.0 initially show **Not yet checked**. In a monitor editor, open **Recipients**, select **Check address** beside the contact, review the address, tick the confirmation box, and save. Pulse returns to the same monitor tab and records the new status.
+Contacts created before 0.4.0 initially show **Not yet checked**. Open **Contacts**, edit the contact, review the address, tick the confirmation box, and save. The dedicated monitor-recipient page links back to that reusable contact record when a correction is needed.
 
-Each contact has a **Notification language**. Choose the language that recipient should later receive, regardless of the language currently selected in your browser. Existing contacts fall back to the server's `PULSE_DEFAULT_LOCALE` until you save an explicit choice.
+Each contact has a **Notification language**. Choose the language that contact should receive for safety or recipient mail, regardless of the language currently selected in your browser. Existing contacts fall back to the server's `PULSE_DEFAULT_LOCALE` until you save an explicit choice.
 
 ## Monitors
 
-A monitor describes how frequently you intend to confirm that you are active. Its editor contains four sections:
+A monitor describes how frequently you intend to confirm that you are active. Its editor contains five sections:
 
 1. **Schedule** — monitor identity, check-in interval, response window, and reminder settings
-2. **Recipients** — contacts assigned to this monitor and their address-check state
-3. **Messages & documents** — delivery wording and recipient document assignments
-4. **Review & activation** — a configuration summary, warnings, and the paused state
+2. **Recipients** — a compact recipient list, delivery state, and links to dedicated recipient pages
+3. **Messages & documents** — the default delivery wording and monitor document management
+4. **Escalation** — direct delivery or optional safety contacts, confirmation quorum, and safety timing
+5. **Review & activation** — a configuration summary, warnings, and the paused state
 
-The sticky save action stores schedule and recipient selection together and returns to whichever editor tab was active. **Cancel** returns to the monitor overview without saving changes to those settings. Messages and individual documents have their own explicit save actions. Pause and resume are immediate runtime actions and are not part of the settings form.
+The sticky save action stores schedule and safety-gate settings together and returns to whichever editor tab was active. **Cancel** returns to the monitor overview without saving changes to those settings. Recipient configuration, messages, and individual documents have their own explicit save actions. Pause and resume are immediate runtime actions and are not part of the settings form.
 
 Select a monitor's linked title in the overview to open its editor.
 
@@ -51,15 +56,53 @@ The monitor overview focuses on runtime state:
 
 - **Checked in** — the current scheduled cycle has a future due time
 - **Awaiting check-in** — the due time arrived and Pulse is waiting for confirmation
+- **Awaiting safety contact** — the owner phase completed and Pulse is waiting for the optional safety gate
 - **Overdue** — the notification worker recorded that every configured owner reminder was sent without a response
-- **Escalated** — recipient notification or delivery actually began
+- **Escalated** — SMTP accepted at least one recipient notification
 - **Paused** — no confirmation is currently expected
 
-The cron scheduler sends an immediate owner notification when the monitor becomes due. The configured response window then gives you time to check in. If it closes without a check-in, Pulse sends reminder 1 and follows the configured reminder interval for any remaining follow-ups. **Maximum follow-up reminders** does not include the initial due notice. A monitor becomes **Overdue** only after the due notice and all configured reminders were accepted by SMTP and the final response/reminder interval elapsed. **Escalated** remains inactive until recipient delivery is implemented.
+The cron scheduler sends an immediate owner notification when the monitor becomes due. The configured response window then gives you time to check in. If it closes without a check-in, Pulse sends reminder 1 and follows the configured reminder interval for any remaining follow-ups. **Maximum follow-up reminders** does not include the initial due notice. The owner phase completes only after the due notice and all configured reminders were accepted by SMTP and the final response/reminder interval elapsed.
+
+With **Direct recipient notification**, Pulse then marks the cycle **Overdue** and stages immutable recipient emails. With **Safety-contact gate**, it first enters **Awaiting safety contact** and delivers the configured requests. If the confirmation quorum is reached, the cycle is postponed. Otherwise, it becomes **Overdue** only after the complete safety response/reminder window and every required safety message were delivered.
 
 The initial email states the exact response-window length, its deadline, and the maximum follow-up count. Its sign-in URL appears on a separate line in both notification languages.
 
-If a due notice or reminder exhausts all delivery attempts, the monitor remains **Awaiting check-in** and displays a red **Check-in email delivery failed** warning. This is intentional: Pulse will not pretend a notification was delivered. Open **Profile → Notifications** to see failed jobs and queue them for another attempt after correcting the SMTP problem.
+If an owner, safety-contact, or recipient message exhausts all delivery attempts, Pulse displays a red notification-delivery warning. It does not pretend that an email was delivered. Open **Profile → Notifications** to see failed jobs and queue them for another attempt after correcting the SMTP problem.
+
+If recipient staging is blocked because there are no recipients, an address is unchecked, or an effective message is incomplete, the monitor remains **Overdue** and shows a recipient-release warning. Fix the dedicated recipient configuration; the next scheduler run tries staging again.
+
+See the [monitor seriousness tutorial](MONITOR_TUTORIAL.md) for worked timing profiles and guidance on choosing direct delivery, a single safety contact, or a confirmation quorum.
+
+## Safety contacts
+
+A safety contact is a temporary gate before final recipient notification. The role is separate from being a recipient, although the same reusable contact can serve both roles.
+
+Select safety contacts under a monitor's **Escalation** tab. Every selected address must have been checked. **Required confirmations** must be at least one and cannot exceed the number of selected contacts.
+
+After the owner phase ends, Pulse snapshots the safety-contact name, address, and language, then queues each invitation. The safety response clock starts only after every initial invitation is accepted by SMTP. Reminder timing is measured from that shared start.
+
+The email link opens a read-only explanation page. Automated link scanners and previews therefore cannot confirm anything. The safety contact must deliberately submit one of two responses:
+
+- **Confirm recent direct contact** — counts toward the configured quorum; when the quorum is reached, Pulse closes the cycle and schedules a fresh one
+- **Cannot confirm** — records the answer but does not accelerate recipient release; the gate still waits for its configured deadline
+
+The confirmation checkbox explicitly states that direct contact occurred. A safety contact cannot read recipient wording, see documents, or trigger immediate escalation. The safety page uses the contact's stored notification language.
+
+The postponement field accepts `0` to reuse the normal monitor interval. A positive value starts the next due time that many days after the qualifying safety confirmation. It is an external confirmation, not an owner check-in, and is recorded separately in lifecycle history.
+
+## Recipient notification
+
+Open **Recipients**, add an existing contact, then choose **Configure recipient**. The dedicated page contains:
+
+- the reusable contact summary and a link to edit it globally
+- a switch between the monitor's default message and a personal subject/body override
+- document assignments for the future secure portal
+- a localized preview of the actual email wrapper and configured message
+- immutable queued, sent, failed, or cancelled delivery history
+
+When a release becomes eligible, Pulse validates every recipient fail-closed. It snapshots the contact identity, checked address, notification language, localized subject, and body before queueing. Editing the recipient afterward affects only future releases; it cannot rewrite or recall the current snapshot.
+
+The first recipient SMTP success changes the monitor from **Overdue** to **Escalated**. If one recipient succeeds and another fails, the release is partial and the monitor remains **Escalated**, because real notification already occurred. If all recipient attempts fail, no false escalation is recorded.
 
 ## Notifications
 
@@ -73,7 +116,7 @@ Delivery attempts retry automatically according to the server configuration. A p
 
 Changing a profile email affects newly queued reminders. Messages already in the queue retain the address and content snapshot that existed when they were created.
 
-In a non-production environment, `PULSE_DEBUG=true` exposes lifecycle test actions on the monitor overview. **Force due now** changes a checked-in monitor to **Awaiting check-in**. **Send due notification now** then sends that cycle's initial notice through the real queue and SMTP worker immediately. Production always suppresses these actions. Recipient-notification testing will be added to the same debug-only workflow when recipient delivery is implemented.
+In a non-production environment, `PULSE_DEBUG=true` exposes lifecycle test actions on the monitor overview. **Force due now** changes a checked-in monitor to **Awaiting check-in**. **Send due notification now** then sends that cycle's initial notice through the real queue and SMTP worker immediately. **Send recipient notification now** deliberately bypasses any remaining owner and safety waiting periods, snapshots the current recipient messages, and attempts real delivery after an explicit warning. Use only non-sensitive test recipients. Production always suppresses these actions.
 
 The displayed timestamps use the configured local display timezone. Storage and comparisons use UTC.
 
@@ -97,17 +140,17 @@ Pause and resume actions are available on the dashboard, monitor overview, and t
 
 The dashboard shows monitor totals, the number of active monitors, and how many currently need attention. Its monitor overview includes each status, last confirmation, next due time, and pause/resume control.
 
-The dashboard shows the latest 10 lifecycle entries. Use **View complete activity** for the complete history, shown 50 entries at a time. The history records check-ins, due-state changes, sent due notices and reminders, pauses, resumes, overdue transitions, and escalations. Times are stored in UTC and displayed in the configured local timezone.
+The dashboard shows the latest 10 lifecycle entries. Use **View complete activity** for the complete history, shown 50 entries at a time. The history records check-ins, due-state changes, owner mail, safety requests and confirmations, recipient delivery, pauses, resumes, overdue transitions, and escalations. Times are stored in UTC and displayed in the configured local timezone.
 
 ## Messages
 
-The default subject and message apply to every assigned recipient. Enable a personal override for a recipient only when that person should receive different wording. A personal message requires both its own subject and body.
+The default subject and message apply to every assigned recipient. Open a dedicated recipient page and enable a personal override only when that person should receive different wording. A personal message requires both its own subject and body. The preview shows the localized wrapper around the effective configured message.
 
 Removing a recipient from a monitor also removes that assignment's personal message and document links. The contact itself remains available elsewhere in Pulse.
 
 ## Documents
 
-Open **Messages & documents** in a monitor editor to create text documents, upload files, and assign either type to one or more recipients.
+Open **Messages & documents** in a monitor editor to create text documents or upload files. Assign either type from a dedicated recipient page or from the document form.
 
 Editable text documents are stored in the database. They can be changed directly in the editor. Uploaded document contents are stored as server files outside the public web directory; the database contains their safe storage identifiers and metadata rather than a file BLOB.
 
@@ -116,6 +159,8 @@ The default upload policy accepts PDF, RTF, OpenDocument Text, Word `.docx`, JPE
 Pulse detects the file type from the uploaded content rather than trusting the filename. Files are renamed and stored outside the public web directory. Downloads always pass through authentication and ownership checks.
 
 Deleting a document removes its database record and stored file. Deleting a monitor removes all files attached to it.
+
+Recipients cannot download or discover these documents in 0.7.0. No recipient or safety email includes a document token or URL. Continue to treat assignments as future configuration only.
 
 ## Passwords and sessions
 

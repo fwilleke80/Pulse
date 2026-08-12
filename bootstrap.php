@@ -28,9 +28,11 @@ use Pulse\Repositories\LoginThrottleRepository;
 use Pulse\Repositories\MailQueueRepository;
 use Pulse\Repositories\MessageRepository;
 use Pulse\Repositories\MonitorRepository;
+use Pulse\Repositories\RecipientRepository;
 use Pulse\Repositories\UserRepository;
 use Pulse\Services\AuthService;
 use Pulse\Services\DocumentService;
+use Pulse\Services\EscalationService;
 use Pulse\Services\LoginThrottleService;
 use Pulse\Services\MailQueueWorker;
 use Pulse\Services\MonitorExecutionService;
@@ -80,7 +82,13 @@ $dbConfig = require __DIR__ . '/config/database.php';
 $errorHandler->SetDebug((bool)$appConfig['debug']);
 ConfigurationValidator::Validate($appConfig, $dbConfig);
 $versionFile = __DIR__ . '/config/version.php';
-$appVersion = is_file($versionFile) ? require $versionFile : 'dev';
+$appVersion = '';
+
+if (is_file($versionFile))
+{
+	$generatedVersion = require $versionFile;
+	$appVersion = is_string($generatedVersion) ? trim($generatedVersion) : '';
+}
 
 $request = Request::FromGlobals();
 $session = new Session((array)$appConfig['session']);
@@ -107,6 +115,7 @@ $view = new View(__DIR__ . '/app/Views');
 $userRepository = new UserRepository($database);
 $contactRepository = new ContactRepository($database);
 $monitorRepository = new MonitorRepository($database);
+$recipientRepository = new RecipientRepository($database);
 $documentRepository = new DocumentRepository($database);
 $messageRepository = new MessageRepository($database);
 $mailQueueRepository = new MailQueueRepository($database);
@@ -135,6 +144,13 @@ if (!is_string($locale) || !in_array($locale, $availableLocales, true))
 
 $translator = new Translator(__DIR__ . '/app/Lang', $locale);
 $notificationComposer = new NotificationComposer($notificationLanguage, __DIR__ . '/app/Lang', $appConfig);
+$escalationService = new EscalationService(
+	$database,
+	$monitorStateMachine,
+	$notificationComposer,
+	$logger,
+	(int)$appConfig['mail']['max_attempts']
+);
 $smtpConfig = (array)$appConfig['mail'];
 $smtpConfig['base_url'] = (string)$appConfig['base_url'];
 $mailTransport = new SmtpMailTransport($smtpConfig);
@@ -150,6 +166,7 @@ $notificationScheduler = new NotificationScheduler(
 	$monitorExecutionService,
 	$mailQueueRepository,
 	$notificationComposer,
+	$escalationService,
 	$logger,
 	(int)$appConfig['mail']['max_attempts']
 );
@@ -187,9 +204,11 @@ return [
 	'auth' => $auth,
 	'translator' => $translator,
 	'notificationLanguage' => $notificationLanguage,
+	'notificationComposer' => $notificationComposer,
 	'logger' => $logger,
 	'contactRepository' => $contactRepository,
 	'monitorRepository' => $monitorRepository,
+	'recipientRepository' => $recipientRepository,
 	'documentRepository' => $documentRepository,
 	'messageRepository' => $messageRepository,
 	'mailQueueRepository' => $mailQueueRepository,
@@ -198,5 +217,6 @@ return [
 	'loginThrottle' => $loginThrottle,
 	'mailQueueWorker' => $mailQueueWorker,
 	'notificationScheduler' => $notificationScheduler,
+	'escalationService' => $escalationService,
 	'testNotificationService' => $testNotificationService,
 ];

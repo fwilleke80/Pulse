@@ -42,6 +42,7 @@ class MonitorStatusTest extends TestCase
 	public function testPersistedRuntimeStatesAreReported(): void
 	{
 		self::assertSame('awaiting', monitor_status(['is_paused' => 0, 'latest_cycle_status' => 'awaiting']));
+		self::assertSame('safety-pending', monitor_status(['is_paused' => 0, 'latest_cycle_status' => 'safety_pending']));
 		self::assertSame('overdue', monitor_status(['is_paused' => 0, 'latest_cycle_status' => 'overdue']));
 		self::assertSame('escalated', monitor_status(['is_paused' => 0, 'latest_cycle_status' => 'escalated']));
 	}

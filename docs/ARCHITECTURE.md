@@ -75,7 +75,7 @@ View or download response
 
 Controllers enforce authentication and ownership, validate request-level intent, invoke services/repositories, and render or redirect.
 
-Document actions have their own `DocumentController`; they are no longer mixed into the monitor controller.
+Document actions have their own `DocumentController`; they are no longer mixed into the monitor controller. `RecipientController` owns monitor-scoped recipient configuration and history. `SafetyController` exposes the public read-only safety page and explicit response action without requiring an owner login.
 
 ### Services
 
@@ -84,18 +84,19 @@ Document actions have their own `DocumentController`; they are no longer mixed i
 - `DocumentService` owns upload policy and private filesystem operations.
 - `MonitorStateMachine` defines every legal persisted check-cycle transition.
 - `MonitorExecutionService` owns cycle creation, UTC scheduling, global check-in, pause/resume, notification-state transitions, and lifecycle audit entries.
-- `NotificationScheduler` opens due cycles, creates idempotent owner-reminder jobs, and advances genuinely completed reminder windows to overdue.
+- `NotificationScheduler` opens due cycles and coordinates owner notices, optional safety gates, overdue transitions, and recipient release staging.
 - `MailQueueWorker` claims jobs with expiring leases, invokes the transport outside the database transaction, then atomically records success or retry state.
-- `NotificationComposer` freezes owner-reminder and test-message content in the recipient's stored language before queueing.
+- `NotificationComposer` freezes owner, safety-contact, recipient, and test-message content in the actual addressee's stored language before queueing.
+- `EscalationService` starts fail-closed safety gates, stores hashed tokens, records deliberate responses, postpones qualified cycles, expires fully delivered gates, and stages immutable recipient releases.
 - `TestNotificationService` exercises the same queue and worker path from the authenticated profile action.
 
-`app/Mail` contains the transport boundary and the authenticated SMTP implementation. Later releases will connect recipient delivery and encryption/key services to this lifecycle.
+`app/Mail` contains the transport boundary and the authenticated SMTP implementation. Later releases will connect encryption, key management, and a secure document portal to this lifecycle.
 
 ### Repositories
 
 Repositories own prepared SQL. Ownership-sensitive queries bind the current user through the relevant parent record.
 
-`MailQueueRepository` owns idempotent enqueueing, `FOR UPDATE SKIP LOCKED` claims, expiring leases, attempt history, successful reminder accounting, and explicit failed-job requeueing.
+`MailQueueRepository` owns idempotent enqueueing, `FOR UPDATE SKIP LOCKED` claims, expiring leases, attempt history, successful owner/safety accounting, recipient-delivery state, honest escalation on first delivery, and explicit failed-job requeueing.
 
 `MessageRepository` saves a monitor's default message and all recipient overrides in one database transaction. Its ownership check locks the monitor and accepts override IDs only from that monitor's current assignments.
 
@@ -108,6 +109,8 @@ Repositories own prepared SQL. Ownership-sensitive queries bind the current user
 
 This is essential because recipient messages and document-recipient links reference the assignment ID.
 
+`RecipientRepository` separates a reusable contact from one monitor's recipient role. It owns personal-message selection, document assignments, and historical delivery lookup. Immutable release rows refer to the underlying contact ID when it still exists, but also carry their own name, address, language, subject, and body snapshot.
+
 ## Domain model
 
 ```text
@@ -115,6 +118,11 @@ User
 ├── Contacts
 └── Monitors
     ├── Check cycles
+    │   ├── Safety requests
+    │   │   └── Hashed response tokens
+    │   └── Recipient releases
+    │       └── Immutable deliveries
+    ├── Safety-contact assignments
     ├── Default message
     ├── Monitor contacts
     │   └── Recipient-specific messages
@@ -133,7 +141,10 @@ A cycle snapshots:
 - its UTC start and due timestamps
 - its response deadline
 - the reminder interval and reminder limit in force when scheduled
+- the direct or safety-contact escalation policy
+- safety response, reminder, quorum, and postponement settings
 - the number of owner reminders actually sent
+- safety-gate start, deadline, and confirmation progress
 - confirmation, overdue, escalation, or cancellation timestamps
 
 The pure `MonitorStateMachine` allows these transitions:
@@ -142,14 +153,19 @@ The pure `MonitorStateMachine` allows these transitions:
 stateDiagram-v2
 	[*] --> scheduled
 	scheduled --> awaiting: Due time
-	awaiting --> overdue: All reminders sent
-	overdue --> escalated: Recipient delivery
+	awaiting --> safety_pending: Owner phase complete
+	awaiting --> overdue: Direct policy
+	safety_pending --> confirmed: Safety quorum
+	safety_pending --> overdue: Gate expires
+	overdue --> escalated: First recipient SMTP success
 	scheduled --> confirmed: Check-in
 	awaiting --> confirmed: Check-in
+	safety_pending --> confirmed: Owner check-in
 	overdue --> confirmed: Late check-in
 	escalated --> confirmed: Late check-in
 	scheduled --> cancelled: Pause
 	awaiting --> cancelled: Pause
+	safety_pending --> cancelled: Pause
 	overdue --> cancelled: Pause
 	escalated --> cancelled: Pause
 ```
@@ -166,11 +182,14 @@ The user-facing status model is:
 
 - **Checked in** — the current cycle is `scheduled`
 - **Awaiting check-in** — the current cycle is `awaiting`
-- **Overdue** — the notification worker recorded the initial due notice and all configured owner reminders, then transitioned the cycle to `overdue`
-- **Escalated** — recipient delivery began and the cycle is `escalated`
+- **Awaiting safety contact** — the current cycle is `safety_pending`
+- **Overdue** — the owner phase and any optional safety gate completed without a qualifying confirmation
+- **Escalated** — at least one recipient message was accepted by SMTP and the cycle is `escalated`
 - **Paused** — the schedule is deliberately suspended
 
-Elapsed time alone never produces **Overdue**. `MarkCycleOverdue()` additionally requires `due_notice_sent_at`, `reminders_sent >= max_reminders`, and the complete response/reminder window to have elapsed. A permanently failed due notice or reminder leaves the cycle at `awaiting`; the interface adds a delivery-failure warning without falsifying lifecycle state. `MarkCycleEscalated()` is reserved for recipient delivery after that later feature actually begins.
+Elapsed time alone never produces **Overdue**. `MarkCycleOverdue()` additionally requires `due_notice_sent_at`, `reminders_sent >= max_reminders`, and the complete response/reminder window to have elapsed. A safety gate starts its clock only after all initial requests were accepted by SMTP and cannot expire while a configured safety reminder is undelivered. A permanent notification failure adds a visible warning without falsifying lifecycle state.
+
+Direct recipient staging happens after the owner phase. Safety-gated staging happens only after `safety_pending` expires. The first recipient SMTP success atomically changes the cycle from `overdue` to `escalated`; a total failure leaves it `overdue`. A late owner check-in can close any open state, but cannot undo mail already accepted by SMTP.
 
 ## Notification queue
 
@@ -178,16 +197,16 @@ Each queue row is an immutable delivery snapshot: recipient address, already-loc
 
 The once-per-minute `notifications:run` command and the protected `/cron/cron.php` web endpoint perform the same two bounded phases:
 
-1. synchronize due cycles and ensure the initial due notice or next eligible reminder exists
+1. synchronize cycles and ensure every eligible owner, safety, and recipient stage has its idempotent jobs
 2. claim and deliver a limited batch of available jobs
 
 A claim uses an InnoDB row lock with `SKIP LOCKED`, changes the job to `processing`, and assigns a unique worker ID plus an expiry time. SMTP I/O occurs after the claim transaction commits. A second worker therefore skips that job. If the first process dies, a later worker converts the expired lease to `retrying` or `failed` according to its attempt limit.
 
-Successful SMTP completion, the `sent` queue state, `mail_log` entry, corresponding cycle timestamp/counter, and notification audit entry are committed together. The initial due notice records `due_notice_sent_at`; later reminders advance `reminders_sent`. Failed attempts clear the lease and schedule a configured retry. A manual requeue resets only permanently failed jobs. Check-in or pause cancels unsent and failed owner notifications for the closed cycle; a worker also cancels a claimed notification if its cycle is no longer awaiting.
+Successful SMTP completion, the `sent` queue state, `mail_log` entry, linked lifecycle or release state, and notification audit entry are committed together. The initial due notice records `due_notice_sent_at`; later owner and safety reminders advance only after success. Recipient success updates its delivery snapshot and release totals and records escalation on the first success. Failed attempts clear the lease and schedule a configured retry. A manual requeue resets the linked recipient state as well as the failed queue job. Check-in or pause cancels unsent work for the closed cycle; a worker also cancels a claimed notification that is no longer deliverable.
 
 The web endpoint authenticates a normal GET request with `PULSE_CRON_TOKEN`, starts no login session, accepts no run parameters, and takes its batch limit from configuration. The command-line interface remains available for hosts with shell cron.
 
-Notification language belongs to the message recipient rather than the browser session. `users.notification_locale` controls owner reminders and tests; `contacts.notification_locale` is reserved for that contact's later delivery. Null legacy values resolve to `PULSE_DEFAULT_LOCALE`.
+Notification language belongs to the message recipient rather than the browser session. `users.notification_locale` controls owner reminders and tests; `contacts.notification_locale` controls safety and recipient mail. Null legacy values resolve to `PULSE_DEFAULT_LOCALE`.
 
 The interface converts UTC timestamps to `PULSE_DISPLAY_TIMEZONE`, which defaults to `Europe/Berlin`.
 
@@ -196,6 +215,8 @@ The interface converts UTC timestamps to `PULSE_DISPLAY_TIMEZONE`, which default
 Committed configuration files contain no credentials. `Environment` reads process variables first and then values from an ignored root `.env` file. Process variables always win.
 
 Production mode forces debug output off unless the environment is explicitly non-production. Session, throttle, upload, host, and development controls are centralized in `config/app.php`.
+
+`config/version.php` is generated by `tools/write_version.py` before PHP files are uploaded. A Git checkout normally uses `git describe`; `PULSE_VERSION` can supply an explicit value. Bootstrap guards a missing file and passes an empty version to the view, which displays a localized **version unavailable** label and uses `unversioned` only as the asset cache key.
 
 ## Migrations
 
@@ -218,4 +239,4 @@ New uploads are:
 - assigned filesystem mode `0600`
 - delivered only through an authenticated, ownership-checked controller
 
-This prevents direct web access and executable filename behavior. It is not encryption. Messages and editable text documents are also unencrypted database values in 0.6.4. A later secure-storage release will add authenticated encryption and key versioning without changing the recipient-assignment model.
+This prevents direct web access and executable filename behavior. It is not encryption. Messages and editable text documents are also unencrypted database values in 0.7.0. Recipient notification mail contains only the effective message; document assignments never create a public link. A later secure-storage release will add authenticated encryption, key versioning, and a recipient document portal without changing the assignment model.

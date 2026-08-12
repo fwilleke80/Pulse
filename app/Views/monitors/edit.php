@@ -10,6 +10,7 @@ declare(strict_types=1);
 
 /** @var array<int, array<string, mixed>> $contacts */
 /** @var array<int> $assignedContactIds */
+/** @var array<int> $safetyContactIds */
 /** @var array<int, array<string, mixed>> $monitorContacts */
 /** @var array<int, array<string, mixed>> $documents */
 /** @var array<int, array<string, string>> $messageOverrides */
@@ -29,6 +30,7 @@ $tabDefinitions = [
 	'schedule' => 'monitors.tabs.schedule',
 	'recipients' => 'monitors.tabs.recipients',
 	'messages' => 'monitors.tabs.messages',
+	'escalation' => 'monitors.tabs.escalation',
 	'review' => 'monitors.tabs.review',
 ];
 
@@ -108,43 +110,61 @@ ob_start();
 			<p><?= e__('monitors.contacts.hint') ?></p>
 		</div>
 
-		<div class="privacy-note">
-			<strong><?= e__('monitors.contacts.silent.heading') ?></strong>
-			<?= e__('monitors.contacts.silent.message') ?>
-		</div>
-
-		<?php if ($contacts === []): ?>
-			<p><?= e__('monitors.contacts.none') ?></p>
-		<?php else: ?>
-			<div class="assignment-list assignment-grid">
-				<?php foreach ($contacts as $contact): ?>
-					<?php $contactId = (int)$contact['id']; ?>
-					<div class="assignment-item">
-						<input
-							type="checkbox"
-							id="monitor_contact_<?= $contactId ?>"
-							name="contact_ids[]"
-							form="monitor-settings-form"
-							value="<?= $contactId ?>"
-							<?= in_array($contactId, $assignedContactIds, true) ? 'checked' : '' ?>
-						>
-						<span class="assignment-details">
-							<label for="monitor_contact_<?= $contactId ?>" class="assignment-contact-label"><strong><?= e((string)$contact['name']) ?></strong></label>
-							<small><?= e((string)$contact['email']) ?></small>
-							<?php if (!empty($contact['email_checked_at'])): ?>
-								<span class="mini-status mini-status-ok"><?= e__('contacts.status.checked') ?></span>
-							<?php else: ?>
-								<span class="mini-status mini-status-warning"><?= e__('contacts.status.not_checked') ?></span>
-								<a
-									href="<?= e($base_url) ?>/contacts/edit?id=<?= $contactId ?>&amp;return_monitor_id=<?= (int)$monitor['id'] ?>"
-									class="contact-check-link"
-								><?= e__('monitors.contacts.check_address') ?></a>
-							<?php endif; ?>
-						</span>
-					</div>
-				<?php endforeach; ?>
+			<div class="privacy-note">
+				<strong><?= e__('monitors.contacts.silent.heading') ?></strong>
+				<?= e__('monitors.contacts.silent.message') ?>
 			</div>
-		<?php endif; ?>
+
+			<?php if ($monitorContacts === []): ?>
+				<p><?= e__('monitors.recipients.none_assigned') ?></p>
+			<?php else: ?>
+				<div class="recipient-overview-list">
+					<?php foreach ($monitorContacts as $monitorContact): ?>
+						<?php $override = $messageOverrides[(int)$monitorContact['id']] ?? null; ?>
+						<article class="recipient-overview-card">
+							<div>
+								<strong><?= e((string)$monitorContact['name']) ?></strong>
+								<small><?= e((string)$monitorContact['email']) ?></small>
+							</div>
+							<div class="recipient-overview-meta">
+								<span><?= e__('recipients.overview.language') ?>: <?= e__('notification.language.' . (string)$monitorContact['notification_locale']) ?></span>
+								<span><?= e__('recipients.overview.message') ?>: <?= e__(is_array($override) ? 'recipients.overview.personal' : 'recipients.overview.default') ?></span>
+								<span><?= e__('recipients.overview.documents', ['count' => (int)$monitorContact['document_count']]) ?></span>
+								<?php if (!empty($monitorContact['latest_delivery_status'])): ?>
+									<span class="mini-status mini-status-<?= e((string)$monitorContact['latest_delivery_status']) ?>"><?= e__('recipients.delivery.status.' . (string)$monitorContact['latest_delivery_status']) ?></span>
+								<?php endif; ?>
+							</div>
+							<a class="button-link" href="<?= e($base_url) ?>/monitors/recipients/edit?id=<?= (int)$monitorContact['id'] ?>"><?= e__('recipients.overview.edit') ?></a>
+						</article>
+					<?php endforeach; ?>
+				</div>
+			<?php endif; ?>
+
+			<div class="configuration-block recipient-add-block">
+				<h3><?= e__('recipients.add.heading') ?></h3>
+				<?php
+				$availableContacts = array_values(array_filter(
+					$contacts,
+					static fn (array $contact): bool => !in_array((int)$contact['id'], $assignedContactIds, true)
+				));
+				?>
+				<?php if ($availableContacts === []): ?>
+					<p><?= e__('recipients.add.none') ?></p>
+				<?php else: ?>
+					<form method="post" action="<?= e($base_url) ?>/monitors/recipients/add">
+						<?= csrf_field() ?>
+						<input type="hidden" name="monitor_id" value="<?= (int)$monitor['id'] ?>">
+						<label for="add_recipient_contact"><?= e__('recipients.add.contact') ?></label>
+						<select id="add_recipient_contact" name="contact_id" required>
+							<option value=""><?= e__('recipients.add.choose') ?></option>
+							<?php foreach ($availableContacts as $contact): ?>
+								<option value="<?= (int)$contact['id'] ?>"><?= e((string)$contact['name']) ?> — <?= e((string)$contact['email']) ?></option>
+							<?php endforeach; ?>
+						</select>
+						<button type="submit"><?= e__('recipients.add.submit') ?></button>
+					</form>
+				<?php endif; ?>
+			</div>
 	</section>
 
 	<section id="monitor-tab-messages" class="monitor-tab-panel<?= $activeTab === 'messages' ? ' is-active' : '' ?>" role="tabpanel" data-tab-panel="messages"<?= $activeTab === 'messages' ? '' : ' hidden' ?>>
@@ -171,39 +191,7 @@ ob_start();
 				<label for="default_message_body"><?= e__('monitors.messages.body') ?></label>
 				<textarea id="default_message_body" name="default_message_body" rows="8"><?= e((string)($monitor['default_message_body'] ?? '')) ?></textarea>
 
-				<h3 class="subsection-heading"><?= e__('monitors.messages.overrides.heading') ?></h3>
-				<p class="form-hint"><?= e__('monitors.messages.overrides.hint') ?></p>
-
-				<?php if ($monitorContacts === []): ?>
-					<p><?= e__('monitors.messages.overrides.none') ?></p>
-				<?php else: ?>
-					<div class="message-override-list">
-						<?php foreach ($monitorContacts as $monitorContact): ?>
-							<?php
-							$monitorContactId = (int)$monitorContact['id'];
-							$override = $messageOverrides[$monitorContactId] ?? null;
-							?>
-							<div class="message-override-card" data-message-override>
-								<div class="message-override-heading">
-									<div>
-										<strong><?= e((string)$monitorContact['name']) ?></strong><br>
-										<small><?= e((string)$monitorContact['email']) ?></small>
-									</div>
-									<label class="compact-check">
-										<input type="checkbox" name="message_override_<?= $monitorContactId ?>" data-message-override-toggle <?= is_array($override) ? 'checked' : '' ?>>
-										<?= e__('monitors.messages.overrides.enable') ?>
-									</label>
-								</div>
-								<div data-message-fields>
-									<label for="message_subject_<?= $monitorContactId ?>"><?= e__('monitors.messages.subject') ?></label>
-									<input type="text" id="message_subject_<?= $monitorContactId ?>" name="message_subject_<?= $monitorContactId ?>" value="<?= e((string)($override['subject'] ?? '')) ?>">
-									<label for="message_body_<?= $monitorContactId ?>"><?= e__('monitors.messages.body') ?></label>
-									<textarea id="message_body_<?= $monitorContactId ?>" name="message_body_<?= $monitorContactId ?>" rows="6"><?= e((string)($override['body_text'] ?? '')) ?></textarea>
-								</div>
-							</div>
-						<?php endforeach; ?>
-					</div>
-				<?php endif; ?>
+				<p class="form-hint"><?= e__('monitors.messages.recipient_pages_hint') ?></p>
 
 				<button type="submit" class="btn-primary"><?= e__('monitors.messages.submit') ?></button>
 			</form>
@@ -301,7 +289,72 @@ ob_start();
 		</div>
 	</section>
 
-	<section id="monitor-tab-review" class="monitor-tab-panel<?= $activeTab === 'review' ? ' is-active' : '' ?>" role="tabpanel" data-tab-panel="review"<?= $activeTab === 'review' ? '' : ' hidden' ?>>
+		<section id="monitor-tab-escalation" class="monitor-tab-panel<?= $activeTab === 'escalation' ? ' is-active' : '' ?>" role="tabpanel" data-tab-panel="escalation"<?= $activeTab === 'escalation' ? '' : ' hidden' ?>>
+			<div class="section-heading">
+				<h2><?= e__('monitors.tabs.escalation') ?></h2>
+				<p><?= e__('monitors.escalation.hint') ?></p>
+			</div>
+
+			<div class="escalation-policy-grid">
+				<label class="policy-option">
+					<input type="radio" name="escalation_policy" form="monitor-settings-form" value="direct" <?= (string)$monitor['escalation_policy'] === 'direct' ? 'checked' : '' ?>>
+					<span><strong><?= e__('monitors.escalation.direct.heading') ?></strong><small><?= e__('monitors.escalation.direct.hint') ?></small></span>
+				</label>
+				<label class="policy-option">
+					<input type="radio" name="escalation_policy" form="monitor-settings-form" value="safety_contact" <?= (string)$monitor['escalation_policy'] === 'safety_contact' ? 'checked' : '' ?>>
+					<span><strong><?= e__('monitors.escalation.safety.heading') ?></strong><small><?= e__('monitors.escalation.safety.hint') ?></small></span>
+				</label>
+			</div>
+
+			<div class="privacy-note">
+				<strong><?= e__('monitors.escalation.authority.heading') ?></strong>
+				<?= e__('monitors.escalation.authority.message') ?>
+			</div>
+
+			<h3><?= e__('monitors.escalation.contacts.heading') ?></h3>
+			<p class="form-hint"><?= e__('monitors.escalation.contacts.hint') ?></p>
+			<?php if ($contacts === []): ?>
+				<p><?= e__('monitors.contacts.none') ?></p>
+			<?php else: ?>
+				<div class="assignment-list assignment-grid">
+					<?php foreach ($contacts as $contact): ?>
+						<label class="assignment-item">
+							<input type="checkbox" name="safety_contact_ids[]" form="monitor-settings-form" value="<?= (int)$contact['id'] ?>" <?= in_array((int)$contact['id'], $safetyContactIds, true) ? 'checked' : '' ?>>
+							<span>
+								<strong><?= e((string)$contact['name']) ?></strong><br>
+								<small><?= e((string)$contact['email']) ?></small>
+								<span class="mini-status mini-status-<?= !empty($contact['email_checked_at']) ? 'ok' : 'warning' ?>"><?= e__(!empty($contact['email_checked_at']) ? 'contacts.status.checked' : 'contacts.status.not_checked') ?></span>
+							</span>
+						</label>
+					<?php endforeach; ?>
+				</div>
+			<?php endif; ?>
+
+			<div class="field-grid field-grid-four">
+				<label>
+					<?= e__('monitors.escalation.response_window') ?>
+					<input type="number" name="safety_response_window_days" form="monitor-settings-form" min="1" max="365" value="<?= (int)$monitor['safety_response_window_days'] ?>" required>
+				</label>
+				<label>
+					<?= e__('monitors.escalation.reminder_interval') ?>
+					<input type="number" name="safety_reminder_interval_days" form="monitor-settings-form" min="1" max="365" value="<?= (int)$monitor['safety_reminder_interval_days'] ?>" required>
+				</label>
+				<label>
+					<?= e__('monitors.escalation.max_reminders') ?>
+					<input type="number" name="safety_max_reminders" form="monitor-settings-form" min="0" max="100" value="<?= (int)$monitor['safety_max_reminders'] ?>" required>
+				</label>
+				<label>
+					<?= e__('monitors.escalation.required_confirmations') ?>
+					<input type="number" name="safety_required_confirmations" form="monitor-settings-form" min="1" max="100" value="<?= (int)$monitor['safety_required_confirmations'] ?>" required>
+				</label>
+			</div>
+
+			<label for="safety_confirmation_days"><?= e__('monitors.escalation.confirmation_days') ?></label>
+			<input type="number" id="safety_confirmation_days" name="safety_confirmation_days" form="monitor-settings-form" min="0" max="3650" value="<?= (int)($monitor['safety_confirmation_days'] ?? 0) ?>">
+			<p class="form-hint"><?= e__('monitors.escalation.confirmation_days_hint') ?></p>
+		</section>
+
+		<section id="monitor-tab-review" class="monitor-tab-panel<?= $activeTab === 'review' ? ' is-active' : '' ?>" role="tabpanel" data-tab-panel="review"<?= $activeTab === 'review' ? '' : ' hidden' ?>>
 		<div class="section-heading">
 			<h2><?= e__('monitors.tabs.review') ?></h2>
 			<p><?= e__('monitors.review.hint') ?></p>
@@ -310,7 +363,8 @@ ob_start();
 		<div class="review-grid">
 			<div class="review-stat"><strong><?= count($monitorContacts) ?></strong><span><?= e__('monitors.review.recipients') ?></span></div>
 			<div class="review-stat"><strong><?= $messageOverrideCount ?></strong><span><?= e__('monitors.review.overrides') ?></span></div>
-			<div class="review-stat"><strong><?= count($documents) ?></strong><span><?= e__('monitors.review.documents') ?></span></div>
+				<div class="review-stat"><strong><?= count($documents) ?></strong><span><?= e__('monitors.review.documents') ?></span></div>
+				<div class="review-stat"><strong><?= e__('monitors.escalation.policy.' . (string)$monitor['escalation_policy']) ?></strong><span><?= e__('monitors.review.escalation') ?></span></div>
 			<div class="review-stat"><strong><?= e(format_datetime((string)($monitor['next_check_due_at'] ?? ''))) ?></strong><span><?= e__('monitors.review.next_due') ?></span></div>
 		</div>
 
@@ -321,9 +375,12 @@ ob_start();
 			<?php if ($uncheckedContactCount > 0 && empty($monitor['is_paused'])): ?>
 				<div class="review-warning"><?= e__('monitors.review.warning.unchecked', ['count' => $uncheckedContactCount]) ?></div>
 			<?php endif; ?>
-			<?php if (!$hasCompleteMessageCoverage): ?>
+				<?php if (!$hasCompleteMessageCoverage): ?>
 				<div class="review-warning"><?= e__('monitors.review.warning.no_message') ?></div>
-			<?php endif; ?>
+				<?php endif; ?>
+				<?php if ((string)$monitor['escalation_policy'] === 'safety_contact' && $safetyContactIds === []): ?>
+					<div class="review-warning"><?= e__('monitors.review.warning.no_safety_contacts') ?></div>
+				<?php endif; ?>
 			<?php if ($monitorContacts !== [] && $uncheckedContactCount === 0 && $hasCompleteMessageCoverage): ?>
 				<div class="review-ready"><?= e__('monitors.review.ready') ?></div>
 			<?php endif; ?>

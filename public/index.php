@@ -15,6 +15,8 @@ use Pulse\Controllers\HomeController;
 use Pulse\Controllers\LanguageController;
 use Pulse\Controllers\MonitorController;
 use Pulse\Controllers\ProfileController;
+use Pulse\Controllers\RecipientController;
+use Pulse\Controllers\SafetyController;
 use Pulse\Core\NotFoundException;
 use Pulse\Core\SecurityHeaders;
 
@@ -31,6 +33,7 @@ $auth = $container['auth'];
 $logger = $container['logger'];
 $contactRepository = $container['contactRepository'];
 $monitorRepository = $container['monitorRepository'];
+$recipientRepository = $container['recipientRepository'];
 $documentRepository = $container['documentRepository'];
 $messageRepository = $container['messageRepository'];
 $monitorExecutionService = $container['monitorExecutionService'];
@@ -42,6 +45,8 @@ $mailQueueWorker = $container['mailQueueWorker'];
 $notificationScheduler = $container['notificationScheduler'];
 $testNotificationService = $container['testNotificationService'];
 $notificationLanguage = $container['notificationLanguage'];
+$notificationComposer = $container['notificationComposer'];
+$escalationService = $container['escalationService'];
 
 (new SecurityHeaders())->Apply($request, (array)$config['security']);
 header('Cache-Control: no-store');
@@ -101,10 +106,31 @@ $monitorController = new MonitorController(
 	$monitorExecutionService,
 	$notificationScheduler,
 	$mailQueueWorker,
+	$escalationService,
 	(bool)$config['debug'],
 	(bool)$config['mail']['enabled']
 );
 $documentController = new DocumentController($view, $session, $auth, $logger, $request, $documentService);
+$recipientController = new RecipientController(
+	$view,
+	$session,
+	$auth,
+	$logger,
+	$request,
+	$recipientRepository,
+	$monitorRepository,
+	$documentRepository,
+	$notificationComposer
+);
+$safetyController = new SafetyController(
+	$view,
+	$session,
+	$auth,
+	$logger,
+	$request,
+	$escalationService,
+	dirname(__DIR__) . '/app/Lang'
+);
 
 $router->Get('/', [$homeController, 'Dashboard']);
 $router->Get('/activity', [$homeController, 'Activity']);
@@ -138,6 +164,11 @@ $router->Post('/monitors/pause', [$monitorController, 'Pause']);
 $router->Post('/monitors/resume', [$monitorController, 'Resume']);
 $router->Post('/monitors/force-due', [$monitorController, 'ForceDue']);
 $router->Post('/monitors/send-due-notice', [$monitorController, 'SendDueNotice']);
+$router->Post('/monitors/send-recipient-notifications', [$monitorController, 'SendRecipientNotifications']);
+$router->Get('/monitors/recipients/edit', [$recipientController, 'Edit']);
+$router->Post('/monitors/recipients/add', [$recipientController, 'Add']);
+$router->Post('/monitors/recipients/update', [$recipientController, 'Update']);
+$router->Post('/monitors/recipients/remove', [$recipientController, 'Remove']);
 
 $router->Post('/monitors/documents/upload', [$documentController, 'Upload']);
 $router->Post('/monitors/documents/text/create', [$documentController, 'CreateText']);
@@ -150,6 +181,8 @@ $router->Get('/login', [$authController, 'ShowLogin']);
 $router->Post('/login', [$authController, 'Login']);
 $router->Post('/logout', [$authController, 'Logout']);
 $router->Post('/language/set', [$languageController, 'Set']);
+$router->Get('/safety/confirm', [$safetyController, 'Show']);
+$router->Post('/safety/respond', [$safetyController, 'Respond']);
 
 try
 {

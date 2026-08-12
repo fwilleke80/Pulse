@@ -2,7 +2,7 @@
 
 /**
  * @file NotificationScheduler.php
- * @brief Converts due check-cycle state into idempotent owner-notification jobs.
+ * @brief Converts due check-cycle state into idempotent owner, safety, and recipient jobs.
  * @author Frank Willeke
  */
 
@@ -20,7 +20,7 @@ use Pulse\Repositories\MailQueueRepository;
 use Throwable;
 
 /**
- * @brief Schedules due notices, reminders, and honest overdue transitions for all users.
+ * @brief Schedules the complete notification and optional safety-gate lifecycle for all users.
  */
 final class NotificationScheduler
 {
@@ -28,6 +28,7 @@ final class NotificationScheduler
 	private MonitorExecutionService $_executionService;
 	private MailQueueRepository $_queue;
 	private NotificationComposer $_composer;
+	private EscalationService $_escalation;
 	private Logger $_logger;
 	private int $_maxAttempts;
 
@@ -37,6 +38,7 @@ final class NotificationScheduler
 		MonitorExecutionService $executionService,
 		MailQueueRepository $queue,
 		NotificationComposer $composer,
+		EscalationService $escalation,
 		Logger $logger,
 		int $maxAttempts
 	)
@@ -45,13 +47,14 @@ final class NotificationScheduler
 		$this->_executionService = $executionService;
 		$this->_queue = $queue;
 		$this->_composer = $composer;
+		$this->_escalation = $escalation;
 		$this->_logger = $logger;
 		$this->_maxAttempts = $maxAttempts;
 	}
 
 	/**
-	 * @brief Synchronizes cycles, queues due notifications, and marks completed reminder windows overdue.
-	 * @return array{opened: int, due_notices_ready: int, reminders_ready: int, overdue: int}
+	 * @brief Synchronizes cycles and queues each eligible owner, safety, or recipient stage.
+	 * @return array{opened: int, due_notices_ready: int, reminders_ready: int, safety_gates_started: int, safety_reminders_ready: int, safety_gates_expired: int, overdue: int, recipient_releases_ready: int, recipient_notifications_ready: int}
 	 */
 	public function Run(): array
 	{
@@ -59,6 +62,9 @@ final class NotificationScheduler
 		$dueNoticesReady = 0;
 		$remindersReady = 0;
 		$overdue = 0;
+		$safetyGatesStarted = 0;
+		$recipientReleasesReady = 0;
+		$recipientNotificationsReady = 0;
 		$now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
 
 		foreach ($this->FindAwaitingCycles() as $cycle)
@@ -109,9 +115,33 @@ final class NotificationScheduler
 
 			$eligibleAt = $this->OverdueTime($cycle);
 
+			if ($eligibleAt <= $now && (string)$cycle['escalation_policy_snapshot'] === 'safety_contact')
+			{
+				if ($this->_escalation->StartSafetyGate((int)$cycle['id']) > 0)
+				{
+					$safetyGatesStarted++;
+				}
+
+				continue;
+			}
+
 			if ($eligibleAt <= $now && $this->_executionService->MarkCycleOverdue((int)$cycle['id']))
 			{
 				$overdue++;
+			}
+		}
+
+		$safety = $this->_escalation->RunSafetyGates();
+		$overdue += $safety['expired'];
+
+		foreach ($this->FindOverdueCyclesNeedingRelease() as $cycleId)
+		{
+			$release = $this->_escalation->StageRecipientRelease($cycleId);
+
+			if ($release['status'] === 'pending')
+			{
+				$recipientReleasesReady++;
+				$recipientNotificationsReady += $release['queued'];
 			}
 		}
 
@@ -120,6 +150,11 @@ final class NotificationScheduler
 			'due_notices_ready' => $dueNoticesReady,
 			'reminders_ready' => $remindersReady,
 			'overdue' => $overdue,
+			'safety_gates_started' => $safetyGatesStarted,
+			'safety_reminders_ready' => $safety['reminders_ready'],
+			'safety_gates_expired' => $safety['expired'],
+			'recipient_releases_ready' => $recipientReleasesReady,
+			'recipient_notifications_ready' => $recipientNotificationsReady,
 		]);
 
 		return [
@@ -127,6 +162,11 @@ final class NotificationScheduler
 			'due_notices_ready' => $dueNoticesReady,
 			'reminders_ready' => $remindersReady,
 			'overdue' => $overdue,
+			'safety_gates_started' => $safetyGatesStarted,
+			'safety_reminders_ready' => $safety['reminders_ready'],
+			'safety_gates_expired' => $safety['expired'],
+			'recipient_releases_ready' => $recipientReleasesReady,
+			'recipient_notifications_ready' => $recipientNotificationsReady,
 		];
 	}
 
@@ -177,6 +217,12 @@ final class NotificationScheduler
 				cc.response_deadline_at,
 				cc.reminder_interval_days,
 				cc.max_reminders,
+				cc.escalation_policy_snapshot,
+				cc.safety_response_window_days,
+				cc.safety_reminder_interval_days,
+				cc.safety_max_reminders,
+				cc.safety_required_confirmations,
+				cc.safety_confirmation_days,
 				cc.reminders_sent,
 				cc.due_notice_sent_at,
 				m.user_id,
@@ -208,6 +254,12 @@ final class NotificationScheduler
 				cc.response_deadline_at,
 				cc.reminder_interval_days,
 				cc.max_reminders,
+				cc.escalation_policy_snapshot,
+				cc.safety_response_window_days,
+				cc.safety_reminder_interval_days,
+				cc.safety_max_reminders,
+				cc.safety_required_confirmations,
+				cc.safety_confirmation_days,
 				cc.reminders_sent,
 				cc.due_notice_sent_at,
 				m.user_id,
@@ -269,6 +321,25 @@ final class NotificationScheduler
 		$deadline = $this->ParseUtc((string)$cycle['response_deadline_at']);
 		$days = (int)$cycle['reminder_interval_days'] * (int)$cycle['max_reminders'];
 		return $days === 0 ? $deadline : $deadline->add(new DateInterval('P' . $days . 'D'));
+	}
+
+	/** @return array<int> @brief Returns overdue cycles without a completed immutable release. */
+	private function FindOverdueCyclesNeedingRelease(): array
+	{
+		$rows = $this->_database->GetConnection()->query('
+			SELECT cc.id
+			FROM check_cycles cc
+			INNER JOIN monitors m ON m.id = cc.monitor_id
+			INNER JOIN users u ON u.id = m.user_id
+			LEFT JOIN recipient_releases rr ON rr.check_cycle_id = cc.id
+			WHERE cc.status = \'overdue\'
+				AND m.is_paused = 0
+				AND u.is_active = 1
+				AND (rr.id IS NULL OR rr.status = \'blocked\')
+			ORDER BY cc.id ASC
+		')->fetchAll(PDO::FETCH_COLUMN);
+
+		return is_array($rows) ? array_map('intval', $rows) : [];
 	}
 
 	/** @brief Parses a required UTC database timestamp. */

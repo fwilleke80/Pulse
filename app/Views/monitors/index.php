@@ -60,6 +60,7 @@ ob_start();
 					$statusKey = 'monitors.status.' . $statusClass;
 					$uncheckedContactCount = (int)($monitor['unchecked_contact_count'] ?? 0);
 					$failedNotificationCount = (int)($monitor['failed_notification_count'] ?? 0);
+					$releaseBlocked = (string)($monitor['latest_release_status'] ?? '') === 'blocked';
 					?>
 					<tr class="monitor-row monitor-row-<?= e($statusClass) ?>">
 						<td class="monitor-name">
@@ -74,6 +75,9 @@ ob_start();
 							<span class="status-badge status-<?= e($statusClass) ?>"><?= e__($statusKey) ?></span>
 							<?php if ($failedNotificationCount > 0): ?>
 								<small class="table-warning table-warning-critical"><?= e__('monitors.notifications.delivery_failed_short') ?></small>
+							<?php endif; ?>
+							<?php if ($releaseBlocked): ?>
+								<small class="table-warning table-warning-critical"><?= e__('monitors.notifications.release_blocked_short') ?></small>
 							<?php endif; ?>
 							<?php if ($uncheckedContactCount > 0 && empty($monitor['is_paused'])): ?>
 								<small class="table-warning"><?= e__(
@@ -111,6 +115,17 @@ ob_start();
 										</form>
 									<?php else: ?>
 										<button type="button" class="btn-table-inline" disabled title="<?= e__('monitors.send_due_notice.mail_disabled') ?>"><?= e__('monitors.send_due_notice.submit') ?></button>
+									<?php endif; ?>
+								<?php elseif ($debugEnabled && in_array($statusClass, ['awaiting', 'safety-pending', 'overdue'], true)): ?>
+									<?php if ($mailEnabled): ?>
+										<form method="post" action="<?= e($base_url) ?>/monitors/send-recipient-notifications" data-confirm="<?= e__('monitors.send_recipients.confirm') ?>">
+											<?= csrf_field() ?>
+											<input type="hidden" name="id" value="<?= (int)$monitor['id'] ?>">
+											<input type="hidden" name="redirect" value="/monitors">
+											<button type="submit" class="btn-table-inline btn-danger"><?= e__('monitors.send_recipients.submit') ?></button>
+										</form>
+									<?php else: ?>
+										<button type="button" class="btn-table-inline" disabled title="<?= e__('monitors.send_recipients.mail_disabled') ?>"><?= e__('monitors.send_recipients.submit') ?></button>
 									<?php endif; ?>
 								<?php endif; ?>
 								<form method="post" action="<?= e($base_url) ?>/monitors/delete" data-confirm="<?= e__('monitors.index.delete_confirm') ?>">

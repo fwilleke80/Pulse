@@ -48,6 +48,8 @@ final class MailQueueRepository
 					check_cycle_id,
 					monitor_id,
 					contact_id,
+					safety_request_id,
+					recipient_delivery_id,
 					mail_type,
 					idempotency_key,
 					reminder_number,
@@ -67,6 +69,8 @@ final class MailQueueRepository
 					:check_cycle_id,
 					:monitor_id,
 					:contact_id,
+					:safety_request_id,
+					:recipient_delivery_id,
 					:mail_type,
 					:idempotency_key,
 					:reminder_number,
@@ -87,6 +91,8 @@ final class MailQueueRepository
 				'check_cycle_id' => $message['check_cycle_id'] ?? null,
 				'monitor_id' => $message['monitor_id'] ?? null,
 				'contact_id' => $message['contact_id'] ?? null,
+				'safety_request_id' => $message['safety_request_id'] ?? null,
+				'recipient_delivery_id' => $message['recipient_delivery_id'] ?? null,
 				'mail_type' => (string)$message['mail_type'],
 				'idempotency_key' => (string)$message['idempotency_key'],
 				'reminder_number' => $message['reminder_number'] ?? null,
@@ -170,22 +176,60 @@ final class MailQueueRepository
 	 */
 	public function IsStillDeliverable(array $job): bool
 	{
-		if (!in_array((string)$job['mail_type'], ['owner_due_notice', 'owner_reminder'], true))
+		$mailType = (string)$job['mail_type'];
+
+		if (in_array($mailType, ['owner_due_notice', 'owner_reminder'], true))
 		{
-			return true;
+			$statement = $this->_database->GetConnection()->prepare('
+				SELECT COUNT(*)
+				FROM check_cycles cc
+				INNER JOIN monitors m ON m.id = cc.monitor_id
+				WHERE cc.id = :cycle_id
+					AND cc.status = \'awaiting\'
+					AND m.is_paused = 0
+			');
+			$statement->execute(['cycle_id' => (int)$job['check_cycle_id']]);
+
+			return (int)$statement->fetchColumn() === 1;
 		}
 
-		$statement = $this->_database->GetConnection()->prepare('
-			SELECT COUNT(*)
-			FROM check_cycles cc
-			INNER JOIN monitors m ON m.id = cc.monitor_id
-			WHERE cc.id = :cycle_id
-				AND cc.status = \'awaiting\'
-				AND m.is_paused = 0
-		');
-		$statement->execute(['cycle_id' => (int)$job['check_cycle_id']]);
+		if (in_array($mailType, ['safety_invitation', 'safety_reminder'], true))
+		{
+			$statement = $this->_database->GetConnection()->prepare('
+				SELECT COUNT(*)
+				FROM safety_contact_requests scr
+				INNER JOIN check_cycles cc ON cc.id = scr.check_cycle_id
+				INNER JOIN monitors m ON m.id = scr.monitor_id
+				WHERE scr.id = :request_id
+					AND scr.status = \'pending\'
+					AND cc.status = \'safety_pending\'
+					AND m.is_paused = 0
+			');
+			$statement->execute(['request_id' => (int)$job['safety_request_id']]);
 
-		return (int)$statement->fetchColumn() === 1;
+			return (int)$statement->fetchColumn() === 1;
+		}
+
+		if ($mailType === 'recipient_notification')
+		{
+			$statement = $this->_database->GetConnection()->prepare('
+				SELECT COUNT(*)
+				FROM recipient_release_deliveries rrd
+				INNER JOIN recipient_releases rr ON rr.id = rrd.release_id
+				INNER JOIN check_cycles cc ON cc.id = rrd.check_cycle_id
+				INNER JOIN monitors m ON m.id = rrd.monitor_id
+				WHERE rrd.id = :delivery_id
+					AND rrd.status = \'queued\'
+					AND rr.status IN (\'pending\', \'partial\', \'failed\')
+					AND cc.status IN (\'overdue\', \'escalated\')
+					AND m.is_paused = 0
+			');
+			$statement->execute(['delivery_id' => (int)$job['recipient_delivery_id']]);
+
+			return (int)$statement->fetchColumn() === 1;
+		}
+
+		return true;
 	}
 
 	/**
@@ -211,6 +255,10 @@ final class MailQueueRepository
 				UPDATE mail_queue
 				SET
 					status = \'sent\',
+					body_text = CASE
+						WHEN mail_type IN (\'safety_invitation\', \'safety_reminder\') THEN \'[Safety link redacted after delivery]\'
+						ELSE body_text
+					END,
 					sent_at = :sent_at,
 					last_error = NULL,
 					locked_at = NULL,
@@ -230,6 +278,14 @@ final class MailQueueRepository
 			elseif ((string)$job['mail_type'] === 'owner_reminder' && (int)$job['check_cycle_id'] > 0)
 			{
 				$this->RecordReminderSent($connection, $job, $now);
+			}
+			elseif (in_array((string)$job['mail_type'], ['safety_invitation', 'safety_reminder'], true))
+			{
+				$this->RecordSafetyMailSent($connection, $job, $now);
+			}
+			elseif ((string)$job['mail_type'] === 'recipient_notification')
+			{
+				$this->RecordRecipientNotificationSent($connection, $job, $now);
 			}
 
 			$connection->commit();
@@ -288,6 +344,11 @@ final class MailQueueRepository
 				'id' => $jobId,
 			]);
 			$this->InsertLog($connection, $job, $status, $error, $now);
+
+			if ($final)
+			{
+				$this->RecordLinkedFinalFailure($connection, $job, $error, $now);
+			}
 			$connection->commit();
 
 			return $status;
@@ -306,6 +367,10 @@ final class MailQueueRepository
 			UPDATE mail_queue
 			SET
 				status = \'cancelled\',
+				body_text = CASE
+					WHEN mail_type IN (\'safety_invitation\', \'safety_reminder\') THEN \'[Safety link redacted after cancellation]\'
+					ELSE body_text
+				END,
 				cancelled_at = UTC_TIMESTAMP(),
 				locked_at = NULL,
 				locked_until = NULL,
@@ -325,9 +390,14 @@ final class MailQueueRepository
 	{
 		$statement = $this->_database->GetConnection()->prepare('
 			UPDATE mail_queue
-			SET status = \'cancelled\', cancelled_at = UTC_TIMESTAMP(), updated_at = UTC_TIMESTAMP()
+			SET status = \'cancelled\',
+				body_text = CASE
+					WHEN mail_type IN (\'safety_invitation\', \'safety_reminder\') THEN \'[Safety link redacted after cancellation]\'
+					ELSE body_text
+				END,
+				cancelled_at = UTC_TIMESTAMP(), updated_at = UTC_TIMESTAMP()
 			WHERE check_cycle_id = :cycle_id
-				AND mail_type IN (\'owner_due_notice\', \'owner_reminder\')
+				AND mail_type IN (\'owner_due_notice\', \'owner_reminder\', \'safety_invitation\', \'safety_reminder\', \'recipient_notification\')
 				AND status IN (\'queued\', \'retrying\', \'failed\')
 		');
 		$statement->execute(['cycle_id' => $cycleId]);
@@ -385,6 +455,20 @@ final class MailQueueRepository
 					last_error = NULL,
 					updated_at = UTC_TIMESTAMP()
 				WHERE id IN (' . $idList . ')
+			');
+			$connection->exec('
+				UPDATE recipient_release_deliveries rrd
+				INNER JOIN mail_queue mq ON mq.id = rrd.queue_id
+				SET rrd.status = \'queued\', rrd.failed_at = NULL, rrd.last_error = NULL, rrd.updated_at = UTC_TIMESTAMP()
+				WHERE mq.id IN (' . $idList . ')
+			');
+			$connection->exec('
+				UPDATE recipient_releases rr
+				INNER JOIN recipient_release_deliveries rrd ON rrd.release_id = rr.id
+				INNER JOIN mail_queue mq ON mq.id = rrd.queue_id
+				SET rr.status = CASE WHEN rr.first_sent_at IS NULL THEN \'pending\' ELSE \'partial\' END,
+					rr.completed_at = NULL, rr.updated_at = UTC_TIMESTAMP()
+				WHERE mq.id IN (' . $idList . ')
 			');
 			$connection->commit();
 			return (int)$updated;
@@ -603,6 +687,233 @@ final class MailQueueRepository
 				'queue_id' => (int)$job['id'],
 			], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES),
 			'created_at' => $now,
+		]);
+	}
+
+	/** @brief Records a delivered safety invitation or reminder. */
+	private function RecordSafetyMailSent(PDO $connection, array $job, string $now): void
+	{
+		$requestId = (int)$job['safety_request_id'];
+		$mailType = (string)$job['mail_type'];
+
+		if ($mailType === 'safety_invitation')
+		{
+			$update = $connection->prepare('
+				UPDATE safety_contact_requests
+				SET invitation_sent_at = :sent_at, updated_at = :updated_at
+				WHERE id = :id AND status = \'pending\' AND invitation_sent_at IS NULL
+			');
+			$update->execute(['sent_at' => $now, 'updated_at' => $now, 'id' => $requestId]);
+
+			if ($update->rowCount() === 1)
+			{
+				$remaining = $connection->prepare('
+					SELECT COUNT(*) FROM safety_contact_requests
+					WHERE check_cycle_id = :cycle_id AND invitation_sent_at IS NULL
+				');
+				$remaining->execute(['cycle_id' => (int)$job['check_cycle_id']]);
+
+				if ((int)$remaining->fetchColumn() === 0)
+				{
+					$startGate = $connection->prepare('
+						UPDATE check_cycles
+						SET safety_gate_started_at = COALESCE(safety_gate_started_at, :started_at),
+							safety_gate_deadline_at = COALESCE
+							(
+								safety_gate_deadline_at,
+								TIMESTAMPADD
+								(
+									DAY,
+									safety_response_window_days + (safety_reminder_interval_days * safety_max_reminders),
+									:deadline_start
+								)
+							),
+							updated_at = :updated_at
+						WHERE id = :id AND status = \'safety_pending\'
+					');
+					$startGate->execute([
+						'started_at' => $now,
+						'deadline_start' => $now,
+						'updated_at' => $now,
+						'id' => (int)$job['check_cycle_id'],
+					]);
+				}
+			}
+		}
+		else
+		{
+			$number = (int)$job['reminder_number'];
+			$update = $connection->prepare('
+				UPDATE safety_contact_requests
+				SET reminders_sent = :number, last_reminder_sent_at = :sent_at, updated_at = :updated_at
+				WHERE id = :id AND status = \'pending\' AND reminders_sent = :previous
+			');
+			$update->execute([
+				'number' => $number,
+				'sent_at' => $now,
+				'updated_at' => $now,
+				'id' => $requestId,
+				'previous' => max(0, $number - 1),
+			]);
+		}
+
+		$audit = $connection->prepare('
+			INSERT INTO audit_log
+			(user_id, event_type, entity_type, entity_id, message, context_json, created_at)
+			VALUES (:user_id, :event_type, \'monitor\', :monitor_id, :message, :context_json, :created_at)
+		');
+		$eventType = $mailType === 'safety_invitation' ? 'mail.safety_invitation_sent' : 'mail.safety_reminder_sent';
+		$audit->execute([
+			'user_id' => (int)$job['user_id'],
+			'event_type' => $eventType,
+			'monitor_id' => (int)$job['monitor_id'],
+			'message' => $eventType,
+			'context_json' => json_encode([
+				'cycle_id' => (int)$job['check_cycle_id'],
+				'safety_request_id' => $requestId,
+				'reminder_number' => $job['reminder_number'],
+			], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES),
+			'created_at' => $now,
+		]);
+	}
+
+	/** @brief Records successful recipient delivery and honestly starts escalation on the first success. */
+	private function RecordRecipientNotificationSent(PDO $connection, array $job, string $now): void
+	{
+		$deliveryId = (int)$job['recipient_delivery_id'];
+		$update = $connection->prepare('
+			UPDATE recipient_release_deliveries
+			SET status = \'sent\', sent_at = :sent_at, failed_at = NULL, cancelled_at = NULL,
+				last_error = NULL, updated_at = :updated_at
+			WHERE id = :id AND status IN (\'queued\', \'cancelled\')
+		');
+		$update->execute(['sent_at' => $now, 'updated_at' => $now, 'id' => $deliveryId]);
+
+		if ($update->rowCount() !== 1)
+		{
+			return;
+		}
+
+		$releaseStatement = $connection->prepare('
+			SELECT release_id FROM recipient_release_deliveries WHERE id = :id
+		');
+		$releaseStatement->execute(['id' => $deliveryId]);
+		$releaseId = (int)$releaseStatement->fetchColumn();
+		$counts = $connection->prepare('
+			SELECT COUNT(*) AS total, SUM(status = \'sent\') AS sent_total
+			FROM recipient_release_deliveries WHERE release_id = :release_id
+		');
+		$counts->execute(['release_id' => $releaseId]);
+		$row = $counts->fetch(PDO::FETCH_ASSOC);
+		$total = is_array($row) ? (int)$row['total'] : 0;
+		$sent = is_array($row) ? (int)$row['sent_total'] : 0;
+		$status = $total > 0 && $sent >= $total ? 'sent' : 'partial';
+		$updateRelease = $connection->prepare('
+			UPDATE recipient_releases
+			SET status = :status, first_sent_at = COALESCE(first_sent_at, :first_sent_at),
+				completed_at = :completed_at, updated_at = :updated_at
+			WHERE id = :id
+		');
+		$updateRelease->execute([
+			'status' => $status,
+			'first_sent_at' => $now,
+			'completed_at' => $status === 'sent' ? $now : null,
+			'updated_at' => $now,
+			'id' => $releaseId,
+		]);
+		$escalate = $connection->prepare('
+			UPDATE check_cycles
+			SET status = \'escalated\', escalated_at = :escalated_at, updated_at = :updated_at
+			WHERE id = :id AND status = \'overdue\'
+		');
+		$escalate->execute([
+			'escalated_at' => $now,
+			'updated_at' => $now,
+			'id' => (int)$job['check_cycle_id'],
+		]);
+
+		if ($escalate->rowCount() === 1)
+		{
+			$this->InsertAudit($connection, $job, 'monitor.escalated', $now, ['release_id' => $releaseId]);
+		}
+
+		$this->InsertAudit($connection, $job, 'mail.recipient_sent', $now, [
+			'release_id' => $releaseId,
+			'delivery_id' => $deliveryId,
+			'contact_id' => $job['contact_id'],
+		]);
+	}
+
+	/** @brief Mirrors a final queue failure into its safety or recipient delivery state. */
+	private function RecordLinkedFinalFailure(PDO $connection, array $job, string $error, string $now): void
+	{
+		$mailType = (string)$job['mail_type'];
+
+		if (in_array($mailType, ['safety_invitation', 'safety_reminder'], true))
+		{
+			$this->InsertAudit($connection, $job, 'mail.safety_failed', $now, [
+				'safety_request_id' => $job['safety_request_id'],
+				'mail_type' => $mailType,
+			]);
+			return;
+		}
+
+		if ($mailType !== 'recipient_notification')
+		{
+			return;
+		}
+
+		$deliveryId = (int)$job['recipient_delivery_id'];
+		$update = $connection->prepare('
+			UPDATE recipient_release_deliveries
+			SET status = \'failed\', last_error = :last_error, failed_at = :failed_at, updated_at = :updated_at
+			WHERE id = :id AND status = \'queued\'
+		');
+		$update->execute([
+			'last_error' => $error,
+			'failed_at' => $now,
+			'updated_at' => $now,
+			'id' => $deliveryId,
+		]);
+		$release = $connection->prepare('
+			SELECT rr.id, rr.first_sent_at
+			FROM recipient_releases rr
+			INNER JOIN recipient_release_deliveries rrd ON rrd.release_id = rr.id
+			WHERE rrd.id = :delivery_id
+		');
+		$release->execute(['delivery_id' => $deliveryId]);
+		$row = $release->fetch(PDO::FETCH_ASSOC);
+
+		if (is_array($row))
+		{
+			$releaseStatus = empty($row['first_sent_at']) ? 'failed' : 'partial';
+			$updateRelease = $connection->prepare('
+				UPDATE recipient_releases SET status = :status, updated_at = :updated_at WHERE id = :id
+			');
+			$updateRelease->execute(['status' => $releaseStatus, 'updated_at' => $now, 'id' => (int)$row['id']]);
+		}
+
+		$this->InsertAudit($connection, $job, 'mail.recipient_failed', $now, [
+			'delivery_id' => $deliveryId,
+			'contact_id' => $job['contact_id'],
+		]);
+	}
+
+	/** @brief Inserts a content-free mail/lifecycle audit entry. */
+	private function InsertAudit(PDO $connection, array $job, string $eventType, string $createdAt, array $context): void
+	{
+		$statement = $connection->prepare('
+			INSERT INTO audit_log
+			(user_id, event_type, entity_type, entity_id, message, context_json, created_at)
+			VALUES (:user_id, :event_type, \'monitor\', :monitor_id, :message, :context_json, :created_at)
+		');
+		$statement->execute([
+			'user_id' => (int)$job['user_id'],
+			'event_type' => $eventType,
+			'monitor_id' => (int)$job['monitor_id'],
+			'message' => $eventType,
+			'context_json' => json_encode($context, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES),
+			'created_at' => $createdAt,
 		]);
 	}
 

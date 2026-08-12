@@ -26,6 +26,16 @@ class MonitorStateMachineTest extends TestCase
 		self::assertTrue($stateMachine->CanTransition(MonitorStateMachine::ESCALATED, MonitorStateMachine::CONFIRMED));
 	}
 
+	public function testSafetyGateCanEitherPostponeOrExpire(): void
+	{
+		$stateMachine = new MonitorStateMachine();
+
+		self::assertTrue($stateMachine->CanTransition(MonitorStateMachine::AWAITING, MonitorStateMachine::SAFETY_PENDING));
+		self::assertTrue($stateMachine->CanTransition(MonitorStateMachine::SAFETY_PENDING, MonitorStateMachine::CONFIRMED));
+		self::assertTrue($stateMachine->CanTransition(MonitorStateMachine::SAFETY_PENDING, MonitorStateMachine::OVERDUE));
+		self::assertFalse($stateMachine->CanTransition(MonitorStateMachine::SAFETY_PENDING, MonitorStateMachine::ESCALATED));
+	}
+
 	public function testEarlyGlobalCheckInIsLegal(): void
 	{
 		$stateMachine = new MonitorStateMachine();

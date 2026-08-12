@@ -2,7 +2,7 @@
 
 /**
  * @file CompleteConfigurationSourceTest.php
-	 * @brief Static regressions for the complete-configuration editor and document upload message.
+ * @brief Static regressions for the complete-configuration editor and document upload message.
  * @author Frank Willeke
  */
 
@@ -21,11 +21,11 @@ class CompleteConfigurationSourceTest extends TestCase
 		self::assertStringNotContainsString("['name' => \$this->_request->PostString('title'", $controller);
 	}
 
-	public function testEditorContainsAllFourSections(): void
+	public function testEditorContainsAllFiveSections(): void
 	{
 		$view = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Views/monitors/edit.php');
 
-		foreach (['schedule', 'recipients', 'messages', 'review'] as $tab)
+		foreach (['schedule', 'recipients', 'messages', 'escalation', 'review'] as $tab)
 		{
 			self::assertStringContainsString('data-tab-panel="' . $tab . '"', $view);
 		}
@@ -41,12 +41,15 @@ class CompleteConfigurationSourceTest extends TestCase
 		self::assertStringContainsString('panel.hidden = !active;', $script);
 	}
 
-	public function testUncheckedRecipientsHaveAVisibleCheckAction(): void
+	public function testRecipientsHaveDedicatedConfigurationPages(): void
 	{
 		$view = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Views/monitors/edit.php');
+		$recipientView = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Views/recipients/edit.php');
 
-		self::assertStringContainsString('return_monitor_id=', $view);
-		self::assertStringContainsString("e__('monitors.contacts.check_address')", $view);
+		self::assertStringContainsString('/monitors/recipients/edit?id=', $view);
+		self::assertStringContainsString('data-message-override', $recipientView);
+		self::assertStringContainsString('assignedDocumentIds', $recipientView);
+		self::assertStringContainsString('deliveryHistory', $recipientView);
 	}
 
 	public function testMonitorTitlesLinkToTheEditorWithoutAnEditButton(): void
@@ -100,5 +103,29 @@ class CompleteConfigurationSourceTest extends TestCase
 		self::assertStringContainsString("PostString('active_tab'", $controller);
 		self::assertStringContainsString("'&tab=' . \$returnTab", $controller);
 		self::assertStringContainsString('activeTabInput.value = name', $script);
+	}
+
+	public function testMissingGeneratedVersionHasAnExplicitNonFatalFallback(): void
+	{
+		$bootstrap = (string)file_get_contents(dirname(__DIR__, 2) . '/bootstrap.php');
+		$layout = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Views/layouts/main.php');
+
+		self::assertStringContainsString('$appVersion = \'\';', $bootstrap);
+		self::assertStringContainsString('if (is_file($versionFile))', $bootstrap);
+		self::assertStringContainsString("__('footer.version_unavailable')", $layout);
+		self::assertStringContainsString("'unversioned'", $layout);
+	}
+
+	public function testDeploymentDocumentationRequiresTheVersionGeneratorBeforeUpload(): void
+	{
+		$readme = (string)file_get_contents(dirname(__DIR__, 2) . '/README.md');
+		$upgrade = (string)file_get_contents(dirname(__DIR__, 2) . '/docs/UPGRADING.md');
+
+		self::assertStringContainsString('python3 tools/write_version.py', $readme);
+		self::assertStringContainsString('before uploading', strtolower($readme));
+		self::assertStringContainsString('config/version.php', $readme);
+		self::assertStringContainsString('python3 tools/write_version.py', $upgrade);
+		self::assertStringContainsString('before uploading', strtolower($upgrade));
+		self::assertStringContainsString('config/version.php', $upgrade);
 	}
 }
