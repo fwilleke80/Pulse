@@ -112,12 +112,12 @@ final class EscalationService
 					INSERT INTO safety_contact_requests
 					(
 						check_cycle_id, monitor_id, contact_id, contact_name, contact_email,
-						notification_locale, status, created_at, updated_at
+						notification_locale, invitation_subject, invitation_body, reminder_subject, reminder_body, status, created_at, updated_at
 					)
 					VALUES
 					(
 						:check_cycle_id, :monitor_id, :contact_id, :contact_name, :contact_email,
-						:notification_locale, \'pending\', :created_at, :updated_at
+						:notification_locale, :invitation_subject, :invitation_body, :reminder_subject, :reminder_body, \'pending\', :created_at, :updated_at
 					)
 				');
 				$insertRequest->execute([
@@ -127,6 +127,10 @@ final class EscalationService
 					'contact_name' => (string)$contact['name'],
 					'contact_email' => (string)$contact['email'],
 					'notification_locale' => (string)$contact['notification_locale'],
+					'invitation_subject' => $cycle['safety_invitation_subject'] ?? null,
+					'invitation_body' => $cycle['safety_invitation_body'] ?? null,
+					'reminder_subject' => $cycle['safety_reminder_subject'] ?? null,
+					'reminder_body' => $cycle['safety_reminder_body'] ?? null,
 					'created_at' => $now,
 					'updated_at' => $now,
 				]);
@@ -137,6 +141,8 @@ final class EscalationService
 					'notification_locale' => (string)$contact['notification_locale'],
 					'owner_name' => (string)$cycle['owner_name'],
 					'monitor_name' => (string)$cycle['monitor_name'],
+					'message_subject' => (string)($cycle['safety_invitation_subject'] ?? ''),
+					'message_body' => (string)($cycle['safety_invitation_body'] ?? ''),
 				], $rawToken);
 				$this->InsertQueue($connection, [
 					'user_id' => (int)$cycle['user_id'],
@@ -571,7 +577,9 @@ final class EscalationService
 	private function LockCycle(PDO $connection, int $cycleId): ?array
 	{
 		$statement = $connection->prepare('
-			SELECT cc.*, m.user_id, m.name AS monitor_name, m.is_paused, u.display_name AS owner_name
+			SELECT cc.*, m.user_id, m.name AS monitor_name, m.is_paused,
+				m.safety_invitation_subject, m.safety_invitation_body,
+				m.safety_reminder_subject, m.safety_reminder_body, u.display_name AS owner_name
 			FROM check_cycles cc
 			INNER JOIN monitors m ON m.id = cc.monitor_id
 			INNER JOIN users u ON u.id = m.user_id
@@ -660,6 +668,8 @@ final class EscalationService
 				'owner_name' => (string)$cycle['owner_name'],
 				'monitor_name' => (string)$cycle['monitor_name'],
 				'safety_max_reminders' => (int)$cycle['safety_max_reminders'],
+				'message_subject' => (string)($current['reminder_subject'] ?? ''),
+				'message_body' => (string)($current['reminder_body'] ?? ''),
 			], $rawToken, $number);
 			$this->InsertQueue($connection, [
 				'user_id' => (int)$cycle['user_id'],

@@ -78,6 +78,19 @@ class NotificationInfrastructureSourceTest extends TestCase
 		self::assertStringContainsString("'safety_pending'", $migration);
 	}
 
+	public function testCustomSafetyMessagesAreStoredAndSnapshotted(): void
+	{
+		$migration = (string)file_get_contents(dirname(__DIR__, 2) . '/database/migrations/010_custom_safety_messages.sql');
+		$escalation = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Services/EscalationService.php');
+		$view = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Views/monitors/edit.php');
+
+		self::assertStringContainsString('safety_invitation_subject', $migration);
+		self::assertStringContainsString('reminder_body', $migration);
+		self::assertStringContainsString("'invitation_subject' => \$cycle['safety_invitation_subject'] ?? null", $escalation);
+		self::assertStringContainsString("'message_body' => (string)(\$current['reminder_body'] ?? '')", $escalation);
+		self::assertStringContainsString('name="safety_invitation_subject" form="monitor-settings-form"', $view);
+	}
+
 	public function testSafetyLinksAreRedactedAfterDeliveryOrCancellation(): void
 	{
 		$queue = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Repositories/MailQueueRepository.php');

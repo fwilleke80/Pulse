@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.7.2 — 2026-08-12
+
+### Custom safety-contact mail text
+
+- Added editable monitor-level subject and body text for the initial safety-contact email and safety-contact reminders.
+- Added placeholders for contact name, owner name, monitor name, confirmation URL, and reminder counters.
+- Snapshot custom safety text when a safety-contact request begins so later reminders remain consistent for that request.
+- Keep localized Pulse defaults as an explicit fallback when a custom subject/body pair is left empty.
+- Renamed the contact language setting to **Pulse interface language** and clarified that it controls Pulse-owned pages such as safety confirmation and the future recipient portal, plus fallback Pulse-authored mail.
+- Added migration `010_custom_safety_messages.sql`.
+
 ## 0.7.1 — 2026-08-12
 
 ### Recipient and escalation interface fixes

@@ -357,6 +357,25 @@ ob_start();
 			<label for="safety_confirmation_days"><?= e__('monitors.escalation.confirmation_days') ?></label>
 			<input type="number" id="safety_confirmation_days" name="safety_confirmation_days" form="monitor-settings-form" min="0" max="3650" value="<?= (int)($monitor['safety_confirmation_days'] ?? 0) ?>">
 			<p class="form-hint"><?= e__('monitors.escalation.confirmation_days_hint') ?></p>
+
+			<div class="configuration-block">
+				<h3><?= e__('monitors.escalation.messages.heading') ?></h3>
+				<p class="form-hint"><?= e__('monitors.escalation.messages.hint') ?></p>
+				<p class="form-hint"><code>{app}</code> <code>{name}</code> <code>{owner}</code> <code>{monitor}</code> <code>{url}</code> · <?= e__('monitors.escalation.messages.reminder_placeholders') ?> <code>{number}</code> <code>{total}</code></p>
+
+					<h4><?= e__('monitors.escalation.messages.invitation.heading') ?></h4>
+					<label for="safety_invitation_subject"><?= e__('monitors.messages.subject') ?></label>
+					<input type="text" id="safety_invitation_subject" name="safety_invitation_subject" form="monitor-settings-form" value="<?= e((string)($monitor['safety_invitation_subject'] ?? '')) ?>">
+					<label for="safety_invitation_body"><?= e__('monitors.messages.body') ?></label>
+					<textarea id="safety_invitation_body" name="safety_invitation_body" form="monitor-settings-form" rows="8"><?= e((string)($monitor['safety_invitation_body'] ?? '')) ?></textarea>
+
+					<h4><?= e__('monitors.escalation.messages.reminder.heading') ?></h4>
+					<label for="safety_reminder_subject"><?= e__('monitors.messages.subject') ?></label>
+					<input type="text" id="safety_reminder_subject" name="safety_reminder_subject" form="monitor-settings-form" value="<?= e((string)($monitor['safety_reminder_subject'] ?? '')) ?>">
+					<label for="safety_reminder_body"><?= e__('monitors.messages.body') ?></label>
+					<textarea id="safety_reminder_body" name="safety_reminder_body" form="monitor-settings-form" rows="8"><?= e((string)($monitor['safety_reminder_body'] ?? '')) ?></textarea>
+
+			</div>
 		</section>
 
 		<section id="monitor-tab-review" class="monitor-tab-panel<?= $activeTab === 'review' ? ' is-active' : '' ?>" role="tabpanel" data-tab-panel="review"<?= $activeTab === 'review' ? '' : ' hidden' ?>>

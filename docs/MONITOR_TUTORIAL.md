@@ -147,7 +147,7 @@ For genuinely time-critical danger, an email-based multi-day workflow is the wro
 ## Build a monitor step by step
 
 1. Create the people you need under **Contacts**.
-2. Carefully check each email address and choose its notification language.
+2. Carefully check each email address and choose its Pulse interface language.
 3. Create the monitor and choose its timing under **Schedule**.
 4. Add the final recipients under **Recipients**.
 5. Open each recipient and review the exact outgoing message.

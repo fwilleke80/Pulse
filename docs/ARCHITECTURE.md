@@ -168,6 +168,8 @@ Opening the link only displays the safety page. The actual confirmation or inabi
 
 If the configured confirmation quorum is reached, Pulse closes that cycle and schedules a new one. A safety contact cannot accelerate final recipient delivery.
 
+Safety-contact invitation and reminder text can be customized per monitor. When a safety gate starts, the configured templates are copied into each `safety_contact_requests` row so subsequent reminders for that request use a stable snapshot. Blank custom templates fall back to Pulse's localized built-in copy.
+
 ## Configuration
 
 Runtime settings come from process environment variables and the root `.env` file. Process environment variables take precedence.

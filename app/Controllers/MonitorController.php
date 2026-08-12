@@ -222,7 +222,11 @@ class MonitorController extends BaseController
 			$values['safety_reminder_interval_days'],
 			$values['safety_max_reminders'],
 			$values['safety_required_confirmations'],
-			$values['safety_confirmation_days'] > 0 ? $values['safety_confirmation_days'] : null
+			$values['safety_confirmation_days'] > 0 ? $values['safety_confirmation_days'] : null,
+			$values['safety_invitation_subject'] !== '' ? $values['safety_invitation_subject'] : null,
+			trim($values['safety_invitation_body']) !== '' ? $values['safety_invitation_body'] : null,
+			$values['safety_reminder_subject'] !== '' ? $values['safety_reminder_subject'] : null,
+			trim($values['safety_reminder_body']) !== '' ? $values['safety_reminder_body'] : null
 		);
 		$this->_monitorExecutionService->SynchronizeMonitorForUser($monitorId, (int)$user['id']);
 		$this->_monitorRepository->ReplaceSafetyContactsForMonitor($monitorId, (int)$user['id'], $safetyContactIds);
@@ -472,7 +476,7 @@ class MonitorController extends BaseController
 
 	/**
 	 * @brief Reads and bounds monitor configuration input.
-	 * @return array{name: string, description: string, check_interval_days: int, response_window_days: int, reminder_interval_days: int, max_reminders: int, escalation_policy: string, safety_response_window_days: int, safety_reminder_interval_days: int, safety_max_reminders: int, safety_required_confirmations: int, safety_confirmation_days: int}
+	 * @return array{name: string, description: string, check_interval_days: int, response_window_days: int, reminder_interval_days: int, max_reminders: int, escalation_policy: string, safety_response_window_days: int, safety_reminder_interval_days: int, safety_max_reminders: int, safety_required_confirmations: int, safety_confirmation_days: int, safety_invitation_subject: string, safety_invitation_body: string, safety_reminder_subject: string, safety_reminder_body: string}
 	 */
 	private function MonitorInput(): array
 	{
@@ -491,6 +495,10 @@ class MonitorController extends BaseController
 			'safety_max_reminders' => $this->_request->PostInt('safety_max_reminders', 1),
 			'safety_required_confirmations' => $this->_request->PostInt('safety_required_confirmations', 1),
 			'safety_confirmation_days' => $this->_request->PostInt('safety_confirmation_days', 0),
+			'safety_invitation_subject' => $this->_request->PostString('safety_invitation_subject', 255),
+			'safety_invitation_body' => $this->_request->PostString('safety_invitation_body', 1000000, false),
+			'safety_reminder_subject' => $this->_request->PostString('safety_reminder_subject', 255),
+			'safety_reminder_body' => $this->_request->PostString('safety_reminder_body', 1000000, false),
 		];
 	}
 
@@ -531,6 +539,30 @@ class MonitorController extends BaseController
 		{
 			$this->_logger->Warning('Monitor validation failed: invalid numeric bounds', ['monitor_id' => $monitorId]);
 			$this->Flash('error', __($monitorId > 0 ? 'monitors.edit.flash.invalidnumbers' : 'monitors.add.flash.invalidnumbers'));
+			$this->Redirect($redirect);
+		}
+
+		if (((string)$values['safety_invitation_subject'] === '') !== (trim((string)$values['safety_invitation_body']) === ''))
+		{
+			$this->Flash('error', __('monitors.escalation.messages.flash.invitation_incomplete'));
+			$this->Redirect($redirect);
+		}
+
+		if ((string)$values['safety_invitation_subject'] !== '' && !str_contains((string)$values['safety_invitation_body'], '{url}'))
+		{
+			$this->Flash('error', __('monitors.escalation.messages.flash.url_required'));
+			$this->Redirect($redirect);
+		}
+
+		if (((string)$values['safety_reminder_subject'] === '') !== (trim((string)$values['safety_reminder_body']) === ''))
+		{
+			$this->Flash('error', __('monitors.escalation.messages.flash.reminder_incomplete'));
+			$this->Redirect($redirect);
+		}
+
+		if ((string)$values['safety_reminder_subject'] !== '' && !str_contains((string)$values['safety_reminder_body'], '{url}'))
+		{
+			$this->Flash('error', __('monitors.escalation.messages.flash.url_required'));
 			$this->Redirect($redirect);
 		}
 

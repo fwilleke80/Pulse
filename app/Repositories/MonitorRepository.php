@@ -53,6 +53,10 @@ class MonitorRepository
 				safety_max_reminders,
 				safety_required_confirmations,
 				safety_confirmation_days,
+				safety_invitation_subject,
+				safety_invitation_body,
+				safety_reminder_subject,
+				safety_reminder_body,
 				is_paused,
 				paused_at,
 				last_confirmed_at,
@@ -146,6 +150,10 @@ class MonitorRepository
 				safety_max_reminders,
 				safety_required_confirmations,
 				safety_confirmation_days,
+				safety_invitation_subject,
+				safety_invitation_body,
+				safety_reminder_subject,
+				safety_reminder_body,
 				is_paused,
 				paused_at,
 				last_confirmed_at,
@@ -405,7 +413,11 @@ class MonitorRepository
 		int $safetyReminderIntervalDays,
 		int $safetyMaxReminders,
 		int $safetyRequiredConfirmations,
-		?int $safetyConfirmationDays
+		?int $safetyConfirmationDays,
+		?string $safetyInvitationSubject,
+		?string $safetyInvitationBody,
+		?string $safetyReminderSubject,
+		?string $safetyReminderBody
 	): void
 	{
 		$sql = '
@@ -423,6 +435,10 @@ class MonitorRepository
 				safety_max_reminders = :safety_max_reminders,
 				safety_required_confirmations = :safety_required_confirmations,
 				safety_confirmation_days = :safety_confirmation_days,
+				safety_invitation_subject = :safety_invitation_subject,
+				safety_invitation_body = :safety_invitation_body,
+				safety_reminder_subject = :safety_reminder_subject,
+				safety_reminder_body = :safety_reminder_body,
 				updated_at = UTC_TIMESTAMP()
 			WHERE id = :id
 			  AND user_id = :user_id
@@ -444,6 +460,10 @@ class MonitorRepository
 			'safety_max_reminders' => $safetyMaxReminders,
 			'safety_required_confirmations' => $safetyRequiredConfirmations,
 			'safety_confirmation_days' => $safetyConfirmationDays,
+			'safety_invitation_subject' => $safetyInvitationSubject,
+			'safety_invitation_body' => $safetyInvitationBody,
+			'safety_reminder_subject' => $safetyReminderSubject,
+			'safety_reminder_body' => $safetyReminderBody,
 		]);
 	}
 

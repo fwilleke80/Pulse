@@ -141,6 +141,14 @@ final class NotificationComposer
 			'url' => $this->_baseUrl . '/safety/confirm?token=' . rawurlencode($rawToken),
 		];
 
+		if (trim((string)($request['message_subject'] ?? '')) !== '' && trim((string)($request['message_body'] ?? '')) !== '')
+		{
+			return [
+				'subject' => $this->ReplaceParams((string)$request['message_subject'], $params),
+				'body_text' => $this->ReplaceParams((string)$request['message_body'], $params),
+			];
+		}
+
 		return [
 			'subject' => $this->Translate($locale, 'mail.safety_invitation.subject', $params),
 			'body_text' => $this->Translate($locale, 'mail.safety_invitation.body', $params),
@@ -166,6 +174,14 @@ final class NotificationComposer
 			'total' => (int)$request['safety_max_reminders'],
 			'url' => $this->_baseUrl . '/safety/confirm?token=' . rawurlencode($rawToken),
 		];
+
+		if (trim((string)($request['message_subject'] ?? '')) !== '' && trim((string)($request['message_body'] ?? '')) !== '')
+		{
+			return [
+				'subject' => $this->ReplaceParams((string)$request['message_subject'], $params),
+				'body_text' => $this->ReplaceParams((string)$request['message_body'], $params),
+			];
+		}
 
 		return [
 			'subject' => $this->Translate($locale, 'mail.safety_reminder.subject', $params),
@@ -210,8 +226,12 @@ final class NotificationComposer
 			$this->_translators[$locale] = new Translator($this->_languagePath, $locale);
 		}
 
-		$text = $this->_translators[$locale]->Translate($key);
+		return $this->ReplaceParams($this->_translators[$locale]->Translate($key), $params);
+	}
 
+	/** @brief Replaces supported template placeholders without HTML escaping. */
+	private function ReplaceParams(string $text, array $params): string
+	{
 		foreach ($params as $name => $value)
 		{
 			$text = str_replace('{' . $name . '}', (string)$value, $text);

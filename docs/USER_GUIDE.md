@@ -99,7 +99,7 @@ For each contact, store:
 
 - name
 - email address
-- notification language
+- Pulse interface language
 
 Pulse asks you to confirm that you personally checked the email address. This is only a local confirmation that you reviewed the address; Pulse does not send a verification message to the contact.
 
@@ -147,6 +147,10 @@ A safety contact cannot:
 
 If the required confirmation is not reached before the safety-contact stage ends, Pulse proceeds toward recipient notification.
 
+### Custom safety-contact email text
+
+On **Safety & escalation**, you can replace the default subject and body used for the first safety-contact email and for later reminders. The templates support `{app}`, `{name}`, `{owner}`, `{monitor}`, and `{url}`; reminder text also supports `{number}` and `{total}`. Leave both fields for a mail type empty to use Pulse's localized default wording. The contact's **Pulse interface language** is still used for the safety-confirmation page and, later, the recipient portal.
+
 ## Notifications and failed mail
 
 Owner reminders, safety-contact requests, and recipient messages all use Pulse's mail queue.
@@ -160,7 +164,7 @@ Open **Profile → Notifications** to:
 
 A failed email does not count as successfully delivered. Pulse shows a warning rather than pretending the notification happened.
 
-Your profile has its own **Notification language**. Each contact also has a notification language. These settings control email independently from the language currently selected in the Pulse interface.
+Your profile has its own **Notification language** for Pulse-authored owner due notices, reminders, and test mail. Contacts have a **Pulse interface language** for Pulse-owned pages such as safety confirmation and the future recipient portal. If you leave custom safety-contact mail text empty, that language also selects the localized Pulse fallback text for those safety emails.
 
 If SMTP settings are changed, send another test before relying on the system.
 
@@ -201,7 +205,7 @@ Pulse inspects the uploaded content rather than trusting the filename. Stored fi
 
 ### Important current limitation
 
-Recipient document delivery is **not active** in Pulse 0.7.1. Assigning a document to a recipient prepares that relationship for the future secure document portal, but current recipient emails contain:
+Recipient document delivery is **not active** in Pulse 0.7.2. Assigning a document to a recipient prepares that relationship for the future secure document portal, but current recipient emails contain:
 
 - no attachment
 - no document content
@@ -213,10 +217,11 @@ Uploaded files, editable text documents, and recipient messages are also not enc
 
 Pulse provides English and German interfaces.
 
-The interface language and email notification languages are separate. Changing the language in the footer does not change the notification language stored in your profile or a contact.
+The interface language, your owner-notification language, and each contact's Pulse interface language are separate. Changing the language in the footer does not change either stored language setting.
 
 ## Health checks
 
 `/health` is a minimal public liveness check.
 
 Signed-in users can also open `/health/readiness` to verify that important resources such as the database and storage are ready.
+
