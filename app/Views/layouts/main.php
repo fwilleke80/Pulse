@@ -62,19 +62,17 @@ $versionLabel = trim((string)$appVersion) !== ''
 
 <footer>
 	<nav class="footer-nav" aria-label="<?= e__('footer.links') ?>">
-		<div class="language-switcher">
-			<?= e__('footer.language') ?> [
-			<?php foreach ($availableLocales as $localeIndex => $localeOption): ?>
-				<?php if ($localeIndex > 0): ?>|<?php endif; ?>
-				<form method="post" action="<?= e($base_url) ?>/language/set">
-					<?= csrf_field() ?>
-					<input type="hidden" name="locale" value="<?= e($localeOption) ?>">
-					<input type="hidden" name="redirect" value="<?= e($currentTarget) ?>">
-					<button type="submit" class="link-button"<?= $localeOption === $locale ? ' aria-current="true"' : '' ?>><?= e(language_name($localeOption)) ?></button>
-				</form>
-			<?php endforeach; ?>
-			]
-		</div>
+		<form method="post" action="<?= e($base_url) ?>/language/set" class="language-switcher">
+			<?= csrf_field() ?>
+			<input type="hidden" name="redirect" value="<?= e($currentTarget) ?>">
+			<label for="footer-locale-select"><?= e__('footer.language') ?></label>
+			<select id="footer-locale-select" name="locale" data-language-autosubmit aria-label="<?= e__('footer.language') ?>">
+				<?php foreach ($availableLocales as $localeOption): ?>
+					<option value="<?= e($localeOption) ?>"<?= $localeOption === $locale ? ' selected' : '' ?>><?= e(language_name($localeOption)) ?></option>
+				<?php endforeach; ?>
+			</select>
+			<noscript><button type="submit" class="button button-secondary button-small"><?= e__('actions.save') ?></button></noscript>
+		</form>
 		<a href="<?= e($base_url) ?>/about"><?= e__('footer.about') ?></a>
 		<a href="<?= e($base_url) ?>/imprint"><?= e__('footer.imprint') ?></a>
 	</nav>

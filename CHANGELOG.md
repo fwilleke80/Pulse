@@ -1,3 +1,19 @@
+## 0.7.8 - 2026-08-13
+
+### Fixed
+- Fixed the footer language dropdown so changing the selection submits through Pulse's CSP-safe external JavaScript instead of blocked inline JavaScript.
+- Fixed vertical alignment between the footer Language label and the dropdown.
+
+### Added
+- Included the French and Italian language files in the source package.
+
+## 0.7.7 - 2026-08-13
+
+### Changed
+- Replaced the footer language link list with a compact language dropdown.
+- The footer language selector now submits directly when a language is chosen and keeps a small no-JavaScript fallback button.
+- Added styling so the footer language selector stays compact even with more installed languages.
+
 # Changelog
 
 ## 0.7.6 — 2026-08-13

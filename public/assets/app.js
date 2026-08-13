@@ -7,6 +7,17 @@
 
 document.addEventListener('DOMContentLoaded', function ()
 {
+	for (const localeSelect of document.querySelectorAll('[data-language-autosubmit]'))
+	{
+		localeSelect.addEventListener('change', function ()
+		{
+			if (localeSelect.form)
+			{
+				localeSelect.form.submit();
+			}
+		});
+	}
+
 	for (const form of document.querySelectorAll('form[data-confirm]'))
 	{
 		form.addEventListener('submit', function (event)
