@@ -107,6 +107,8 @@ $monitorController = new MonitorController(
 	$notificationScheduler,
 	$mailQueueWorker,
 	$escalationService,
+	$notificationComposer,
+	(array)$config['available_locales'],
 	(bool)$config['debug'],
 	(bool)$config['mail']['enabled']
 );
@@ -129,6 +131,7 @@ $safetyController = new SafetyController(
 	$logger,
 	$request,
 	$escalationService,
+	$notificationLanguage,
 	dirname(__DIR__) . '/app/Lang'
 );
 
@@ -164,6 +167,7 @@ $router->Post('/monitors/pause', [$monitorController, 'Pause']);
 $router->Post('/monitors/resume', [$monitorController, 'Resume']);
 $router->Post('/monitors/force-due', [$monitorController, 'ForceDue']);
 $router->Post('/monitors/send-due-notice', [$monitorController, 'SendDueNotice']);
+$router->Post('/monitors/send-safety-contact-notifications', [$monitorController, 'SendSafetyContactNotifications']);
 $router->Post('/monitors/send-recipient-notifications', [$monitorController, 'SendRecipientNotifications']);
 $router->Get('/monitors/recipients/edit', [$recipientController, 'Edit']);
 $router->Post('/monitors/recipients/add', [$recipientController, 'Add']);

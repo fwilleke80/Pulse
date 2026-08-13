@@ -126,6 +126,7 @@ class NotificationComposerTest extends TestCase
 		], str_repeat('a', 64));
 
 		self::assertStringContainsString('/safety/confirm?token=', $message['body_text']);
+		self::assertStringContainsString('&lang=en', $message['body_text']);
 		self::assertStringContainsString('Opening the page does not confirm anything', $message['body_text']);
 	}
 
@@ -144,6 +145,7 @@ class NotificationComposerTest extends TestCase
 		self::assertSame('Please check on Owner', $message['subject']);
 		self::assertStringContainsString('Hello Trusted person.', $message['body_text']);
 		self::assertStringContainsString('/safety/confirm?token=', $message['body_text']);
+		self::assertStringContainsString('&lang=de', $message['body_text']);
 		self::assertStringContainsString('Weekly check', $message['body_text']);
 		self::assertStringNotContainsString('Öffnen', $message['body_text']);
 	}
@@ -198,6 +200,17 @@ class NotificationComposerTest extends TestCase
 		self::assertSame('[Pulse] Nachricht von Frank', $message['subject']);
 		self::assertStringContainsString('Hallo Empfänger', $message['body_text']);
 		self::assertStringContainsString('Wichtiger Monitor', $message['body_text']);
+	}
+
+	public function testBuiltInTemplatesCanBePreviewedInARequestedLanguage(): void
+	{
+		$composer = $this->Composer();
+		$english = $composer->BuiltInTemplate('safety_invitation', 'en');
+		$german = $composer->BuiltInTemplate('safety_invitation', 'de');
+
+		self::assertStringContainsString('{owner}', $english['subject']);
+		self::assertStringContainsString('{url}', $english['body_text']);
+		self::assertNotSame($english['body_text'], $german['body_text']);
 	}
 
 	private function Composer(): NotificationComposer

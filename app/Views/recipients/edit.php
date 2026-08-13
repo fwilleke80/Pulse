@@ -65,7 +65,13 @@ ob_start();
 			<input type="text" id="message_subject" name="message_subject" value="<?= e((string)($recipient['override_subject'] ?? '')) ?>">
 			<label for="message_body"><?= e__('monitors.messages.body') ?></label>
 			<textarea id="message_body" name="message_body" rows="10"><?= e((string)($recipient['override_body'] ?? '')) ?></textarea>
-			<p class="form-hint"><?= e__('recipients.message.placeholders') ?> <code>{app}</code> <code>{name}</code> <code>{owner}</code> <code>{monitor}</code></p>
+			<p class="form-hint">
+				<?= e__('recipients.message.placeholders') ?>
+				<code>{app}</code> — <?= e__('mail.placeholders.app') ?>;
+				<code>{name}</code> — <?= e__('mail.placeholders.name') ?>;
+				<code>{owner}</code> — <?= e__('mail.placeholders.owner') ?>;
+				<code>{monitor}</code> — <?= e__('mail.placeholders.monitor') ?>.
+			</p>
 			<p class="form-hint"><?= e__('recipients.message.custom_hint') ?></p>
 		</div>
 		<div class="mail-default-template">

@@ -127,10 +127,10 @@ final class EscalationService
 					'contact_name' => (string)$contact['name'],
 					'contact_email' => (string)$contact['email'],
 					'notification_locale' => (string)$contact['notification_locale'],
-					'invitation_subject' => $cycle['safety_invitation_subject'] ?? null,
-					'invitation_body' => $cycle['safety_invitation_body'] ?? null,
-					'reminder_subject' => $cycle['safety_reminder_subject'] ?? null,
-					'reminder_body' => $cycle['safety_reminder_body'] ?? null,
+					'invitation_subject' => $contact['safety_invitation_subject'] ?? null,
+					'invitation_body' => $contact['safety_invitation_body'] ?? null,
+					'reminder_subject' => $contact['safety_reminder_subject'] ?? null,
+					'reminder_body' => $contact['safety_reminder_body'] ?? null,
 					'created_at' => $now,
 					'updated_at' => $now,
 				]);
@@ -141,8 +141,8 @@ final class EscalationService
 					'notification_locale' => (string)$contact['notification_locale'],
 					'owner_name' => (string)$cycle['owner_name'],
 					'monitor_name' => (string)$cycle['monitor_name'],
-					'message_subject' => (string)($cycle['safety_invitation_subject'] ?? ''),
-					'message_body' => (string)($cycle['safety_invitation_body'] ?? ''),
+					'message_subject' => (string)($contact['safety_invitation_subject'] ?? ''),
+					'message_body' => (string)($contact['safety_invitation_body'] ?? ''),
 				], $rawToken);
 				$this->InsertQueue($connection, [
 					'user_id' => (int)$cycle['user_id'],
@@ -507,6 +507,28 @@ final class EscalationService
 		}
 	}
 
+	/** @brief Resolves the current awaiting safety-contact cycle for a development send action. */
+	public function FindDebugSafetyGateCycleForUser(int $monitorId, int $userId): ?int
+	{
+		$statement = $this->_database->GetConnection()->prepare('
+			SELECT cc.id
+			FROM check_cycles cc
+			INNER JOIN monitors m ON m.id = cc.monitor_id
+			WHERE cc.monitor_id = :monitor_id
+				AND m.user_id = :user_id
+				AND m.is_paused = 0
+				AND cc.status = \'awaiting\'
+				AND cc.escalation_policy_snapshot = \'safety_contact\'
+				AND cc.due_notice_sent_at IS NOT NULL
+			ORDER BY cc.id DESC
+			LIMIT 1
+		');
+		$statement->execute(['monitor_id' => $monitorId, 'user_id' => $userId]);
+		$cycleId = $statement->fetchColumn();
+
+		return $cycleId === false ? null : (int)$cycleId;
+	}
+
 	/**
 	 * @brief Debug-only helper that advances an open cycle to Overdue before staging recipients.
 	 * @return int|null Current cycle ID, or null when unavailable.
@@ -557,6 +579,23 @@ final class EscalationService
 		}
 	}
 
+	/** @return array<int> @brief Returns queued initial safety-contact jobs for one active gate. */
+	public function FindPendingQueueIdsForSafetyInvitations(int $cycleId): array
+	{
+		$statement = $this->_database->GetConnection()->prepare('
+			SELECT id
+			FROM mail_queue
+			WHERE check_cycle_id = :cycle_id
+				AND mail_type = \'safety_invitation\'
+				AND status IN (\'queued\', \'retrying\')
+			ORDER BY id ASC
+		');
+		$statement->execute(['cycle_id' => $cycleId]);
+		$rows = $statement->fetchAll(PDO::FETCH_COLUMN);
+
+		return is_array($rows) ? array_map('intval', $rows) : [];
+	}
+
 	/** @return array<int> @brief Returns queued recipient jobs for an immutable release. */
 	public function FindPendingQueueIdsForRelease(int $releaseId): array
 	{
@@ -596,9 +635,20 @@ final class EscalationService
 	private function FindSafetyContacts(PDO $connection, int $monitorId): array
 	{
 		$statement = $connection->prepare('
-			SELECT c.id, c.name, c.email, c.notification_locale, c.email_checked_at
+			SELECT
+				c.id, c.name, c.email, c.notification_locale, c.email_checked_at,
+				invitation.subject AS safety_invitation_subject, invitation.body_text AS safety_invitation_body,
+				reminder.subject AS safety_reminder_subject, reminder.body_text AS safety_reminder_body
 			FROM monitor_safety_contacts msc
 			INNER JOIN contacts c ON c.id = msc.contact_id
+			LEFT JOIN monitor_mail_templates invitation
+				ON invitation.monitor_id = msc.monitor_id
+				AND invitation.template_key = \'safety_invitation\'
+				AND invitation.locale = c.notification_locale
+			LEFT JOIN monitor_mail_templates reminder
+				ON reminder.monitor_id = msc.monitor_id
+				AND reminder.template_key = \'safety_reminder\'
+				AND reminder.locale = c.notification_locale
 			WHERE msc.monitor_id = :monitor_id
 			ORDER BY msc.sort_order ASC, msc.id ASC
 		');
@@ -773,12 +823,16 @@ final class EscalationService
 		$statement = $connection->prepare('
 			SELECT
 				mc.contact_id, c.name, c.email, c.notification_locale, c.email_checked_at,
-				COALESCE(cm.subject, m.default_message_subject) AS message_subject,
-				COALESCE(cm.body_text, m.default_message_body) AS message_body
+				COALESCE(cm.subject, mmt.subject) AS message_subject,
+				COALESCE(cm.body_text, mmt.body_text) AS message_body
 			FROM monitor_contacts mc
 			INNER JOIN monitors m ON m.id = mc.monitor_id
 			INNER JOIN contacts c ON c.id = mc.contact_id
 			LEFT JOIN contact_messages cm ON cm.monitor_contact_id = mc.id
+			LEFT JOIN monitor_mail_templates mmt
+				ON mmt.monitor_id = m.id
+				AND mmt.template_key = \'recipient_default\'
+				AND mmt.locale = c.notification_locale
 			WHERE mc.monitor_id = :monitor_id
 			ORDER BY mc.sort_order ASC, mc.id ASC
 		');

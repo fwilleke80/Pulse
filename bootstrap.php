@@ -14,6 +14,7 @@ use Pulse\Core\Database;
 use Pulse\Core\Environment;
 use Pulse\Core\ErrorHandler;
 use Pulse\Core\Logger;
+use Pulse\Core\LanguageCatalog;
 use Pulse\Core\MigrationRunner;
 use Pulse\Core\NotificationLanguage;
 use Pulse\Core\Request;
@@ -78,6 +79,9 @@ $errorHandler->Register();
 Environment::Load(__DIR__ . '/.env');
 
 $appConfig = require __DIR__ . '/config/app.php';
+$languagePath = __DIR__ . '/app/Lang';
+$languageCatalog = new LanguageCatalog($languagePath, 'en');
+$appConfig['available_locales'] = $languageCatalog->Locales();
 $dbConfig = require __DIR__ . '/config/database.php';
 $errorHandler->SetDebug((bool)$appConfig['debug']);
 ConfigurationValidator::Validate($appConfig, $dbConfig);
@@ -133,7 +137,13 @@ $documentService = new DocumentService(
 );
 
 $defaultLocale = (string)$appConfig['locale'];
-$availableLocales = (array)$appConfig['available_locales'];
+$availableLocales = $languageCatalog->Locales();
+
+if (!$languageCatalog->Has($defaultLocale))
+{
+	throw new RuntimeException('PULSE_DEFAULT_LOCALE does not have a matching app/Lang/' . $defaultLocale . '.php file.');
+}
+
 $notificationLanguage = new NotificationLanguage($availableLocales, $defaultLocale);
 $locale = $isCli || $isBackgroundRequest ? $defaultLocale : $session->Get('locale', $defaultLocale);
 
@@ -142,8 +152,8 @@ if (!is_string($locale) || !in_array($locale, $availableLocales, true))
 	$locale = $defaultLocale;
 }
 
-$translator = new Translator(__DIR__ . '/app/Lang', $locale);
-$notificationComposer = new NotificationComposer($notificationLanguage, __DIR__ . '/app/Lang', $appConfig);
+$translator = new Translator($languagePath, $locale, $languageCatalog->FallbackLocale());
+$notificationComposer = new NotificationComposer($notificationLanguage, $languagePath, $appConfig);
 $escalationService = new EscalationService(
 	$database,
 	$monitorStateMachine,
@@ -178,6 +188,7 @@ $testNotificationService = new TestNotificationService(
 	(int)$appConfig['mail']['max_attempts']
 );
 setTranslator($translator);
+setLanguageCatalog($languageCatalog);
 setCsrfTokenManager($csrf);
 setNotificationLanguageResolver($notificationLanguage);
 setDisplayTimezone((string)$appConfig['display_timezone']);
@@ -190,6 +201,7 @@ $view->SetGlobals([
 	'locale' => $locale,
 	'base_url' => $appConfig['base_url'],
 	'currentTarget' => $request->Target(),
+	'availableLocales' => $availableLocales,
 ]);
 
 return [
@@ -204,6 +216,7 @@ return [
 	'userRepository' => $userRepository,
 	'auth' => $auth,
 	'translator' => $translator,
+	'languageCatalog' => $languageCatalog,
 	'notificationLanguage' => $notificationLanguage,
 	'notificationComposer' => $notificationComposer,
 	'logger' => $logger,

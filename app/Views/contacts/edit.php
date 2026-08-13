@@ -47,7 +47,7 @@ ob_start();
 	<select id="notification_locale" name="notification_locale" required>
 		<?php foreach ($notificationLocales as $localeOption): ?>
 			<option value="<?= e($localeOption) ?>" <?= $localeOption === $notificationLocale ? 'selected' : '' ?>>
-				<?= e__('notification.language.' . $localeOption) ?>
+				<?= e(notification_language_name($localeOption)) ?>
 			</option>
 		<?php endforeach; ?>
 	</select>

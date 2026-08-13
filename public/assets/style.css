@@ -1790,3 +1790,118 @@ footer
 	font: inherit;
 	white-space: pre-wrap;
 }
+
+/* Language-specific monitor mail templates. */
+.configuration-disclosure
+{
+	margin-top: 1.25rem;
+	border: 1px solid var(--border);
+	border-radius: 10px;
+	background: var(--surface-subtle);
+}
+
+.configuration-disclosure > summary
+{
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	padding: 1rem 1.1rem;
+	cursor: pointer;
+	list-style-position: inside;
+}
+
+.configuration-disclosure > summary span
+{
+	display: inline-flex;
+	min-width: 0;
+	flex-direction: column;
+	gap: 0.2rem;
+}
+
+.configuration-disclosure > summary small
+{
+	color: var(--muted);
+	font-weight: normal;
+	line-height: 1.4;
+}
+
+.configuration-disclosure-body
+{
+	padding: 0 1.1rem 1.1rem;
+}
+
+.language-template-editor
+{
+	margin-top: 0.9rem;
+}
+
+.language-template-tabs
+{
+	display: inline-flex;
+	gap: 0.25rem;
+	padding: 0.25rem;
+	border: 1px solid var(--border);
+	border-radius: 9px;
+	background: var(--surface);
+}
+
+.language-template-tab
+{
+	width: auto;
+	margin: 0;
+	padding: 0.45rem 0.8rem;
+	border: 0;
+	border-radius: 7px;
+	background: transparent;
+	color: var(--muted);
+}
+
+.language-template-tab.is-active
+{
+	background: var(--primary);
+	color: #ffffff;
+}
+
+.language-template-panel
+{
+	margin-top: 1rem;
+}
+
+.mail-template-kind
+{
+	margin-top: 0.8rem;
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	background: var(--surface);
+}
+
+.mail-template-kind > summary
+{
+	padding: 0.8rem 0.9rem;
+	cursor: pointer;
+	font-weight: 700;
+}
+
+.mail-template-kind-body
+{
+	padding: 0 0.9rem 0.9rem;
+}
+
+.mail-default-disclosure
+{
+	margin-top: 0.8rem;
+}
+
+.mail-default-disclosure > summary
+{
+	cursor: pointer;
+	color: var(--muted);
+	font-size: 0.9rem;
+	font-weight: 650;
+}
+
+.placeholder-help
+{
+	line-height: 1.65;
+}

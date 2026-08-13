@@ -14,6 +14,10 @@ declare(strict_types=1);
 /** @var array<int, array<string, mixed>> $monitorContacts */
 /** @var array<int, array<string, mixed>> $documents */
 /** @var array<int, array<string, string>> $messageOverrides */
+/** @var array<string, array<string, array{subject: string, body_text: string}>> $mailTemplates */
+/** @var array<string, array<string, array{subject: string, body_text: string}>> $mailDefaults */
+/** @var array<int, string> $availableLocales */
+/** @var string $locale */
 /** @var array<string, mixed> $monitor */
 /** @var string $activeTab */
 /** @var string $base_url */
@@ -182,33 +186,63 @@ ob_start();
 			<?= e__('monitors.storage.warning.message') ?>
 		</div>
 
-		<div class="configuration-block">
-			<h3><?= e__('monitors.messages.default.heading') ?></h3>
-			<p class="form-hint"><?= e__('monitors.messages.default.hint') ?></p>
-			<form method="post" action="<?= e($base_url) ?>/monitors/messages/update">
-				<?= csrf_field() ?>
-				<input type="hidden" name="monitor_id" value="<?= (int)$monitor['id'] ?>">
+		<details class="configuration-disclosure" open>
+			<summary>
+				<span>
+					<strong><?= e__('monitors.messages.default.heading') ?></strong>
+					<small><?= e__('monitors.messages.default.hint') ?></small>
+				</span>
+			</summary>
+			<div class="configuration-disclosure-body">
+				<p class="form-hint"><?= e__('mail.templates.recipient_language_hint') ?></p>
+				<form method="post" action="<?= e($base_url) ?>/monitors/messages/update">
+					<?= csrf_field() ?>
+					<input type="hidden" name="monitor_id" value="<?= (int)$monitor['id'] ?>">
 
-				<label for="default_message_subject"><?= e__('monitors.messages.subject') ?></label>
-				<input type="text" id="default_message_subject" name="default_message_subject" value="<?= e((string)($monitor['default_message_subject'] ?? '')) ?>">
+					<div class="language-template-editor" data-language-tabs data-active-language="<?= e(in_array($locale, $availableLocales, true) ? $locale : ($availableLocales[0] ?? 'en')) ?>">
+						<div class="language-template-tabs" role="tablist" aria-label="<?= e__('mail.templates.languages') ?>">
+							<?php foreach ($availableLocales as $templateLocale): ?>
+								<button type="button" class="language-template-tab" role="tab" data-language-target="<?= e($templateLocale) ?>">
+									<?= e(notification_language_name($templateLocale)) ?>
+								</button>
+							<?php endforeach; ?>
+						</div>
 
-				<label for="default_message_body"><?= e__('monitors.messages.body') ?></label>
-				<textarea id="default_message_body" name="default_message_body" rows="8"><?= e((string)($monitor['default_message_body'] ?? '')) ?></textarea>
-				<p class="form-hint"><?= e__('monitors.messages.placeholders') ?> <code>{app}</code> <code>{name}</code> <code>{owner}</code> <code>{monitor}</code></p>
-				<p class="form-hint"><?= e__('monitors.messages.custom_hint') ?></p>
+						<?php foreach ($availableLocales as $templateLocale): ?>
+							<?php $templateFieldLocale = language_field_suffix($templateLocale); ?>
+							<?php $recipientTemplate = $mailTemplates['recipient_default'][$templateLocale] ?? ['subject' => '', 'body_text' => '']; ?>
+							<?php $recipientDefault = $mailDefaults['recipient_default'][$templateLocale] ?? ['subject' => '', 'body_text' => '']; ?>
+							<div class="language-template-panel" data-language-panel="<?= e($templateLocale) ?>">
+								<label for="recipient_default_subject_<?= e($templateFieldLocale) ?>"><?= e__('monitors.messages.subject') ?></label>
+								<input type="text" id="recipient_default_subject_<?= e($templateFieldLocale) ?>" name="recipient_default_subject_<?= e($templateFieldLocale) ?>" value="<?= e((string)$recipientTemplate['subject']) ?>">
 
-				<div class="mail-default-template">
-					<strong><?= e__('monitors.messages.default_preview.heading') ?></strong>
-					<p class="form-hint"><?= e__('monitors.messages.default_preview.hint') ?></p>
-					<div><strong><?= e__('monitors.messages.subject') ?>:</strong> <?= e(__('mail.recipient_notification.subject')) ?></div>
-					<pre><?= e(__('mail.recipient_notification.body')) ?></pre>
-				</div>
+								<label for="recipient_default_body_<?= e($templateFieldLocale) ?>"><?= e__('monitors.messages.body') ?></label>
+								<textarea id="recipient_default_body_<?= e($templateFieldLocale) ?>" name="recipient_default_body_<?= e($templateFieldLocale) ?>" rows="8"><?= e((string)$recipientTemplate['body_text']) ?></textarea>
+								<p class="form-hint placeholder-help">
+									<?= e__('monitors.messages.placeholders') ?>
+									<code>{app}</code> — <?= e__('mail.placeholders.app') ?>;
+									<code>{name}</code> — <?= e__('mail.placeholders.name') ?>;
+									<code>{owner}</code> — <?= e__('mail.placeholders.owner') ?>;
+									<code>{monitor}</code> — <?= e__('mail.placeholders.monitor') ?>.
+								</p>
+								<p class="form-hint"><?= e__('mail.templates.empty_uses_default') ?></p>
 
-				<p class="form-hint"><?= e__('monitors.messages.recipient_pages_hint') ?></p>
+								<details class="mail-default-disclosure">
+									<summary><?= e__('mail.templates.show_default') ?></summary>
+									<div class="mail-default-template">
+										<div><strong><?= e__('monitors.messages.subject') ?>:</strong> <?= e((string)$recipientDefault['subject']) ?></div>
+										<pre><?= e((string)$recipientDefault['body_text']) ?></pre>
+									</div>
+								</details>
+							</div>
+						<?php endforeach; ?>
+					</div>
 
-				<button type="submit" class="btn-primary"><?= e__('monitors.messages.submit') ?></button>
-			</form>
-		</div>
+					<p class="form-hint"><?= e__('monitors.messages.recipient_pages_hint') ?></p>
+					<button type="submit" class="btn-primary"><?= e__('monitors.messages.submit') ?></button>
+				</form>
+			</div>
+		</details>
 
 		<div class="configuration-block">
 			<h3><?= e__('monitors.documents.heading') ?></h3>
@@ -332,78 +366,136 @@ ob_start();
 				<?= e__('monitors.escalation.authority.message') ?>
 			</div>
 
-			<h3><?= e__('monitors.escalation.contacts.heading') ?></h3>
-			<p class="form-hint"><?= e__('monitors.escalation.contacts.hint') ?></p>
-			<?php if ($contacts === []): ?>
-				<p><?= e__('monitors.contacts.none') ?></p>
-			<?php else: ?>
-				<div class="assignment-list assignment-grid">
-					<?php foreach ($contacts as $contact): ?>
-						<label class="assignment-item">
-							<input type="checkbox" name="safety_contact_ids[]" form="monitor-settings-form" value="<?= (int)$contact['id'] ?>" <?= in_array((int)$contact['id'], $safetyContactIds, true) ? 'checked' : '' ?>>
-							<span>
-								<strong><?= e((string)$contact['name']) ?></strong><br>
-								<small><?= e((string)$contact['email']) ?></small>
-								<span class="mini-status mini-status-<?= !empty($contact['email_checked_at']) ? 'ok' : 'warning' ?>"><?= e__(!empty($contact['email_checked_at']) ? 'contacts.status.checked' : 'contacts.status.not_checked') ?></span>
-							</span>
-						</label>
-					<?php endforeach; ?>
-				</div>
-			<?php endif; ?>
+			<div data-safety-configuration>
+				<details class="configuration-disclosure" open>
+					<summary>
+						<span>
+							<strong><?= e__('monitors.escalation.contacts.heading') ?></strong>
+							<small><?= e__('monitors.escalation.contacts.hint') ?></small>
+						</span>
+					</summary>
+					<div class="configuration-disclosure-body">
+						<?php if ($contacts === []): ?>
+							<p><?= e__('monitors.contacts.none') ?></p>
+						<?php else: ?>
+							<div class="assignment-list assignment-grid">
+								<?php foreach ($contacts as $contact): ?>
+									<label class="assignment-item">
+										<input type="checkbox" name="safety_contact_ids[]" form="monitor-settings-form" value="<?= (int)$contact['id'] ?>" <?= in_array((int)$contact['id'], $safetyContactIds, true) ? 'checked' : '' ?>>
+										<span>
+											<strong><?= e((string)$contact['name']) ?></strong><br>
+											<small><?= e((string)$contact['email']) ?> · <?= e(notification_language_name((string)$contact['notification_locale'])) ?></small>
+											<span class="mini-status mini-status-<?= !empty($contact['email_checked_at']) ? 'ok' : 'warning' ?>"><?= e__(!empty($contact['email_checked_at']) ? 'contacts.status.checked' : 'contacts.status.not_checked') ?></span>
+										</span>
+									</label>
+								<?php endforeach; ?>
+							</div>
+						<?php endif; ?>
 
-			<div class="field-grid field-grid-four">
-				<label>
-					<?= e__('monitors.escalation.response_window') ?>
-					<input type="number" name="safety_response_window_days" form="monitor-settings-form" min="1" max="365" value="<?= (int)$monitor['safety_response_window_days'] ?>" required>
-				</label>
-				<label>
-					<?= e__('monitors.escalation.reminder_interval') ?>
-					<input type="number" name="safety_reminder_interval_days" form="monitor-settings-form" min="1" max="365" value="<?= (int)$monitor['safety_reminder_interval_days'] ?>" required>
-				</label>
-				<label>
-					<?= e__('monitors.escalation.max_reminders') ?>
-					<input type="number" name="safety_max_reminders" form="monitor-settings-form" min="0" max="100" value="<?= (int)$monitor['safety_max_reminders'] ?>" required>
-				</label>
-				<label>
-					<?= e__('monitors.escalation.required_confirmations') ?>
-					<input type="number" name="safety_required_confirmations" form="monitor-settings-form" min="1" max="100" value="<?= (int)$monitor['safety_required_confirmations'] ?>" required>
-				</label>
+						<div class="field-grid field-grid-four">
+							<label>
+								<?= e__('monitors.escalation.response_window') ?>
+								<input type="number" name="safety_response_window_days" form="monitor-settings-form" min="1" max="365" value="<?= (int)$monitor['safety_response_window_days'] ?>" required>
+							</label>
+							<label>
+								<?= e__('monitors.escalation.reminder_interval') ?>
+								<input type="number" name="safety_reminder_interval_days" form="monitor-settings-form" min="1" max="365" value="<?= (int)$monitor['safety_reminder_interval_days'] ?>" required>
+							</label>
+							<label>
+								<?= e__('monitors.escalation.max_reminders') ?>
+								<input type="number" name="safety_max_reminders" form="monitor-settings-form" min="0" max="100" value="<?= (int)$monitor['safety_max_reminders'] ?>" required>
+							</label>
+							<label>
+								<?= e__('monitors.escalation.required_confirmations') ?>
+								<input type="number" name="safety_required_confirmations" form="monitor-settings-form" min="1" max="100" value="<?= (int)$monitor['safety_required_confirmations'] ?>" required>
+							</label>
+						</div>
+
+						<label for="safety_confirmation_days"><?= e__('monitors.escalation.confirmation_days') ?></label>
+						<input type="number" id="safety_confirmation_days" name="safety_confirmation_days" form="monitor-settings-form" min="0" max="3650" value="<?= (int)($monitor['safety_confirmation_days'] ?? 0) ?>">
+						<p class="form-hint"><?= e__('monitors.escalation.confirmation_days_hint') ?></p>
+					</div>
+				</details>
+
+				<details class="configuration-disclosure">
+					<summary>
+						<span>
+							<strong><?= e__('monitors.escalation.messages.heading') ?></strong>
+							<small><?= e__('monitors.escalation.messages.hint') ?></small>
+						</span>
+					</summary>
+					<div class="configuration-disclosure-body">
+						<p class="form-hint"><?= e__('mail.templates.safety_language_hint') ?></p>
+						<div class="language-template-editor" data-language-tabs data-active-language="<?= e(in_array($locale, $availableLocales, true) ? $locale : ($availableLocales[0] ?? 'en')) ?>">
+							<div class="language-template-tabs" role="tablist" aria-label="<?= e__('mail.templates.languages') ?>">
+								<?php foreach ($availableLocales as $templateLocale): ?>
+									<button type="button" class="language-template-tab" role="tab" data-language-target="<?= e($templateLocale) ?>">
+										<?= e(notification_language_name($templateLocale)) ?>
+									</button>
+								<?php endforeach; ?>
+							</div>
+
+							<?php foreach ($availableLocales as $templateLocale): ?>
+								<?php $templateFieldLocale = language_field_suffix($templateLocale); ?>
+								<?php $invitationTemplate = $mailTemplates['safety_invitation'][$templateLocale] ?? ['subject' => '', 'body_text' => '']; ?>
+								<?php $reminderTemplate = $mailTemplates['safety_reminder'][$templateLocale] ?? ['subject' => '', 'body_text' => '']; ?>
+								<?php $invitationDefault = $mailDefaults['safety_invitation'][$templateLocale] ?? ['subject' => '', 'body_text' => '']; ?>
+								<?php $reminderDefault = $mailDefaults['safety_reminder'][$templateLocale] ?? ['subject' => '', 'body_text' => '']; ?>
+								<div class="language-template-panel" data-language-panel="<?= e($templateLocale) ?>">
+									<p class="form-hint placeholder-help">
+										<?= e__('monitors.messages.placeholders') ?>
+										<code>{app}</code> — <?= e__('mail.placeholders.app') ?>;
+										<code>{name}</code> — <?= e__('mail.placeholders.name') ?>;
+										<code>{owner}</code> — <?= e__('mail.placeholders.owner') ?>;
+										<code>{monitor}</code> — <?= e__('mail.placeholders.monitor') ?>;
+										<code>{url}</code> — <?= e__('mail.placeholders.safety_url') ?>.
+										<?= e__('monitors.escalation.messages.reminder_placeholders') ?>
+										<code>{number}</code> — <?= e__('mail.placeholders.reminder_number') ?>;
+										<code>{total}</code> — <?= e__('mail.placeholders.reminder_total') ?>.
+									</p>
+
+									<details class="mail-template-kind" open>
+										<summary><?= e__('monitors.escalation.messages.invitation.heading') ?></summary>
+										<div class="mail-template-kind-body">
+											<label for="safety_invitation_subject_<?= e($templateFieldLocale) ?>"><?= e__('monitors.messages.subject') ?></label>
+											<input type="text" id="safety_invitation_subject_<?= e($templateFieldLocale) ?>" name="safety_invitation_subject_<?= e($templateFieldLocale) ?>" form="monitor-settings-form" value="<?= e((string)$invitationTemplate['subject']) ?>">
+											<label for="safety_invitation_body_<?= e($templateFieldLocale) ?>"><?= e__('monitors.messages.body') ?></label>
+											<textarea id="safety_invitation_body_<?= e($templateFieldLocale) ?>" name="safety_invitation_body_<?= e($templateFieldLocale) ?>" form="monitor-settings-form" rows="7"><?= e((string)$invitationTemplate['body_text']) ?></textarea>
+											<p class="form-hint"><?= e__('mail.templates.empty_uses_default') ?></p>
+											<details class="mail-default-disclosure">
+												<summary><?= e__('mail.templates.show_default') ?></summary>
+												<div class="mail-default-template">
+													<div><strong><?= e__('monitors.messages.subject') ?>:</strong> <?= e((string)$invitationDefault['subject']) ?></div>
+													<pre><?= e((string)$invitationDefault['body_text']) ?></pre>
+												</div>
+											</details>
+										</div>
+									</details>
+
+									<details class="mail-template-kind">
+										<summary><?= e__('monitors.escalation.messages.reminder.heading') ?></summary>
+										<div class="mail-template-kind-body">
+											<label for="safety_reminder_subject_<?= e($templateFieldLocale) ?>"><?= e__('monitors.messages.subject') ?></label>
+											<input type="text" id="safety_reminder_subject_<?= e($templateFieldLocale) ?>" name="safety_reminder_subject_<?= e($templateFieldLocale) ?>" form="monitor-settings-form" value="<?= e((string)$reminderTemplate['subject']) ?>">
+											<label for="safety_reminder_body_<?= e($templateFieldLocale) ?>"><?= e__('monitors.messages.body') ?></label>
+											<textarea id="safety_reminder_body_<?= e($templateFieldLocale) ?>" name="safety_reminder_body_<?= e($templateFieldLocale) ?>" form="monitor-settings-form" rows="7"><?= e((string)$reminderTemplate['body_text']) ?></textarea>
+											<p class="form-hint"><?= e__('mail.templates.empty_uses_default') ?></p>
+											<details class="mail-default-disclosure">
+												<summary><?= e__('mail.templates.show_default') ?></summary>
+												<div class="mail-default-template">
+													<div><strong><?= e__('monitors.messages.subject') ?>:</strong> <?= e((string)$reminderDefault['subject']) ?></div>
+													<pre><?= e((string)$reminderDefault['body_text']) ?></pre>
+												</div>
+											</details>
+										</div>
+									</details>
+								</div>
+							<?php endforeach; ?>
+						</div>
+					</div>
+				</details>
 			</div>
 
-			<label for="safety_confirmation_days"><?= e__('monitors.escalation.confirmation_days') ?></label>
-			<input type="number" id="safety_confirmation_days" name="safety_confirmation_days" form="monitor-settings-form" min="0" max="3650" value="<?= (int)($monitor['safety_confirmation_days'] ?? 0) ?>">
-			<p class="form-hint"><?= e__('monitors.escalation.confirmation_days_hint') ?></p>
-
-			<div class="configuration-block">
-				<h3><?= e__('monitors.escalation.messages.heading') ?></h3>
-				<p class="form-hint"><?= e__('monitors.escalation.messages.hint') ?></p>
-				<p class="form-hint"><code>{app}</code> <code>{name}</code> <code>{owner}</code> <code>{monitor}</code> <code>{url}</code> · <?= e__('monitors.escalation.messages.reminder_placeholders') ?> <code>{number}</code> <code>{total}</code></p>
-
-					<h4><?= e__('monitors.escalation.messages.invitation.heading') ?></h4>
-					<label for="safety_invitation_subject"><?= e__('monitors.messages.subject') ?></label>
-					<input type="text" id="safety_invitation_subject" name="safety_invitation_subject" form="monitor-settings-form" value="<?= e((string)($monitor['safety_invitation_subject'] ?? '')) ?>">
-					<label for="safety_invitation_body"><?= e__('monitors.messages.body') ?></label>
-					<textarea id="safety_invitation_body" name="safety_invitation_body" form="monitor-settings-form" rows="8"><?= e((string)($monitor['safety_invitation_body'] ?? '')) ?></textarea>
-					<div class="mail-default-template">
-						<strong><?= e__('monitors.escalation.messages.default_heading') ?></strong>
-						<p class="form-hint"><?= e__('monitors.escalation.messages.default_hint') ?></p>
-						<div><strong><?= e__('monitors.messages.subject') ?>:</strong> <?= e(__('mail.safety_invitation.subject')) ?></div>
-						<pre><?= e(__('mail.safety_invitation.body')) ?></pre>
-					</div>
-
-					<h4><?= e__('monitors.escalation.messages.reminder.heading') ?></h4>
-					<label for="safety_reminder_subject"><?= e__('monitors.messages.subject') ?></label>
-					<input type="text" id="safety_reminder_subject" name="safety_reminder_subject" form="monitor-settings-form" value="<?= e((string)($monitor['safety_reminder_subject'] ?? '')) ?>">
-					<label for="safety_reminder_body"><?= e__('monitors.messages.body') ?></label>
-					<textarea id="safety_reminder_body" name="safety_reminder_body" form="monitor-settings-form" rows="8"><?= e((string)($monitor['safety_reminder_body'] ?? '')) ?></textarea>
-					<div class="mail-default-template">
-						<strong><?= e__('monitors.escalation.messages.default_heading') ?></strong>
-						<p class="form-hint"><?= e__('monitors.escalation.messages.default_hint') ?></p>
-						<div><strong><?= e__('monitors.messages.subject') ?>:</strong> <?= e(__('mail.safety_reminder.subject')) ?></div>
-						<pre><?= e(__('mail.safety_reminder.body')) ?></pre>
-					</div>
-
-			</div>
 		</section>
 
 		<section id="monitor-tab-review" class="monitor-tab-panel<?= $activeTab === 'review' ? ' is-active' : '' ?>" role="tabpanel" data-tab-panel="review"<?= $activeTab === 'review' ? '' : ' hidden' ?>>

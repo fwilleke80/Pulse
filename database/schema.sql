@@ -1,4 +1,4 @@
--- Pulse 0.7.3 reference database schema
+-- Pulse 0.7.4 reference database schema
 -- MySQL 8+ / MariaDB 10.6+
 -- Pulse applies database/migrations automatically. Do not import this reference file over an existing database.
 -- ----
@@ -77,6 +77,21 @@ CREATE TABLE monitors
 	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE monitor_mail_templates
+(
+	id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+	monitor_id BIGINT UNSIGNED NOT NULL,
+	template_key ENUM('recipient_default','safety_invitation','safety_reminder') NOT NULL,
+	locale VARCHAR(10) NOT NULL,
+	subject VARCHAR(255) NOT NULL,
+	body_text LONGTEXT NOT NULL,
+	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+	UNIQUE KEY uq_monitor_mail_templates_monitor_key_locale (monitor_id, template_key, locale),
+	INDEX idx_monitor_mail_templates_monitor (monitor_id),
+	FOREIGN KEY (monitor_id) REFERENCES monitors(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE monitor_safety_contacts

@@ -9,11 +9,13 @@
 declare(strict_types=1);
 
 use Pulse\Core\CsrfTokenManager;
+use Pulse\Core\LanguageCatalog;
 use Pulse\Core\NotificationLanguage;
 use Pulse\Core\Translator;
 
 $__pulseTranslator = null;
 $__pulseCsrfTokenManager = null;
+$__pulseLanguageCatalog = null;
 $__pulseNotificationLanguage = null;
 $__pulseDisplayTimezone = 'Europe/Berlin';
 
@@ -44,6 +46,38 @@ function setDisplayTimezone(string $timezone): void
 	$__pulseDisplayTimezone = $timezone;
 }
 
+
+/** @brief Registers the installed-language catalog used by views. @param LanguageCatalog $catalog Language catalog. */
+function setLanguageCatalog(LanguageCatalog $catalog): void
+{
+	global $__pulseLanguageCatalog;
+	$__pulseLanguageCatalog = $catalog;
+}
+
+/**
+ * @brief Returns the native display name for an installed locale.
+ * @param string $locale Locale identifier.
+ * @return string Human-readable language name.
+ */
+function language_name(string $locale): string
+{
+	global $__pulseLanguageCatalog;
+
+	if ($__pulseLanguageCatalog instanceof LanguageCatalog)
+	{
+		return $__pulseLanguageCatalog->Name($locale);
+	}
+
+	return $locale;
+}
+
+/** @brief Returns a form-safe suffix for a locale identifier. @param string $locale Locale identifier. @return string */
+function language_field_suffix(string $locale): string
+{
+	$suffix = preg_replace('/[^a-z0-9_]/i', '_', $locale);
+	return is_string($suffix) ? $suffix : $locale;
+}
+
 /** @brief Registers the notification-language resolver used by views. @param NotificationLanguage $resolver Notification-language resolver. */
 function setNotificationLanguageResolver(NotificationLanguage $resolver): void
 {
@@ -69,9 +103,7 @@ function notification_language_name(?string $locale): string
 		$locale = is_string($locale) && trim($locale) !== '' ? trim($locale) : 'de';
 	}
 
-	$key = 'notification.language.' . $locale;
-	$translated = __($key);
-	return $translated !== $key ? $translated : (string)$locale;
+	return language_name((string)$locale);
 }
 
 /**

@@ -42,8 +42,8 @@ final class RecipientRepository
 				mc.sort_order,
 				m.name AS monitor_name,
 				u.display_name AS owner_name,
-				m.default_message_subject,
-				m.default_message_body,
+				mmt.subject AS default_message_subject,
+				mmt.body_text AS default_message_body,
 				c.name,
 				c.email,
 				c.notification_locale,
@@ -64,6 +64,10 @@ final class RecipientRepository
 			INNER JOIN users u ON u.id = m.user_id
 			INNER JOIN contacts c ON c.id = mc.contact_id
 			LEFT JOIN contact_messages cm ON cm.monitor_contact_id = mc.id
+			LEFT JOIN monitor_mail_templates mmt
+				ON mmt.monitor_id = m.id
+				AND mmt.template_key = \'recipient_default\'
+				AND mmt.locale = c.notification_locale
 			WHERE mc.id = :id AND m.user_id = :user_id
 			LIMIT 1
 		');

@@ -6,6 +6,8 @@
 declare(strict_types=1);
 
 return [
+	'_language.name' => 'English',
+
 	'app.name' => 'Pulse',
 
 	'home.title' => 'Home',
@@ -169,6 +171,14 @@ return [
 	'monitors.send_due_notice.queued' => 'The due notification remains queued.',
 	'monitors.send_due_notice.unavailable' => 'This monitor has no unsent due notification available.',
 	'monitors.send_due_notice.mail_disabled' => 'Mail delivery must be enabled before a due notification can be sent.',
+	'monitors.send_safety_contacts.submit' => 'Send safety contact notification now',
+	'monitors.send_safety_contacts.confirm' => 'This development action bypasses the remaining owner reminder waiting periods and sends real safety-contact notifications immediately. Continue?',
+	'monitors.send_safety_contacts.sent' => '{count} safety-contact notification(s) were sent.',
+	'monitors.send_safety_contacts.failed' => 'Safety-contact notification delivery failed permanently. Review the delivery state and retry the failed queue job.',
+	'monitors.send_safety_contacts.queued' => 'Safety-contact notifications remain queued for delivery.',
+	'monitors.send_safety_contacts.blocked' => 'The safety-contact gate could not be started. Check that at least one checked safety contact is assigned and that the confirmation requirement is valid.',
+	'monitors.send_safety_contacts.unavailable' => 'No awaiting safety-contact monitor cycle is available for this development action.',
+	'monitors.send_safety_contacts.mail_disabled' => 'Mail delivery must be enabled before safety-contact notifications can be sent.',
 	'monitors.send_recipients.submit' => 'Send recipient notification now',
 	'monitors.send_recipients.confirm' => 'This development action bypasses the remaining owner and safety-contact waiting periods and can send real recipient messages immediately. Continue?',
 	'monitors.send_recipients.sent' => '{count} recipient notification(s) were sent.',
@@ -226,9 +236,21 @@ return [
 
 	'monitors.messages.hint' => 'Prepare the default delivery message, optional personal overrides, and recipient documents.',
 	'monitors.messages.default.heading' => 'Default recipient email',
-	'monitors.messages.default.hint' => 'Optionally replace Pulse’s built-in recipient email. Leave both fields empty to use the localized Pulse default for recipients without a personal override.',
+	'monitors.messages.default.hint' => 'Configure the monitor-wide recipient email separately for each supported language.',
 	'monitors.messages.recipient_pages_hint' => 'Personal messages and document assignments are configured on each recipient’s dedicated page.',
 	'monitors.messages.placeholders' => 'Available placeholders:',
+	'mail.placeholders.app' => 'the Pulse application name',
+	'mail.placeholders.name' => 'the name of the person receiving this email',
+	'mail.placeholders.owner' => 'the monitor owner’s display name',
+	'mail.placeholders.monitor' => 'the monitor name',
+	'mail.placeholders.safety_url' => 'the safety-confirmation page URL',
+	'mail.placeholders.reminder_number' => 'the current safety reminder number',
+	'mail.placeholders.reminder_total' => 'the total number of configured safety reminders',
+'mail.templates.languages' => 'Email template language',
+'mail.templates.recipient_language_hint' => 'Pulse automatically chooses the matching monitor-wide version from each recipient’s Pulse interface language. A recipient-specific personal message still takes precedence.',
+	'mail.templates.safety_language_hint' => 'Pulse automatically chooses the matching invitation and reminder version from each safety contact’s Pulse interface language.',
+'mail.templates.empty_uses_default' => 'Leave both fields empty in this language to use Pulse’s built-in default for that language.',
+'mail.templates.show_default' => 'Show Pulse default text',
 	'monitors.messages.default_preview.heading' => 'Pulse default recipient email',
 	'monitors.messages.default_preview.hint' => 'Shown in the current interface language. When no custom monitor message is configured, each recipient receives the localized version for their Pulse interface language.',
 	'monitors.messages.custom_hint' => 'Leave both fields empty to use the Pulse default shown below.',
@@ -278,7 +300,7 @@ return [
 	'monitors.escalation.confirmation_days_hint' => 'Use 0 to postpone by the monitor’s normal check interval. The result is recorded as externally confirmed, never as your own check-in.',
 
 	'monitors.escalation.messages.heading' => 'Safety-contact email text',
-	'monitors.escalation.messages.hint' => 'Optionally replace Pulse’s default safety-contact invitation and reminder wording. Leave a subject and body pair empty to keep the localized Pulse default for that mail type.',
+	'monitors.escalation.messages.hint' => 'Configure safety-contact invitation and reminder wording separately for each supported language.',
 	'monitors.escalation.messages.default_heading' => 'Pulse default',
 	'monitors.escalation.messages.default_hint' => 'Shown in the current interface language. A safety contact receives the localized version for their Pulse interface language when no custom text is configured.',
 	'monitors.escalation.messages.reminder_placeholders' => 'Reminder-only:',
@@ -452,8 +474,6 @@ return [
 	'profile.flash.update.invalid_language' => 'Please select a supported notification language.',
 	'profile.flash.update.success' => 'Profile updated.',
 
-	'notification.language.en' => 'English',
-	'notification.language.de' => 'Deutsch',
 
 	'profile.flash.password.required' => 'Please fill in all password fields.',
 	'profile.flash.password.current_invalid' => 'The current password is incorrect.',
@@ -522,8 +542,6 @@ return [
 	'footer.links' => 'Footer navigation',
 	'footer.imprint' => 'Imprint',
 	'footer.language' => 'Language',
-	'footer.language.en' => 'English',
-	'footer.language.de' => 'Deutsch',
 	'footer.allrightsreserved' => 'All rights reserved.',
 	'footer.version_unavailable' => 'version unavailable',
 

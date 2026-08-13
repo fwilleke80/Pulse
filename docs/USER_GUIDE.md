@@ -109,9 +109,9 @@ Editing a contact updates the reusable contact record. Removing a contact also r
 
 ## Recipient messages
 
-Each monitor can have a custom default message for its recipients. A recipient can either use that monitor default or have a personal subject and body. If the monitor default is left empty, Pulse uses its built-in localized recipient message instead. The editor shows that fallback text so it is never hidden.
+Each monitor can have a custom default recipient message **per supported language**. The editor provides one tab for every installed Pulse language. Pulse automatically chooses the version matching each recipient's **Pulse interface language**. A recipient can still override the monitor-wide template with a personal subject and body. If a language-specific monitor template is left empty, Pulse uses its built-in localized recipient message instead; the editor lets you reveal that fallback text on demand.
 
-Custom recipient subject/body templates support `{app}`, `{name}`, `{owner}`, and `{monitor}`. The editor lists the supported placeholders beside the text fields. The recipient page shows the exact expanded message Pulse will queue. Pulse does not silently add a second explanatory wrapper around custom text.
+Custom recipient subject/body templates support `{app}` (the Pulse application name), `{name}` (the recipient's name), `{owner}` (the monitor owner's display name), and `{monitor}` (the monitor name). The editor shows these meanings beside the text fields. The recipient page shows the exact expanded message Pulse will queue. Pulse does not silently add a second explanatory wrapper around custom text.
 
 A useful message should make sense on its own. Consider explaining:
 
@@ -149,7 +149,7 @@ If the required confirmation is not reached before the safety-contact stage ends
 
 ### Custom safety-contact email text
 
-On **Safety & escalation**, you can replace the default subject and body used for the first safety-contact email and for later reminders. The templates support `{app}`, `{name}`, `{owner}`, `{monitor}`, and `{url}`; reminder text also supports `{number}` and `{total}`. Leave both fields for a mail type empty to use Pulse's localized default wording. The editor displays that default subject and body in the current interface language. The contact's **Pulse interface language** is still used for the safety-confirmation page and, later, the recipient portal.
+On **Safety & escalation**, you can replace the default subject and body used for the first safety-contact email and for later reminders **separately for each supported language**. Each installed language gets its own tab, and Pulse chooses the matching version from each safety contact's **Pulse interface language**. The templates support `{app}` (the Pulse application name), `{name}` (the safety contact's name), `{owner}` (the monitor owner's display name), `{monitor}` (the monitor name), and `{url}` (the safety-confirmation page URL). Reminder text additionally supports `{number}` (the current reminder number) and `{total}` (the configured total number of safety reminders). Leave a language-specific subject/body pair empty to use Pulse's built-in default for that language; the default can be revealed in the editor. The same contact language controls the safety-confirmation page and, later, the recipient portal.
 
 ## Notifications and failed mail
 
@@ -205,7 +205,7 @@ Pulse inspects the uploaded content rather than trusting the filename. Stored fi
 
 ### Important current limitation
 
-Recipient document delivery is **not active** in Pulse 0.7.3. Assigning a document to a recipient prepares that relationship for the future secure document portal, but current recipient emails contain:
+Recipient document delivery is **not active** in Pulse 0.7.6. Assigning a document to a recipient prepares that relationship for the future secure document portal, but current recipient emails contain:
 
 - no attachment
 - no document content
@@ -215,9 +215,21 @@ Uploaded files, editable text documents, and recipient messages are also not enc
 
 ## Languages
 
-Pulse provides English and German interfaces.
+Pulse ships with English and German, but installed languages are discovered automatically from `app/Lang/*.php`. The interface language, your owner-notification language, and each contact's Pulse interface language are separate. Changing the language in the footer does not change either stored language setting.
 
-The interface language, your owner-notification language, and each contact's Pulse interface language are separate. Changing the language in the footer does not change either stored language setting.
+To add another language, copy an existing language file to a locale filename such as `app/Lang/it.php`, translate the strings, and set its native display name near the top:
+
+```php
+return [
+	'_language.name' => 'Italiano',
+
+	// translated Pulse strings...
+];
+```
+
+After the file is uploaded, Pulse discovers `it` automatically. **Italiano** appears in the footer and language selectors, and monitor-wide recipient/safety email editors gain an Italian tab. No configuration entry or database migration is required.
+
+English is the fallback language. If a translation key is missing from a newly added language, Pulse uses the English string instead of exposing an internal translation key. This makes partial translations usable while they are being completed.
 
 ## Health checks
 

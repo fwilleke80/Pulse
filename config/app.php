@@ -22,7 +22,6 @@ return [
 	'timezone' => 'UTC',
 	'display_timezone' => Environment::Get('PULSE_DISPLAY_TIMEZONE', 'Europe/Berlin'),
 	'locale' => Environment::Get('PULSE_DEFAULT_LOCALE', 'de'),
-	'available_locales' => ['en', 'de'],
 	'session' => [
 		'name' => Environment::Get('PULSE_SESSION_NAME', 'pulse_session'),
 		'cookie_secure' => Environment::GetBool('PULSE_COOKIE_SECURE', $isProduction),

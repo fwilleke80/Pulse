@@ -64,6 +64,130 @@ class MessageRepository
 	}
 
 	/**
+	 * @brief Returns language-specific monitor-wide mail templates.
+	 * @param int $monitorId Monitor ID.
+	 * @param int $userId Owner user ID.
+	 * @return array<string, array<string, array{subject: string, body_text: string}>> Templates keyed by template key and locale.
+	 */
+	public function FindLocalizedTemplatesForMonitor(int $monitorId, int $userId): array
+	{
+		$statement = $this->_database->GetConnection()->prepare('
+			SELECT mmt.template_key, mmt.locale, mmt.subject, mmt.body_text
+			FROM monitor_mail_templates mmt
+			INNER JOIN monitors m ON m.id = mmt.monitor_id
+			WHERE mmt.monitor_id = :monitor_id
+			  AND m.user_id = :user_id
+			ORDER BY mmt.template_key ASC, mmt.locale ASC
+		');
+		$statement->execute([
+			'monitor_id' => $monitorId,
+			'user_id' => $userId,
+		]);
+		$rows = $statement->fetchAll(PDO::FETCH_ASSOC);
+		$result = [];
+
+		foreach (is_array($rows) ? $rows : [] as $row)
+		{
+			$templateKey = (string)$row['template_key'];
+			$locale = (string)$row['locale'];
+			$result[$templateKey][$locale] = [
+				'subject' => (string)$row['subject'],
+				'body_text' => (string)$row['body_text'],
+			];
+		}
+
+		return $result;
+	}
+
+	/**
+	 * @brief Replaces all localized variants of one monitor-wide mail template.
+	 * @param int $monitorId Monitor ID.
+	 * @param int $userId Owner user ID.
+	 * @param string $templateKey Template identifier.
+	 * @param array<string, array{subject: string, body_text: string}> $templates Templates keyed by locale; empty pairs are omitted.
+	 */
+	public function ReplaceLocalizedTemplatesForMonitor(
+		int $monitorId,
+		int $userId,
+		string $templateKey,
+		array $templates
+	): void
+	{
+		if (!in_array($templateKey, ['recipient_default', 'safety_invitation', 'safety_reminder'], true))
+		{
+			throw new RuntimeException('Unsupported monitor mail template key.');
+		}
+
+		$connection = $this->_database->GetConnection();
+		$connection->beginTransaction();
+
+		try
+		{
+			$monitorStatement = $connection->prepare('
+				SELECT id
+				FROM monitors
+				WHERE id = :monitor_id AND user_id = :user_id
+				FOR UPDATE
+			');
+			$monitorStatement->execute([
+				'monitor_id' => $monitorId,
+				'user_id' => $userId,
+			]);
+
+			if ($monitorStatement->fetchColumn() === false)
+			{
+				throw new RuntimeException('Owned monitor not found during localized message update.');
+			}
+
+			$delete = $connection->prepare('
+				DELETE FROM monitor_mail_templates
+				WHERE monitor_id = :monitor_id AND template_key = :template_key
+			');
+			$delete->execute([
+				'monitor_id' => $monitorId,
+				'template_key' => $templateKey,
+			]);
+
+			$insert = $connection->prepare('
+				INSERT INTO monitor_mail_templates
+				(monitor_id, template_key, locale, subject, body_text)
+				VALUES (:monitor_id, :template_key, :locale, :subject, :body_text)
+			');
+
+			foreach ($templates as $locale => $template)
+			{
+				$subject = trim((string)($template['subject'] ?? ''));
+				$body = trim((string)($template['body_text'] ?? ''));
+
+				if ($subject === '' && $body === '')
+				{
+					continue;
+				}
+
+				if ($subject === '' || $body === '')
+				{
+					throw new RuntimeException('Localized mail templates require both subject and body.');
+				}
+
+				$insert->execute([
+					'monitor_id' => $monitorId,
+					'template_key' => $templateKey,
+					'locale' => (string)$locale,
+					'subject' => $subject,
+					'body_text' => (string)$template['body_text'],
+				]);
+			}
+
+			$connection->commit();
+		}
+		catch (Throwable $throwable)
+		{
+			$connection->rollBack();
+			throw $throwable;
+		}
+	}
+
+	/**
 	 * @brief Replaces the complete message configuration for an owned monitor.
 	 * @param int $monitorId Monitor ID.
 	 * @param int $userId Owner user ID.

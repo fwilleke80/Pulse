@@ -169,6 +169,67 @@ document.addEventListener('DOMContentLoaded', function ()
 		updateOverride();
 	}
 
+
+	for (const editor of document.querySelectorAll('[data-language-tabs]'))
+	{
+		const tabs = Array.from(editor.querySelectorAll('[data-language-target]'));
+		const panels = Array.from(editor.querySelectorAll('[data-language-panel]'));
+		const languages = tabs.map((tab) => tab.dataset.languageTarget);
+
+		/** @brief Activates one language-specific mail-template panel. */
+		const activateLanguage = function (language)
+		{
+			if (!languages.includes(language))
+			{
+				return;
+			}
+
+			for (const tab of tabs)
+			{
+				const active = tab.dataset.languageTarget === language;
+				tab.classList.toggle('is-active', active);
+				tab.setAttribute('aria-selected', active ? 'true' : 'false');
+				tab.tabIndex = active ? 0 : -1;
+			}
+
+			for (const panel of panels)
+			{
+				const active = panel.dataset.languagePanel === language;
+				panel.hidden = !active;
+			}
+		};
+
+		activateLanguage(editor.dataset.activeLanguage || languages[0] || 'en');
+
+		for (const tab of tabs)
+		{
+			tab.addEventListener('click', function ()
+			{
+				activateLanguage(tab.dataset.languageTarget || languages[0] || 'en');
+			});
+		}
+	}
+
+	const escalationPolicyInputs = Array.from(document.querySelectorAll('input[name="escalation_policy"]'));
+	const safetyConfiguration = document.querySelector('[data-safety-configuration]');
+
+	if (escalationPolicyInputs.length > 0 && safetyConfiguration)
+	{
+		/** @brief Shows safety-only configuration only when the safety-contact policy is selected. */
+		const updateSafetyConfiguration = function ()
+		{
+			const selected = escalationPolicyInputs.find((input) => input.checked);
+			safetyConfiguration.hidden = !selected || selected.value !== 'safety_contact';
+		};
+
+		for (const input of escalationPolicyInputs)
+		{
+			input.addEventListener('change', updateSafetyConfiguration);
+		}
+
+		updateSafetyConfiguration();
+	}
+
 	const domainSuggestions = {
 		'gamil.com': 'gmail.com',
 		'gmial.com': 'gmail.com',

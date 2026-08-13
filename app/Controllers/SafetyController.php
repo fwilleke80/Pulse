@@ -11,7 +11,9 @@ declare(strict_types=1);
 namespace Pulse\Controllers;
 
 use Pulse\Core\Logger;
+use Pulse\Core\NotificationLanguage;
 use Pulse\Core\Request;
+use Pulse\Core\SafetyLanguagePreference;
 use Pulse\Core\Session;
 use Pulse\Core\Translator;
 use Pulse\Core\View;
@@ -24,6 +26,7 @@ use Pulse\Services\EscalationService;
 final class SafetyController extends BaseController
 {
 	private EscalationService $_escalation;
+	private NotificationLanguage $_languages;
 	private string $_languagePath;
 
 	/** @brief Constructs the public safety controller. */
@@ -34,11 +37,13 @@ final class SafetyController extends BaseController
 		Logger $logger,
 		Request $request,
 		EscalationService $escalation,
+		NotificationLanguage $languages,
 		string $languagePath
 	)
 	{
 		parent::__construct($view, $session, $auth, $logger, $request);
 		$this->_escalation = $escalation;
+		$this->_languages = $languages;
 		$this->_languagePath = $languagePath;
 	}
 
@@ -54,7 +59,7 @@ final class SafetyController extends BaseController
 			return $this->_view->Render('safety.invalid');
 		}
 
-		$this->UseRecipientLanguage((string)$request['notification_locale']);
+		$this->UseRecipientLanguage((string)$request['notification_locale'], $token, $this->_request->QueryString('lang', 10));
 
 		return $this->_view->Render('safety.confirm', [
 			'safetyRequest' => $request,
@@ -74,7 +79,7 @@ final class SafetyController extends BaseController
 			return $this->_view->Render('safety.invalid');
 		}
 
-		$this->UseRecipientLanguage((string)$request['notification_locale']);
+		$this->UseRecipientLanguage((string)$request['notification_locale'], $token);
 		$decision = $this->_request->PostString('decision', 20);
 
 		if ($decision === 'confirm' && !$this->_request->PostBool('direct_contact'))
@@ -97,10 +102,26 @@ final class SafetyController extends BaseController
 		return $this->_view->Render('safety.result', ['result' => $result]);
 	}
 
-	/** @brief Selects the safety contact's stored language independently of the UI session. */
-	private function UseRecipientLanguage(string $locale): void
+	/**
+	 * @brief Selects the safety-page language, allowing an explicit per-request override.
+	 * @param string $storedLocale Language snapshotted when the safety request was created.
+	 * @param string $token Raw safety token used only to scope the session override.
+	 * @param string $linkLocale Optional locale embedded in the invitation link.
+	 */
+	private function UseRecipientLanguage(string $storedLocale, string $token, string $linkLocale = ''): void
 	{
-		$locale = in_array($locale, ['en', 'de'], true) ? $locale : 'en';
+		$locale = $this->_languages->Resolve($storedLocale);
+		$sessionLocale = $this->_session->Get(SafetyLanguagePreference::SessionKey($token));
+
+		if (is_string($sessionLocale) && $this->_languages->IsSupported($sessionLocale))
+		{
+			$locale = $sessionLocale;
+		}
+		elseif ($linkLocale !== '' && $this->_languages->IsSupported($linkLocale))
+		{
+			$locale = $linkLocale;
+		}
+
 		setTranslator(new Translator($this->_languagePath, $locale));
 		$this->_view->SetGlobals(['locale' => $locale], true);
 	}

@@ -13,6 +13,7 @@ namespace Pulse\Controllers;
 use Pulse\Core\Logger;
 use Pulse\Core\Request;
 use Pulse\Core\SafeRedirect;
+use Pulse\Core\SafetyLanguagePreference;
 use Pulse\Core\Session;
 use Pulse\Core\View;
 use Pulse\Services\AuthService;
@@ -48,6 +49,15 @@ class LanguageController extends BaseController
 		if (!in_array($locale, $this->_supportedLocales, true))
 		{
 			$this->Flash('error', __('flash.language_unsupported'));
+			$this->Redirect($redirect);
+		}
+
+		$safetyToken = SafetyLanguagePreference::TokenFromRedirect($redirect);
+
+		if ($safetyToken !== null)
+		{
+			$this->_session->Set(SafetyLanguagePreference::SessionKey($safetyToken), $locale);
+			$this->_logger->Info('Safety page language changed', ['locale' => $locale]);
 			$this->Redirect($redirect);
 		}
 

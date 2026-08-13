@@ -159,7 +159,7 @@ For genuinely time-critical danger, an email-based multi-day workflow is the wro
 
 ## Write a useful recipient message
 
-Pulse provides a localized built-in recipient email, so a monitor can operate without custom wording. If you write a custom monitor or recipient-specific message, the editor shows the supported placeholders: `{app}`, `{name}`, `{owner}`, and `{monitor}`.
+Pulse provides localized built-in recipient email text, so a monitor can operate without custom wording. Monitor-wide custom recipient templates can be written separately for every installed Pulse language; Pulse selects the version matching each recipient's Pulse interface language. Recipient-specific personal messages still take precedence. The editor shows the supported placeholders: `{app}`, `{name}`, `{owner}`, and `{monitor}`.
 
 A recipient should be able to understand the email without hidden context. Consider including:
 
@@ -183,7 +183,7 @@ Use non-sensitive test contacts and wording for the first rehearsal.
 6. Verify recipient delivery history on the recipient page.
 7. Correct and retry one deliberately failed test message if you want to verify the failure workflow.
 
-In a non-production environment with `PULSE_DEBUG=true`, Pulse provides lifecycle test actions such as **Force due now**, **Send due notification now**, and **Send recipient notification now**. The last action sends real recipient mail and bypasses remaining wait periods, so use only non-sensitive test recipients.
+In a non-production environment with `PULSE_DEBUG=true`, Pulse exposes lifecycle test actions that follow the current cycle's real escalation policy. A direct monitor progresses through **Force due now** → **Send due notice now** → **Send recipient notification now**. A safety-contact monitor progresses through **Force due now** → **Send due notice now** → **Send safety contact notification now** → **Send recipient notification now**. The safety and recipient actions send real mail and deliberately bypass the remaining waiting periods, so use only non-sensitive test contacts and recipients.
 
 Never rehearse with wording that could alarm a real recipient.
 

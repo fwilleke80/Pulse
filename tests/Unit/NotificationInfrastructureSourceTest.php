@@ -78,17 +78,19 @@ class NotificationInfrastructureSourceTest extends TestCase
 		self::assertStringContainsString("'safety_pending'", $migration);
 	}
 
-	public function testCustomSafetyMessagesAreStoredAndSnapshotted(): void
+	public function testLocalizedMonitorMessagesAreStoredSelectedAndSnapshotted(): void
 	{
-		$migration = (string)file_get_contents(dirname(__DIR__, 2) . '/database/migrations/010_custom_safety_messages.sql');
+		$migration = (string)file_get_contents(dirname(__DIR__, 2) . '/database/migrations/012_localized_monitor_mail_templates.sql');
 		$escalation = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Services/EscalationService.php');
 		$view = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Views/monitors/edit.php');
 
-		self::assertStringContainsString('safety_invitation_subject', $migration);
-		self::assertStringContainsString('reminder_body', $migration);
-		self::assertStringContainsString("'invitation_subject' => \$cycle['safety_invitation_subject'] ?? null", $escalation);
+		self::assertStringContainsString('monitor_mail_templates', $migration);
+		self::assertStringContainsString("'safety_invitation'", $migration);
+		self::assertStringContainsString("invitation.locale = c.notification_locale", $escalation);
+		self::assertStringContainsString("'invitation_subject' => \$contact['safety_invitation_subject'] ?? null", $escalation);
 		self::assertStringContainsString("'message_body' => (string)(\$current['reminder_body'] ?? '')", $escalation);
-		self::assertStringContainsString('name="safety_invitation_subject" form="monitor-settings-form"', $view);
+		self::assertStringContainsString('name="safety_invitation_subject_<?= e(\$templateFieldLocale) ?>"', $view);
+		self::assertStringContainsString('data-language-tabs', $view);
 	}
 
 	public function testSafetyLinksAreRedactedAfterDeliveryOrCancellation(): void
@@ -137,7 +139,10 @@ class NotificationInfrastructureSourceTest extends TestCase
 		self::assertStringContainsString('QueueDueNoticeForMonitorForUser', $controller);
 		self::assertStringContainsString('$debugEnabled', $view);
 		self::assertStringContainsString('/monitors/send-due-notice', $view);
+		self::assertStringContainsString('/monitors/send-safety-contact-notifications', $view);
 		self::assertStringContainsString('/monitors/send-recipient-notifications', $view);
+		self::assertStringContainsString('FindDebugSafetyGateCycleForUser', $controller);
+		self::assertStringContainsString('FindPendingQueueIdsForSafetyInvitations', $controller);
 	}
 
 	public function testPermanentReminderFailureIsVisibleWithoutChangingLifecycleState(): void
@@ -174,8 +179,11 @@ class NotificationInfrastructureSourceTest extends TestCase
 		self::assertStringContainsString("'mail.recipient_notification.subject'", $composer);
 		self::assertStringContainsString("'owner' =>", $composer);
 		self::assertStringContainsString('<code>{monitor}</code>', $monitorView);
+		self::assertStringContainsString("mail.placeholders.monitor", $monitorView);
+		self::assertStringContainsString("mail.placeholders.safety_url", $monitorView);
 		self::assertStringContainsString('mail-default-template', $monitorView);
 		self::assertStringContainsString('recipients.message.placeholders', $recipientView);
+		self::assertStringContainsString("mail.placeholders.name", $recipientView);
 		self::assertStringContainsString('/monitors/documents/file/update', $routes);
 		self::assertStringContainsString('ADD COLUMN description TEXT NULL', $migration);
 	}

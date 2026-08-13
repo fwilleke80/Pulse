@@ -61,6 +61,7 @@ ob_start();
 					$uncheckedContactCount = (int)($monitor['unchecked_contact_count'] ?? 0);
 					$failedNotificationCount = (int)($monitor['failed_notification_count'] ?? 0);
 					$releaseBlocked = (string)($monitor['latest_release_status'] ?? '') === 'blocked';
+					$cycleEscalationPolicy = (string)($monitor['latest_escalation_policy'] ?? $monitor['escalation_policy'] ?? 'direct');
 					?>
 					<tr class="monitor-row monitor-row-<?= e($statusClass) ?>">
 						<td class="monitor-name">
@@ -115,6 +116,17 @@ ob_start();
 										</form>
 									<?php else: ?>
 										<button type="button" class="btn-table-inline" disabled title="<?= e__('monitors.send_due_notice.mail_disabled') ?>"><?= e__('monitors.send_due_notice.submit') ?></button>
+									<?php endif; ?>
+								<?php elseif ($debugEnabled && $statusClass === 'awaiting' && $cycleEscalationPolicy === 'safety_contact'): ?>
+									<?php if ($mailEnabled): ?>
+										<form method="post" action="<?= e($base_url) ?>/monitors/send-safety-contact-notifications" data-confirm="<?= e__('monitors.send_safety_contacts.confirm') ?>">
+											<?= csrf_field() ?>
+											<input type="hidden" name="id" value="<?= (int)$monitor['id'] ?>">
+											<input type="hidden" name="redirect" value="/monitors">
+											<button type="submit" class="btn-table-inline"><?= e__('monitors.send_safety_contacts.submit') ?></button>
+										</form>
+									<?php else: ?>
+										<button type="button" class="btn-table-inline" disabled title="<?= e__('monitors.send_safety_contacts.mail_disabled') ?>"><?= e__('monitors.send_safety_contacts.submit') ?></button>
 									<?php endif; ?>
 								<?php elseif ($debugEnabled && in_array($statusClass, ['awaiting', 'safety-pending', 'overdue'], true)): ?>
 									<?php if ($mailEnabled): ?>

@@ -206,3 +206,14 @@ Uploaded document content is:
 Editable text documents and message text are stored in the database. Uploaded-file records also store an editable display title and optional description separately from the immutable internal storage basename.
 
 This private storage model prevents direct public file access, but it is not encryption. The current release does not yet provide encrypted document/message storage or recipient document delivery.
+
+
+## Localized monitor mail templates
+
+Monitor-wide recipient, safety-invitation, and safety-reminder custom text is stored in `monitor_mail_templates`, keyed by monitor, template type, and locale. A contact's stored Pulse interface language selects the matching template. Recipient-specific messages remain attached to one monitor-contact assignment and therefore do not need parallel language variants. Safety request rows snapshot the already-selected language-specific subject/body when a gate starts, and recipient releases snapshot the final composed mail when staged.
+
+## Language discovery
+
+`LanguageCatalog` scans `app/Lang/*.php` at startup and treats the discovered locale filenames as the supported-language set. Each language file declares its native display label in `_language.name`. The discovered set drives UI language switching, stored contact/profile language validation, and monitor mail-template tabs. `Translator` falls back to English for missing keys, so an incomplete additional language remains functional while it is translated.
+
+Safety-contact requests snapshot their contact locale when the gate starts. Newly generated safety URLs also include that locale. A manual language switch on the public confirmation page is stored as a token-scoped session override, so it affects only that safety request and does not overwrite another safety request or the broader Pulse UI session language.

@@ -6,6 +6,7 @@ declare(strict_types=1);
 /** @var string $locale */
 /** @var string $base_url */
 /** @var string $currentTarget */
+/** @var array<int, string> $availableLocales */
 /** @var bool $isAuthenticated */
 /** @var array<string, mixed>|null $currentUser */
 /** @var array<string, string>|null $flash */
@@ -63,19 +64,15 @@ $versionLabel = trim((string)$appVersion) !== ''
 	<nav class="footer-nav" aria-label="<?= e__('footer.links') ?>">
 		<div class="language-switcher">
 			<?= e__('footer.language') ?> [
-			<form method="post" action="<?= e($base_url) ?>/language/set">
-				<?= csrf_field() ?>
-				<input type="hidden" name="locale" value="en">
-				<input type="hidden" name="redirect" value="<?= e($currentTarget) ?>">
-				<button type="submit" class="link-button"><?= e__('footer.language.en') ?></button>
-			</form>
-			|
-			<form method="post" action="<?= e($base_url) ?>/language/set">
-				<?= csrf_field() ?>
-				<input type="hidden" name="locale" value="de">
-				<input type="hidden" name="redirect" value="<?= e($currentTarget) ?>">
-				<button type="submit" class="link-button"><?= e__('footer.language.de') ?></button>
-			</form>
+			<?php foreach ($availableLocales as $localeIndex => $localeOption): ?>
+				<?php if ($localeIndex > 0): ?>|<?php endif; ?>
+				<form method="post" action="<?= e($base_url) ?>/language/set">
+					<?= csrf_field() ?>
+					<input type="hidden" name="locale" value="<?= e($localeOption) ?>">
+					<input type="hidden" name="redirect" value="<?= e($currentTarget) ?>">
+					<button type="submit" class="link-button"<?= $localeOption === $locale ? ' aria-current="true"' : '' ?>><?= e(language_name($localeOption)) ?></button>
+				</form>
+			<?php endforeach; ?>
 			]
 		</div>
 		<a href="<?= e($base_url) ?>/about"><?= e__('footer.about') ?></a>

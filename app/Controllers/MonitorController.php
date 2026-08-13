@@ -23,6 +23,7 @@ use Pulse\Services\DocumentService;
 use Pulse\Services\EscalationService;
 use Pulse\Services\MailQueueWorker;
 use Pulse\Services\MonitorExecutionService;
+use Pulse\Services\NotificationComposer;
 use Pulse\Services\NotificationScheduler;
 
 /**
@@ -39,6 +40,9 @@ class MonitorController extends BaseController
 	private NotificationScheduler $_notificationScheduler;
 	private MailQueueWorker $_mailQueueWorker;
 	private EscalationService $_escalationService;
+	private NotificationComposer $_notificationComposer;
+	/** @var array<int, string> */
+	private array $_availableLocales;
 	private bool $_debugEnabled;
 	private bool $_mailEnabled;
 
@@ -58,6 +62,8 @@ class MonitorController extends BaseController
 	 * @param NotificationScheduler $notificationScheduler Owner-notification scheduler.
 	 * @param MailQueueWorker $mailQueueWorker Transactional mail worker.
 	 * @param EscalationService $escalationService Safety and recipient escalation service.
+	 * @param NotificationComposer $notificationComposer Mail template composer.
+	 * @param array<int, string> $availableLocales Configured UI/mail locales.
 	 * @param bool $debugEnabled Whether development actions are enabled.
 	 * @param bool $mailEnabled Whether mail delivery is enabled.
 	 */
@@ -76,6 +82,8 @@ class MonitorController extends BaseController
 		NotificationScheduler $notificationScheduler,
 		MailQueueWorker $mailQueueWorker,
 		EscalationService $escalationService,
+		NotificationComposer $notificationComposer,
+		array $availableLocales,
 		bool $debugEnabled,
 		bool $mailEnabled
 	)
@@ -90,6 +98,8 @@ class MonitorController extends BaseController
 		$this->_notificationScheduler = $notificationScheduler;
 		$this->_mailQueueWorker = $mailQueueWorker;
 		$this->_escalationService = $escalationService;
+		$this->_notificationComposer = $notificationComposer;
+		$this->_availableLocales = array_values(array_filter($availableLocales, 'is_string'));
 		$this->_debugEnabled = $debugEnabled;
 		$this->_mailEnabled = $mailEnabled;
 	}
@@ -163,6 +173,16 @@ class MonitorController extends BaseController
 
 		$documents = $this->_documentRepository->FindAllByMonitorIdForUser($monitorId, (int)$user['id']);
 		$messageOverrides = $this->_messageRepository->FindByMonitorIdForUser($monitorId, (int)$user['id']);
+		$mailTemplates = $this->_messageRepository->FindLocalizedTemplatesForMonitor($monitorId, (int)$user['id']);
+		$mailDefaults = [];
+
+		foreach (['recipient_default', 'safety_invitation', 'safety_reminder'] as $templateKey)
+		{
+			foreach ($this->_availableLocales as $templateLocale)
+			{
+				$mailDefaults[$templateKey][$templateLocale] = $this->_notificationComposer->BuiltInTemplate($templateKey, $templateLocale);
+			}
+		}
 
 		foreach ($documents as &$document)
 		{
@@ -179,6 +199,9 @@ class MonitorController extends BaseController
 			'monitorContacts' => $this->_monitorRepository->FindMonitorContactsByMonitorIdForUser($monitorId, (int)$user['id']),
 			'documents' => $documents,
 			'messageOverrides' => $messageOverrides,
+			'mailTemplates' => $mailTemplates,
+			'mailDefaults' => $mailDefaults,
+			'availableLocales' => $this->_availableLocales,
 			'activeTab' => $this->ActiveEditorTab(),
 		]);
 	}
@@ -198,10 +221,12 @@ class MonitorController extends BaseController
 		}
 
 		$values = $this->MonitorInput();
+		$safetyTemplates = $this->LocalizedSafetyTemplateInput();
 		$safetyContactIds = $this->AllowedContactIds((int)$user['id'], $this->_request->PostIntArray('safety_contact_ids'));
 
 		if (
 			!$this->ValidateMonitorInput($values, '/monitors/edit?id=' . $monitorId . '&tab=' . $returnTab, $monitorId)
+			|| !$this->ValidateLocalizedSafetyTemplates($safetyTemplates, '/monitors/edit?id=' . $monitorId . '&tab=escalation')
 			|| !$this->ValidateSafetyConfiguration($values, $safetyContactIds, (int)$user['id'], '/monitors/edit?id=' . $monitorId . '&tab=escalation')
 		)
 		{
@@ -223,19 +248,21 @@ class MonitorController extends BaseController
 			$values['safety_max_reminders'],
 			$values['safety_required_confirmations'],
 			$values['safety_confirmation_days'] > 0 ? $values['safety_confirmation_days'] : null,
-			$values['safety_invitation_subject'] !== '' ? $values['safety_invitation_subject'] : null,
-			trim($values['safety_invitation_body']) !== '' ? $values['safety_invitation_body'] : null,
-			$values['safety_reminder_subject'] !== '' ? $values['safety_reminder_subject'] : null,
-			trim($values['safety_reminder_body']) !== '' ? $values['safety_reminder_body'] : null
+			null,
+			null,
+			null,
+			null
 		);
 		$this->_monitorExecutionService->SynchronizeMonitorForUser($monitorId, (int)$user['id']);
 		$this->_monitorRepository->ReplaceSafetyContactsForMonitor($monitorId, (int)$user['id'], $safetyContactIds);
+		$this->_messageRepository->ReplaceLocalizedTemplatesForMonitor($monitorId, (int)$user['id'], 'safety_invitation', $safetyTemplates['safety_invitation']);
+		$this->_messageRepository->ReplaceLocalizedTemplatesForMonitor($monitorId, (int)$user['id'], 'safety_reminder', $safetyTemplates['safety_reminder']);
 		$this->_logger->Info('Monitor updated', ['user_id' => (int)$user['id'], 'monitor_id' => $monitorId]);
 		$this->Flash('success', __('monitors.edit.flash.updated', ['name' => $values['name']]));
 		$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=' . $returnTab);
 	}
 
-	/** @brief Updates the monitor's default recipient message. */
+	/** @brief Updates the monitor's language-specific default recipient messages. */
 	public function UpdateMessages(): void
 	{
 		$user = $this->RequireUser();
@@ -248,21 +275,18 @@ class MonitorController extends BaseController
 			$this->Redirect('/monitors');
 		}
 
-		$defaultSubject = $this->_request->PostString('default_message_subject', 255);
-		$defaultBody = $this->_request->PostString('default_message_body', 1000000, false);
+		$templates = $this->LocalizedTemplateInput('recipient_default');
 
-		if (($defaultSubject === '') !== (trim($defaultBody) === ''))
+		if (!$this->ValidateLocalizedTemplatePairs($templates, 'monitors.messages.flash.default_incomplete', false, '/monitors/edit?id=' . $monitorId . '&tab=messages'))
 		{
-			$this->Flash('error', __('monitors.messages.flash.default_incomplete'));
-			$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=messages');
+			return;
 		}
 
-		$this->_messageRepository->ReplaceForMonitor(
+		$this->_messageRepository->ReplaceLocalizedTemplatesForMonitor(
 			$monitorId,
 			$userId,
-			$defaultSubject !== '' ? $defaultSubject : null,
-			trim($defaultBody) !== '' ? $defaultBody : null,
-			$this->_messageRepository->FindByMonitorIdForUser($monitorId, $userId)
+			'recipient_default',
+			$templates
 		);
 		$this->_logger->Info('Monitor messages updated', ['user_id' => $userId, 'monitor_id' => $monitorId]);
 		$this->Flash('success', __('monitors.messages.flash.updated'));
@@ -414,6 +438,64 @@ class MonitorController extends BaseController
 		$this->Redirect($this->RuntimeRedirect());
 	}
 
+	/** @brief Starts and immediately sends the configured safety-contact gate in debug mode. */
+	public function SendSafetyContactNotifications(): void
+	{
+		$user = $this->RequireUser();
+
+		if (!$this->_debugEnabled)
+		{
+			http_response_code(404);
+			exit;
+		}
+
+		if (!$this->_mailEnabled)
+		{
+			$this->Flash('warning', __('monitors.send_safety_contacts.mail_disabled'));
+			$this->Redirect($this->RuntimeRedirect());
+		}
+
+		$cycleId = $this->_escalationService->FindDebugSafetyGateCycleForUser(
+			$this->_request->PostInt('id'),
+			(int)$user['id']
+		);
+
+		if ($cycleId === null)
+		{
+			$this->Flash('warning', __('monitors.send_safety_contacts.unavailable'));
+			$this->Redirect($this->RuntimeRedirect());
+		}
+
+		if ($this->_escalationService->StartSafetyGate($cycleId) < 1)
+		{
+			$this->Flash('error', __('monitors.send_safety_contacts.blocked'));
+			$this->Redirect($this->RuntimeRedirect());
+		}
+
+		$sent = 0;
+		$failed = 0;
+
+		foreach ($this->_escalationService->FindPendingQueueIdsForSafetyInvitations($cycleId) as $queueId)
+		{
+			$outcome = $this->_mailQueueWorker->ProcessById($queueId);
+
+			if ($outcome === 'sent')
+			{
+				$sent++;
+			}
+			elseif ($outcome === 'failed')
+			{
+				$failed++;
+			}
+		}
+
+		$key = $sent > 0
+			? 'monitors.send_safety_contacts.sent'
+			: ($failed > 0 ? 'monitors.send_safety_contacts.failed' : 'monitors.send_safety_contacts.queued');
+		$this->Flash($sent > 0 ? 'success' : ($failed > 0 ? 'error' : 'warning'), __($key, ['count' => $sent]));
+		$this->Redirect($this->RuntimeRedirect());
+	}
+
 	/** @brief Forces and sends an immutable recipient release through the real queue in debug mode. */
 	public function SendRecipientNotifications(): void
 	{
@@ -476,7 +558,7 @@ class MonitorController extends BaseController
 
 	/**
 	 * @brief Reads and bounds monitor configuration input.
-	 * @return array{name: string, description: string, check_interval_days: int, response_window_days: int, reminder_interval_days: int, max_reminders: int, escalation_policy: string, safety_response_window_days: int, safety_reminder_interval_days: int, safety_max_reminders: int, safety_required_confirmations: int, safety_confirmation_days: int, safety_invitation_subject: string, safety_invitation_body: string, safety_reminder_subject: string, safety_reminder_body: string}
+	 * @return array{name: string, description: string, check_interval_days: int, response_window_days: int, reminder_interval_days: int, max_reminders: int, escalation_policy: string, safety_response_window_days: int, safety_reminder_interval_days: int, safety_max_reminders: int, safety_required_confirmations: int, safety_confirmation_days: int}
 	 */
 	private function MonitorInput(): array
 	{
@@ -495,11 +577,86 @@ class MonitorController extends BaseController
 			'safety_max_reminders' => $this->_request->PostInt('safety_max_reminders', 1),
 			'safety_required_confirmations' => $this->_request->PostInt('safety_required_confirmations', 1),
 			'safety_confirmation_days' => $this->_request->PostInt('safety_confirmation_days', 0),
-			'safety_invitation_subject' => $this->_request->PostString('safety_invitation_subject', 255),
-			'safety_invitation_body' => $this->_request->PostString('safety_invitation_body', 1000000, false),
-			'safety_reminder_subject' => $this->_request->PostString('safety_reminder_subject', 255),
-			'safety_reminder_body' => $this->_request->PostString('safety_reminder_body', 1000000, false),
 		];
+	}
+
+	/**
+	 * @brief Reads one language-specific monitor-wide template family from POST data.
+	 * @param string $templateKey Template field prefix.
+	 * @return array<string, array{subject: string, body_text: string}> Templates keyed by locale.
+	 */
+	private function LocalizedTemplateInput(string $templateKey): array
+	{
+		$result = [];
+
+		foreach ($this->_availableLocales as $locale)
+		{
+			$fieldLocale = preg_replace('/[^a-z0-9_]/i', '_', $locale);
+			$result[$locale] = [
+				'subject' => $this->_request->PostString($templateKey . '_subject_' . $fieldLocale, 255),
+				'body_text' => $this->_request->PostString($templateKey . '_body_' . $fieldLocale, 1000000, false),
+			];
+		}
+
+		return $result;
+	}
+
+	/**
+	 * @brief Reads localized safety invitation and reminder templates.
+	 * @return array<string, array<string, array{subject: string, body_text: string}>>
+	 */
+	private function LocalizedSafetyTemplateInput(): array
+	{
+		return [
+			'safety_invitation' => $this->LocalizedTemplateInput('safety_invitation'),
+			'safety_reminder' => $this->LocalizedTemplateInput('safety_reminder'),
+		];
+	}
+
+	/**
+	 * @brief Validates localized subject/body pairs and optional required safety URL.
+	 * @param array<string, array{subject: string, body_text: string}> $templates Templates keyed by locale.
+	 * @param string $incompleteKey Translation key for incomplete pairs.
+	 * @param bool $requireUrl Whether non-empty bodies must include {url}.
+	 * @param string $redirect Redirect target.
+	 */
+	private function ValidateLocalizedTemplatePairs(array $templates, string $incompleteKey, bool $requireUrl, string $redirect): bool
+	{
+		foreach ($templates as $template)
+		{
+			$subject = trim((string)($template['subject'] ?? ''));
+			$body = trim((string)($template['body_text'] ?? ''));
+
+			if (($subject === '') !== ($body === ''))
+			{
+				$this->Flash('error', __($incompleteKey));
+				$this->Redirect($redirect);
+			}
+
+			if ($requireUrl && $body !== '' && !str_contains($body, '{url}'))
+			{
+				$this->Flash('error', __('monitors.escalation.messages.flash.url_required'));
+				$this->Redirect($redirect);
+			}
+		}
+
+		return true;
+	}
+
+	/** @brief Validates all localized safety-contact mail templates. */
+	private function ValidateLocalizedSafetyTemplates(array $templates, string $redirect): bool
+	{
+		return $this->ValidateLocalizedTemplatePairs(
+			(array)($templates['safety_invitation'] ?? []),
+			'monitors.escalation.messages.flash.invitation_incomplete',
+			true,
+			$redirect
+		) && $this->ValidateLocalizedTemplatePairs(
+			(array)($templates['safety_reminder'] ?? []),
+			'monitors.escalation.messages.flash.reminder_incomplete',
+			true,
+			$redirect
+		);
 	}
 
 	/** @brief Returns a whitelisted editor tab from the shared settings form. */
@@ -539,30 +696,6 @@ class MonitorController extends BaseController
 		{
 			$this->_logger->Warning('Monitor validation failed: invalid numeric bounds', ['monitor_id' => $monitorId]);
 			$this->Flash('error', __($monitorId > 0 ? 'monitors.edit.flash.invalidnumbers' : 'monitors.add.flash.invalidnumbers'));
-			$this->Redirect($redirect);
-		}
-
-		if (((string)$values['safety_invitation_subject'] === '') !== (trim((string)$values['safety_invitation_body']) === ''))
-		{
-			$this->Flash('error', __('monitors.escalation.messages.flash.invitation_incomplete'));
-			$this->Redirect($redirect);
-		}
-
-		if ((string)$values['safety_invitation_subject'] !== '' && !str_contains((string)$values['safety_invitation_body'], '{url}'))
-		{
-			$this->Flash('error', __('monitors.escalation.messages.flash.url_required'));
-			$this->Redirect($redirect);
-		}
-
-		if (((string)$values['safety_reminder_subject'] === '') !== (trim((string)$values['safety_reminder_body']) === ''))
-		{
-			$this->Flash('error', __('monitors.escalation.messages.flash.reminder_incomplete'));
-			$this->Redirect($redirect);
-		}
-
-		if ((string)$values['safety_reminder_subject'] !== '' && !str_contains((string)$values['safety_reminder_body'], '{url}'))
-		{
-			$this->Flash('error', __('monitors.escalation.messages.flash.url_required'));
 			$this->Redirect($redirect);
 		}
 

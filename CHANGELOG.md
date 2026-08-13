@@ -1,5 +1,40 @@
 # Changelog
 
+## 0.7.6 — 2026-08-13
+
+### Drop-in languages and safety-page locale fixes
+
+- Made `app/Lang/*.php` the source of truth for installed Pulse languages; adding a language file automatically adds it to interface selectors and localized monitor mail-template tabs.
+- Added native language metadata via `_language.name`, used consistently in footer switches, profile/contact language selectors, and monitor configuration.
+- Added English translation fallback for missing keys, allowing a new or incomplete language file to remain usable while translation work is still in progress.
+- Removed the remaining hard-coded English/German locale checks from the safety-contact confirmation flow and derive supported locales from the discovered language catalog.
+- Fixed safety-contact confirmation pages ignoring manual language changes: an explicit switch is now stored per safety token and overrides the request default without changing another safety request or the broader Pulse UI session language.
+- Added the intended locale to newly generated safety-confirmation URLs, keeping the confirmation page aligned with the language selected for the invitation/reminder email.
+- Kept existing safety links compatible by falling back to the locale snapshotted into the safety request when no locale is present in the URL.
+
+## 0.7.5 — 2026-08-12
+
+### Localized mail templates and cleaner escalation UI
+
+- Replaced language-independent monitor-wide email overrides with per-language templates keyed by contact **Pulse interface language**.
+- Added separate English and German variants for the default recipient email, safety-contact invitation, and safety-contact reminder.
+- Kept recipient-specific personal messages as a single per-person override, since they already belong to one known recipient.
+- Added migration `012_localized_monitor_mail_templates.sql`; existing 0.7.4 custom monitor-wide text is copied to both English and German during upgrade so no wording is lost.
+- Snapshot the selected language-specific safety template into each safety request, preserving in-progress escalation wording even if the monitor is edited later.
+- Select the language-specific default recipient template when staging each recipient release.
+- Reworked mail-template editing with compact English/Deutsch tabs and collapsible Pulse-default previews.
+- Split safety configuration into collapsible **Safety contacts & timing** and **Safety-contact email text** sections, and hide all safety-only settings when **Direct escalation** is selected.
+- Show each safety contact's configured Pulse interface language alongside their address so template routing is visible while configuring the monitor.
+
+## 0.7.4 — 2026-08-12
+
+### Debug escalation flow and placeholder guidance
+
+- Made `PULSE_DEBUG=true` lifecycle actions follow the active check cycle's snapshotted escalation policy instead of skipping directly from the owner due notice to recipient delivery.
+- Added **Send safety contact notification now** for safety-contact monitors; it starts the real safety gate and immediately processes the initial safety-contact mail through the normal queue.
+- Kept **Send recipient notification now** as the following debug step once the safety-contact gate is active, while direct-escalation monitors continue to move directly to recipient notification.
+- Expanded every configurable-mail placeholder hint with a plain-language explanation of what each placeholder inserts, including safety URL and reminder-counter placeholders.
+
 ## 0.7.3 — 2026-08-12
 
 ### Recipient templates and document metadata

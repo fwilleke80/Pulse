@@ -138,7 +138,7 @@ final class NotificationComposer
 			'name' => (string)$request['contact_name'],
 			'owner' => (string)$request['owner_name'],
 			'monitor' => (string)$request['monitor_name'],
-			'url' => $this->_baseUrl . '/safety/confirm?token=' . rawurlencode($rawToken),
+			'url' => $this->_baseUrl . '/safety/confirm?token=' . rawurlencode($rawToken) . '&lang=' . rawurlencode($locale),
 		];
 
 		if (trim((string)($request['message_subject'] ?? '')) !== '' && trim((string)($request['message_body'] ?? '')) !== '')
@@ -172,7 +172,7 @@ final class NotificationComposer
 			'monitor' => (string)$request['monitor_name'],
 			'number' => $reminderNumber,
 			'total' => (int)$request['safety_max_reminders'],
-			'url' => $this->_baseUrl . '/safety/confirm?token=' . rawurlencode($rawToken),
+			'url' => $this->_baseUrl . '/safety/confirm?token=' . rawurlencode($rawToken) . '&lang=' . rawurlencode($locale),
 		];
 
 		if (trim((string)($request['message_subject'] ?? '')) !== '' && trim((string)($request['message_body'] ?? '')) !== '')
@@ -215,6 +215,32 @@ final class NotificationComposer
 		return [
 			'subject' => $this->Translate($locale, 'mail.recipient_notification.subject', $params),
 			'body_text' => $this->Translate($locale, 'mail.recipient_notification.body', $params),
+		];
+	}
+
+	/**
+	 * @brief Returns one built-in mail template without expanding its placeholders.
+	 * @param string $templateKey Supported template identifier.
+	 * @param string $locale Requested locale.
+	 * @return array{subject: string, body_text: string}
+	 */
+	public function BuiltInTemplate(string $templateKey, string $locale): array
+	{
+		$locale = $this->_languages->Resolve($locale);
+		$keys = [
+			'recipient_default' => ['mail.recipient_notification.subject', 'mail.recipient_notification.body'],
+			'safety_invitation' => ['mail.safety_invitation.subject', 'mail.safety_invitation.body'],
+			'safety_reminder' => ['mail.safety_reminder.subject', 'mail.safety_reminder.body'],
+		];
+
+		if (!isset($keys[$templateKey]))
+		{
+			throw new \InvalidArgumentException('Unsupported built-in mail template key.');
+		}
+
+		return [
+			'subject' => $this->Translate($locale, $keys[$templateKey][0], []),
+			'body_text' => $this->Translate($locale, $keys[$templateKey][1], []),
 		];
 	}
 

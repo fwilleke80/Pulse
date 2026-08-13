@@ -6,6 +6,8 @@
 declare(strict_types=1);
 
 return [
+	'_language.name' => 'Deutsch',
+
 	'app.name' => 'Pulse',
 
 	'home.title' => 'Startseite',
@@ -169,6 +171,14 @@ return [
 	'monitors.send_due_notice.queued' => 'Die Fälligkeitsbenachrichtigung bleibt eingereiht.',
 	'monitors.send_due_notice.unavailable' => 'Für diesen Monitor ist keine ungesendete Fälligkeitsbenachrichtigung verfügbar.',
 	'monitors.send_due_notice.mail_disabled' => 'Der E-Mail-Versand muss aktiviert sein, bevor eine Fälligkeitsbenachrichtigung gesendet werden kann.',
+	'monitors.send_safety_contacts.submit' => 'Sicherheitskontakt jetzt benachrichtigen',
+	'monitors.send_safety_contacts.confirm' => 'Diese Entwicklungsaktion überspringt die verbleibenden Wartezeiten für Besitzer-Erinnerungen und sendet sofort echte Benachrichtigungen an Sicherheitskontakte. Fortfahren?',
+	'monitors.send_safety_contacts.sent' => '{count} Benachrichtigung(en) an Sicherheitskontakte wurden gesendet.',
+	'monitors.send_safety_contacts.failed' => 'Die Zustellung der Sicherheitskontakt-Benachrichtigung ist endgültig fehlgeschlagen. Prüfe den Zustellstatus und stelle den fehlgeschlagenen Auftrag erneut ein.',
+	'monitors.send_safety_contacts.queued' => 'Die Benachrichtigungen an Sicherheitskontakte bleiben für die Zustellung eingereiht.',
+	'monitors.send_safety_contacts.blocked' => 'Die Sicherheitskontakt-Prüfung konnte nicht gestartet werden. Prüfe, ob mindestens ein geprüfter Sicherheitskontakt zugeordnet und die erforderliche Anzahl an Bestätigungen gültig ist.',
+	'monitors.send_safety_contacts.unavailable' => 'Für diese Entwicklungsaktion ist kein wartender Monitorzyklus mit Sicherheitskontakt-Prüfung verfügbar.',
+	'monitors.send_safety_contacts.mail_disabled' => 'Der E-Mail-Versand muss aktiviert sein, bevor Sicherheitskontakte benachrichtigt werden können.',
 	'monitors.send_recipients.submit' => 'Empfängerbenachrichtigung senden',
 	'monitors.send_recipients.confirm' => 'Diese Entwicklungsaktion überspringt die verbleibenden Wartezeiten für Besitzer und Sicherheitskontakte und kann sofort echte Empfängernachrichten senden. Fortfahren?',
 	'monitors.send_recipients.sent' => '{count} Empfängerbenachrichtigung(en) wurden gesendet.',
@@ -226,9 +236,21 @@ return [
 
 	'monitors.messages.hint' => 'Bereite die Standardnachricht, optionale persönliche Varianten und Empfängerdokumente vor.',
 	'monitors.messages.default.heading' => 'Standard-E-Mail an Empfänger',
-	'monitors.messages.default.hint' => 'Ersetze optional die eingebaute Pulse-E-Mail an Empfänger. Lässt du beide Felder leer, verwendet Pulse für Empfänger ohne persönliche Variante den lokalisierten Standardtext.',
+	'monitors.messages.default.hint' => 'Konfiguriere die monitorweite Empfänger-E-Mail separat für jede unterstützte Sprache.',
 	'monitors.messages.recipient_pages_hint' => 'Persönliche Nachrichten und Dokumentzuordnungen werden auf der eigenen Seite des jeweiligen Empfängers konfiguriert.',
 	'monitors.messages.placeholders' => 'Verfügbare Platzhalter:',
+	'mail.placeholders.app' => 'der Name der Pulse-Anwendung',
+	'mail.placeholders.name' => 'der Name der Person, die diese E-Mail erhält',
+	'mail.placeholders.owner' => 'der Anzeigename des Monitor-Besitzers',
+	'mail.placeholders.monitor' => 'der Name des Monitors',
+	'mail.placeholders.safety_url' => 'die URL der Bestätigungsseite für Sicherheitskontakte',
+	'mail.placeholders.reminder_number' => 'die Nummer der aktuellen Sicherheitskontakt-Erinnerung',
+	'mail.placeholders.reminder_total' => 'die insgesamt konfigurierte Anzahl an Sicherheitskontakt-Erinnerungen',
+'mail.templates.languages' => 'Sprache der E-Mail-Vorlage',
+'mail.templates.recipient_language_hint' => 'Pulse wählt automatisch die passende monitorweite Sprachversion anhand der Pulse-Oberflächensprache des jeweiligen Empfängers. Eine persönliche Empfängernachricht hat weiterhin Vorrang.',
+	'mail.templates.safety_language_hint' => 'Pulse wählt Einladung und Erinnerung automatisch in der Sprache aus, die beim jeweiligen Sicherheitskontakt als Pulse-Oberflächensprache eingestellt ist.',
+'mail.templates.empty_uses_default' => 'Lasse in dieser Sprache beide Felder leer, um den eingebauten Pulse-Standard für diese Sprache zu verwenden.',
+'mail.templates.show_default' => 'Pulse-Standardtext anzeigen',
 	'monitors.messages.default_preview.heading' => 'Pulse-Standard-E-Mail an Empfänger',
 	'monitors.messages.default_preview.hint' => 'Angezeigt in der aktuellen Oberflächensprache. Wenn keine eigene Standardnachricht konfiguriert ist, erhält jeder Empfänger die lokalisierte Version in seiner Pulse-Oberflächensprache.',
 	'monitors.messages.custom_hint' => 'Lasse beide Felder leer, um den unten gezeigten Pulse-Standard zu verwenden.',
@@ -278,7 +300,7 @@ return [
 	'monitors.escalation.confirmation_days_hint' => 'Verwende 0 für das normale Prüfintervall des Monitors. Das Ergebnis wird als extern bestätigt erfasst, niemals als deine eigene Bestätigung.',
 
 	'monitors.escalation.messages.heading' => 'E-Mail-Texte für Sicherheitskontakte',
-	'monitors.escalation.messages.hint' => 'Ersetze optional die Pulse-Standardtexte für die erste Nachricht und Erinnerungen an Sicherheitskontakte. Lässt du Betreff und Text eines Nachrichtentyps leer, wird dafür weiterhin der lokalisierte Pulse-Standard verwendet.',
+	'monitors.escalation.messages.hint' => 'Konfiguriere Einladung und Erinnerung für Sicherheitskontakte separat für jede unterstützte Sprache.',
 	'monitors.escalation.messages.default_heading' => 'Pulse-Standard',
 	'monitors.escalation.messages.default_hint' => 'Angezeigt in der aktuellen Oberflächensprache. Ein Sicherheitskontakt erhält die lokalisierte Version in seiner Pulse-Oberflächensprache, wenn kein eigener Text konfiguriert ist.',
 	'monitors.escalation.messages.reminder_placeholders' => 'Nur für Erinnerungen:',
@@ -452,8 +474,6 @@ return [
 	'profile.flash.update.invalid_language' => 'Bitte wähle eine unterstützte Benachrichtigungssprache.',
 	'profile.flash.update.success' => 'Profil aktualisiert.',
 
-	'notification.language.en' => 'English',
-	'notification.language.de' => 'Deutsch',
 
 	'profile.flash.password.required' => 'Bitte fülle alle Passwortfelder aus.',
 	'profile.flash.password.current_invalid' => 'Das aktuelle Passwort ist falsch.',
@@ -522,8 +542,6 @@ return [
 	'footer.links' => 'Fußzeilennavigation',
 	'footer.imprint' => 'Impressum',
 	'footer.language' => 'Sprache',
-	'footer.language.en' => 'English',
-	'footer.language.de' => 'Deutsch',
 	'footer.allrightsreserved' => 'Alle Rechte vorbehalten.',
 	'footer.version_unavailable' => 'Version nicht verfügbar',
 
