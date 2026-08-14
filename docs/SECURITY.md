@@ -40,7 +40,9 @@ Administration uses the root `.env` file as the single persistent configuration 
 
 SMTP passwords and web-cron tokens are treated as write-only values in the Administration UI: Pulse indicates whether they are configured but never places the existing secret in an HTML input. Leaving a secret field blank preserves the value already stored in `.env`; clearing or regenerating it requires an explicit action. Process-level environment variables still take precedence over `.env`, and Administration shows when managed keys are being overridden.
 
-The public base URL and database connection values remain read-only in Administration. A mistaken base URL can misdirect absolute links, and database settings are needed before Pulse can bootstrap and authenticate an administrator. The planned 0.9.x installer will own initial creation of those installation-level settings.
+The browser installer is intentionally temporary. Normal application, web-cron, and command-line notification entry points refuse operation while `public/install.php` exists. A fresh installation is tracked with a non-secret marker in `storage/`, and finalization verifies `.env`, the migrated schema, and an active administrator before attempting to delete the installer. If automatic deletion is not permitted by the server, Pulse remains locked until `public/install.php` is removed manually. On an already initialized installation, the installer never rewrites configuration or users; it only attempts to remove itself.
+
+The public base URL and database connection values remain read-only in Administration. A mistaken base URL can misdirect absolute links, and database settings are needed before Pulse can bootstrap and authenticate an administrator. The guided installer owns initial creation of those installation-level settings and verifies them before deleting itself.
 
 ## HTTPS and sessions
 

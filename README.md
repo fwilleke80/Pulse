@@ -6,43 +6,43 @@ You tell Pulse how often you expect to check in. As long as you continue to do s
 
 ## Requirements
 
-- PHP 8.4 or 8.5
-- PDO MySQL, Fileinfo, and OpenSSL PHP extensions
+- PHP 8.4+
+- PDO MySQL, Fileinfo, JSON, and OpenSSL PHP extensions
 - MySQL 8+ or MariaDB 10.6+
 - Apache with `mod_rewrite`, or equivalent routing on another web server
-- Ability to run Cron jobs
+- ability to run scheduled jobs
 - HTTPS in production
 
 ## Installation
 
-1. Extract the complete source archive locally into the Pulse project directory.
-2. Before uploading any PHP files, run `python3 tools/write_version.py`. This generates `config/version.php`; upload that generated file with the application. In a tagged Git checkout the script derives the version from Git, while a packaged archive retains its packaged version. Set `PULSE_VERSION=0.9.1` for an explicit release value when needed.
-3. Copy `.env.example` to `.env` and enter the real URL and database credentials.
-4. Create an empty database.
-5. Upload the project and ensure the root `.env` file plus `storage/logs`, `storage/tmp`, and `storage/uploads` are writable by PHP but not publicly accessible. Keep `.env` outside the web document root.
-6. Configure the site’s document root as the project’s `public/` directory.
-7. Serve the application exclusively over HTTPS.
-8. Open Pulse in a browser. The first request creates and migrates the database automatically.
-9. Sign in as the administrator, open **Administration → Mail**, configure SMTP, enable mail, and send a test.
-10. Open **Administration → Cron** and configure the web-cron token if your host uses URL-based cron, then install the cron job.
+1. Create an empty MySQL/MariaDB database and user.
+2. Upload the complete Pulse project and point the website root at `public/`.
+3. Make the project root writable enough for PHP to create `.env`, and make `storage/` writable.
+4. Open `/install.php` in a browser.
+5. Follow the guided checks for database, Pulse settings, first administrator, and optional SMTP.
+6. After final verification Pulse attempts to delete `public/install.php` automatically. If the server forbids this, delete it manually before using Pulse.
+7. Log in, test mail under **Administration → Mail**, and configure the cron job shown by the installer.
 
-If `config/version.php` is missing, Pulse remains operational and displays **version unavailable** instead of failing. Generate the file before deployment so asset cache keys and the displayed release are accurate.
+The installer creates `.env`; normal installations no longer require manual dotenv editing. Existing installations are detected safely during upgrades and are not reinitialized.
+
+When deploying directly from a source checkout, run `python3 tools/write_version.py` before uploading so `config/version.php` contains the correct release. A packaged release already contains this file.
+
+See [docs/INSTALLATION.md](docs/INSTALLATION.md) for the full deployment, permissions, SMTP, cron, verification, and upgrade procedure.
 
 ## Administration
 
-Pulse 0.9.x provides an administrator-only configuration area. Runtime settings are organized into responsive **General**, **Security**, **Files**, **Mail**, and **Cron** tabs and are written directly to the root `.env` file. Configuration problems are flagged both in the relevant tab and in the page-level health summary. The application name is fixed as **Pulse**, timezone selection uses the standard IANA timezone list, and setting descriptions explain their purpose instead of exposing internal environment-variable names.
+Administrator-only application settings are organized into responsive **General**, **Security**, **Files**, **Mail**, **Cron**, and **Installation** tabs. Runtime settings are written directly to the root `.env` file, and configuration problems are highlighted in the relevant tabs and health summary.
 
-The public base URL and database credentials remain read-only under **Administration → Installation** because mistakes there can affect bootstrapping or absolute links. The planned 0.9.x installer will create those installation-level settings and the first administrator account.
-
+The application name is always **Pulse**. The public base URL and database credentials are created by the installer and shown read-only afterward because changing them casually could break bootstrapping or absolute links.
 
 ## Documentation
 
-- [Installation and upgrading](docs/INSTALLATION.md) — server requirements, deployment, `.env`, SMTP, cron, verification, and updates
-- [User guide](docs/USER_GUIDE.md) — contacts, monitors, check-ins, recipients, safety contacts, messages, documents, and notifications
-- [Monitor tutorial](docs/MONITOR_TUTORIAL.md) — practical examples for choosing monitor timing and escalation rules
-- [Security model](docs/SECURITY.md) — security assumptions, protections, limitations, and production checklist
-- [Architecture](docs/ARCHITECTURE.md) — application structure and the main runtime flows
-- [Changelog](CHANGELOG.md) — release history
+- [Installation and upgrading](docs/INSTALLATION.md)
+- [User guide](docs/USER_GUIDE.md)
+- [Monitor tutorial](docs/MONITOR_TUTORIAL.md)
+- [Security model](docs/SECURITY.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Changelog](CHANGELOG.md)
 
 ## License
 

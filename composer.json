@@ -7,7 +7,9 @@
 		"php": ">=8.4",
 		"ext-fileinfo": "*",
 		"ext-json": "*",
-		"ext-pdo": "*"
+		"ext-openssl": "*",
+		"ext-pdo": "*",
+		"ext-pdo_mysql": "*"
 	},
 	"require-dev": {
 		"friendsofphp/php-cs-fixer": "^3.0",

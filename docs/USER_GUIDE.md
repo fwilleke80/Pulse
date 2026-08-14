@@ -74,7 +74,7 @@ Documents belong to the monitor itself. Create text documents or upload supporte
 
 Recipients are the people who receive the final monitor message if the escalation process reaches them.
 
-Add an existing contact, then open **Edit recipient**. The recipient editor is divided into **Overview**, **Notification email**, **Portal**, **Documents**, and **History** so personal overrides, assignments, active portal presentation, and delivery history do not all compete for space on one page.
+Add an existing contact, then select the recipient's name. The recipient editor is divided into **Overview**, **Notification email**, **Portal**, **Documents**, and **History** so personal overrides, assignments, active portal presentation, and delivery history do not all compete for space on one page.
 
 ### Messages & content
 
@@ -159,7 +159,7 @@ Users with the **administrator** role have an **Administration** entry in the ma
 
 Editable application settings are saved directly to Pulse's root `.env` file. A warning marker appears on any tab with an actionable configuration problem, and the summary at the top links directly to the affected section. Secrets such as the SMTP password and web-cron token are never displayed back to the browser.
 
-The **Installation** tab shows the public base URL and database connection values as read-only installation information. The base URL is used for absolute links, while database values are required before Pulse can boot; both will be handled by the planned 0.9.x installation wizard.
+The **Installation** tab shows the public base URL and database connection values as read-only installation information. The installer creates these boot-critical values; Administration keeps them read-only afterward so routine settings changes cannot accidentally repoint Pulse or break its database connection.
 
 
 ## Notifications and failed mail
@@ -209,7 +209,7 @@ Pulse supports two kinds of monitor documents:
 - editable text documents stored in the database
 - uploaded files stored privately outside the public web directory
 
-Create and maintain documents under the monitor's **Documents** tab. Assign them to individual people from **Recipients → Edit recipient → Documents**. Uploaded files have a separate display title and optional short description. Both can be edited later without renaming or moving the private stored file.
+Create and maintain documents under the monitor's **Documents** tab. Assign them to individual people by selecting the recipient's name and opening that recipient's **Documents** tab. Uploaded files have a separate display title and optional short description. Both can be edited later without renaming or moving the private stored file.
 
 The default upload policy accepts PDF, RTF, OpenDocument Text, Word `.docx`, JPEG, PNG, and plain text files up to 25 MiB. An administrator can change the upload limit and MIME allowlist under **Administration → Files**; larger configured limits are also constrained by PHP and web-server upload settings such as `upload_max_filesize` and `post_max_size`.
 

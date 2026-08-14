@@ -20,6 +20,12 @@ if (PHP_SAPI !== 'cli')
 	exit(1);
 }
 
+if (is_file(dirname(__DIR__) . '/public/install.php'))
+{
+	fwrite(STDERR, "Pulse installation is not finalized. Remove public/install.php before running background commands.\n");
+	exit(1);
+}
+
 $container = require dirname(__DIR__) . '/bootstrap.php';
 $arguments = array_slice($argv, 1);
 $command = array_shift($arguments) ?? 'help';

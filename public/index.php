@@ -8,6 +8,20 @@
 
 declare(strict_types=1);
 
+$installerPath = __DIR__ . '/install.php';
+
+if (is_file($installerPath))
+{
+	$scriptName = str_replace('\\', '/', (string)($_SERVER['SCRIPT_NAME'] ?? '/index.php'));
+	$scriptDirectory = rtrim(str_replace('\\', '/', dirname($scriptName)), '/');
+	$installerUrl = ($scriptDirectory === '' || $scriptDirectory === '.')
+		? '/install.php'
+		: $scriptDirectory . '/install.php';
+	header('Cache-Control: no-store');
+	header('Location: ' . $installerUrl);
+	exit;
+}
+
 use Pulse\Controllers\AdministrationController;
 use Pulse\Controllers\AuthController;
 use Pulse\Controllers\ContactController;

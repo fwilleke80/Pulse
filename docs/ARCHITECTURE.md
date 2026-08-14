@@ -180,7 +180,7 @@ Pulse 0.9.x provides an administrator-only configuration surface implemented by 
 
 The Administration UI groups runtime configuration into responsive General, Security, Files, Mail, and Cron tabs, with a read-only Installation tab for installation-level state such as the public base URL and database connection values. Configuration-health warnings are surfaced at page and tab level. All system-wide mail operations—SMTP configuration, test delivery, retry state, queue inspection, and debug queue controls—live under Administration → Mail. Profile is reserved for user-specific account information.
 
-The public base URL and database connection settings remain installation-level configuration. A bad public URL would cause newly generated absolute links to point at the wrong host, while database settings are needed before Pulse can construct a connection or authenticate an administrator. They therefore stay read-only in Administration until the planned 0.9.x installer creates the initial `.env` and first administrator account.
+The public base URL and database connection settings remain installation-level configuration. A bad public URL would cause newly generated absolute links to point at the wrong host, while database settings are needed before Pulse can construct a connection or authenticate an administrator. `public/install.php` creates these values in the initial `.env`; they remain read-only in Administration afterward.
 
 Credentials are not stored in committed configuration files.
 

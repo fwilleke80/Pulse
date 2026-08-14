@@ -16,7 +16,7 @@ CREATE TABLE schema_migrations
 	migration VARCHAR(255) NOT NULL PRIMARY KEY,
 	checksum CHAR(64) NOT NULL,
 	applied_at DATETIME NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE users
 (
@@ -31,7 +31,7 @@ CREATE TABLE users
 	last_login_at DATETIME NULL,
 	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE contacts
 (
@@ -46,7 +46,7 @@ CREATE TABLE contacts
 	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE monitors
 (
@@ -80,7 +80,7 @@ CREATE TABLE monitors
 	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE monitor_mail_templates
 (
@@ -95,7 +95,7 @@ CREATE TABLE monitor_mail_templates
 	UNIQUE KEY uq_monitor_mail_templates_monitor_key_locale (monitor_id, template_key, locale),
 	INDEX idx_monitor_mail_templates_monitor (monitor_id),
 	FOREIGN KEY (monitor_id) REFERENCES monitors(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE monitor_portal_templates
 (
@@ -109,7 +109,7 @@ CREATE TABLE monitor_portal_templates
 	UNIQUE KEY uq_monitor_portal_templates_monitor_locale (monitor_id, locale),
 	INDEX idx_monitor_portal_templates_monitor (monitor_id),
 	FOREIGN KEY (monitor_id) REFERENCES monitors(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE monitor_safety_contacts
 (
@@ -121,7 +121,7 @@ CREATE TABLE monitor_safety_contacts
 	INDEX idx_monitor_safety_contacts_contact (contact_id),
 	FOREIGN KEY (monitor_id) REFERENCES monitors(id) ON DELETE CASCADE,
 	FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE monitor_contacts
 (
@@ -132,7 +132,7 @@ CREATE TABLE monitor_contacts
 	FOREIGN KEY (monitor_id) REFERENCES monitors(id) ON DELETE CASCADE,
 	FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE,
 	UNIQUE(monitor_id, contact_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE contact_messages
 (
@@ -144,7 +144,7 @@ CREATE TABLE contact_messages
 	FOREIGN KEY (monitor_contact_id)
 		REFERENCES monitor_contacts(id)
 		ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE contact_portal_messages
 (
@@ -157,7 +157,7 @@ CREATE TABLE contact_portal_messages
 	FOREIGN KEY (monitor_contact_id)
 		REFERENCES monitor_contacts(id)
 		ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE documents
 (
@@ -174,7 +174,7 @@ CREATE TABLE documents
 	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	FOREIGN KEY (monitor_id) REFERENCES monitors(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Documents belong to a monitor.
 -- Recipient assignment is modeled separately through document_monitor_contacts,
@@ -190,7 +190,7 @@ CREATE TABLE document_monitor_contacts
 	FOREIGN KEY (monitor_contact_id)
 		REFERENCES monitor_contacts(id)
 		ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE check_cycles
 (
@@ -225,7 +225,7 @@ CREATE TABLE check_cycles
 	FOREIGN KEY (monitor_id)
 		REFERENCES monitors(id)
 		ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE safety_contact_requests
 (
@@ -253,7 +253,7 @@ CREATE TABLE safety_contact_requests
 	FOREIGN KEY (check_cycle_id) REFERENCES check_cycles(id) ON DELETE CASCADE,
 	FOREIGN KEY (monitor_id) REFERENCES monitors(id) ON DELETE CASCADE,
 	FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE safety_request_tokens
 (
@@ -265,7 +265,7 @@ CREATE TABLE safety_request_tokens
 	UNIQUE KEY uq_safety_request_tokens_hash (token_hash),
 	INDEX idx_safety_request_tokens_request (safety_request_id),
 	FOREIGN KEY (safety_request_id) REFERENCES safety_contact_requests(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE recipient_releases
 (
@@ -286,7 +286,7 @@ CREATE TABLE recipient_releases
 	FOREIGN KEY (check_cycle_id) REFERENCES check_cycles(id) ON DELETE CASCADE,
 	FOREIGN KEY (monitor_id) REFERENCES monitors(id) ON DELETE CASCADE,
 	FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE recipient_release_deliveries
 (
@@ -326,7 +326,7 @@ CREATE TABLE recipient_release_deliveries
 	FOREIGN KEY (check_cycle_id) REFERENCES check_cycles(id) ON DELETE CASCADE,
 	FOREIGN KEY (monitor_id) REFERENCES monitors(id) ON DELETE CASCADE,
 	FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE recipient_delivery_documents
 (
@@ -348,7 +348,7 @@ CREATE TABLE recipient_delivery_documents
 	FOREIGN KEY (recipient_delivery_id)
 		REFERENCES recipient_release_deliveries(id)
 		ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE recipient_portal_codes
 (
@@ -365,7 +365,7 @@ CREATE TABLE recipient_portal_codes
 	INDEX idx_recipient_portal_codes_delivery (recipient_delivery_id, created_at),
 	INDEX idx_recipient_portal_codes_runtime (recipient_delivery_id, expires_at, used_at, invalidated_at),
 	FOREIGN KEY (recipient_delivery_id) REFERENCES recipient_release_deliveries(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE access_tokens
 (
@@ -380,7 +380,7 @@ CREATE TABLE access_tokens
 	used_at DATETIME NULL,
 	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE mail_queue
 (
@@ -420,7 +420,7 @@ CREATE TABLE mail_queue
 	INDEX idx_mail_queue_recipient_delivery (recipient_delivery_id),
 	INDEX idx_mail_queue_recipient_portal_code (recipient_portal_code_id),
 	INDEX idx_mail_queue_user_created (user_id, created_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE mail_log
 (
@@ -438,7 +438,7 @@ CREATE TABLE mail_log
 	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	INDEX idx_mail_log_queue (queue_id),
 	INDEX idx_mail_log_user_created (user_id, created_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE audit_log
 (
@@ -450,7 +450,7 @@ CREATE TABLE audit_log
 	message TEXT NOT NULL,
 	context_json JSON NULL,
 	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE app_settings
 (
@@ -459,7 +459,7 @@ CREATE TABLE app_settings
 	setting_key VARCHAR(100) NOT NULL,
 	setting_value TEXT NULL,
 	UNIQUE(user_id, setting_key)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE login_attempts
 (
@@ -470,6 +470,6 @@ CREATE TABLE login_attempts
 	updated_at DATETIME NOT NULL,
 	INDEX idx_login_attempts_blocked_until (blocked_until),
 	INDEX idx_login_attempts_updated_at (updated_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 SET FOREIGN_KEY_CHECKS = 1;

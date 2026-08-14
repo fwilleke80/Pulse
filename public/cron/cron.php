@@ -18,6 +18,13 @@ header('Referrer-Policy: no-referrer');
 header('X-Content-Type-Options: nosniff');
 
 $projectRoot = dirname(__DIR__, 2);
+
+if (is_file(dirname(__DIR__) . '/install.php'))
+{
+	http_response_code(503);
+	echo "Pulse installation is not finalized.\n";
+	exit;
+}
 require_once $projectRoot . '/app/Core/Environment.php';
 require_once $projectRoot . '/app/Core/WebCronAuthenticator.php';
 

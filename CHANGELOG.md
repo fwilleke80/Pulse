@@ -1,3 +1,52 @@
+## 0.9.4 - 2026-08-14
+
+### Fixed
+- Added migration `019_normalize_utf8mb4_collation.sql` to normalize every Pulse application table to `utf8mb4_unicode_ci`. Earlier migrations created some later tables with the server/database default collation, which could cause `Illegal mix of collations` errors on fresh installations whose database defaults to `utf8mb4_general_ci`.
+- Updated the reference schema so every table declares the same explicit `utf8mb4_unicode_ci` collation.
+- Authenticated sessions now resolve to an existing active user on every request. Sessions belonging to deleted or deactivated accounts are invalidated automatically instead of remaining authenticated or entering redirect loops.
+- Installer locking, navigation, detected base URLs, and the final login link now preserve an installation subdirectory instead of assuming Pulse is mounted at the domain root.
+- Added the missing `actions.save` translation used by the no-JavaScript language selector in all shipped languages.
+
+### Audit
+- Began the structured pre-1.0 audit covering installation/bootstrap, authentication/authorization, monitor execution, recipient delivery, mail processing, database integrity, UI consistency, and release packaging.
+
+## 0.9.3 - 2026-08-14
+
+### Changed
+- Changed **Add contact** on the Contacts page from a plain text link to the same button treatment used by **Add monitor**, keeping empty-list actions visually consistent.
+- The installer now pre-fills **Public base URL** from the address used to open `install.php` instead of allowing the placeholder from `.env.example` to override the detected address.
+- Base-URL detection recognizes the common `X-Forwarded-Proto` case so an HTTPS site behind a reverse proxy is suggested as HTTPS rather than HTTP. The detected value remains editable and is still validated before saving.
+- Reworded the Public base URL help text to explain that the detected address is a suggestion and normally does not need to be changed.
+
+### Fixed
+- Removed a duplicate application-stage completion write in the installation service.
+
+### Documentation
+- Updated the installation guide for automatic public-URL detection and the 0.9.3 release.
+
+## 0.9.2 - 2026-08-14
+
+### Added
+- Added the guided `public/install.php` first-run wizard with system checks, tested database setup, public URL/timezone/language configuration, automatic migrations, first-administrator creation, optional SMTP configuration, and final verification.
+- Added resumable non-secret installation state under `storage/` so an interrupted fresh installation can safely continue without keeping database or administrator passwords in the state marker.
+- Added automatic generation of secure first-boot defaults, including trusted-host settings, session/security defaults, upload defaults, and a cryptographically random web-cron token.
+- The installer finish page shows the generated web-cron URL and directs the administrator to test SMTP after login.
+
+### Security
+- Normal Pulse requests, the public web-cron endpoint, and command-line notification workers refuse operation while `public/install.php` exists.
+- A completed existing installation is detected without modification; on upgrades the installer never reinitializes configuration, migrations, or users and only attempts to remove itself.
+- Finalization verifies `.env`, database connectivity, schema state, and an active administrator before the installer can remove itself.
+- `public/install.php` attempts to delete itself after successful verification. If server permissions prevent deletion, Pulse remains locked until the file is removed manually.
+- Installer secret inputs are never redisplayed. Database passwords already written during an interrupted installation can be retained by leaving the field blank.
+
+### Changed
+- Fresh installations no longer require manually copying or editing `.env`; the installer creates it from `.env.example` and keeps `.env` as Pulse's single configuration source.
+- **Administration → Installation** documentation now reflects that public URL and database values are created by the installer and intentionally remain read-only afterward.
+- Declared PDO MySQL and OpenSSL explicitly in Composer requirements to match Pulse's actual production requirements.
+
+### Documentation
+- Reworked the installation and upgrade guide around the browser installer, automatic self-removal, first administrator creation, optional SMTP setup, and generated cron token.
+
 ## 0.9.1 - 2026-08-14
 
 ### Changed

@@ -24,6 +24,9 @@ class AuthService
 	private UserRepository $_userRepository;
 	private Session $_session;
 	private Logger $_logger;
+	private bool $_currentUserResolved = false;
+	/** @var array<string, mixed>|null */
+	private ?array $_currentUser = null;
 
 	/**
 	 * @brief Constructs the authentication service.
@@ -78,6 +81,8 @@ class AuthService
 
 		$this->_session->Regenerate();
 		$this->_session->LoginUser($userId);
+		$this->_currentUserResolved = false;
+		$this->_currentUser = null;
 
 		if (!empty($user['website_locale']))
 		{
@@ -100,6 +105,8 @@ class AuthService
 			'user_id' => $userId,
 		]);
 		$this->_session->Logout();
+		$this->_currentUserResolved = true;
+		$this->_currentUser = null;
 	}
 
 	/**
@@ -108,14 +115,34 @@ class AuthService
 	 */
 	public function GetCurrentUser(): ?array
 	{
+		if ($this->_currentUserResolved)
+		{
+			return $this->_currentUser;
+		}
+
+		$this->_currentUserResolved = true;
 		$userId = $this->_session->GetUserId();
 
 		if ($userId === null)
 		{
+			$this->_currentUser = null;
 			return null;
 		}
 
-		return $this->_userRepository->FindById($userId);
+		$user = $this->_userRepository->FindById($userId);
+
+		if (!is_array($user) || !(bool)($user['is_active'] ?? false))
+		{
+			$this->_logger->Warning('Invalidated stale or inactive authenticated session', [
+				'user_id' => $userId,
+			]);
+			$this->_session->Logout();
+			$this->_currentUser = null;
+			return null;
+		}
+
+		$this->_currentUser = $user;
+		return $this->_currentUser;
 	}
 
 	/**
@@ -124,6 +151,6 @@ class AuthService
 	 */
 	public function IsAuthenticated(): bool
 	{
-		return $this->_session->IsLoggedIn();
+		return $this->GetCurrentUser() !== null;
 	}
 }

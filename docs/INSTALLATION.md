@@ -1,77 +1,48 @@
 # Installing Pulse
 
-This guide describes a normal production installation of Pulse and the cron job that drives reminders and escalation.
+Pulse 0.9.3 includes a guided browser installer. A normal installation no longer requires you to create or edit `.env` manually.
 
 ## Requirements
 
 Pulse requires:
 
-- PHP 8.4 or 8.5
-- the PDO MySQL, Fileinfo, and OpenSSL PHP extensions
+- PHP 8.4 or newer
+- PDO MySQL, Fileinfo, JSON, and OpenSSL PHP extensions
 - MySQL 8+ or MariaDB 10.6+
-- a web server that can route requests to `public/index.php` — Apache with `mod_rewrite` is supported by the included `public/.htaccess`
-- the ability to run a scheduled job, either by calling a URL or by running a command-line cron job
+- a web server that serves the `public/` directory as the site root and routes unknown paths to `public/index.php`
+- permission for PHP to write the root `.env` file and `storage/`
+- the ability to run a scheduled job, either by URL or command line
 - HTTPS for production use
 
 Composer is not required to install or run Pulse.
 
-## 1. Prepare the source locally
+## 1. Prepare the source
 
-Extract the complete Pulse source archive on your computer.
+Extract the complete Pulse source archive locally.
 
-If you downloaded the complete source .zip, before uploading any PHP files, generate the version file from the project root. If you are using a release .zip, you can skip this step.
-
-Generating the version file works like this:
+When deploying from a source checkout, generate the version file before uploading:
 
 ```bash
 python3 tools/write_version.py
 ```
 
-This creates `config/version.php`. Upload that file together with the rest of the application.
-
-If you need to set the release value explicitly, use:
+To set the release explicitly:
 
 ```bash
-PULSE_VERSION=0.9.1  
-python3 tools/write_version.py
+PULSE_VERSION=0.9.3 python3 tools/write_version.py
 ```
 
-Pulse still starts if `config/version.php` is missing, but it displays **version unavailable** and cannot use the release number for asset cache keys. A normal deployment should therefore generate the file first.
+A packaged release already contains its generated `config/version.php`. Pulse still starts if that file is missing, but displays **version unavailable**.
 
-## 2. Create the database
+## 2. Create an empty database
 
-Create an empty MySQL or MariaDB database and a database user with permission to use it.
+Create an empty MySQL or MariaDB database and a database user that can create and modify tables inside it.
 
-You do not need to import `database/schema.sql` manually. Pulse creates and updates its database schema automatically when the application starts.
+Do not import `database/schema.sql` manually. The installer applies Pulse's ordered database migrations itself.
 
-## 3. Create `.env`
+## 3. Upload Pulse
 
-Copy the supplied example file:
-
-```text
-.env.example → .env
-```
-
-Keep `.env` in the Pulse project root. It contains secrets and must never be placed inside `public/` or committed to a public repository.
-
-At minimum, configure the values for:
-
-```text
-PULSE_BASE_URL
-PULSE_TRUSTED_HOSTS
-PULSE_DB_HOST
-PULSE_DB_DATABASE
-PULSE_DB_USERNAME
-PULSE_DB_PASSWORD
-```
-
-For the initial boot, also review the production, cookie, and timezone settings in `.env.example`. In 0.9.x, normal runtime settings can be maintained after sign-in under **Administration** instead of editing `.env` manually. The public base URL and database credentials remain installation-level values and are read-only in Administration until the 0.9.x installer is added.
-
-Process-level environment variables override values from `.env` when both are present. Administration shows a warning when it detects such overrides because editing `.env` cannot replace a process-level value.
-
-## 4. Upload Pulse
-
-Upload the complete project to the server. The project should keep this basic layout:
+Upload the complete project. Keep this structure intact:
 
 ```text
 Pulse/
@@ -82,132 +53,174 @@ Pulse/
 ├── public/
 ├── storage/
 ├── tools/
-├── .env
+├── .env.example
 └── bootstrap.php
 ```
 
-The web server's document root must point to:
+Set the site's document root to:
 
 ```text
 Pulse/public/
 ```
 
-Do **not** expose the complete Pulse project directory as the website root. Application code, configuration, `.env`, logs, and uploaded documents belong outside the public web directory.
+Do **not** expose the complete project directory as the website root. Configuration, logs, and uploaded documents must remain outside the public directory.
 
-For Apache, the included `public/.htaccess` routes clean URLs such as `/monitors` to the Pulse front controller. Other web servers need equivalent front-controller routing.
+For Apache, `public/.htaccess` supplies the required front-controller routing. Other web servers need equivalent routing.
 
-## 5. Set directory permissions
+## 4. Set permissions
 
-The PHP process must be able to write to:
+PHP must be able to create or update:
 
 ```text
 .env
-storage/logs
-storage/tmp
-storage/uploads
+storage/
+storage/logs/
+storage/tmp/
+storage/uploads/
 ```
 
-`.env` must remain outside the public document root. Pulse 0.9.x needs write access to it so the administrator can save application settings safely through the web interface. The storage directories must likewise not be publicly accessible.
+The installer also tries to delete `public/install.php` after successful setup. If the PHP account cannot delete files from `public/`, installation still succeeds, but you must remove that file manually before Pulse will operate normally.
 
-Avoid making the complete project world-writable. Grant the web-server/PHP account only the specific file and directory permissions it needs.
+Avoid making the entire project world-writable. Grant only the permissions the PHP/web-server account needs.
 
-## 6. Enable HTTPS
+## 5. Run the installer
 
-Configure the site to use HTTPS before relying on Pulse in production. During the current manual installation flow, set `PULSE_BASE_URL` to the final HTTPS URL and make sure the configured trusted hostname matches it. Administration displays this value under **Installation** but intentionally does not edit it; the upcoming installer will own this setting.
-
-## 7. Start Pulse
-
-Open the Pulse URL in a browser.
-
-On the first request, Pulse checks the database and automatically creates or applies the required schema migrations. No separate migration command is required for normal installation.
-
-After signing in, open the dashboard and verify that the application loads without warnings about the database or storage directories.
-
-## 8. Configure email
-
-Pulse depends on email for check-in reminders, safety-contact requests, and recipient notifications. Do not rely on a monitor until SMTP has been tested successfully.
-
-Sign in with the administrator account and open **Administration → Mail**. Configure the SMTP host, port, encryption, credentials, sender identity, and queue/retry behaviour there. Production SMTP must use encrypted transport:
-
-- STARTTLS, commonly on port 587, or
-- implicit TLS, commonly on port 465
-
-Enable automatic mail delivery only after those values are correct, save the settings, then send a test notification from the same Mail tab. The test uses the same installation-wide queue and SMTP transport as normal Pulse notifications.
-
-The SMTP password is never displayed back in the form. Leaving the password field blank keeps the current value; clearing it requires the explicit clear option.
-
-If the test fails, fix SMTP before configuring consequential monitors.
-
-## 9. Configure the cron job
-
-The cron job is essential. It is what notices that monitors have become due, queues reminders, advances safety-contact gates, and sends eligible recipient messages.
-
-Run it once per minute.
-
-### Option A: web cron with a secret token
-
-This is intended for hosting providers that can schedule a URL but do not provide command-line cron access.
-
-Open **Administration → Cron** and generate a new strong web-cron token, then save the settings. Configure the hosting provider's cron service to request:
+Open:
 
 ```text
-https://pulse.example.com/cron/cron.php?token=YOUR_CONFIGURED_TOKEN
+https://your-pulse-host.example/install.php
 ```
 
-Replace both the hostname and token with your real values.
+If Pulse is installed below a URL prefix, open that path instead, for example `https://example.com/pulse/install.php`. The installer preserves the subdirectory in its own navigation and suggests `https://example.com/pulse` as the public base URL.
 
-A successful request returns:
+The installer walks through six stages.
+
+### System
+
+Pulse checks the PHP version, required extensions, writable directories, migrations, `.env` write access, and whether automatic installer removal is possible. Blocking failures must be corrected before continuing.
+
+### Database
+
+Enter the existing database host, port, database name, username, and password. Pulse tests the connection before writing the credentials to `.env`.
+
+### Pulse settings
+
+Confirm:
+
+- the public base URL
+- the display timezone
+- the default interface language
+
+The installer detects the public base URL from the address used to open it and pre-fills that value as a suggestion. This also accounts for the common case where HTTPS is terminated by a reverse proxy. Change the suggestion only if Pulse will later be available at a different public address.
+
+Pulse generates the remaining safe defaults automatically, including trusted-host configuration, secure-session defaults, login throttling, upload defaults, and a cryptographically random web-cron token.
+
+An HTTPS base URL configures Pulse for production. An HTTP base URL configures a development installation so the application does not pretend that insecure transport is production-safe.
+
+The installer then applies all pending database migrations.
+
+### Administrator
+
+Create the first administrator account with a name, email address, and password of at least 12 characters.
+
+This account receives the `administrator` role. The role model is already prepared for later multi-user support.
+
+### Mail
+
+SMTP setup is optional during installation. You can either configure it immediately or skip it and use **Administration → Mail** after login.
+
+If you configure mail during installation, Pulse stores and enables the SMTP configuration. After logging in, still send a test from **Administration → Mail** before relying on notifications.
+
+### Finish
+
+Before declaring success, Pulse verifies:
+
+- required `.env` configuration
+- the public URL and timezone
+- the database connection
+- the migrated schema
+- an active administrator account
+- completion of every installer stage
+
+Only after successful verification does Pulse attempt to delete `public/install.php`.
+
+If automatic deletion succeeds, use the displayed **Log in to Pulse** link.
+
+If deletion fails, the finish page tells you to delete:
+
+```text
+public/install.php
+```
+
+Pulse deliberately refuses normal application, web-cron, and command-line notification-worker operation while that file still exists.
+
+## 6. Configure and test mail
+
+If SMTP was skipped, or if you want to review it, log in and open **Administration → Mail**.
+
+Configure the SMTP host, port, encryption, credentials, sender identity, and queue/retry behaviour. Production mail must use STARTTLS or TLS.
+
+Send a test notification. Do not rely on a consequential monitor until that test succeeds.
+
+## 7. Configure the cron job
+
+The cron job notices due monitors, queues reminders, advances escalation, and sends eligible mail. Run it once per minute.
+
+### Option A: web cron
+
+The installer generates the token and shows the complete web-cron URL on its finish page. You can also review/regenerate the token later under **Administration → Cron**.
+
+The URL has this form:
+
+```text
+https://pulse.example.com/cron/cron.php?token=YOUR_SECRET_TOKEN
+```
+
+A successful run returns:
 
 ```text
 OK
 ```
 
-The cron URL is a credential. Anyone who has the complete URL also has the token, so:
-
-- do not publish or share it
-- restrict access to web-server and hosting logs that may contain the query string
-- rotate `PULSE_CRON_TOKEN` if the URL is exposed
-
-The endpoint runs one bounded notification pass. It does not start a normal signed-in Pulse session and does not accept operational settings in the URL.
+Treat the complete URL as a credential because the token may appear in hosting, proxy, or server logs.
 
 ### Option B: command-line cron
 
-If the server provides normal cron and PHP on the command line, use the command-line worker instead:
+If command-line PHP is available:
 
 ```cron
 * * * * * cd /path/to/pulse && /usr/bin/php tools/pulse.php notifications:run --limit=25 >/dev/null 2>&1
 ```
 
-Adjust `/path/to/pulse` and the PHP executable path for your server.
+Use either web cron or command-line cron; there is normally no need to configure both.
 
-You need only one of the two cron methods. Overlapping runs are designed to be safe, but there is normally no reason to configure both.
+## 8. Verify the live installation
 
-## 10. Verify the installation
+Before creating a real monitor:
 
-Before creating a real monitor, check the installation end to end:
+1. Sign in with the administrator account.
+2. Open the dashboard and resolve any configuration warnings.
+3. Open `/health` and `/health/readiness`.
+4. Send a successful test from **Administration → Mail**.
+5. Run the configured cron once and verify `OK`, or run the command-line worker once.
+6. Create a non-sensitive test contact and monitor.
+7. Rehearse the notification flow using non-sensitive addresses and wording.
 
-1. Open `/health` and verify that Pulse responds.
-2. Sign in and open `/health/readiness` to check database and storage readiness.
-3. Open **Administration → Mail** and send a successful test email.
-4. Call the configured web-cron URL once and verify that it returns `OK`, or run the command-line notification worker once.
-5. Create a non-sensitive test contact and monitor.
-6. Confirm that the monitor can be checked in and that its next due time is calculated correctly.
-7. Rehearse the notification flow with non-sensitive addresses and wording before relying on Pulse for anything consequential.
-
-The [monitor tutorial](MONITOR_TUTORIAL.md) contains example configurations and a rehearsal procedure.
+See the [monitor tutorial](MONITOR_TUTORIAL.md) for example configurations and rehearsal guidance.
 
 ## Upgrading Pulse
 
-Upgrading is simple:
-
 1. Back up the database and `storage/uploads`.
 2. Extract the new release locally.
-3. If you're working with the project source, run `python3 tools/write_version.py` to update the version number before uploading the PHP files. If you downloaded a release .zip, this isn't necessary.
+3. If deploying from source, run `python3 tools/write_version.py` before uploading.
 4. Keep the existing server `.env` and private storage data.
-5. Upload the complete new application over the existing Pulse installation.
-6. Open Pulse in a browser. Any pending database migrations are applied automatically.
-7. Send a test from **Administration → Mail** and verify that the cron job still runs.
+5. Upload the complete new application over the existing installation.
+6. Open Pulse in a browser.
 
-Do not import `database/schema.sql` over an existing Pulse database.
+Release archives include `public/install.php` for fresh installations. On an already initialized Pulse database, the installer detects the existing active account, **does not rewrite configuration or users**, and only attempts to remove itself. If the server cannot delete it, remove `public/install.php` manually.
 
-A complete-file upload is preferred to copying only files that appear to have changed. This keeps application code, assets, migrations, and language files on the same release.
+After the installer is gone, normal startup applies any pending database migrations automatically.
+
+Finally, send a test from **Administration → Mail** and verify that cron still runs.
+
+Do not import `database/schema.sql` over an existing database. A complete-file upload is preferred so application code, assets, migrations, and language files remain on the same release.

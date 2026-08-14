@@ -2808,3 +2808,327 @@ footer
 		gap: 0.15rem;
 	}
 }
+
+/* Pulse 0.9.3 guided installer */
+.installer-body
+{
+	max-width: none;
+	padding: clamp(1rem, 4vw, 3rem);
+}
+
+.installer-shell
+{
+	width: min(920px, 100%);
+	margin: 0 auto;
+}
+
+.installer-header
+{
+	display: flex;
+	align-items: flex-end;
+	justify-content: space-between;
+	gap: 1rem;
+	margin-bottom: 1.25rem;
+}
+
+.installer-logo
+{
+	display: block;
+	width: min(220px, 55vw);
+	height: auto;
+}
+
+.installer-kicker
+{
+	margin: 0 0 0.15rem;
+	color: var(--muted);
+	font-size: 0.9rem;
+	font-weight: 750;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+}
+
+.installer-steps
+{
+	display: grid;
+	grid-template-columns: repeat(6, minmax(0, 1fr));
+	gap: 0.4rem;
+	margin: 0 0 1rem;
+	padding: 0;
+	list-style: none;
+}
+
+.installer-steps li
+{
+	display: flex;
+	min-width: 0;
+	align-items: center;
+	gap: 0.45rem;
+	padding: 0.55rem 0.65rem;
+	border: 1px solid var(--border);
+	border-radius: 9px;
+	background: var(--surface-subtle);
+	color: var(--muted);
+	font-size: 0.82rem;
+}
+
+.installer-steps li span
+{
+	display: inline-grid;
+	width: 1.55rem;
+	height: 1.55rem;
+	flex: 0 0 auto;
+	place-items: center;
+	border: 1px solid var(--border);
+	border-radius: 999px;
+	background: var(--surface);
+	font-size: 0.75rem;
+}
+
+.installer-steps li strong
+{
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.installer-steps li.is-active
+{
+	border-color: color-mix(in srgb, var(--primary) 55%, var(--border));
+	background: color-mix(in srgb, var(--primary) 8%, var(--surface));
+	color: var(--primary);
+}
+
+.installer-steps li.is-active span,
+.installer-steps li.is-complete span
+{
+	border-color: var(--primary);
+	background: var(--primary);
+	color: #ffffff;
+}
+
+.installer-steps li.is-complete
+{
+	color: var(--text);
+}
+
+.installer-card
+{
+	padding: clamp(1.25rem, 4vw, 2.25rem);
+}
+
+.installer-card h1
+{
+	margin-top: 0;
+}
+
+.installer-card h2
+{
+	margin-top: 1.75rem;
+	font-size: 1.15rem;
+}
+
+.installer-card .field-hint
+{
+	margin: 0.35rem 0 0;
+	color: var(--muted);
+	font-size: 0.9rem;
+}
+
+.form-grid
+{
+	display: grid;
+	gap: 0 1rem;
+}
+
+.form-grid.two-column
+{
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.installer-actions
+{
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	margin-top: 1.75rem;
+}
+
+.installer-actions button,
+.installer-actions .button-link
+{
+	margin-top: 0;
+}
+
+.button-link-primary
+{
+	border-color: var(--primary);
+	background: var(--primary);
+	color: #ffffff;
+}
+
+.button-link-primary:hover
+{
+	background: var(--primary-hover);
+	color: #ffffff;
+}
+
+.status-banner
+{
+	margin: 0 0 1.25rem;
+	padding: 0.9rem 1rem;
+	border: 1px solid var(--border);
+	border-radius: 10px;
+	background: var(--surface-subtle);
+}
+
+.status-banner strong
+{
+	display: block;
+}
+
+.status-banner p
+{
+	margin: 0.25rem 0 0;
+}
+
+.status-info
+{
+	margin-top: 1.5rem;
+	border-color: color-mix(in srgb, var(--info) 35%, var(--border));
+	background: color-mix(in srgb, var(--info) 7%, var(--surface));
+}
+
+.status-success
+{
+	border-color: color-mix(in srgb, var(--success) 35%, var(--border));
+	background: color-mix(in srgb, var(--success) 7%, var(--surface));
+}
+
+.status-warning
+{
+	border-color: color-mix(in srgb, var(--warning) 40%, var(--border));
+	background: color-mix(in srgb, var(--warning) 8%, var(--surface));
+}
+
+.status-danger
+{
+	border-color: color-mix(in srgb, var(--danger) 38%, var(--border));
+	background: color-mix(in srgb, var(--danger) 8%, var(--surface));
+}
+
+.installer-checks
+{
+	margin: 0;
+	padding: 0;
+	border: 1px solid var(--border);
+	border-radius: 10px;
+	list-style: none;
+	overflow: hidden;
+}
+
+.installer-check
+{
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	padding: 0.75rem 0.9rem;
+	background: var(--surface);
+}
+
+.installer-check + .installer-check
+{
+	border-top: 1px solid var(--border);
+}
+
+.installer-check div
+{
+	display: flex;
+	min-width: 0;
+	flex-direction: column;
+}
+
+.installer-check span
+{
+	color: var(--muted);
+	font-size: 0.88rem;
+}
+
+.installer-check b
+{
+	flex: 0 0 auto;
+	font-size: 0.82rem;
+}
+
+.installer-check.ok b
+{
+	color: var(--success);
+}
+
+.installer-check.warning b
+{
+	color: var(--warning);
+}
+
+.installer-check.error b
+{
+	color: var(--danger);
+}
+
+.installer-secret
+{
+	padding: 0.8rem 0.9rem;
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	background: var(--surface-subtle);
+	overflow-wrap: anywhere;
+}
+
+.installer-secret code
+{
+	white-space: normal;
+}
+
+@media (max-width: 860px)
+{
+	.installer-steps
+	{
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+	}
+}
+
+@media (max-width: 620px)
+{
+	.installer-header
+	{
+		align-items: flex-start;
+		flex-direction: column;
+	}
+
+	.installer-steps
+	{
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	.form-grid.two-column
+	{
+		grid-template-columns: 1fr;
+	}
+
+	.installer-actions
+	{
+		align-items: stretch;
+		flex-direction: column-reverse;
+	}
+
+	.installer-actions > *,
+	.installer-actions button,
+	.installer-actions .button-link
+	{
+		width: 100%;
+		justify-content: center;
+		text-align: center;
+	}
+}
