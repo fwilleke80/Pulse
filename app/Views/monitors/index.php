@@ -96,60 +96,12 @@ ob_start();
 						<td class="monitor-datetime"><?= e(format_datetime(isset($monitor['last_confirmed_at']) ? (string)$monitor['last_confirmed_at'] : null)) ?></td>
 						<td class="monitor-datetime"><?= e(format_datetime(isset($monitor['next_check_due_at']) ? (string)$monitor['next_check_due_at'] : null)) ?></td>
 						<td class="monitor-actions-cell">
-							<div class="table-actions">
-								<form method="post" action="<?= e($base_url) ?>/monitors/<?= $statusClass === 'paused' ? 'resume' : 'pause' ?>">
-									<?= csrf_field() ?>
-									<input type="hidden" name="id" value="<?= (int)$monitor['id'] ?>">
-									<input type="hidden" name="redirect" value="/monitors">
-									<button type="submit" class="btn-table-inline"><?= e__($statusClass === 'paused' ? 'monitors.resume.submit' : 'monitors.pause.submit') ?></button>
-								</form>
-								<?php if ($debugEnabled && $statusClass === 'checked-in'): ?>
-									<form method="post" action="<?= e($base_url) ?>/monitors/force-due">
-										<?= csrf_field() ?>
-										<input type="hidden" name="id" value="<?= (int)$monitor['id'] ?>">
-										<input type="hidden" name="redirect" value="/monitors">
-										<button type="submit" class="btn-table-inline"><?= e__('monitors.force_due.submit') ?></button>
-									</form>
-								<?php elseif ($debugEnabled && $statusClass === 'awaiting' && empty($monitor['due_notice_sent_at'])): ?>
-									<?php if ($mailEnabled): ?>
-										<form method="post" action="<?= e($base_url) ?>/monitors/send-due-notice">
-											<?= csrf_field() ?>
-											<input type="hidden" name="id" value="<?= (int)$monitor['id'] ?>">
-											<input type="hidden" name="redirect" value="/monitors">
-											<button type="submit" class="btn-table-inline"><?= e__('monitors.send_due_notice.submit') ?></button>
-										</form>
-									<?php else: ?>
-										<button type="button" class="btn-table-inline" disabled title="<?= e__('monitors.send_due_notice.mail_disabled') ?>"><?= e__('monitors.send_due_notice.submit') ?></button>
-									<?php endif; ?>
-								<?php elseif ($debugEnabled && $statusClass === 'awaiting' && $cycleEscalationPolicy === 'safety_contact'): ?>
-									<?php if ($mailEnabled): ?>
-										<form method="post" action="<?= e($base_url) ?>/monitors/send-safety-contact-notifications" data-confirm="<?= e__('monitors.send_safety_contacts.confirm') ?>">
-											<?= csrf_field() ?>
-											<input type="hidden" name="id" value="<?= (int)$monitor['id'] ?>">
-											<input type="hidden" name="redirect" value="/monitors">
-											<button type="submit" class="btn-table-inline"><?= e__('monitors.send_safety_contacts.submit') ?></button>
-										</form>
-									<?php else: ?>
-										<button type="button" class="btn-table-inline" disabled title="<?= e__('monitors.send_safety_contacts.mail_disabled') ?>"><?= e__('monitors.send_safety_contacts.submit') ?></button>
-									<?php endif; ?>
-								<?php elseif ($debugEnabled && in_array($statusClass, ['awaiting', 'safety-pending', 'overdue'], true)): ?>
-									<?php if ($mailEnabled): ?>
-										<form method="post" action="<?= e($base_url) ?>/monitors/send-recipient-notifications" data-confirm="<?= e__('monitors.send_recipients.confirm') ?>">
-											<?= csrf_field() ?>
-											<input type="hidden" name="id" value="<?= (int)$monitor['id'] ?>">
-											<input type="hidden" name="redirect" value="/monitors">
-											<button type="submit" class="btn-table-inline btn-danger"><?= e__('monitors.send_recipients.submit') ?></button>
-										</form>
-									<?php else: ?>
-										<button type="button" class="btn-table-inline" disabled title="<?= e__('monitors.send_recipients.mail_disabled') ?>"><?= e__('monitors.send_recipients.submit') ?></button>
-									<?php endif; ?>
-								<?php endif; ?>
-								<form method="post" action="<?= e($base_url) ?>/monitors/delete" data-confirm="<?= e__('monitors.index.delete_confirm') ?>">
-									<?= csrf_field() ?>
-									<input type="hidden" name="id" value="<?= (int)$monitor['id'] ?>">
-									<button type="submit" class="btn-table-inline btn-danger"><?= e__('monitors.index.table.buttons.delete') ?></button>
-								</form>
-							</div>
+							<?php
+							$actionStatus = $statusClass;
+							$actionRedirect = '/monitors';
+							$actionAllowDelete = true;
+							require __DIR__ . '/partials/actions.php';
+							?>
 						</td>
 					</tr>
 				<?php endforeach; ?>

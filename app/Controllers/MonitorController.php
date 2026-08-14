@@ -169,7 +169,7 @@ class MonitorController extends BaseController
 		$this->_monitorRepository->ReplaceContactsForMonitor($monitorId, (int)$user['id'], $contactIds);
 		$this->_logger->Info('Monitor created', ['user_id' => (int)$user['id'], 'monitor_id' => $monitorId]);
 		$this->Flash('success', __('monitors.add.flash.created', ['name' => $values['name']]));
-		$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=recipients');
+		$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=documents');
 	}
 
 	/** @brief Displays the monitor editor and related document metadata. @return string */
@@ -232,6 +232,7 @@ class MonitorController extends BaseController
 			'portalDefaults' => $portalDefaults,
 			'availableLocales' => $this->_availableLocales,
 			'activeTab' => $this->ActiveEditorTab(),
+			'activeMessageSection' => $this->ActiveMessageSection(),
 		]);
 	}
 
@@ -250,12 +251,10 @@ class MonitorController extends BaseController
 		}
 
 		$values = $this->MonitorInput();
-		$safetyTemplates = $this->LocalizedSafetyTemplateInput();
 		$safetyContactIds = $this->AllowedContactIds((int)$user['id'], $this->_request->PostIntArray('safety_contact_ids'));
 
 		if (
 			!$this->ValidateMonitorInput($values, '/monitors/edit?id=' . $monitorId . '&tab=' . $returnTab, $monitorId)
-			|| !$this->ValidateLocalizedSafetyTemplates($safetyTemplates, '/monitors/edit?id=' . $monitorId . '&tab=escalation')
 			|| !$this->ValidateSafetyConfiguration($values, $safetyContactIds, (int)$user['id'], '/monitors/edit?id=' . $monitorId . '&tab=escalation')
 		)
 		{
@@ -284,8 +283,6 @@ class MonitorController extends BaseController
 		);
 		$this->_monitorExecutionService->SynchronizeMonitorForUser($monitorId, (int)$user['id']);
 		$this->_monitorRepository->ReplaceSafetyContactsForMonitor($monitorId, (int)$user['id'], $safetyContactIds);
-		$this->_messageRepository->ReplaceLocalizedTemplatesForMonitor($monitorId, (int)$user['id'], 'safety_invitation', $safetyTemplates['safety_invitation']);
-		$this->_messageRepository->ReplaceLocalizedTemplatesForMonitor($monitorId, (int)$user['id'], 'safety_reminder', $safetyTemplates['safety_reminder']);
 		$this->_logger->Info('Monitor updated', ['user_id' => (int)$user['id'], 'monitor_id' => $monitorId]);
 		$this->Flash('success', __('monitors.edit.flash.updated', ['name' => $values['name']]));
 		$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=' . $returnTab);
@@ -297,6 +294,7 @@ class MonitorController extends BaseController
 		$user = $this->RequireUser();
 		$userId = (int)$user['id'];
 		$monitorId = $this->_request->PostInt('monitor_id');
+		$returnSection = $this->PostedMessageSection();
 
 		if ($this->_monitorRepository->FindByIdForUser($monitorId, $userId) === null)
 		{
@@ -304,51 +302,72 @@ class MonitorController extends BaseController
 			$this->Redirect('/monitors');
 		}
 
-		$templates = $this->LocalizedTemplateInput('recipient_default');
-		$portalTemplates = $this->LocalizedPortalContentInput();
-
-		$expiryMode = $this->_request->PostString('recipient_portal_expiry_mode', 20);
-		$expiryDays = match ($expiryMode)
-		{
-			'30' => 30,
-			'90' => 90,
-			'365' => 365,
-			'custom' => $this->_request->PostInt('recipient_portal_expiry_custom_days'),
-			default => null,
-		};
-
-		if ($expiryDays !== null && ($expiryDays < 1 || $expiryDays > 3650))
-		{
-			$this->Flash('error', __('monitors.messages.portal_expiry.invalid'));
-			$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=messages');
-		}
-
-		$this->_monitorRepository->UpdateRecipientPortalAvailabilityForUser($monitorId, $userId, $expiryDays);
-
-		$this->_messageRepository->ReplaceLocalizedTemplatesForMonitor(
-			$monitorId,
-			$userId,
-			'recipient_default',
-			$templates
-		);
-		$this->_messageRepository->ReplaceLocalizedPortalTemplatesForMonitor($monitorId, $userId, $portalTemplates);
-		$this->_logger->Info('Monitor messages updated', ['user_id' => $userId, 'monitor_id' => $monitorId]);
 		$hasDraftIssues = false;
 
-		foreach ($templates as $template)
+		if ($returnSection === 'recipient')
 		{
-			if (RecipientMessageValidator::Validate((string)$template['subject'], (string)$template['body_text']) !== [])
+			$templates = $this->LocalizedTemplateInput('recipient_default');
+			$this->_messageRepository->ReplaceLocalizedTemplatesForMonitor(
+				$monitorId,
+				$userId,
+				'recipient_default',
+				$templates
+			);
+
+			foreach ($templates as $template)
 			{
-				$hasDraftIssues = true;
-				break;
+				if (RecipientMessageValidator::Validate((string)$template['subject'], (string)$template['body_text']) !== [])
+				{
+					$hasDraftIssues = true;
+					break;
+				}
 			}
 		}
+		elseif ($returnSection === 'safety')
+		{
+			$safetyTemplates = $this->LocalizedSafetyTemplateInput();
 
+			if (!$this->ValidateLocalizedSafetyTemplates($safetyTemplates, '/monitors/edit?id=' . $monitorId . '&tab=messages&section=safety'))
+			{
+				return;
+			}
+
+			$this->_messageRepository->ReplaceLocalizedTemplatesForMonitor($monitorId, $userId, 'safety_invitation', $safetyTemplates['safety_invitation']);
+			$this->_messageRepository->ReplaceLocalizedTemplatesForMonitor($monitorId, $userId, 'safety_reminder', $safetyTemplates['safety_reminder']);
+		}
+		else
+		{
+			$portalTemplates = $this->LocalizedPortalContentInput();
+			$expiryMode = $this->_request->PostString('recipient_portal_expiry_mode', 20);
+			$expiryDays = match ($expiryMode)
+			{
+				'30' => 30,
+				'90' => 90,
+				'365' => 365,
+				'custom' => $this->_request->PostInt('recipient_portal_expiry_custom_days'),
+				default => null,
+			};
+
+			if ($expiryDays !== null && ($expiryDays < 1 || $expiryDays > 3650))
+			{
+				$this->Flash('error', __('monitors.messages.portal_expiry.invalid'));
+				$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=messages&section=portal');
+			}
+
+			$this->_monitorRepository->UpdateRecipientPortalAvailabilityForUser($monitorId, $userId, $expiryDays);
+			$this->_messageRepository->ReplaceLocalizedPortalTemplatesForMonitor($monitorId, $userId, $portalTemplates);
+		}
+
+		$this->_logger->Info('Monitor messages/content updated', [
+			'user_id' => $userId,
+			'monitor_id' => $monitorId,
+			'section' => $returnSection,
+		]);
 		$this->Flash(
 			$hasDraftIssues ? 'warning' : 'success',
 			__($hasDraftIssues ? 'monitors.messages.flash.saved_with_warnings' : 'monitors.messages.flash.updated')
 		);
-		$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=messages');
+		$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=messages&section=' . $returnSection);
 	}
 
 	/** @brief Deletes an owned monitor and all of its physical document files. */
@@ -865,7 +884,21 @@ class MonitorController extends BaseController
 	private function PostedEditorTab(): string
 	{
 		$tab = $this->_request->PostString('active_tab', 20);
-		return in_array($tab, ['schedule', 'recipients', 'messages', 'escalation', 'review'], true) ? $tab : 'schedule';
+		return in_array($tab, ['details', 'schedule', 'documents', 'recipients', 'escalation', 'messages', 'review'], true) ? $tab : 'details';
+	}
+
+	/** @brief Returns a whitelisted Messages & content subsection posted by its form. */
+	private function PostedMessageSection(): string
+	{
+		$section = $this->_request->PostString('message_section', 20);
+		return in_array($section, ['recipient', 'safety', 'portal'], true) ? $section : 'recipient';
+	}
+
+	/** @brief Returns a supported Messages & content subsection from the query. */
+	private function ActiveMessageSection(): string
+	{
+		$section = $this->_request->QueryString('section', 20);
+		return in_array($section, ['recipient', 'safety', 'portal'], true) ? $section : 'recipient';
 	}
 
 	/**
@@ -968,6 +1001,6 @@ class MonitorController extends BaseController
 	{
 		$tab = $this->_request->QueryString('tab', 20);
 
-		return in_array($tab, ['schedule', 'recipients', 'messages', 'escalation', 'review'], true) ? $tab : 'schedule';
+		return in_array($tab, ['details', 'schedule', 'documents', 'recipients', 'escalation', 'messages', 'review'], true) ? $tab : 'details';
 	}
 }

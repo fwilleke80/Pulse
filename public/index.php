@@ -81,7 +81,7 @@ $homeController = new HomeController(
 );
 $authController = new AuthController($view, $session, $auth, $logger, $request, $loginThrottle, $csrf);
 $contactController = new ContactController($view, $session, $auth, $logger, $request, $contactRepository, $notificationLanguage);
-$languageController = new LanguageController($view, $session, $auth, $logger, $request, (array)$config['available_locales']);
+$languageController = new LanguageController($view, $session, $auth, $logger, $request, (array)$config['available_locales'], $userRepository);
 $profileController = new ProfileController(
 	$view,
 	$session,
@@ -193,6 +193,8 @@ $router->Get('/monitors/recipients/edit', [$recipientController, 'Edit']);
 $router->Post('/monitors/recipients/add', [$recipientController, 'Add']);
 $router->Post('/monitors/recipients/update', [$recipientController, 'Update']);
 $router->Post('/monitors/recipients/portal/revoke', [$recipientController, 'RevokePortal']);
+$router->Post('/monitors/recipients/delivery/portal/update', [$recipientController, 'UpdateReleasedPortal']);
+$router->Post('/monitors/recipients/delivery/document/update', [$recipientController, 'UpdateReleasedDocument']);
 $router->Post('/monitors/recipients/remove', [$recipientController, 'Remove']);
 
 $router->Post('/monitors/documents/upload', [$documentController, 'Upload']);

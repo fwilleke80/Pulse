@@ -81,6 +81,7 @@ class HomeController extends BaseController
 			'monitors' => $monitors,
 			'recentActivity' => $this->_monitorExecutionService->FindRecentActivityForUser((int)$user['id'], 10),
 			'mailEnabled' => (bool)($this->_config['mail']['enabled'] ?? false),
+			'debugEnabled' => (bool)($this->_config['debug'] ?? false),
 		]);
 	}
 

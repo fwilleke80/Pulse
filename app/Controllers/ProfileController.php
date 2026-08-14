@@ -7,6 +7,7 @@ namespace Pulse\Controllers;
 use Pulse\Core\Session;
 use Pulse\Core\View;
 use Pulse\Core\Logger;
+use Pulse\Core\WebsiteLanguagePreference;
 use Pulse\Core\NotificationLanguage;
 use Pulse\Core\Request;
 use Pulse\Repositories\UserRepository;
@@ -92,6 +93,9 @@ class ProfileController extends BaseController
 			'notificationLocale' => $this->_notificationLanguage->Resolve(
 				isset($user['notification_locale']) ? (string)$user['notification_locale'] : null
 			),
+			'websiteLocale' => $this->_notificationLanguage->Resolve(
+				isset($user['website_locale']) ? (string)$user['website_locale'] : null
+			),
 			'mailConnection' => [
 				'host' => (string)($this->_mailConfig['host'] ?? ''),
 				'port' => (int)($this->_mailConfig['port'] ?? 0),
@@ -169,6 +173,7 @@ class ProfileController extends BaseController
 		$displayName = $this->_request->PostString('display_name', 255);
 		$email = $this->_request->PostString('email', 255);
 		$notificationLocale = $this->_request->PostString('notification_locale', 10);
+		$websiteLocale = $this->_request->PostString('website_locale', 10);
 
 		if ($displayName === '' || $email === '')
 		{
@@ -184,9 +189,9 @@ class ProfileController extends BaseController
 			$this->Redirect('/profile');
 		}
 
-		if (!$this->_notificationLanguage->IsSupported($notificationLocale))
+		if (!$this->_notificationLanguage->IsSupported($notificationLocale) || !$this->_notificationLanguage->IsSupported($websiteLocale))
 		{
-			$this->_logger->Warning('Profile update failed due to unsupported notification language', ['user_id' => $userId]);
+			$this->_logger->Warning('Profile update failed due to unsupported language', ['user_id' => $userId]);
 			$this->Flash('error', __('profile.flash.update.invalid_language'));
 			$this->Redirect('/profile');
 		}
@@ -200,7 +205,9 @@ class ProfileController extends BaseController
 			$this->Redirect('/profile');
 		}
 
-		$this->_userRepository->UpdateProfile($userId, $displayName, $email, $notificationLocale);
+		$this->_userRepository->UpdateProfile($userId, $displayName, $email, $notificationLocale, $websiteLocale);
+		$this->_session->Set('locale', $websiteLocale);
+		WebsiteLanguagePreference::Write($websiteLocale, $this->_request->IsSecure());
 
 		$this->_logger->Info('Profile updated successfully', ['user_id' => $userId]);
 		$this->Flash('success', __('profile.flash.update.success'));

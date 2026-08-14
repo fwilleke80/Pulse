@@ -15,6 +15,7 @@ use Pulse\Core\Logger;
 use Pulse\Core\Request;
 use Pulse\Core\Session;
 use Pulse\Core\View;
+use Pulse\Core\WebsiteLanguagePreference;
 use Pulse\Services\AuthService;
 use Pulse\Services\LoginThrottleService;
 
@@ -90,6 +91,13 @@ class AuthController extends BaseController
 		}
 
 		$this->_loginThrottle->Clear($email, $clientIp);
+		$currentUser = $this->_auth->GetCurrentUser();
+
+		if (is_array($currentUser) && !empty($currentUser['website_locale']))
+		{
+			WebsiteLanguagePreference::Write((string)$currentUser['website_locale'], $this->_request->IsSecure());
+		}
+
 		$this->_csrf->Rotate();
 		$this->Flash('success', __('flash.login.successful'));
 		$this->Redirect('/');

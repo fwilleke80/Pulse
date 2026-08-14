@@ -91,6 +91,11 @@ final class RecipientController extends BaseController
 			'message_subject' => (string)($recipient['default_message_subject'] ?? ''),
 			'message_body' => (string)($recipient['default_message_body'] ?? ''),
 		]);
+		$defaultTemplateSubject = (string)($recipient['default_message_subject'] ?? '');
+		$defaultTemplateBody = (string)($recipient['default_message_body'] ?? '');
+		$defaultTemplate = trim($defaultTemplateSubject) !== '' && trim($defaultTemplateBody) !== ''
+			? ['subject' => $defaultTemplateSubject, 'body_text' => $defaultTemplateBody]
+			: $this->_composer->BuiltInTemplate('recipient_default', (string)$recipient['notification_locale']);
 
 		$messageIssues = RecipientMessageValidator::Validate(
 			(string)($recipient['override_subject'] ?? ''),
@@ -101,6 +106,10 @@ final class RecipientController extends BaseController
 			(string)($recipient['default_message_body'] ?? '')
 		);
 		$portalOverrideEnabled = !empty($recipient['portal_override_id']);
+		$activeDelivery = $this->_recipientRepository->FindLatestAvailableDeliveryForUser((int)$recipient['id'], (int)$user['id']);
+		$activeDeliveryDocuments = is_array($activeDelivery)
+			? $this->_recipientRepository->FindReleasedDocumentsForUser((int)$activeDelivery['id'], (int)$recipient['id'], (int)$user['id'])
+			: [];
 		$defaultPortalPreview = $this->_composer->ComposeRecipientPortalContent([
 			'recipient_name' => (string)$recipient['name'],
 			'notification_locale' => (string)$recipient['notification_locale'],
@@ -119,9 +128,13 @@ final class RecipientController extends BaseController
 			'deliveryHistory' => $this->_recipientRepository->FindDeliveryHistoryForUser((int)$recipient['id'], (int)$user['id']),
 			'preview' => $preview,
 			'defaultPreview' => $defaultPreview,
+			'defaultTemplate' => $defaultTemplate,
 			'messageIssues' => $messageIssues,
 			'defaultMessageIssues' => $defaultMessageIssues,
 			'defaultPortalPreview' => $defaultPortalPreview,
+			'activeDelivery' => $activeDelivery,
+			'activeDeliveryDocuments' => $activeDeliveryDocuments,
+			'activeSection' => $this->ActiveSection(),
 		]);
 	}
 
@@ -145,7 +158,7 @@ final class RecipientController extends BaseController
 		}
 
 		$this->Flash('success', __('recipients.flash.added'));
-		$this->Redirect('/monitors/recipients/edit?id=' . $monitorContactId);
+		$this->Redirect('/monitors/recipients/edit?id=' . $monitorContactId . '&section=overview');
 	}
 
 	/** @brief Saves one recipient's monitor-specific message and documents. */
@@ -154,6 +167,7 @@ final class RecipientController extends BaseController
 		$user = $this->RequireUser();
 		$userId = (int)$user['id'];
 		$monitorContactId = $this->_request->PostInt('id');
+		$returnSection = $this->PostedSection();
 		$recipient = $this->_recipientRepository->FindByIdForUser($monitorContactId, $userId);
 
 		if (!is_array($recipient))
@@ -162,11 +176,24 @@ final class RecipientController extends BaseController
 			$this->Redirect('/monitors');
 		}
 
-		$useOverride = $this->_request->PostBool('use_message_override');
-		$subject = $this->_request->PostString('message_subject', 255);
-		$body = $this->_request->PostString('message_body', 1000000, false);
-		$usePortalOverride = $this->_request->PostBool('use_portal_message_override');
-		$portalBody = $this->_request->PostString('portal_message_body', 1000000, false);
+		$useOverride = $returnSection === 'notification'
+			? $this->_request->PostBool('use_message_override')
+			: !empty($recipient['override_message_id']);
+		$subject = $returnSection === 'notification'
+			? $this->_request->PostString('message_subject', 255)
+			: (string)($recipient['override_subject'] ?? '');
+		$body = $returnSection === 'notification'
+			? $this->_request->PostString('message_body', 1000000, false)
+			: (string)($recipient['override_body'] ?? '');
+		$usePortalOverride = $returnSection === 'portal'
+			? $this->_request->PostBool('use_portal_message_override')
+			: !empty($recipient['portal_override_id']);
+		$portalBody = $returnSection === 'portal'
+			? $this->_request->PostString('portal_message_body', 1000000, false)
+			: (string)($recipient['portal_override_body'] ?? '');
+		$documentIds = $returnSection === 'documents'
+			? $this->_request->PostIntArray('document_ids')
+			: $this->_recipientRepository->FindAssignedDocumentIdsForUser($monitorContactId, $userId);
 
 		$this->_recipientRepository->UpdateConfigurationForUser(
 			$monitorContactId,
@@ -176,19 +203,63 @@ final class RecipientController extends BaseController
 			$body,
 			$usePortalOverride,
 			$portalBody,
-			$this->_request->PostIntArray('document_ids')
+			$documentIds
 		);
 		$this->_logger->Info('Monitor recipient updated', [
 			'user_id' => $userId,
 			'monitor_id' => (int)$recipient['monitor_id'],
 			'monitor_contact_id' => $monitorContactId,
 		]);
-		$issues = $useOverride ? RecipientMessageValidator::Validate($subject, $body) : [];
+		$issues = $returnSection === 'notification' && $useOverride ? RecipientMessageValidator::Validate($subject, $body) : [];
 		$this->Flash(
 			$issues !== [] ? 'warning' : 'success',
 			__($issues !== [] ? 'recipients.flash.saved_with_warnings' : 'recipients.flash.updated')
 		);
-		$this->Redirect('/monitors/recipients/edit?id=' . $monitorContactId);
+		$this->Redirect('/monitors/recipients/edit?id=' . $monitorContactId . '&section=' . $returnSection);
+	}
+
+	/** @brief Updates editable presentation text for one already released active portal. */
+	public function UpdateReleasedPortal(): void
+	{
+		$user = $this->RequireUser();
+		$userId = (int)$user['id'];
+		$monitorContactId = $this->_request->PostInt('recipient_id');
+		$deliveryId = $this->_request->PostInt('delivery_id');
+		$recipient = $this->_recipientRepository->FindByIdForUser($monitorContactId, $userId);
+
+		if (!is_array($recipient))
+		{
+			$this->Flash('error', __('recipients.flash.not_found'));
+			$this->Redirect('/monitors');
+		}
+
+		$updated = $this->_recipientRepository->UpdateReleasedPortalContentForUser(
+			$deliveryId,
+			$monitorContactId,
+			$userId,
+			$this->_request->PostString('portal_intro_text', 1000000, false),
+			$this->_request->PostString('portal_message_text', 1000000, false)
+		);
+		$this->Flash($updated ? 'success' : 'warning', __($updated ? 'recipients.active_portal.flash.updated' : 'recipients.active_portal.flash.unavailable'));
+		$this->Redirect('/monitors/recipients/edit?id=' . $monitorContactId . '&section=portal');
+	}
+
+	/** @brief Updates title and description of one authorized released document snapshot. */
+	public function UpdateReleasedDocument(): void
+	{
+		$user = $this->RequireUser();
+		$userId = (int)$user['id'];
+		$monitorContactId = $this->_request->PostInt('recipient_id');
+		$updated = $this->_recipientRepository->UpdateReleasedDocumentMetadataForUser(
+			$this->_request->PostInt('delivery_id'),
+			$this->_request->PostInt('document_id'),
+			$monitorContactId,
+			$userId,
+			$this->_request->PostString('title', 255),
+			$this->_request->PostString('description', 4000, false)
+		);
+		$this->Flash($updated ? 'success' : 'warning', __($updated ? 'recipients.active_documents.flash.updated' : 'recipients.active_documents.flash.unavailable'));
+		$this->Redirect('/monitors/recipients/edit?id=' . $monitorContactId . '&section=documents');
 	}
 
 	/** @brief Revokes one previously released recipient portal delivery for the authenticated owner. */
@@ -215,7 +286,7 @@ final class RecipientController extends BaseController
 			$this->Flash('warning', __('recipients.portal.revoke.unavailable'));
 		}
 
-		$this->Redirect('/monitors/recipients/edit?id=' . $monitorContactId);
+		$this->Redirect('/monitors/recipients/edit?id=' . $monitorContactId . '&section=history');
 	}
 
 	/** @brief Removes a contact from one monitor without changing prior snapshots. */
@@ -236,4 +307,18 @@ final class RecipientController extends BaseController
 		$this->Flash('success', __('recipients.flash.removed', ['name' => (string)$recipient['name']]));
 		$this->Redirect('/monitors/edit?id=' . (int)$recipient['monitor_id'] . '&tab=recipients');
 	}
+	/** @brief Returns the active recipient sub-editor section. */
+	private function ActiveSection(): string
+	{
+		$section = $this->_request->QueryString('section', 20);
+		return in_array($section, ['overview', 'notification', 'portal', 'documents', 'history'], true) ? $section : 'overview';
+	}
+
+	/** @brief Returns the recipient sub-editor section posted by the shared configuration form. */
+	private function PostedSection(): string
+	{
+		$section = $this->_request->PostString('recipient_section', 20);
+		return in_array($section, ['overview', 'notification', 'portal', 'documents', 'history'], true) ? $section : 'overview';
+	}
+
 }

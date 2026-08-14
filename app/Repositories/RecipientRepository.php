@@ -322,4 +322,212 @@ final class RecipientRepository
 
 		return is_array($rows) ? $rows : [];
 	}
+
+	/**
+	 * @brief Finds the latest currently available released portal for one monitor recipient.
+	 * @return array<string, mixed>|null Delivery row or null.
+	 */
+	public function FindLatestAvailableDeliveryForUser(int $monitorContactId, int $userId): ?array
+	{
+		$statement = $this->_database->GetConnection()->prepare('
+			SELECT
+				rrd.id,
+				rrd.monitor_id,
+				rrd.contact_id,
+				rrd.notification_locale,
+				rrd.portal_intro_text,
+				rrd.portal_message_text,
+				rrd.portal_released_at,
+				rrd.portal_expires_at,
+				rrd.portal_revoked_at,
+				rrd.sent_at
+			FROM monitor_contacts mc
+			INNER JOIN monitors m ON m.id = mc.monitor_id
+			INNER JOIN recipient_release_deliveries rrd
+				ON rrd.monitor_id = mc.monitor_id
+				AND rrd.contact_id = mc.contact_id
+			WHERE mc.id = :monitor_contact_id
+				AND m.user_id = :user_id
+				AND rrd.status = \'sent\'
+				AND rrd.portal_released_at IS NOT NULL
+				AND rrd.portal_revoked_at IS NULL
+				AND (rrd.portal_expires_at IS NULL OR rrd.portal_expires_at > UTC_TIMESTAMP())
+			ORDER BY rrd.id DESC
+			LIMIT 1
+		');
+		$statement->execute([
+			'monitor_contact_id' => $monitorContactId,
+			'user_id' => $userId,
+		]);
+		$row = $statement->fetch(PDO::FETCH_ASSOC);
+
+		return is_array($row) ? $row : null;
+	}
+
+	/**
+	 * @brief Returns the authorized document snapshot for one owned released delivery.
+	 * @return array<int, array<string, mixed>> Released document snapshot rows.
+	 */
+	public function FindReleasedDocumentsForUser(int $deliveryId, int $monitorContactId, int $userId): array
+	{
+		$statement = $this->_database->GetConnection()->prepare('
+			SELECT rdd.*
+			FROM monitor_contacts mc
+			INNER JOIN monitors m ON m.id = mc.monitor_id
+			INNER JOIN recipient_release_deliveries rrd
+				ON rrd.id = :delivery_id
+				AND rrd.monitor_id = mc.monitor_id
+				AND rrd.contact_id = mc.contact_id
+			INNER JOIN recipient_delivery_documents rdd ON rdd.recipient_delivery_id = rrd.id
+			WHERE mc.id = :monitor_contact_id AND m.user_id = :user_id
+			ORDER BY rdd.id ASC
+		');
+		$statement->execute([
+			'delivery_id' => $deliveryId,
+			'monitor_contact_id' => $monitorContactId,
+			'user_id' => $userId,
+		]);
+		$rows = $statement->fetchAll(PDO::FETCH_ASSOC);
+
+		return is_array($rows) ? $rows : [];
+	}
+
+	/**
+	 * @brief Updates the presentation text of one active released portal without changing authorization.
+	 */
+	public function UpdateReleasedPortalContentForUser(
+		int $deliveryId,
+		int $monitorContactId,
+		int $userId,
+		string $introText,
+		string $messageText
+	): bool
+	{
+		$statement = $this->_database->GetConnection()->prepare('
+			UPDATE recipient_release_deliveries rrd
+			INNER JOIN monitor_contacts mc
+				ON mc.monitor_id = rrd.monitor_id
+				AND mc.contact_id = rrd.contact_id
+			INNER JOIN monitors m ON m.id = mc.monitor_id
+			SET
+				rrd.portal_intro_text = :intro_text,
+				rrd.portal_message_text = :message_text,
+				rrd.updated_at = UTC_TIMESTAMP()
+			WHERE rrd.id = :delivery_id
+				AND mc.id = :monitor_contact_id
+				AND m.user_id = :user_id
+				AND rrd.status = \'sent\'
+				AND rrd.portal_released_at IS NOT NULL
+				AND rrd.portal_revoked_at IS NULL
+				AND (rrd.portal_expires_at IS NULL OR rrd.portal_expires_at > UTC_TIMESTAMP())
+		');
+		$statement->execute([
+			'intro_text' => $introText,
+			'message_text' => $messageText,
+			'delivery_id' => $deliveryId,
+			'monitor_contact_id' => $monitorContactId,
+			'user_id' => $userId,
+		]);
+
+		return $statement->rowCount() > 0 || $this->IsReleasedDeliveryAvailableForUser($deliveryId, $monitorContactId, $userId);
+	}
+
+	/**
+	 * @brief Updates only display metadata of one released document snapshot.
+	 */
+	public function UpdateReleasedDocumentMetadataForUser(
+		int $deliveryId,
+		int $snapshotDocumentId,
+		int $monitorContactId,
+		int $userId,
+		string $title,
+		string $description
+	): bool
+	{
+		if (trim($title) === '')
+		{
+			return false;
+		}
+
+		$statement = $this->_database->GetConnection()->prepare('
+			UPDATE recipient_delivery_documents rdd
+			INNER JOIN recipient_release_deliveries rrd ON rrd.id = rdd.recipient_delivery_id
+			INNER JOIN monitor_contacts mc
+				ON mc.monitor_id = rrd.monitor_id
+				AND mc.contact_id = rrd.contact_id
+			INNER JOIN monitors m ON m.id = mc.monitor_id
+			SET rdd.title = :title, rdd.description = :description
+			WHERE rdd.id = :snapshot_document_id
+				AND rrd.id = :delivery_id
+				AND mc.id = :monitor_contact_id
+				AND m.user_id = :user_id
+				AND rrd.status = \'sent\'
+				AND rrd.portal_released_at IS NOT NULL
+				AND rrd.portal_revoked_at IS NULL
+				AND (rrd.portal_expires_at IS NULL OR rrd.portal_expires_at > UTC_TIMESTAMP())
+		');
+		$statement->execute([
+			'title' => $title,
+			'description' => trim($description) !== '' ? $description : null,
+			'snapshot_document_id' => $snapshotDocumentId,
+			'delivery_id' => $deliveryId,
+			'monitor_contact_id' => $monitorContactId,
+			'user_id' => $userId,
+		]);
+
+		if ($statement->rowCount() > 0)
+		{
+			return true;
+		}
+
+		$check = $this->_database->GetConnection()->prepare('
+			SELECT COUNT(*)
+			FROM recipient_delivery_documents rdd
+			INNER JOIN recipient_release_deliveries rrd ON rrd.id = rdd.recipient_delivery_id
+			INNER JOIN monitor_contacts mc ON mc.monitor_id = rrd.monitor_id AND mc.contact_id = rrd.contact_id
+			INNER JOIN monitors m ON m.id = mc.monitor_id
+			WHERE rdd.id = :snapshot_document_id
+				AND rrd.id = :delivery_id
+				AND mc.id = :monitor_contact_id
+				AND m.user_id = :user_id
+				AND rrd.status = \'sent\'
+				AND rrd.portal_released_at IS NOT NULL
+				AND rrd.portal_revoked_at IS NULL
+				AND (rrd.portal_expires_at IS NULL OR rrd.portal_expires_at > UTC_TIMESTAMP())
+		');
+		$check->execute([
+			'snapshot_document_id' => $snapshotDocumentId,
+			'delivery_id' => $deliveryId,
+			'monitor_contact_id' => $monitorContactId,
+			'user_id' => $userId,
+		]);
+
+		return (int)$check->fetchColumn() === 1;
+	}
+
+	/** @brief Returns whether one delivery is still an active portal owned through this monitor-recipient assignment. */
+	private function IsReleasedDeliveryAvailableForUser(int $deliveryId, int $monitorContactId, int $userId): bool
+	{
+		$statement = $this->_database->GetConnection()->prepare('
+			SELECT COUNT(*)
+			FROM recipient_release_deliveries rrd
+			INNER JOIN monitor_contacts mc ON mc.monitor_id = rrd.monitor_id AND mc.contact_id = rrd.contact_id
+			INNER JOIN monitors m ON m.id = mc.monitor_id
+			WHERE rrd.id = :delivery_id
+				AND mc.id = :monitor_contact_id
+				AND m.user_id = :user_id
+				AND rrd.status = \'sent\'
+				AND rrd.portal_released_at IS NOT NULL
+				AND rrd.portal_revoked_at IS NULL
+				AND (rrd.portal_expires_at IS NULL OR rrd.portal_expires_at > UTC_TIMESTAMP())
+		');
+		$statement->execute([
+			'delivery_id' => $deliveryId,
+			'monitor_contact_id' => $monitorContactId,
+			'user_id' => $userId,
+		]);
+
+		return (int)$statement->fetchColumn() === 1;
+	}
+
 }

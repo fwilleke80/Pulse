@@ -5,6 +5,7 @@ declare(strict_types=1);
 /** @var array<string, mixed> $user */
 /** @var array<int, string> $notificationLocales */
 /** @var string $notificationLocale */
+/** @var string $websiteLocale */
 /** @var bool $mailEnabled */
 /** @var array<string, int> $mailQueueCounts */
 /** @var array<int, array<string, mixed>> $mailQueueEntries */
@@ -45,16 +46,25 @@ ob_start();
 			>
 		</div>
 
-		<div>
-			<label for="notification_locale"><?= e__('profile.data.notification_language') ?></label><br>
-			<select id="notification_locale" name="notification_locale" required>
-				<?php foreach ($notificationLocales as $localeOption): ?>
-					<option value="<?= e($localeOption) ?>" <?= $localeOption === $notificationLocale ? 'selected' : '' ?>>
-						<?= e(notification_language_name($localeOption)) ?>
-					</option>
-				<?php endforeach; ?>
-			</select>
-			<small><?= e__('profile.data.notification_language_hint') ?></small>
+		<div class="field-grid field-grid-two">
+			<div>
+				<label for="website_locale"><?= e__('profile.data.website_language') ?></label><br>
+				<select id="website_locale" name="website_locale" required>
+					<?php foreach ($notificationLocales as $localeOption): ?>
+						<option value="<?= e($localeOption) ?>" <?= $localeOption === $websiteLocale ? 'selected' : '' ?>><?= e(notification_language_name($localeOption)) ?></option>
+					<?php endforeach; ?>
+				</select>
+				<small><?= e__('profile.data.website_language_hint') ?></small>
+			</div>
+			<div>
+				<label for="notification_locale"><?= e__('profile.data.notification_language') ?></label><br>
+				<select id="notification_locale" name="notification_locale" required>
+					<?php foreach ($notificationLocales as $localeOption): ?>
+						<option value="<?= e($localeOption) ?>" <?= $localeOption === $notificationLocale ? 'selected' : '' ?>><?= e(notification_language_name($localeOption)) ?></option>
+					<?php endforeach; ?>
+				</select>
+				<small><?= e__('profile.data.notification_language_hint') ?></small>
+			</div>
 		</div>
 
 		<div>

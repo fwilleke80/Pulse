@@ -66,17 +66,19 @@ For example, with a two-day response window and two follow-up reminders one day 
 due notice → 2 days → reminder 1 → 1 day → reminder 2 → 1 day → escalation step
 ```
 
+### Documents
+
+Documents belong to the monitor itself. Create text documents or upload supported files here, then edit their recipient-facing title and description. Recipient assignment is deliberately handled later from each recipient's **Documents** sub-tab, so the document library stays separate from the question of who receives what.
+
 ### Recipients
 
 Recipients are the people who receive the final monitor message if the escalation process reaches them.
 
-Add an existing contact, then use **Configure recipient** to control that person's message, assigned documents, preview, and delivery history.
+Add an existing contact, then open **Edit recipient**. The recipient editor is divided into **Overview**, **Notification email**, **Portal**, **Documents**, and **History** so personal overrides, assignments, active portal presentation, and delivery history do not all compete for space on one page.
 
-### Messages & documents
+### Messages & content
 
-A monitor has one default recipient message. Individual recipients can override it with their own subject and body.
-
-Documents also belong to a monitor. You can create text documents or upload supported files and assign them to selected recipients.
+Monitor-wide communication is collected here instead of being scattered through behavioral settings. The secondary tabs contain **Recipient email**, **Safety-contact email**, and **Portal page**. Each installed language gets its own language-specific content where appropriate.
 
 ### Escalation
 
@@ -149,7 +151,7 @@ If the required confirmation is not reached before the safety-contact stage ends
 
 ### Custom safety-contact email text
 
-On **Safety & escalation**, you can replace the default subject and body used for the first safety-contact email and for later reminders **separately for each supported language**. Each installed language gets its own tab, and Pulse chooses the matching version from each safety contact's **Pulse interface language**. The templates support `{app}` (the Pulse application name), `{name}` (the safety contact's name), `{owner}` (the monitor owner's display name), `{monitor}` (the monitor name), and `{url}` (the safety-confirmation page URL). Reminder text additionally supports `{number}` (the current reminder number) and `{total}` (the configured total number of safety reminders). Leave a language-specific subject/body pair empty to use Pulse's built-in default for that language; the default can be revealed in the editor. The same contact language controls the safety-confirmation page, the recipient portal, and Pulse-authored portal access-code mail.
+Under **Messages & content → Safety-contact email**, you can replace the default subject and body used for the first safety-contact email and for later reminders **separately for each supported language**. Each installed language gets its own tab, and Pulse chooses the matching version from each safety contact's **Pulse interface language**. The templates support `{app}` (the Pulse application name), `{name}` (the safety contact's name), `{owner}` (the monitor owner's display name), `{monitor}` (the monitor name), and `{url}` (the safety-confirmation page URL). Reminder text additionally supports `{number}` (the current reminder number) and `{total}` (the configured total number of safety reminders). Leave a language-specific subject/body pair empty to use Pulse's built-in default for that language; the default can be revealed in the editor. The same contact language controls the safety-confirmation page, the recipient portal, and Pulse-authored portal access-code mail.
 
 ## Notifications and failed mail
 
@@ -164,7 +166,7 @@ Open **Profile → Notifications** to:
 
 A failed email does not count as successfully delivered. Pulse shows a warning rather than pretending the notification happened.
 
-Your profile has its own **Notification language** for Pulse-authored owner due notices, reminders, and test mail. Contacts have a **Pulse interface language** for Pulse-owned pages such as safety confirmation and the recipient portal. That language also selects localized Pulse fallback text when safety-contact or recipient mail is left at its built-in default, and it controls Pulse-authored portal access-code mail.
+Your profile has separate **Website language** and **Notification language** settings. Website language controls the authenticated Pulse interface and is remembered across login/logout; changing the footer language selector updates that persistent website preference. Notification language controls Pulse-authored owner due notices, reminders, and test mail. Contacts have a **Pulse interface language** for Pulse-owned pages such as safety confirmation and the recipient portal. That contact language also selects localized Pulse fallback text when safety-contact or recipient mail is left at its built-in default, and it controls Pulse-authored portal access-code mail.
 
 If SMTP settings are changed, send another test before relying on the system.
 
@@ -197,7 +199,7 @@ Pulse supports two kinds of monitor documents:
 - editable text documents stored in the database
 - uploaded files stored privately outside the public web directory
 
-You can assign documents to individual recipients from the recipient configuration page or document form. Uploaded files have a separate display title and optional short description. Both can be edited later without renaming or moving the private stored file.
+Create and maintain documents under the monitor's **Documents** tab. Assign them to individual people from **Recipients → Edit recipient → Documents**. Uploaded files have a separate display title and optional short description. Both can be edited later without renaming or moving the private stored file.
 
 The default upload policy accepts PDF, RTF, OpenDocument Text, Word `.docx`, JPEG, PNG, and plain text files up to 25 MiB. The server administrator can change the upload limit and MIME allowlist in `.env`; larger configured limits are also constrained by PHP and web-server upload settings such as `upload_max_filesize` and `post_max_size`.
 
@@ -213,9 +215,9 @@ The authenticated portal is intentionally recipient-facing rather than administr
 
 **Download all** shows the number and combined size of the available documents and streams a store-only ZIP/ZIP64 archive directly to the recipient. Pulse does not first build a second full-size temporary archive, so PHP memory and private temporary-storage use stay essentially independent of the total delivery size. Very large transfers are still subject to the hosting server, reverse proxy, network connection, and browser timeouts; individual downloads remain available if a bulk transfer is interrupted.
 
-The recipient's document set is a release snapshot. Later changes to monitor assignments, document titles/descriptions, or text documents do not silently rewrite an already released delivery. Uploaded file payloads are immutable after upload; if an editable source document is removed while a released delivery still references its stored file, Pulse retains that private file for the delivery.
+The recipient's authorized document set and file/text payloads are a release snapshot: later monitor assignments cannot add or remove documents from an already released portal. However, while an active portal is still available, the owner can edit that delivery's **presentation** independently from the recipient editor: portal introduction/message and the released documents' display titles/descriptions. These edits do not change authorization or file contents. Monitor defaults continue to affect future releases only. If an editable source document is removed while a released delivery still references its stored file, Pulse retains that private file for the delivery.
 
-Under **Messages & documents**, choose how long new recipient portals remain available after the final notification is successfully sent: 30 days, 90 days, one year, a custom duration, or no automatic expiry. The owner can revoke an individual released portal from that recipient's delivery history. Existing deliveries keep the lifetime snapshotted when they were staged.
+Under **Messages & content → Portal page**, choose how long new recipient portals remain available after the final notification is successfully sent: 30 days, 90 days, one year, a custom duration, or no automatic expiry. The owner can revoke an individual released portal from that recipient's delivery history. Existing deliveries keep the lifetime snapshotted when they were staged.
 
 Recipient-side **Close access permanently** is not part of 0.8.3 yet. It is intended only for deliveries without automatic expiry and will use a deliberately guarded confirmation flow.
 
@@ -223,7 +225,7 @@ Uploaded files, editable text documents, and recipient messages are also not enc
 
 ## Languages
 
-Pulse ships with English and German, but installed languages are discovered automatically from `app/Lang/*.php`. The interface language, your owner-notification language, and each contact's Pulse interface language are separate. Changing the language in the footer does not change either stored language setting.
+Pulse ships with English, German, French, and Italian, and installed languages are discovered automatically from `app/Lang/*.php`. Your persistent website language, your owner-notification language, and each contact's Pulse interface language are separate. Changing the footer language updates your website-language preference when logged in and keeps that choice available on logged-out pages; it does not change notification/contact languages.
 
 To add another language, copy an existing language file to a locale filename such as `app/Lang/it.php`, translate the strings, and set its native display name near the top:
 

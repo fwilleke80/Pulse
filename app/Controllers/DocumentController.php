@@ -56,17 +56,17 @@ class DocumentController extends BaseController
 				$this->_request->PostString('title', 255),
 				$this->_request->PostString('description', 4000, false),
 				$file,
-				$this->_request->PostIntArray('document_monitor_contact_ids')
+				[]
 			);
 		}
 		catch (DocumentException $exception)
 		{
 			$this->Flash('error', __($exception->TranslationKey()));
-			$this->Redirect($monitorId > 0 ? '/monitors/edit?id=' . $monitorId . '&tab=messages' : '/monitors');
+			$this->Redirect($monitorId > 0 ? '/monitors/edit?id=' . $monitorId . '&tab=documents' : '/monitors');
 		}
 
 		$this->Flash('success', __('monitors.documents.flash.uploaded', ['name' => $originalFilename]));
-		$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=messages');
+		$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=documents');
 	}
 
 	/** @brief Creates an editable text document. */
@@ -83,20 +83,20 @@ class DocumentController extends BaseController
 				$monitorId,
 				$title,
 				$this->_request->PostString('text_content', 1000000, false),
-				$this->_request->PostIntArray('document_monitor_contact_ids')
+				[]
 			);
 		}
 		catch (DocumentException $exception)
 		{
 			$this->Flash('error', __($exception->TranslationKey()));
-			$this->Redirect($monitorId > 0 ? '/monitors/edit?id=' . $monitorId . '&tab=messages' : '/monitors');
+			$this->Redirect($monitorId > 0 ? '/monitors/edit?id=' . $monitorId . '&tab=documents' : '/monitors');
 		}
 
 		$this->Flash('success', __('monitors.documents.flash.text_created', ['name' => $title]));
-		$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=messages');
+		$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=documents');
 	}
 
-	/** @brief Updates an editable text document and its recipients. */
+	/** @brief Updates an editable text document while preserving recipient assignments. */
 	public function UpdateText(): void
 	{
 		$user = $this->RequireUser();
@@ -110,20 +110,20 @@ class DocumentController extends BaseController
 				$this->_request->PostInt('document_id'),
 				$this->_request->PostString('title', 255),
 				$this->_request->PostString('text_content', 1000000, false),
-				$this->_request->PostIntArray('document_monitor_contact_ids')
+				null
 			);
 		}
 		catch (DocumentException $exception)
 		{
 			$this->Flash('error', __($exception->TranslationKey()));
-			$this->Redirect($monitorId > 0 ? '/monitors/edit?id=' . $monitorId . '&tab=messages' : '/monitors');
+			$this->Redirect($monitorId > 0 ? '/monitors/edit?id=' . $monitorId . '&tab=documents' : '/monitors');
 		}
 
 		$this->Flash('success', __('monitors.documents.flash.text_updated'));
-		$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=messages');
+		$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=documents');
 	}
 
-	/** @brief Updates an uploaded file's display metadata and recipients. */
+	/** @brief Updates an uploaded file's display metadata while preserving recipient assignments. */
 	public function UpdateFile(): void
 	{
 		$user = $this->RequireUser();
@@ -137,17 +137,17 @@ class DocumentController extends BaseController
 				$this->_request->PostInt('document_id'),
 				$this->_request->PostString('title', 255),
 				$this->_request->PostString('description', 4000, false),
-				$this->_request->PostIntArray('document_monitor_contact_ids')
+				null
 			);
 		}
 		catch (DocumentException $exception)
 		{
 			$this->Flash('error', __($exception->TranslationKey()));
-			$this->Redirect($monitorId > 0 ? '/monitors/edit?id=' . $monitorId . '&tab=messages' : '/monitors');
+			$this->Redirect($monitorId > 0 ? '/monitors/edit?id=' . $monitorId . '&tab=documents' : '/monitors');
 		}
 
 		$this->Flash('success', __('monitors.documents.flash.file_updated'));
-		$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=messages');
+		$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=documents');
 	}
 
 	/** @brief Updates the document recipient set. */
@@ -169,11 +169,11 @@ class DocumentController extends BaseController
 		catch (DocumentException $exception)
 		{
 			$this->Flash('error', __($exception->TranslationKey()));
-			$this->Redirect($monitorId > 0 ? '/monitors/edit?id=' . $monitorId . '&tab=messages' : '/monitors');
+			$this->Redirect($monitorId > 0 ? '/monitors/edit?id=' . $monitorId . '&tab=documents' : '/monitors');
 		}
 
 		$this->Flash('success', __('monitors.documents.flash.recipients_updated'));
-		$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=messages');
+		$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=documents');
 	}
 
 	/** @brief Deletes an owned document. */
@@ -190,11 +190,11 @@ class DocumentController extends BaseController
 		catch (DocumentException $exception)
 		{
 			$this->Flash('error', __($exception->TranslationKey()));
-			$this->Redirect($monitorId > 0 ? '/monitors/edit?id=' . $monitorId . '&tab=messages' : '/monitors');
+			$this->Redirect($monitorId > 0 ? '/monitors/edit?id=' . $monitorId . '&tab=documents' : '/monitors');
 		}
 
 		$this->Flash('success', __('monitors.documents.flash.deleted'));
-		$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=messages');
+		$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=documents');
 	}
 
 	/** @brief Streams an owned document as a non-cacheable attachment. */

@@ -159,7 +159,7 @@ For genuinely time-critical danger, an email-based multi-day workflow is the wro
 
 ## Write a useful recipient message
 
-Pulse provides localized built-in recipient email text, so a monitor can operate without custom wording. Monitor-wide custom recipient templates can be written separately for every installed Pulse language; Pulse selects the version matching each recipient's Pulse interface language. Recipient-specific personal messages still take precedence. The editor shows the supported placeholders: `{app}`, `{name}`, `{owner}`, and `{monitor}`.
+Pulse provides localized built-in recipient email text, so a monitor can operate without custom wording. Under **Messages & content → Recipient email**, monitor-wide custom recipient templates can be written separately for every installed Pulse language; Pulse selects the version matching each recipient's Pulse interface language. Recipient-specific personal messages still take precedence. The editor shows the supported placeholders: `{app}`, `{name}`, `{owner}`, and `{monitor}`.
 
 A recipient should be able to understand the email without hidden context. Consider including:
 

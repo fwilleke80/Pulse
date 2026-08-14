@@ -106,6 +106,14 @@ document.addEventListener('DOMContentLoaded', function ()
 				activeTabInput.value = name;
 			}
 
+			const saveBar = document.querySelector('[data-settings-save-bar]');
+
+			if (saveBar)
+			{
+				const settingsTabs = (saveBar.dataset.settingsTabs || '').split(',');
+				saveBar.hidden = !settingsTabs.includes(name);
+			}
+
 			if (updateUrl && window.history && window.URL)
 			{
 				const url = new URL(window.location.href);
@@ -114,14 +122,14 @@ document.addEventListener('DOMContentLoaded', function ()
 			}
 		};
 
-		activateTab(editor.dataset.activeTab || 'schedule', false, false);
+		activateTab(editor.dataset.activeTab || 'details', false, false);
 
 		for (const [index, tab] of tabs.entries())
 		{
 			tab.addEventListener('click', function (event)
 			{
 				event.preventDefault();
-				activateTab(tab.dataset.tabTarget || 'schedule', false, true);
+				activateTab(tab.dataset.tabTarget || 'details', false, true);
 			});
 			tab.addEventListener('keydown', function (event)
 			{
@@ -150,7 +158,96 @@ document.addEventListener('DOMContentLoaded', function ()
 					nextIndex = tabs.length - 1;
 				}
 
-				activateTab(tabs[nextIndex].dataset.tabTarget || 'schedule', true, true);
+				activateTab(tabs[nextIndex].dataset.tabTarget || 'details', true, true);
+			});
+		}
+	}
+
+
+	for (const editor of document.querySelectorAll('[data-editor-subtabs]'))
+	{
+		const tabs = Array.from(editor.querySelectorAll('[data-subtab-target]'));
+		const panels = Array.from(editor.querySelectorAll('[data-subtab-panel]'));
+		const availableTabs = tabs.map((tab) => tab.dataset.subtabTarget);
+		const activeInput = editor.closest('form') ? editor.closest('form').querySelector('[data-active-subtab-input]') : null;
+		const queryKey = editor.dataset.queryKey || 'section';
+
+		/** @brief Activates one nested editor section without introducing another page-level navigation row. */
+		const activateSubtab = function (name, focus, updateUrl)
+		{
+			if (!availableTabs.includes(name))
+			{
+				return;
+			}
+
+			for (const tab of tabs)
+			{
+				const active = tab.dataset.subtabTarget === name;
+				tab.classList.toggle('is-active', active);
+				tab.setAttribute('aria-selected', active ? 'true' : 'false');
+				tab.tabIndex = active ? 0 : -1;
+
+				if (active && focus)
+				{
+					tab.focus();
+				}
+			}
+
+			for (const panel of panels)
+			{
+				panel.hidden = panel.dataset.subtabPanel !== name;
+			}
+
+			if (activeInput)
+			{
+				activeInput.value = name;
+			}
+
+			if (updateUrl && window.history && window.URL)
+			{
+				const url = new URL(window.location.href);
+				url.searchParams.set(queryKey, name);
+				window.history.replaceState({}, '', url);
+			}
+		};
+
+		activateSubtab(editor.dataset.activeSubtab || availableTabs[0] || '', false, false);
+
+		for (const [index, tab] of tabs.entries())
+		{
+			tab.addEventListener('click', function (event)
+			{
+				event.preventDefault();
+				activateSubtab(tab.dataset.subtabTarget || '', false, true);
+			});
+			tab.addEventListener('keydown', function (event)
+			{
+				if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key))
+				{
+					return;
+				}
+
+				event.preventDefault();
+				let nextIndex = index;
+
+				if (event.key === 'ArrowLeft')
+				{
+					nextIndex = (index - 1 + tabs.length) % tabs.length;
+				}
+				else if (event.key === 'ArrowRight')
+				{
+					nextIndex = (index + 1) % tabs.length;
+				}
+				else if (event.key === 'Home')
+				{
+					nextIndex = 0;
+				}
+				else if (event.key === 'End')
+				{
+					nextIndex = tabs.length - 1;
+				}
+
+				activateSubtab(tabs[nextIndex].dataset.subtabTarget || '', true, true);
 			});
 		}
 	}

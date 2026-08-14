@@ -15,6 +15,7 @@ use Pulse\Core\Environment;
 use Pulse\Core\ErrorHandler;
 use Pulse\Core\Logger;
 use Pulse\Core\LanguageCatalog;
+use Pulse\Core\WebsiteLanguagePreference;
 use Pulse\Core\MigrationRunner;
 use Pulse\Core\NotificationLanguage;
 use Pulse\Core\Request;
@@ -149,7 +150,9 @@ if (!$languageCatalog->Has($defaultLocale))
 }
 
 $notificationLanguage = new NotificationLanguage($availableLocales, $defaultLocale);
-$locale = $isCli || $isBackgroundRequest ? $defaultLocale : $session->Get('locale', $defaultLocale);
+$cookieLocale = WebsiteLanguagePreference::Read();
+$preferredLocale = is_string($cookieLocale) && in_array($cookieLocale, $availableLocales, true) ? $cookieLocale : $defaultLocale;
+$locale = $isCli || $isBackgroundRequest ? $defaultLocale : $session->Get('locale', $preferredLocale);
 
 if (!is_string($locale) || !in_array($locale, $availableLocales, true))
 {

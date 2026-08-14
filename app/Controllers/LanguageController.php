@@ -17,6 +17,8 @@ use Pulse\Core\SafeRedirect;
 use Pulse\Core\SafetyLanguagePreference;
 use Pulse\Core\Session;
 use Pulse\Core\View;
+use Pulse\Core\WebsiteLanguagePreference;
+use Pulse\Repositories\UserRepository;
 use Pulse\Services\AuthService;
 
 /**
@@ -26,6 +28,7 @@ class LanguageController extends BaseController
 {
 	/** @var array<int, string> */
 	private array $_supportedLocales;
+	private UserRepository $_userRepository;
 
 	/** @brief Constructs the controller. @param View $view View. @param Session $session Session. @param AuthService $auth Authentication. @param Logger $logger Logger. @param Request $request Request. @param array<int, string> $supportedLocales Allowed locales. */
 	public function __construct(
@@ -34,11 +37,13 @@ class LanguageController extends BaseController
 		AuthService $auth,
 		Logger $logger,
 		Request $request,
-		array $supportedLocales
+		array $supportedLocales,
+		UserRepository $userRepository
 	)
 	{
 		parent::__construct($view, $session, $auth, $logger, $request);
 		$this->_supportedLocales = $supportedLocales;
+		$this->_userRepository = $userRepository;
 	}
 
 	/** @brief Changes the active locale stored in the session. */
@@ -72,6 +77,14 @@ class LanguageController extends BaseController
 		}
 
 		$this->_session->Set('locale', $locale);
+		WebsiteLanguagePreference::Write($locale, $this->_request->IsSecure());
+		$currentUser = $this->_auth->GetCurrentUser();
+
+		if (is_array($currentUser))
+		{
+			$this->_userRepository->UpdateWebsiteLocale((int)$currentUser['id'], $locale);
+		}
+
 		$this->_logger->Info('UI language changed', ['locale' => $locale]);
 		$this->Flash('success', __('flash.languageswitched', ['locale' => $locale]));
 		$this->Redirect($redirect);

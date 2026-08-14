@@ -1790,17 +1790,6 @@ footer
 		flex: 1 1 135px;
 	}
 
-	.monitor-tabs
-	{
-		display: flex;
-		overflow-x: auto;
-		scrollbar-width: thin;
-	}
-
-	.monitor-tab-link
-	{
-		min-width: 155px;
-	}
 
 	.field-grid-four,
 	.document-create-grid,
@@ -2411,4 +2400,192 @@ footer
 	font-size: 0.75rem;
 	font-weight: 800;
 	line-height: 1;
+}
+
+/* Pulse 0.8.5 editor/navigation refinements */
+.field-grid-two
+{
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 1rem;
+}
+
+.monitor-tabs,
+.editor-subtab-list
+{
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+	gap: 0.35rem;
+	padding: 0.35rem;
+	border: 1px solid var(--border);
+	border-radius: 12px;
+	background: var(--surface-subtle);
+	overflow: visible;
+}
+
+.monitor-tab-link,
+.editor-subtab-link
+{
+	display: flex;
+	width: 100%;
+	min-width: 0;
+	min-height: 2.9rem;
+	align-items: center;
+	justify-content: center;
+	gap: 0.5rem;
+	margin: 0;
+	padding: 0.6rem 0.65rem;
+	border: 1px solid transparent;
+	border-radius: 8px;
+	background: transparent;
+	color: var(--muted);
+	font-size: 0.9rem;
+	font-weight: 650;
+	line-height: 1.2;
+	text-align: center;
+	text-decoration: none;
+	transition: border-color 0.12s ease, background 0.12s ease, color 0.12s ease;
+}
+
+.monitor-tab-link:hover,
+.editor-subtab-link:hover
+{
+	border-color: var(--border);
+	color: var(--text);
+	background: color-mix(in srgb, var(--primary) 7%, transparent);
+}
+
+.monitor-tab-link.is-active,
+.editor-subtab-link.is-active
+{
+	border-color: var(--primary);
+	background: color-mix(in srgb, var(--primary) 8%, var(--surface));
+	box-shadow: 0 2px 8px rgba(31, 42, 55, 0.08);
+	color: var(--primary);
+}
+
+.editor-subtabs
+{
+	margin-top: 1rem;
+}
+
+.editor-subtab-list
+{
+	margin-bottom: 1rem;
+}
+
+.editor-subtab-panel[hidden]
+{
+	display: none !important;
+}
+
+.editor-breadcrumb
+{
+	margin: 0 0 0.35rem;
+	color: var(--muted);
+	font-size: 0.86rem;
+}
+
+.editor-breadcrumb a
+{
+	color: inherit;
+}
+
+.recipient-overview-summary-grid
+{
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: 0.75rem;
+	margin: 1rem 0 1.5rem;
+}
+
+.active-delivery-editor
+{
+	margin-top: 1.5rem;
+	border-color: color-mix(in srgb, var(--primary) 28%, var(--border));
+}
+
+.released-document-editor-list
+{
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+	gap: 0.8rem;
+}
+
+.released-document-editor-card
+{
+	margin: 0;
+	padding: 0.9rem;
+	border: 1px solid var(--border);
+	border-radius: 9px;
+	background: var(--surface-subtle);
+}
+
+.released-document-editor-card button
+{
+	margin-top: 0.75rem;
+}
+
+.recipient-contact-summary .status-badge
+{
+	vertical-align: middle;
+}
+
+.dashboard-monitor-card .btn-table-inline
+{
+	white-space: nowrap;
+}
+
+.dashboard-monitor-actions
+{
+	justify-content: flex-start;
+}
+
+@media (max-width: 900px)
+{
+	.recipient-overview-summary-grid
+	{
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+
+@media (max-width: 680px)
+{
+	.field-grid-two,
+	.recipient-overview-summary-grid
+	{
+		grid-template-columns: 1fr;
+	}
+
+	.monitor-tabs,
+	.editor-subtab-list
+	{
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	.recipient-editor-heading
+	{
+		align-items: stretch;
+		flex-direction: column;
+	}
+
+	.recipient-editor-heading > .button-link
+	{
+		align-self: flex-start;
+	}
+
+	.dashboard-monitor-actions
+	{
+		grid-column: 1 / -1;
+		width: 100%;
+	}
+}
+
+@media (max-width: 420px)
+{
+	.monitor-tabs,
+	.editor-subtab-list
+	{
+		grid-template-columns: 1fr;
+	}
 }

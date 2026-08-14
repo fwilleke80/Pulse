@@ -1,4 +1,4 @@
--- Pulse 0.7.4 reference database schema
+-- Pulse 0.8.5 reference database schema
 -- MySQL 8+ / MariaDB 10.6+
 -- Pulse applies database/migrations automatically. Do not import this reference file over an existing database.
 -- ----
@@ -25,6 +25,7 @@ CREATE TABLE users
 	password_hash VARCHAR(255) NOT NULL,
 	display_name VARCHAR(255) NOT NULL,
 	notification_locale VARCHAR(10) NULL,
+	website_locale VARCHAR(10) NULL,
 	is_active TINYINT(1) NOT NULL DEFAULT 1,
 	last_login_at DATETIME NULL,
 	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,

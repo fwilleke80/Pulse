@@ -1,3 +1,52 @@
+## 0.8.6 - 2026-08-14
+
+### Changed
+- Recipient **Notification email** now distinguishes the raw current default template from the rendered email preview. The default template displays placeholders such as `{url}` literally, while the separate preview shows their recipient-specific example values.
+- Safety-contact invitation and reminder placeholder help now appears directly below the corresponding message body field, matching the Recipient email and Portal page editors. Reminder-only placeholders `{number}` and `{total}` are shown only below the reminder body.
+- Portal-page defaults are now disclosed directly beneath each corresponding field: **Default portal message** and **Download page introduction** each have their own compact **Show Pulse default text** section.
+
+### Packaging
+- Release archives continue to omit `public/secret0410/` and its contents.
+
+## 0.8.5 - 2026-08-14
+
+### Changed
+- Reworked Monitor Editor and nested editor tabs into one shared responsive tab component. Tabs wrap into a two-column grid on phones and a single column on very narrow screens; horizontal tab scrolling has been removed.
+- Recipient editor sections now use the same fully styled tab treatment as the Monitor Editor instead of appearing as a row of plain text links.
+- Dashboard monitor status is now rendered with the same monitor-table styling, status pills, warnings, dates, and compact action buttons as the Monitors page.
+- Dashboard monitor actions now reuse the same action partial as the Monitors page, including the complete `PULSE_DEBUG` progression such as **Force Due now**, due notice, safety-contact notification, and recipient notification actions.
+
+### Internal
+- Consolidated duplicated monitor action markup into a shared view partial so Dashboard and Monitors page actions cannot drift apart again.
+
+### Packaging
+- Release archives continue to omit `public/secret0410/` and its contents.
+
+## 0.8.4 - 2026-08-14
+
+### Added
+- Added a persistent **Website language** profile setting separate from the owner **Notification language**. The selected website locale is restored after login and remains available on logged-out/login pages through a non-sensitive locale cookie.
+- Added migration `016_website_language.sql`, initializing existing users' website language from their current notification language.
+- Added task-focused recipient sub-tabs: **Overview**, **Notification email**, **Portal**, **Documents**, and **History**.
+- Added task-focused **Messages & content** sub-tabs for monitor-wide **Recipient email**, **Safety-contact email**, and **Portal page** content.
+- Added owner editing of active released portal presentation text and released document display titles/descriptions without changing the immutable recipient/file authorization snapshot.
+
+### Changed
+- Reorganized the Monitor Editor into **Details → Schedule → Documents → Recipients → Safety & escalation → Messages & content → Review & activation**.
+- Moved document creation/metadata into the monitor **Documents** tab; document assignment is now managed only from each recipient's **Documents** sub-tab.
+- Moved safety-contact email wording out of **Safety & escalation** and into **Messages & content**, leaving the escalation tab focused on policy, contacts, timing, quorum, and postponement.
+- The recipient summary now uses the same green/red address-status pills as the Contacts list and renames **Edit reusable contact details** to **Edit contact details**.
+- Dashboard monitor actions now use the same compact table-button treatment as the Monitors page.
+- Main and secondary editor tabs now wrap/reflow for desktop, tablet, phone, and very narrow phone layouts instead of requiring tiny controls or horizontal scrolling.
+- The global monitor save bar is shown only on tabs that actually save through the monitor-settings form; task-specific tabs use their own save actions.
+
+### Security / delivery semantics
+- Released document membership and file/text payloads remain immutable snapshots. Editing an active delivery can change only recipient-facing presentation text and display metadata, not which files are authorized or their stored contents.
+- Monitor defaults and recipient configuration continue to govern future releases; editing active delivery presentation affects only that already released portal.
+
+### Packaging
+- Release archives intentionally omit `public/secret0410/` and its contents.
+
 ## 0.8.3 - 2026-08-14
 
 ### Added

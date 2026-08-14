@@ -78,6 +78,12 @@ class AuthService
 
 		$this->_session->Regenerate();
 		$this->_session->LoginUser($userId);
+
+		if (!empty($user['website_locale']))
+		{
+			$this->_session->Set('locale', (string)$user['website_locale']);
+		}
+
 		$this->_userRepository->UpdateLastLoginAt($userId);
 
 		$this->_logger->Info('Login successful', ['user_id' => $userId]);

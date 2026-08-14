@@ -88,11 +88,12 @@ class UserRepository
 	 * @param string $displayName Display name.
 	 * @param string $email Email address.
 	 * @param string $notificationLocale Language for notifications sent to this user.
+	 * @param string $websiteLocale Persistent website/UI language.
 	 */
-	public function UpdateProfile(int $userId, string $displayName, string $email, string $notificationLocale): void
+	public function UpdateProfile(int $userId, string $displayName, string $email, string $notificationLocale, string $websiteLocale): void
 	{
 		$sql = 'UPDATE users
-			SET display_name = :display_name, email = :email, notification_locale = :notification_locale
+			SET display_name = :display_name, email = :email, notification_locale = :notification_locale, website_locale = :website_locale
 			WHERE id = :id';
 
 		$statement = $this->_database->GetConnection()->prepare($sql);
@@ -100,6 +101,23 @@ class UserRepository
 			'display_name' => $displayName,
 			'email' => $email,
 			'notification_locale' => $notificationLocale,
+			'website_locale' => $websiteLocale,
+			'id' => $userId,
+		]);
+	}
+
+	/**
+	 * @brief Updates only the persistent website/UI locale.
+	 * @param int $userId User ID.
+	 * @param string $websiteLocale Locale code.
+	 */
+	public function UpdateWebsiteLocale(int $userId, string $websiteLocale): void
+	{
+		$statement = $this->_database->GetConnection()->prepare(
+			'UPDATE users SET website_locale = :website_locale WHERE id = :id'
+		);
+		$statement->execute([
+			'website_locale' => $websiteLocale,
 			'id' => $userId,
 		]);
 	}

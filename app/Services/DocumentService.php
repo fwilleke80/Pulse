@@ -203,13 +203,13 @@ class DocumentService
 	}
 
 	/**
-	 * @brief Updates an editable text document and its recipients.
+	 * @brief Updates an editable text document and optionally its recipient assignments.
 	 * @param int $userId Owner user ID.
 	 * @param int $monitorId Monitor ID.
 	 * @param int $documentId Document ID.
 	 * @param string $title Document title.
 	 * @param string $textContent Document content.
-	 * @param array<int> $recipientIds Requested monitor-contact IDs.
+	 * @param array<int>|null $recipientIds Requested monitor-contact IDs, or null to preserve current assignments.
 	 */
 	public function UpdateTextForUser(
 		int $userId,
@@ -217,7 +217,7 @@ class DocumentService
 		int $documentId,
 		string $title,
 		string $textContent,
-		array $recipientIds
+		?array $recipientIds = null
 	): void
 	{
 		$document = $this->_documentRepository->FindByIdForMonitorAndUser($documentId, $monitorId, $userId);
@@ -233,10 +233,14 @@ class DocumentService
 		}
 
 		$this->_documentRepository->UpdateTextDocument($documentId, $title, $textContent);
-		$this->_documentRepository->ReplaceRecipientsForDocument(
-			$documentId,
-			$this->FilterRecipientIds($userId, $monitorId, $recipientIds)
-		);
+
+		if (is_array($recipientIds))
+		{
+			$this->_documentRepository->ReplaceRecipientsForDocument(
+				$documentId,
+				$this->FilterRecipientIds($userId, $monitorId, $recipientIds)
+			);
+		}
 		$this->_logger->Info('Text document updated', [
 			'user_id' => $userId,
 			'monitor_id' => $monitorId,
@@ -245,13 +249,13 @@ class DocumentService
 	}
 
 	/**
-	 * @brief Updates an uploaded file's display metadata and recipient assignments.
+	 * @brief Updates an uploaded file's display metadata and optionally its recipient assignments.
 	 * @param int $userId Owner user ID.
 	 * @param int $monitorId Monitor ID.
 	 * @param int $documentId Document ID.
 	 * @param string $title Display title.
 	 * @param string $description Optional short description.
-	 * @param array<int> $recipientIds Requested monitor-contact IDs.
+	 * @param array<int>|null $recipientIds Requested monitor-contact IDs, or null to preserve current assignments.
 	 */
 	public function UpdateFileForUser(
 		int $userId,
@@ -259,7 +263,7 @@ class DocumentService
 		int $documentId,
 		string $title,
 		string $description,
-		array $recipientIds
+		?array $recipientIds = null
 	): void
 	{
 		$document = $this->_documentRepository->FindByIdForMonitorAndUser($documentId, $monitorId, $userId);
@@ -279,10 +283,14 @@ class DocumentService
 			$title,
 			trim($description) !== '' ? $description : null
 		);
-		$this->_documentRepository->ReplaceRecipientsForDocument(
-			$documentId,
-			$this->FilterRecipientIds($userId, $monitorId, $recipientIds)
-		);
+
+		if (is_array($recipientIds))
+		{
+			$this->_documentRepository->ReplaceRecipientsForDocument(
+				$documentId,
+				$this->FilterRecipientIds($userId, $monitorId, $recipientIds)
+			);
+		}
 		$this->_logger->Info('File document updated', [
 			'user_id' => $userId,
 			'monitor_id' => $monitorId,
