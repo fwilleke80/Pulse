@@ -203,6 +203,129 @@ final class RecipientPortalController extends BaseController
 		]);
 	}
 
+	/** @brief Shows a generic confirmation after recipient access has been permanently closed. */
+	public function Closed(): string
+	{
+		$requestedLocale = $this->_request->QueryString('lang', 10);
+
+		if ($requestedLocale !== '' && $this->_languages->IsSupported($requestedLocale))
+		{
+			$locale = $this->_languages->Resolve($requestedLocale);
+			setTranslator(new Translator($this->_languagePath, $locale));
+			$this->_view->SetGlobals(['locale' => $locale], true);
+		}
+
+		return $this->_view->Render('portal.closed');
+	}
+
+	/** @brief Shows the guarded permanent-close confirmation page for a non-expiring delivery. */
+	public function CloseConfirmation(): string
+	{
+		$token = $this->_request->QueryString('token', 64);
+		$delivery = $this->_portalService->FindActiveDelivery($token);
+
+		if (!is_array($delivery))
+		{
+			http_response_code(404);
+			return $this->_view->Render('portal.invalid');
+		}
+
+		$this->UseRecipientLanguage((string)$delivery['notification_locale'], $token, $this->_request->QueryString('lang', 10));
+
+		if (!$this->_portalService->HasValidSession($this->_session, $token, (int)$delivery['delivery_id']))
+		{
+			$this->Redirect('/portal?token=' . rawurlencode($token));
+		}
+
+		if (!empty($delivery['portal_expires_at']))
+		{
+			$this->Redirect('/portal/access?token=' . rawurlencode($token));
+		}
+
+		$confirmationCode = $this->_portalService->BeginCloseConfirmation(
+			$this->_session,
+			$token,
+			(int)$delivery['delivery_id']
+		);
+		[$availableDocumentCount, $totalDownloadBytes] = $this->DownloadSummary((int)$delivery['delivery_id']);
+
+		return $this->_view->Render('portal.close-confirm', [
+			'delivery' => $this->AuthenticatedDelivery($delivery),
+			'token' => $token,
+			'confirmationCode' => $confirmationCode,
+			'availableDocumentCount' => $availableDocumentCount,
+			'totalDownloadBytes' => $totalDownloadBytes,
+		]);
+	}
+
+	/** @brief Permanently closes a non-expiring recipient delivery after deliberate confirmation. */
+	public function ClosePermanently(): string
+	{
+		$token = $this->_request->PostString('token', 64);
+		$delivery = $this->_portalService->FindActiveDelivery($token);
+
+		if (!is_array($delivery))
+		{
+			http_response_code(404);
+			return $this->_view->Render('portal.invalid');
+		}
+
+		$this->UseRecipientLanguage((string)$delivery['notification_locale'], $token);
+
+		if (!$this->_portalService->HasValidSession($this->_session, $token, (int)$delivery['delivery_id']))
+		{
+			$this->Redirect('/portal?token=' . rawurlencode($token));
+		}
+
+		if (!empty($delivery['portal_expires_at']))
+		{
+			$this->Redirect('/portal/access?token=' . rawurlencode($token));
+		}
+
+		$confirmationCode = $this->_portalService->CurrentCloseConfirmation(
+			$this->_session,
+			$token,
+			(int)$delivery['delivery_id']
+		);
+		$acknowledged = $this->_request->PostBool('confirm_downloaded');
+		$codeMatches = $this->_portalService->VerifyCloseConfirmation(
+			$this->_session,
+			$token,
+			(int)$delivery['delivery_id'],
+			$this->_request->PostString('confirmation_code', 32)
+		);
+
+		if (!$acknowledged || !$codeMatches || $confirmationCode === null)
+		{
+			[$availableDocumentCount, $totalDownloadBytes] = $this->DownloadSummary((int)$delivery['delivery_id']);
+			return $this->_view->Render('portal.close-confirm', [
+				'delivery' => $this->AuthenticatedDelivery($delivery),
+				'token' => $token,
+				'confirmationCode' => $confirmationCode ?? $this->_portalService->BeginCloseConfirmation($this->_session, $token, (int)$delivery['delivery_id']),
+				'availableDocumentCount' => $availableDocumentCount,
+				'totalDownloadBytes' => $totalDownloadBytes,
+				'validationError' => !$acknowledged ? __('portal.close.error.acknowledgement') : __('portal.close.error.code'),
+			]);
+		}
+
+		$closedLocale = $this->_languages->Resolve((string)$delivery['notification_locale']);
+		$sessionLocale = $this->_session->Get(RecipientPortalLanguagePreference::SessionKey($token));
+
+		if (is_string($sessionLocale) && $this->_languages->IsSupported($sessionLocale))
+		{
+			$closedLocale = $sessionLocale;
+		}
+
+		if (!$this->_portalService->ClosePermanently($this->_session, $token, (int)$delivery['delivery_id']))
+		{
+			http_response_code(404);
+			return $this->_view->Render('portal.invalid');
+		}
+
+		$this->Redirect('/portal/closed?lang=' . rawurlencode($closedLocale));
+		return '';
+	}
+
 	/** @brief Streams one document snapshot after checking the recipient session and delivery scope. */
 	public function DownloadDocument(): void
 	{
@@ -369,6 +492,32 @@ final class RecipientPortalController extends BaseController
 		}
 
 		return [$token, $delivery];
+	}
+
+	/** @return array{0: int, 1: int} @brief Returns count and total bytes for downloadable delivery documents. */
+	private function DownloadSummary(int $deliveryId): array
+	{
+		$documents = $this->_portalService->DocumentsForDelivery($deliveryId);
+		$count = 0;
+		$bytes = 0;
+
+		foreach ($documents as $document)
+		{
+			$isText = (string)($document['storage_type'] ?? '') === 'text';
+			$available = $isText || $this->_documentService->ResolvePortalSnapshotFile($document) !== null;
+
+			if (!$available)
+			{
+				continue;
+			}
+
+			$count++;
+			$bytes += $isText
+				? strlen((string)($document['text_content'] ?? ''))
+				: max(0, (int)($document['file_size_bytes'] ?? 0));
+		}
+
+		return [$count, $bytes];
 	}
 
 	/** @return array<string, mixed> @brief Returns recipient-authenticated metadata including the released message snapshot. */

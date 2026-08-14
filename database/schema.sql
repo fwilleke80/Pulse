@@ -302,6 +302,7 @@ CREATE TABLE recipient_release_deliveries
 	portal_released_at DATETIME NULL,
 	portal_expires_at DATETIME NULL,
 	portal_revoked_at DATETIME NULL,
+	portal_closed_by_recipient_at DATETIME NULL,
 	portal_last_access_at DATETIME NULL,
 	subject VARCHAR(255) NOT NULL,
 	body_text LONGTEXT NOT NULL,

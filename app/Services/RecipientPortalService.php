@@ -184,6 +184,64 @@ final class RecipientPortalService
 		return $this->_portalRepository->RevokeForUser($deliveryId, $userId);
 	}
 
+	/**
+	 * @brief Starts a deliberate permanent-close confirmation challenge for an authenticated recipient.
+	 * @return string Easy-to-type random confirmation code.
+	 */
+	public function BeginCloseConfirmation(Session $session, string $rawToken, int $deliveryId): string
+	{
+		$code = $this->GenerateCode();
+		$session->Set(RecipientPortalAccess::CloseConfirmationKey($rawToken), [
+			'delivery_id' => $deliveryId,
+			'code' => $code,
+		]);
+
+		return $code;
+	}
+
+	/** @brief Returns the current close-confirmation code for this delivery, if one exists. */
+	public function CurrentCloseConfirmation(Session $session, string $rawToken, int $deliveryId): ?string
+	{
+		$value = $session->Get(RecipientPortalAccess::CloseConfirmationKey($rawToken));
+
+		if (!is_array($value) || (int)($value['delivery_id'] ?? 0) !== $deliveryId)
+		{
+			return null;
+		}
+
+		$code = (string)($value['code'] ?? '');
+		return $code !== '' ? $code : null;
+	}
+
+	/** @brief Checks the deliberate permanent-close confirmation code. */
+	public function VerifyCloseConfirmation(Session $session, string $rawToken, int $deliveryId, string $submittedCode): bool
+	{
+		$expected = $this->CurrentCloseConfirmation($session, $rawToken, $deliveryId);
+
+		if ($expected === null)
+		{
+			return false;
+		}
+
+		return hash_equals($this->NormalizeCode($expected), $this->NormalizeCode($submittedCode));
+	}
+
+	/**
+	 * @brief Permanently closes one non-expiring delivery at the authenticated recipient's request.
+	 */
+	public function ClosePermanently(Session $session, string $rawToken, int $deliveryId): bool
+	{
+		$closed = $this->_portalRepository->CloseByRecipient($rawToken, $deliveryId);
+
+		if ($closed)
+		{
+			$session->Remove(RecipientPortalAccess::SessionKey($rawToken));
+			$session->Remove(RecipientPortalAccess::CloseConfirmationKey($rawToken));
+		}
+
+		return $closed;
+	}
+
 	/** @brief Normalizes human-entered access codes by ignoring separators and letter case. */
 	public function NormalizeCode(string $code): string
 	{

@@ -300,8 +300,9 @@ final class RecipientRepository
 		$limit = max(1, min(100, $limit));
 		$statement = $this->_database->GetConnection()->prepare('
 			SELECT rrd.id, rrd.status, rrd.recipient_email, rrd.sent_at, rrd.failed_at, rrd.created_at,
-				rrd.portal_released_at, rrd.portal_expires_at, rrd.portal_revoked_at,
+				rrd.portal_released_at, rrd.portal_expires_at, rrd.portal_revoked_at, rrd.portal_closed_by_recipient_at,
 				CASE
+					WHEN rrd.portal_closed_by_recipient_at IS NOT NULL THEN \'closed\'
 					WHEN rrd.portal_revoked_at IS NOT NULL THEN \'revoked\'
 					WHEN rrd.portal_released_at IS NULL THEN \'not_released\'
 					WHEN rrd.portal_expires_at IS NOT NULL AND rrd.portal_expires_at <= UTC_TIMESTAMP() THEN \'expired\'

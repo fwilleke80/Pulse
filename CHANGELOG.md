@@ -1,3 +1,14 @@
+## 0.8.9 - 2026-08-14
+
+### Added
+- Added recipient-controlled **Close access permanently** for released portals with no automatic expiry.
+- Added a dedicated irreversible-action confirmation page with Download all, an acknowledgement checkbox, and a random easy-to-type confirmation code.
+- Added recipient-closure audit/status tracking so owner history distinguishes recipient closure from owner revocation.
+
+### Security
+- Permanent recipient closure invalidates the portal invitation, outstanding access codes, queued access-code mail, and the current authenticated portal session without deleting the owner's stored documents.
+- Deliveries with an automatic expiry do not expose recipient-controlled permanent closure.
+
 ## 0.8.8 - 2026-08-14
 
 ### Changed

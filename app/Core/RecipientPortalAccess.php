@@ -24,4 +24,14 @@ final class RecipientPortalAccess
 	{
 		return 'pulse_recipient_portal_access_' . hash('sha256', $rawToken);
 	}
+
+	/**
+	 * @brief Returns the session key for the deliberate permanent-close confirmation challenge.
+	 * @param string $rawToken Raw portal invitation token.
+	 * @return string Session key containing only a SHA-256 digest of the portal token.
+	 */
+	public static function CloseConfirmationKey(string $rawToken): string
+	{
+		return 'pulse_recipient_portal_close_' . hash('sha256', $rawToken);
+	}
 }

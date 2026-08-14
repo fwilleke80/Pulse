@@ -132,6 +132,14 @@ ob_start();
 </section>
 
 <p class="form-hint portal-security-note"><?= e__('portal.documents.security_note') ?></p>
+
+<?php if (empty($delivery['portal_expires_at'])): ?>
+	<section class="portal-close-access" aria-labelledby="portal-close-access-heading">
+		<h2 id="portal-close-access-heading"><?= e__('portal.close.link_heading') ?></h2>
+		<p><?= e__('portal.close.link_hint') ?></p>
+		<a class="danger-link" href="<?= e($base_url) ?>/portal/close?token=<?= e(rawurlencode($token)) ?>"><?= e__('portal.close.link') ?></a>
+	</section>
+<?php endif; ?>
 <?php
 $content = ob_get_clean();
 $title = e__('portal.access.title');

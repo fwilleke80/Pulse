@@ -2589,3 +2589,124 @@ footer
 		grid-template-columns: 1fr;
 	}
 }
+
+/* Recipient-controlled permanent portal closure. */
+.portal-close-access
+{
+	margin-top: 2rem;
+	padding-top: 1.25rem;
+	border-top: 1px solid var(--border);
+}
+
+.portal-close-access h2
+{
+	margin-bottom: 0.35rem;
+	font-size: 1rem;
+}
+
+.portal-close-access p
+{
+	max-width: 48rem;
+	margin: 0 0 0.55rem;
+	color: var(--muted);
+}
+
+.portal-close-warning
+{
+	margin: 1.25rem 0;
+	padding: 1rem 1.1rem;
+	border: 1px solid color-mix(in srgb, var(--danger) 45%, var(--border));
+	border-radius: var(--radius);
+	background: color-mix(in srgb, var(--danger) 8%, var(--surface));
+}
+
+.portal-close-warning h2
+{
+	margin-top: 0;
+	color: var(--danger);
+}
+
+.portal-close-warning li + li
+{
+	margin-top: 0.35rem;
+}
+
+.portal-close-download
+{
+	margin: 1.25rem 0;
+}
+
+.portal-close-code
+{
+	display: inline-block;
+	margin: 0.35rem 0 1rem;
+	padding: 0.65rem 0.85rem;
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	background: var(--surface-subtle);
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+	font-size: 1.15rem;
+	font-weight: 750;
+	letter-spacing: 0.08em;
+}
+
+.portal-close-acknowledgement
+{
+	display: flex;
+	align-items: flex-start;
+	gap: 0.65rem;
+	margin: 1rem 0;
+}
+
+.portal-close-acknowledgement input
+{
+	flex: 0 0 auto;
+	margin-top: 0.2rem;
+}
+
+.portal-close-actions
+{
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.75rem 1rem;
+	margin-top: 1rem;
+}
+
+.portal-close-submit
+{
+	margin: 0;
+	border-color: var(--danger);
+	background: var(--danger);
+	color: #ffffff;
+}
+
+.portal-close-submit:hover
+{
+	border-color: var(--danger);
+	background: color-mix(in srgb, var(--danger) 82%, #000000);
+	color: #ffffff;
+}
+
+.portal-closed-message
+{
+	max-width: 42rem;
+	margin: 1rem auto;
+	text-align: center;
+}
+
+@media (max-width: 680px)
+{
+	.portal-close-actions
+	{
+		align-items: stretch;
+		flex-direction: column;
+	}
+
+	.portal-close-actions .button-link,
+	.portal-close-actions button
+	{
+		width: 100%;
+		text-align: center;
+	}
+}

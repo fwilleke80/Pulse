@@ -147,3 +147,7 @@ Before relying on a production Pulse installation:
 - run the notification cron job once per minute
 - use only carefully checked recipient and safety-contact addresses
 - rehearse consequential monitors with non-sensitive test messages before relying on them
+
+### Recipient-initiated permanent closure
+
+A non-expiring released portal may be permanently closed by its authenticated recipient. Closure requires a CSRF-protected POST, the already-authenticated recipient session, an explicit acknowledgement, and a random confirmation code displayed on a separate warning page. The database operation verifies the raw portal token hash, delivery ID, release state, and absence of an automatic expiry in one transaction. It then marks the delivery revoked/closed, invalidates unused access codes, cancels queued access-code mail, and records an audit event. Stored documents are not deleted.

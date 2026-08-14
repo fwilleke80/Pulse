@@ -470,6 +470,90 @@ final class RecipientPortalRepository
 		}
 	}
 
+	/**
+	 * @brief Permanently closes one non-expiring delivery at the authenticated recipient's request.
+	 * @return bool True when access was newly closed.
+	 */
+	public function CloseByRecipient(string $rawToken, int $deliveryId): bool
+	{
+		if (preg_match('/^[a-f0-9]{64}$/i', $rawToken) !== 1)
+		{
+			return false;
+		}
+
+		$connection = $this->_database->GetConnection();
+		$connection->beginTransaction();
+
+		try
+		{
+			$lookup = $connection->prepare(<<<'SQL'
+				SELECT rrd.id, rrd.monitor_id, m.user_id
+				FROM recipient_release_deliveries rrd
+				INNER JOIN monitors m ON m.id = rrd.monitor_id
+				WHERE rrd.id = :id
+					AND rrd.portal_token_hash = :token_hash
+					AND rrd.status = 'sent'
+					AND rrd.portal_released_at IS NOT NULL
+					AND rrd.portal_revoked_at IS NULL
+					AND rrd.portal_expires_at IS NULL
+				FOR UPDATE
+			SQL);
+			$lookup->execute([
+				'id' => $deliveryId,
+				'token_hash' => hash('sha256', $rawToken),
+			]);
+			$row = $lookup->fetch(PDO::FETCH_ASSOC);
+
+			if (!is_array($row))
+			{
+				$connection->commit();
+				return false;
+			}
+
+			$close = $connection->prepare(<<<'SQL'
+				UPDATE recipient_release_deliveries
+				SET portal_revoked_at = UTC_TIMESTAMP(),
+					portal_closed_by_recipient_at = UTC_TIMESTAMP(),
+					updated_at = UTC_TIMESTAMP()
+				WHERE id = :id AND portal_revoked_at IS NULL
+			SQL);
+			$close->execute(['id' => $deliveryId]);
+			$newlyClosed = $close->rowCount() === 1;
+
+			$invalidate = $connection->prepare(<<<'SQL'
+				UPDATE recipient_portal_codes
+				SET invalidated_at = COALESCE(invalidated_at, UTC_TIMESTAMP()), updated_at = UTC_TIMESTAMP()
+				WHERE recipient_delivery_id = :delivery_id AND used_at IS NULL
+			SQL);
+			$invalidate->execute(['delivery_id' => $deliveryId]);
+
+			$cancel = $connection->prepare(<<<'SQL'
+				UPDATE mail_queue
+				SET status = 'cancelled', body_text = '[Access code redacted after cancellation]',
+					cancelled_at = UTC_TIMESTAMP(), updated_at = UTC_TIMESTAMP()
+				WHERE recipient_delivery_id = :delivery_id
+					AND mail_type = 'recipient_access_code'
+					AND status IN ('queued', 'retrying', 'failed')
+			SQL);
+			$cancel->execute(['delivery_id' => $deliveryId]);
+
+			if ($newlyClosed)
+			{
+				$this->InsertAudit($connection, (int)$row['user_id'], (int)$row['monitor_id'], 'recipient.portal_closed_by_recipient', [
+					'delivery_id' => $deliveryId,
+				]);
+			}
+
+			$connection->commit();
+			return $newlyClosed;
+		}
+		catch (Throwable $throwable)
+		{
+			$connection->rollBack();
+			throw $throwable;
+		}
+	}
+
 	/** @brief Appends a content-free portal audit event. */
 	private function InsertAudit(PDO $connection, int $userId, int $monitorId, string $eventType, array $context): void
 	{

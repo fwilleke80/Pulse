@@ -223,6 +223,12 @@ Recipient-side **Close access permanently** is not part of 0.8.3 yet. It is inte
 
 Uploaded files, editable text documents, and recipient messages are also not encrypted at rest yet. Do not use the current release as storage for final highly sensitive secrets or cryptographic recovery material.
 
+### Closing recipient access permanently
+
+For recipient portals configured with **no automatic expiry**, an authenticated recipient can choose **Close access permanently** after saving everything they want to keep. Pulse shows a separate warning page, offers **Download all**, requires an acknowledgement checkbox, and requires the recipient to type a freshly generated confirmation code before access is closed.
+
+Closing access invalidates that recipient delivery's portal link, access codes, and authenticated session. It does **not** delete the underlying documents from Pulse. The action is intentionally irreversible from the recipient portal. Portals with an automatic expiry do not show this option.
+
 ## Languages
 
 Pulse ships with English, German, French, and Italian, and installed languages are discovered automatically from `app/Lang/*.php`. Your persistent website language, your owner-notification language, and each contact's Pulse interface language are separate. Changing the footer language updates your website-language preference when logged in and keeps that choice available on logged-out pages; it does not change notification/contact languages.

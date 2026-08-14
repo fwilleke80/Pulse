@@ -243,7 +243,8 @@ ob_start();
 									<span><?= e__('recipients.portal.status.' . (string)$delivery['portal_status']) ?></span>
 									<?php if ((string)$delivery['portal_status'] === 'available'): ?>
 										<form method="post" action="<?= e($base_url) ?>/monitors/recipients/portal/revoke" data-confirm="<?= e__('recipients.portal.revoke.confirm') ?>" class="inline-form"><?= csrf_field() ?><input type="hidden" name="recipient_id" value="<?= (int)$recipient['id'] ?>"><input type="hidden" name="delivery_id" value="<?= (int)$delivery['id'] ?>"><button type="submit" class="link-button danger-link"><?= e__('recipients.portal.revoke.submit') ?></button></form>
-									<?php elseif ((string)$delivery['portal_status'] === 'expired' && !empty($delivery['portal_expires_at'])): ?><small><?= e(format_datetime((string)$delivery['portal_expires_at'])) ?></small><?php endif; ?>
+									<?php elseif ((string)$delivery['portal_status'] === 'expired' && !empty($delivery['portal_expires_at'])): ?><small><?= e(format_datetime((string)$delivery['portal_expires_at'])) ?></small>
+					<?php elseif ((string)$delivery['portal_status'] === 'closed' && !empty($delivery['portal_closed_by_recipient_at'])): ?><small><?= e(format_datetime((string)$delivery['portal_closed_by_recipient_at'])) ?></small><?php endif; ?>
 								</td>
 							</tr>
 						<?php endforeach; ?>

@@ -149,6 +149,16 @@ class Session
 	}
 
 	/**
+	 * @brief Removes an arbitrary session value.
+	 * @param string $key Session key.
+	 */
+	public function Remove(string $key): void
+	{
+		$this->Start();
+		unset($_SESSION[$key]);
+	}
+
+	/**
 	 * @brief Stores a flash message.
 	 * @param string $type Message type.
 	 * @param string $message Message text.
