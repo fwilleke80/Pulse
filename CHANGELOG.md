@@ -13,6 +13,9 @@
 - The authenticated recipient page hides expiry information entirely when no automatic expiry is configured.
 - The secondary count/size text on the blue **Download all** button is now white for proper contrast.
 
+### Fixed
+- Fixed a critical recipient-editor SQL error in 0.8.3: the recipient detail query selected localized portal-message columns without joining `monitor_portal_templates` and `contact_portal_messages`.
+
 ### UX
 - Monitor-wide portal message/introduction editors are grouped in a collapsible recipient-portal section with language tabs and visible Pulse defaults.
 - Recipient-specific portal text is edited on the recipient page and clearly identified as content shown after authentication, independent from the notification email.

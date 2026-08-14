@@ -73,6 +73,10 @@ final class RecipientRepository
 				ON mmt.monitor_id = m.id
 				AND mmt.template_key = \'recipient_default\'
 				AND mmt.locale = c.notification_locale
+			LEFT JOIN contact_portal_messages cpm ON cpm.monitor_contact_id = mc.id
+			LEFT JOIN monitor_portal_templates mpt
+				ON mpt.monitor_id = m.id
+				AND mpt.locale = c.notification_locale
 			WHERE mc.id = :id AND m.user_id = :user_id
 			LIMIT 1
 		');
