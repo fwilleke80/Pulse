@@ -95,6 +95,20 @@ CREATE TABLE monitor_mail_templates
 	FOREIGN KEY (monitor_id) REFERENCES monitors(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE monitor_portal_templates
+(
+	id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+	monitor_id BIGINT UNSIGNED NOT NULL,
+	locale VARCHAR(10) NOT NULL,
+	message_text LONGTEXT NULL,
+	intro_text LONGTEXT NULL,
+	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+	UNIQUE KEY uq_monitor_portal_templates_monitor_locale (monitor_id, locale),
+	INDEX idx_monitor_portal_templates_monitor (monitor_id),
+	FOREIGN KEY (monitor_id) REFERENCES monitors(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE monitor_safety_contacts
 (
 	id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -125,6 +139,19 @@ CREATE TABLE contact_messages
 	subject VARCHAR(255) NOT NULL,
 	body_text LONGTEXT NOT NULL,
 	UNIQUE KEY uq_contact_messages_monitor_contact (monitor_contact_id),
+	FOREIGN KEY (monitor_contact_id)
+		REFERENCES monitor_contacts(id)
+		ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE contact_portal_messages
+(
+	id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+	monitor_contact_id BIGINT UNSIGNED NOT NULL,
+	body_text LONGTEXT NOT NULL,
+	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+	UNIQUE KEY uq_contact_portal_messages_monitor_contact (monitor_contact_id),
 	FOREIGN KEY (monitor_contact_id)
 		REFERENCES monitor_contacts(id)
 		ON DELETE CASCADE
@@ -277,6 +304,8 @@ CREATE TABLE recipient_release_deliveries
 	portal_last_access_at DATETIME NULL,
 	subject VARCHAR(255) NOT NULL,
 	body_text LONGTEXT NOT NULL,
+	portal_intro_text LONGTEXT NULL,
+	portal_message_text LONGTEXT NULL,
 	status ENUM('queued','sent','failed','cancelled') NOT NULL DEFAULT 'queued',
 	queue_id BIGINT UNSIGNED NULL,
 	last_error TEXT NULL,

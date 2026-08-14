@@ -376,12 +376,8 @@ final class RecipientPortalController extends BaseController
 	{
 		$public = $this->PublicDelivery($delivery);
 		$public['recipient_name'] = (string)($delivery['recipient_name'] ?? '');
-		$public['message_subject'] = (string)($delivery['subject'] ?? '');
-		$public['message_body'] = trim(str_replace(
-			'[Recipient portal link redacted]',
-			__('portal.access.message_portal_reference'),
-			(string)($delivery['body_text'] ?? '')
-		));
+		$public['portal_intro_text'] = trim((string)($delivery['portal_intro_text'] ?? ''));
+		$public['portal_message_text'] = trim((string)($delivery['portal_message_text'] ?? ''));
 		return $public;
 	}
 

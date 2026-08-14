@@ -331,6 +331,16 @@ final class EscalationService
 					'message_body' => (string)$recipient['message_body'],
 					'portal_url' => $portalUrl,
 				]);
+				$portalContent = $this->_composer->ComposeRecipientPortalContent([
+					'recipient_name' => (string)$recipient['name'],
+					'notification_locale' => (string)$recipient['notification_locale'],
+					'owner_name' => (string)$cycle['owner_name'],
+					'monitor_name' => (string)$cycle['monitor_name'],
+					'portal_message_override_enabled' => !empty($recipient['portal_message_override_id']),
+					'portal_message_override' => (string)($recipient['portal_message_override'] ?? ''),
+					'portal_default_message' => (string)($recipient['portal_default_message'] ?? ''),
+					'portal_intro_text' => (string)($recipient['portal_intro_text'] ?? ''),
+				]);
 				$storedContent = $this->_composer->ComposeRecipientNotification([
 					'recipient_name' => (string)$recipient['name'],
 					'notification_locale' => (string)$recipient['notification_locale'],
@@ -345,13 +355,13 @@ final class EscalationService
 					(
 						release_id, check_cycle_id, monitor_id, contact_id, recipient_name,
 						recipient_email, notification_locale, portal_token_hash, portal_availability_days,
-						subject, body_text, status, created_at, updated_at
+						subject, body_text, portal_intro_text, portal_message_text, status, created_at, updated_at
 					)
 					VALUES
 					(
 						:release_id, :check_cycle_id, :monitor_id, :contact_id, :recipient_name,
 						:recipient_email, :notification_locale, :portal_token_hash, :portal_availability_days,
-						:subject, :body_text, \'queued\', :created_at, :updated_at
+						:subject, :body_text, :portal_intro_text, :portal_message_text, \'queued\', :created_at, :updated_at
 					)
 				');
 				$insertDelivery->execute([
@@ -366,6 +376,8 @@ final class EscalationService
 					'portal_availability_days' => $recipient['portal_availability_days'],
 					'subject' => $storedContent['subject'],
 					'body_text' => $storedContent['body_text'],
+					'portal_intro_text' => $portalContent['intro_text'],
+					'portal_message_text' => $portalContent['message_text'],
 					'created_at' => $now,
 					'updated_at' => $now,
 				]);
@@ -873,7 +885,11 @@ final class EscalationService
 				mc.id AS monitor_contact_id, mc.contact_id, c.name, c.email, c.notification_locale, c.email_checked_at,
 				m.recipient_portal_expiry_days AS portal_availability_days,
 				COALESCE(cm.subject, mmt.subject) AS message_subject,
-				COALESCE(cm.body_text, mmt.body_text) AS message_body
+				COALESCE(cm.body_text, mmt.body_text) AS message_body,
+				cpm.id AS portal_message_override_id,
+				cpm.body_text AS portal_message_override,
+				mpt.message_text AS portal_default_message,
+				mpt.intro_text AS portal_intro_text
 			FROM monitor_contacts mc
 			INNER JOIN monitors m ON m.id = mc.monitor_id
 			INNER JOIN contacts c ON c.id = mc.contact_id
@@ -882,6 +898,10 @@ final class EscalationService
 				ON mmt.monitor_id = m.id
 				AND mmt.template_key = \'recipient_default\'
 				AND mmt.locale = c.notification_locale
+			LEFT JOIN contact_portal_messages cpm ON cpm.monitor_contact_id = mc.id
+			LEFT JOIN monitor_portal_templates mpt
+				ON mpt.monitor_id = m.id
+				AND mpt.locale = c.notification_locale
 			WHERE mc.monitor_id = :monitor_id
 			ORDER BY mc.sort_order ASC, mc.id ASC
 		');

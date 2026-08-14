@@ -188,6 +188,55 @@ function format_datetime(?string $value, string $fallback = '—'): string
 }
 
 /**
+ * @brief Formats the remaining delay before a retrying mail becomes eligible.
+ * @param string|null $value UTC available-at timestamp.
+ * @return string Localized relative wait such as "in 8 min".
+ */
+function format_retry_wait(?string $value): string
+{
+	if ($value === null || trim($value) === '')
+	{
+		return __('profile.notifications.queue_details.wait.less_than_minute');
+	}
+
+	try
+	{
+		$available = new DateTimeImmutable($value, new DateTimeZone('UTC'));
+		$now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
+		$seconds = max(0, $available->getTimestamp() - $now->getTimestamp());
+
+		if ($seconds < 60)
+		{
+			return __('profile.notifications.queue_details.wait.less_than_minute');
+		}
+
+		$minutes = (int)ceil($seconds / 60);
+
+		if ($minutes < 60)
+		{
+			return __('profile.notifications.queue_details.wait.minutes', ['count' => $minutes]);
+		}
+
+		$hours = intdiv($minutes, 60);
+		$remainingMinutes = $minutes % 60;
+
+		if ($remainingMinutes === 0)
+		{
+			return __('profile.notifications.queue_details.wait.hours', ['count' => $hours]);
+		}
+
+		return __('profile.notifications.queue_details.wait.hours_minutes', [
+			'hours' => $hours,
+			'minutes' => $remainingMinutes,
+		]);
+	}
+	catch (Throwable)
+	{
+		return __('profile.notifications.queue_details.wait.less_than_minute');
+	}
+}
+
+/**
  * @brief Returns whether a monitor is active and currently due.
  * @param array<string, mixed> $monitor Monitor row.
  * @return bool

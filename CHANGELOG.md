@@ -1,3 +1,22 @@
+## 0.8.3 - 2026-08-14
+
+### Added
+- Added language-specific monitor-wide recipient portal content: a default personal portal message and a configurable download-page introduction.
+- Added optional recipient-specific portal-message overrides, separate from recipient notification email text.
+- Added migration `015_recipient_portal_messages.sql` and immutable portal-content snapshots on recipient deliveries.
+- Mail queue rows in `retrying` state now show a human-readable countdown to the next eligible attempt; terminal failures explicitly state that no further automatic attempts will occur.
+
+### Changed
+- Recipient portals no longer reuse the notification email body. The old `[this recipient portal]` substitution has been removed completely.
+- Existing delivery portal text is best-effort migrated from the previously stored notification body with the redacted portal-link marker removed.
+- Portal text supports `{app}`, `{name}`, `{owner}`, and `{monitor}` placeholders and is resolved using the recipient's configured Pulse language.
+- The authenticated recipient page hides expiry information entirely when no automatic expiry is configured.
+- The secondary count/size text on the blue **Download all** button is now white for proper contrast.
+
+### UX
+- Monitor-wide portal message/introduction editors are grouped in a collapsible recipient-portal section with language tabs and visible Pulse defaults.
+- Recipient-specific portal text is edited on the recipient page and clearly identified as content shown after authentication, independent from the notification email.
+
 ## 0.8.2 - 2026-08-14
 
 ### Added

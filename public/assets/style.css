@@ -2246,7 +2246,8 @@ footer
 
 .portal-download-all small
 {
-	opacity: 0.82;
+	color: #fff;
+	opacity: 1;
 	font-size: 0.74rem;
 	font-weight: 500;
 }

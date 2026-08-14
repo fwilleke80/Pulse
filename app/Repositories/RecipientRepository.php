@@ -44,6 +44,10 @@ final class RecipientRepository
 				u.display_name AS owner_name,
 				mmt.subject AS default_message_subject,
 				mmt.body_text AS default_message_body,
+				mpt.message_text AS default_portal_message,
+				mpt.intro_text AS default_portal_intro,
+				cpm.id AS portal_override_id,
+				cpm.body_text AS portal_override_body,
 				c.name,
 				c.email,
 				c.notification_locale,
@@ -166,6 +170,8 @@ final class RecipientRepository
 		bool $useOverride,
 		string $subject,
 		string $bodyText,
+		bool $usePortalOverride,
+		string $portalBodyText,
 		array $documentIds
 	): void
 	{
@@ -206,6 +212,24 @@ final class RecipientRepository
 			{
 				$deleteMessage = $connection->prepare('DELETE FROM contact_messages WHERE monitor_contact_id = :id');
 				$deleteMessage->execute(['id' => $monitorContactId]);
+			}
+
+			if ($usePortalOverride)
+			{
+				$upsertPortal = $connection->prepare('
+					INSERT INTO contact_portal_messages (monitor_contact_id, body_text)
+					VALUES (:monitor_contact_id, :body_text)
+					ON DUPLICATE KEY UPDATE body_text = VALUES(body_text)
+				');
+				$upsertPortal->execute([
+					'monitor_contact_id' => $monitorContactId,
+					'body_text' => $portalBodyText,
+				]);
+			}
+			else
+			{
+				$deletePortal = $connection->prepare('DELETE FROM contact_portal_messages WHERE monitor_contact_id = :id');
+				$deletePortal->execute(['id' => $monitorContactId]);
 			}
 
 			$allowed = $connection->prepare('SELECT id FROM documents WHERE monitor_id = :monitor_id');

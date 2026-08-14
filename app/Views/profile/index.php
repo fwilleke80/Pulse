@@ -226,7 +226,15 @@ ob_start();
 								<td><code>#<?= (int)$queueEntry['id'] ?></code></td>
 								<td><?= e__($typeKey) ?></td>
 								<td><code><?= e((string)$queueEntry['recipient_email']) ?></code></td>
-								<td><span class="status-badge status-mail-<?= e($status) ?>"><?= e__('profile.notifications.status.' . $status) ?></span></td>
+								<td>
+									<?php if ($status === 'retrying'): ?>
+										<span class="status-badge status-mail-retrying"><?= e__('profile.notifications.status.retrying_wait', ['wait' => format_retry_wait((string)$queueEntry['available_at'])]) ?></span>
+									<?php elseif ($status === 'failed'): ?>
+										<span class="status-badge status-mail-failed"><?= e__('profile.notifications.status.failed_terminal') ?></span>
+									<?php else: ?>
+										<span class="status-badge status-mail-<?= e($status) ?>"><?= e__('profile.notifications.status.' . $status) ?></span>
+									<?php endif; ?>
+								</td>
 								<td><?= (int)$queueEntry['attempt_count'] ?> / <?= (int)$queueEntry['max_attempts'] ?></td>
 								<td>
 									<?php if ($isWaiting): ?>

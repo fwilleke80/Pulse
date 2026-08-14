@@ -60,6 +60,8 @@ final class RecipientPortalRepository
 				rrd.portal_last_access_at,
 				rrd.subject,
 				rrd.body_text,
+				rrd.portal_intro_text,
+				rrd.portal_message_text,
 				m.name AS monitor_name,
 				m.user_id,
 				u.display_name AS owner_name

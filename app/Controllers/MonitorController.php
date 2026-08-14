@@ -189,7 +189,9 @@ class MonitorController extends BaseController
 		$documents = $this->_documentRepository->FindAllByMonitorIdForUser($monitorId, (int)$user['id']);
 		$messageOverrides = $this->_messageRepository->FindByMonitorIdForUser($monitorId, (int)$user['id']);
 		$mailTemplates = $this->_messageRepository->FindLocalizedTemplatesForMonitor($monitorId, (int)$user['id']);
+		$portalTemplates = $this->_messageRepository->FindLocalizedPortalTemplatesForMonitor($monitorId, (int)$user['id']);
 		$mailDefaults = [];
+		$portalDefaults = [];
 
 		foreach (['recipient_default', 'safety_invitation', 'safety_reminder'] as $templateKey)
 		{
@@ -197,6 +199,11 @@ class MonitorController extends BaseController
 			{
 				$mailDefaults[$templateKey][$templateLocale] = $this->_notificationComposer->BuiltInTemplate($templateKey, $templateLocale);
 			}
+		}
+
+		foreach ($this->_availableLocales as $templateLocale)
+		{
+			$portalDefaults[$templateLocale] = $this->_notificationComposer->BuiltInPortalContent($templateLocale);
 		}
 
 		foreach ($documents as &$document)
@@ -221,6 +228,8 @@ class MonitorController extends BaseController
 			'messageOverrides' => $messageOverrides,
 			'mailTemplates' => $mailTemplates,
 			'mailDefaults' => $mailDefaults,
+			'portalTemplates' => $portalTemplates,
+			'portalDefaults' => $portalDefaults,
 			'availableLocales' => $this->_availableLocales,
 			'activeTab' => $this->ActiveEditorTab(),
 		]);
@@ -296,6 +305,7 @@ class MonitorController extends BaseController
 		}
 
 		$templates = $this->LocalizedTemplateInput('recipient_default');
+		$portalTemplates = $this->LocalizedPortalContentInput();
 
 		$expiryMode = $this->_request->PostString('recipient_portal_expiry_mode', 20);
 		$expiryDays = match ($expiryMode)
@@ -321,6 +331,7 @@ class MonitorController extends BaseController
 			'recipient_default',
 			$templates
 		);
+		$this->_messageRepository->ReplaceLocalizedPortalTemplatesForMonitor($monitorId, $userId, $portalTemplates);
 		$this->_logger->Info('Monitor messages updated', ['user_id' => $userId, 'monitor_id' => $monitorId]);
 		$hasDraftIssues = false;
 
@@ -736,6 +747,26 @@ class MonitorController extends BaseController
 			'safety_required_confirmations' => $this->_request->PostInt('safety_required_confirmations', 1),
 			'safety_confirmation_days' => $this->_request->PostInt('safety_confirmation_days', 0),
 		];
+	}
+
+	/**
+	 * @brief Reads language-specific monitor-wide recipient portal content from POST data.
+	 * @return array<string, array{message_text: string, intro_text: string}> Content keyed by locale.
+	 */
+	private function LocalizedPortalContentInput(): array
+	{
+		$result = [];
+
+		foreach ($this->_availableLocales as $locale)
+		{
+			$fieldLocale = preg_replace('/[^a-z0-9_]/i', '_', $locale);
+			$result[$locale] = [
+				'message_text' => $this->_request->PostString('portal_message_' . $fieldLocale, 1000000, false),
+				'intro_text' => $this->_request->PostString('portal_intro_' . $fieldLocale, 1000000, false),
+			];
+		}
+
+		return $result;
 	}
 
 	/**

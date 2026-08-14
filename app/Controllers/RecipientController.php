@@ -100,6 +100,16 @@ final class RecipientController extends BaseController
 			(string)($recipient['default_message_subject'] ?? ''),
 			(string)($recipient['default_message_body'] ?? '')
 		);
+		$portalOverrideEnabled = !empty($recipient['portal_override_id']);
+		$defaultPortalPreview = $this->_composer->ComposeRecipientPortalContent([
+			'recipient_name' => (string)$recipient['name'],
+			'notification_locale' => (string)$recipient['notification_locale'],
+			'owner_name' => (string)$recipient['owner_name'],
+			'monitor_name' => (string)$recipient['monitor_name'],
+			'portal_message_override_enabled' => false,
+			'portal_default_message' => (string)($recipient['default_portal_message'] ?? ''),
+			'portal_intro_text' => (string)($recipient['default_portal_intro'] ?? ''),
+		]);
 
 		return $this->_view->Render('recipients.edit', [
 			'user' => $user,
@@ -111,6 +121,7 @@ final class RecipientController extends BaseController
 			'defaultPreview' => $defaultPreview,
 			'messageIssues' => $messageIssues,
 			'defaultMessageIssues' => $defaultMessageIssues,
+			'defaultPortalPreview' => $defaultPortalPreview,
 		]);
 	}
 
@@ -154,6 +165,8 @@ final class RecipientController extends BaseController
 		$useOverride = $this->_request->PostBool('use_message_override');
 		$subject = $this->_request->PostString('message_subject', 255);
 		$body = $this->_request->PostString('message_body', 1000000, false);
+		$usePortalOverride = $this->_request->PostBool('use_portal_message_override');
+		$portalBody = $this->_request->PostString('portal_message_body', 1000000, false);
 
 		$this->_recipientRepository->UpdateConfigurationForUser(
 			$monitorContactId,
@@ -161,6 +174,8 @@ final class RecipientController extends BaseController
 			$useOverride,
 			$subject,
 			$body,
+			$usePortalOverride,
+			$portalBody,
 			$this->_request->PostIntArray('document_ids')
 		);
 		$this->_logger->Info('Monitor recipient updated', [

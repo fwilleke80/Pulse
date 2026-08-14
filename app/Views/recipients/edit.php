@@ -16,9 +16,11 @@ declare(strict_types=1);
 /** @var array{subject: string, body_text: string} $defaultPreview */
 /** @var array<int, string> $messageIssues */
 /** @var array<int, string> $defaultMessageIssues */
+/** @var array{message_text: string, intro_text: string} $defaultPortalPreview */
 /** @var string $base_url */
 
 $hasOverride = !empty($recipient['override_message_id']);
+$hasPortalOverride = !empty($recipient['portal_override_id']);
 
 ob_start();
 ?>
@@ -93,6 +95,30 @@ ob_start();
 				<a href="<?= e($base_url) ?>/monitors/edit?id=<?= (int)$recipient['monitor_id'] ?>&amp;tab=messages"><?= e__('recipients.message.edit_default') ?></a>
 			</div>
 		<?php endif; ?>
+	</section>
+
+	<section class="configuration-block" data-message-override>
+		<h2><?= e__('recipients.portal_message.heading') ?></h2>
+		<p class="form-hint"><?= e__('recipients.portal_message.hint') ?></p>
+		<label class="compact-check">
+			<input type="checkbox" name="use_portal_message_override" value="1" data-message-override-toggle <?= $hasPortalOverride ? 'checked' : '' ?>>
+			<?= e__('recipients.portal_message.use_override') ?>
+		</label>
+		<div data-message-fields>
+			<label for="portal_message_body"><?= e__('recipients.portal_message.body') ?></label>
+			<textarea id="portal_message_body" name="portal_message_body" rows="7"><?= e((string)($recipient['portal_override_body'] ?? '')) ?></textarea>
+			<p class="form-hint placeholder-help">
+				<?= e__('recipients.portal_message.placeholders') ?>
+				<code>{app}</code> — <?= e__('mail.placeholders.app') ?>;
+				<code>{name}</code> — <?= e__('mail.placeholders.name') ?>;
+				<code>{owner}</code> — <?= e__('mail.placeholders.owner') ?>;
+				<code>{monitor}</code> — <?= e__('mail.placeholders.monitor') ?>.
+			</p>
+		</div>
+		<div class="mail-default-template">
+			<strong><?= e__('recipients.portal_message.default_preview.heading') ?></strong>
+			<pre><?= e((string)$defaultPortalPreview['message_text']) ?></pre>
+		</div>
 	</section>
 
 	<section class="configuration-block">

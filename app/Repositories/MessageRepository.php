@@ -100,6 +100,103 @@ class MessageRepository
 	}
 
 	/**
+	 * @brief Returns language-specific recipient portal content for a monitor.
+	 * @param int $monitorId Monitor ID.
+	 * @param int $userId Owner user ID.
+	 * @return array<string, array{message_text: string, intro_text: string}> Content keyed by locale.
+	 */
+	public function FindLocalizedPortalTemplatesForMonitor(int $monitorId, int $userId): array
+	{
+		$statement = $this->_database->GetConnection()->prepare('
+			SELECT mpt.locale, mpt.message_text, mpt.intro_text
+			FROM monitor_portal_templates mpt
+			INNER JOIN monitors m ON m.id = mpt.monitor_id
+			WHERE mpt.monitor_id = :monitor_id
+			  AND m.user_id = :user_id
+			ORDER BY mpt.locale ASC
+		');
+		$statement->execute([
+			'monitor_id' => $monitorId,
+			'user_id' => $userId,
+		]);
+		$rows = $statement->fetchAll(PDO::FETCH_ASSOC);
+		$result = [];
+
+		foreach (is_array($rows) ? $rows : [] as $row)
+		{
+			$result[(string)$row['locale']] = [
+				'message_text' => (string)($row['message_text'] ?? ''),
+				'intro_text' => (string)($row['intro_text'] ?? ''),
+			];
+		}
+
+		return $result;
+	}
+
+	/**
+	 * @brief Replaces all localized recipient portal content for an owned monitor.
+	 * @param int $monitorId Monitor ID.
+	 * @param int $userId Owner user ID.
+	 * @param array<string, array{message_text: string, intro_text: string}> $templates Content keyed by locale.
+	 */
+	public function ReplaceLocalizedPortalTemplatesForMonitor(int $monitorId, int $userId, array $templates): void
+	{
+		$connection = $this->_database->GetConnection();
+		$connection->beginTransaction();
+
+		try
+		{
+			$monitorStatement = $connection->prepare('
+				SELECT id
+				FROM monitors
+				WHERE id = :monitor_id AND user_id = :user_id
+				FOR UPDATE
+			');
+			$monitorStatement->execute([
+				'monitor_id' => $monitorId,
+				'user_id' => $userId,
+			]);
+
+			if ($monitorStatement->fetchColumn() === false)
+			{
+				throw new RuntimeException('Owned monitor not found during portal content update.');
+			}
+
+			$delete = $connection->prepare('DELETE FROM monitor_portal_templates WHERE monitor_id = :monitor_id');
+			$delete->execute(['monitor_id' => $monitorId]);
+			$insert = $connection->prepare('
+				INSERT INTO monitor_portal_templates (monitor_id, locale, message_text, intro_text)
+				VALUES (:monitor_id, :locale, :message_text, :intro_text)
+			');
+
+			foreach ($templates as $locale => $template)
+			{
+				$messageText = (string)($template['message_text'] ?? '');
+				$introText = (string)($template['intro_text'] ?? '');
+
+				if (trim($messageText) === '' && trim($introText) === '')
+				{
+					continue;
+				}
+
+				$insert->execute([
+					'monitor_id' => $monitorId,
+					'locale' => (string)$locale,
+					'message_text' => $messageText,
+					'intro_text' => $introText,
+				]);
+			}
+
+			$connection->commit();
+		}
+		catch (Throwable $throwable)
+		{
+			$connection->rollBack();
+			throw $throwable;
+		}
+	}
+
+	/**
 	 * @brief Replaces all localized variants of one monitor-wide mail template.
 	 * @param int $monitorId Monitor ID.
 	 * @param int $userId Owner user ID.

@@ -18,6 +18,8 @@ declare(strict_types=1);
 /** @var array<int, array<string, string>> $messageOverrides */
 /** @var array<string, array<string, array{subject: string, body_text: string}>> $mailTemplates */
 /** @var array<string, array<string, array{subject: string, body_text: string}>> $mailDefaults */
+/** @var array<string, array{message_text: string, intro_text: string}> $portalTemplates */
+/** @var array<string, array{message_text: string, intro_text: string}> $portalDefaults */
 /** @var array<int, string> $availableLocales */
 /** @var string $locale */
 /** @var array<string, mixed> $monitor */
@@ -306,6 +308,53 @@ ob_start();
 							</div>
 						<?php endforeach; ?>
 					</div>
+
+					<details class="configuration-disclosure recipient-portal-content-settings">
+						<summary>
+							<span>
+								<strong><?= e__('monitors.messages.portal_content.heading') ?></strong>
+								<small><?= e__('monitors.messages.portal_content.hint') ?></small>
+							</span>
+						</summary>
+						<div class="configuration-disclosure-body">
+							<div class="language-template-editor" data-language-tabs data-active-language="<?= e(in_array($locale, $availableLocales, true) ? $locale : ($availableLocales[0] ?? 'en')) ?>">
+								<div class="language-template-tabs" role="tablist" aria-label="<?= e__('mail.templates.languages') ?>">
+									<?php foreach ($availableLocales as $templateLocale): ?>
+										<button type="button" class="language-template-tab" role="tab" data-language-target="<?= e($templateLocale) ?>"><?= e(notification_language_name($templateLocale)) ?></button>
+									<?php endforeach; ?>
+								</div>
+								<?php foreach ($availableLocales as $templateLocale): ?>
+									<?php $templateFieldLocale = language_field_suffix($templateLocale); ?>
+									<?php $portalTemplate = $portalTemplates[$templateLocale] ?? ['message_text' => '', 'intro_text' => '']; ?>
+									<?php $portalDefault = $portalDefaults[$templateLocale] ?? ['message_text' => '', 'intro_text' => '']; ?>
+									<div class="language-template-panel" data-language-panel="<?= e($templateLocale) ?>">
+										<label for="portal_message_<?= e($templateFieldLocale) ?>"><?= e__('monitors.messages.portal_content.message') ?></label>
+										<textarea id="portal_message_<?= e($templateFieldLocale) ?>" name="portal_message_<?= e($templateFieldLocale) ?>" rows="6"><?= e((string)$portalTemplate['message_text']) ?></textarea>
+										<p class="form-hint"><?= e__('monitors.messages.portal_content.message_hint') ?></p>
+										<label for="portal_intro_<?= e($templateFieldLocale) ?>"><?= e__('monitors.messages.portal_content.intro') ?></label>
+										<textarea id="portal_intro_<?= e($templateFieldLocale) ?>" name="portal_intro_<?= e($templateFieldLocale) ?>" rows="4"><?= e((string)$portalTemplate['intro_text']) ?></textarea>
+										<p class="form-hint"><?= e__('monitors.messages.portal_content.intro_hint') ?></p>
+										<p class="form-hint placeholder-help">
+											<?= e__('monitors.messages.portal_content.placeholders') ?>
+											<code>{app}</code> — <?= e__('mail.placeholders.app') ?>;
+											<code>{name}</code> — <?= e__('mail.placeholders.name') ?>;
+											<code>{owner}</code> — <?= e__('mail.placeholders.owner') ?>;
+											<code>{monitor}</code> — <?= e__('mail.placeholders.monitor') ?>.
+										</p>
+										<details class="mail-default-disclosure">
+											<summary><?= e__('mail.templates.show_default') ?></summary>
+											<div class="mail-default-template">
+												<div><strong><?= e__('monitors.messages.portal_content.message') ?>:</strong></div>
+												<pre><?= e((string)$portalDefault['message_text']) ?></pre>
+												<div><strong><?= e__('monitors.messages.portal_content.intro') ?>:</strong></div>
+												<pre><?= e((string)$portalDefault['intro_text']) ?></pre>
+											</div>
+										</details>
+									</div>
+								<?php endforeach; ?>
+							</div>
+						</div>
+					</details>
 
 					<div class="configuration-block portal-expiry-settings" data-portal-expiry>
 						<h3><?= e__('monitors.messages.portal_expiry.heading') ?></h3>

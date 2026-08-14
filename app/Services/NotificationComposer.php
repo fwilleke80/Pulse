@@ -221,6 +221,64 @@ final class NotificationComposer
 
 
 	/**
+	 * @brief Resolves recipient portal message and page-introduction content for a release snapshot.
+	 * @param array<string, mixed> $recipient Recipient, owner, monitor, and configured portal content.
+	 * @return array{message_text: string, intro_text: string}
+	 */
+	public function ComposeRecipientPortalContent(array $recipient): array
+	{
+		$locale = $this->_languages->Resolve(isset($recipient['notification_locale']) ? (string)$recipient['notification_locale'] : null);
+		$params = [
+			'app' => $this->_appName,
+			'name' => (string)($recipient['recipient_name'] ?? ''),
+			'owner' => (string)($recipient['owner_name'] ?? ''),
+			'monitor' => (string)($recipient['monitor_name'] ?? ''),
+		];
+		$overrideEnabled = !empty($recipient['portal_message_override_enabled']);
+		$overrideText = (string)($recipient['portal_message_override'] ?? '');
+		$defaultText = (string)($recipient['portal_default_message'] ?? '');
+		$introText = (string)($recipient['portal_intro_text'] ?? '');
+
+		if ($overrideEnabled)
+		{
+			$messageText = $overrideText;
+		}
+		elseif (trim($defaultText) !== '')
+		{
+			$messageText = $defaultText;
+		}
+		else
+		{
+			$messageText = $this->Translate($locale, 'portal.access.default_message', []);
+		}
+
+		if (trim($introText) === '')
+		{
+			$introText = $this->Translate($locale, 'portal.access.intro', []);
+		}
+
+		return [
+			'message_text' => $this->ReplaceParams($messageText, $params),
+			'intro_text' => $this->ReplaceParams($introText, $params),
+		];
+	}
+
+	/**
+	 * @brief Returns built-in recipient portal content without expanding placeholders.
+	 * @param string $locale Requested locale.
+	 * @return array{message_text: string, intro_text: string}
+	 */
+	public function BuiltInPortalContent(string $locale): array
+	{
+		$locale = $this->_languages->Resolve($locale);
+		return [
+			'message_text' => $this->Translate($locale, 'portal.access.default_message', []),
+			'intro_text' => $this->Translate($locale, 'portal.access.intro', []),
+		];
+	}
+
+
+	/**
 	 * @brief Composes the Pulse-authored short-lived recipient access-code email.
 	 * @param array<string, mixed> $recipient Recipient delivery and generated code snapshot.
 	 * @return array{subject: string, body_text: string}

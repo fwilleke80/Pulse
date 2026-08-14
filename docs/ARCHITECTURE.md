@@ -205,7 +205,7 @@ Uploaded document content is:
 
 Editable text documents and message text are stored in the database. Uploaded-file records also store an editable display title and optional description separately from the immutable internal storage basename.
 
-This private storage model prevents direct public file access, but it is not encryption. Pulse 0.8.2 provides authenticated recipient document delivery and a visual recipient download page; encrypted document/message storage remains later work.
+This private storage model prevents direct public file access, but it is not encryption. Pulse 0.8.3 provides authenticated recipient document delivery and a visual recipient download page; encrypted document/message storage remains later work.
 
 
 ## Recipient portal and document delivery
@@ -222,7 +222,7 @@ Bulk download is implemented by `RecipientPortalArchiveBuilder` as a direct stor
 
 ## Localized monitor mail templates
 
-Monitor-wide recipient, safety-invitation, and safety-reminder custom text is stored in `monitor_mail_templates`, keyed by monitor, template type, and locale. A contact's stored Pulse interface language selects the matching template. Recipient-specific messages remain attached to one monitor-contact assignment and therefore do not need parallel language variants. Safety request rows snapshot the already-selected language-specific subject/body when a gate starts, and recipient releases snapshot the final composed mail when staged.
+Monitor-wide recipient, safety-invitation, and safety-reminder custom text is stored in `monitor_mail_templates`, keyed by monitor, template type, and locale. A contact's stored Pulse interface language selects the matching template. Recipient-specific messages remain attached to one monitor-contact assignment and therefore do not need parallel language variants. Safety request rows snapshot the already-selected language-specific subject/body when a gate starts, and recipient releases snapshot the final composed mail when staged. Recipient portal copy is stored separately: `monitor_portal_templates` holds language-specific monitor defaults for the portal message and download-page introduction, while `contact_portal_messages` holds optional per-recipient overrides. The resolved portal message/introduction are snapshotted into each `recipient_release_deliveries` row so later edits cannot rewrite an already released portal.
 
 ## Language discovery
 

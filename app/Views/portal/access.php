@@ -13,6 +13,13 @@ declare(strict_types=1);
 /** @var int $availableDocumentCount */
 /** @var int $totalDownloadBytes */
 
+$portalIntro = trim((string)($delivery['portal_intro_text'] ?? ''));
+
+if ($portalIntro === '')
+{
+	$portalIntro = __('portal.access.intro');
+}
+
 $formatSize = static function (int $bytes): string
 {
 	$bytes = max(0, $bytes);
@@ -40,21 +47,16 @@ ob_start();
 <header class="portal-delivery-hero">
 	<p class="portal-delivery-eyebrow"><?= e__('portal.access.eyebrow') ?></p>
 	<h1><?= e__('portal.access.heading_owner', ['owner' => (string)$delivery['owner_name']]) ?></h1>
-	<p class="portal-delivery-intro"><?= e__('portal.access.intro') ?></p>
+	<p class="portal-delivery-intro"><?= nl2br(e($portalIntro)) ?></p>
 	<?php if (!empty($delivery['portal_expires_at'])): ?>
 		<p class="portal-availability-note"><?= e__('portal.access.available_until', ['date' => format_datetime((string)$delivery['portal_expires_at'])]) ?></p>
-	<?php else: ?>
-		<p class="portal-availability-note"><?= e__('portal.access.no_expiry') ?></p>
 	<?php endif; ?>
 </header>
 
-<?php if (trim((string)($delivery['message_body'] ?? '')) !== ''): ?>
+<?php if (trim((string)($delivery['portal_message_text'] ?? '')) !== ''): ?>
 	<section class="portal-message-card" aria-labelledby="portal-message-heading">
 		<h2 id="portal-message-heading"><?= e__('portal.access.message.heading_owner', ['owner' => (string)$delivery['owner_name']]) ?></h2>
-		<?php if (trim((string)($delivery['message_subject'] ?? '')) !== ''): ?>
-			<strong class="portal-message-subject"><?= e((string)$delivery['message_subject']) ?></strong>
-		<?php endif; ?>
-		<div class="portal-message-body"><?= nl2br(e((string)$delivery['message_body'])) ?></div>
+		<div class="portal-message-body"><?= nl2br(e((string)$delivery['portal_message_text'])) ?></div>
 	</section>
 <?php endif; ?>
 

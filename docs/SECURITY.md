@@ -117,7 +117,7 @@ This means a compromise of the hosting account, database, filesystem, or an unen
 - editable text documents
 - uploaded document contents
 
-Pulse 0.8.2 provides a recipient-portal invitation, authentication layer, and authenticated document delivery. Final recipient emails can contain a long-lived, recipient-specific portal URL. The raw portal token is generated randomly and stored only as a SHA-256 hash in the delivery record; the queued email body necessarily contains the raw URL until delivery, after which Pulse redacts it from the queue record.
+Pulse 0.8.3 provides a recipient-portal invitation, authentication layer, and authenticated document delivery. Final recipient emails can contain a long-lived, recipient-specific portal URL. The raw portal token is generated randomly and stored only as a SHA-256 hash in the delivery record; the queued email body necessarily contains the raw URL until delivery, after which Pulse redacts it from the queue record.
 
 Requesting portal access creates a random one-time code valid for 30 minutes. Pulse stores only a password hash of the code and redacts the raw code from the mail queue after delivery or terminal cancellation. Requesting a later code invalidates earlier unused codes. Portal pages never display the configured recipient email address. Code-request responses are intentionally generic so they do not disclose mail-account details or delivery state.
 
