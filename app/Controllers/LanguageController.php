@@ -67,6 +67,12 @@ class LanguageController extends BaseController
 			$this->Redirect($redirect);
 		}
 
+		if ($this->IsClosedRecipientPortalRedirect($redirect))
+		{
+			$this->_logger->Info('Closed recipient portal language changed', ['locale' => $locale]);
+			$this->Redirect($this->WithLocaleParameter($redirect, $locale));
+		}
+
 		$safetyToken = SafetyLanguagePreference::TokenFromRedirect($redirect);
 
 		if ($safetyToken !== null)
@@ -88,5 +94,33 @@ class LanguageController extends BaseController
 		$this->_logger->Info('UI language changed', ['locale' => $locale]);
 		$this->Flash('success', __('flash.languageswitched', ['locale' => $locale]));
 		$this->Redirect($redirect);
+	}
+
+	/** @brief Returns whether a safe local redirect targets the token-free recipient closure result page. */
+	private function IsClosedRecipientPortalRedirect(string $redirect): bool
+	{
+		return parse_url($redirect, PHP_URL_PATH) === '/portal/closed';
+	}
+
+	/** @brief Replaces the locale query value on a safe local redirect target. */
+	private function WithLocaleParameter(string $redirect, string $locale): string
+	{
+		$path = parse_url($redirect, PHP_URL_PATH);
+
+		if (!is_string($path) || $path === '')
+		{
+			return '/portal/closed?lang=' . rawurlencode($locale);
+		}
+
+		$values = [];
+		$query = parse_url($redirect, PHP_URL_QUERY);
+
+		if (is_string($query) && $query !== '')
+		{
+			parse_str($query, $values);
+		}
+
+		$values['lang'] = $locale;
+		return $path . '?' . http_build_query($values, '', '&', PHP_QUERY_RFC3986);
 	}
 }

@@ -17,6 +17,8 @@ declare(strict_types=1);
 /** @var bool $actionAllowDelete */
 
 $cycleEscalationPolicy = (string)($monitor['latest_escalation_policy'] ?? $monitor['escalation_policy'] ?? 'direct');
+$dueNoticeQueueStatus = (string)($monitor['due_notice_queue_status'] ?? '');
+$dueNoticeSatisfied = !empty($monitor['due_notice_sent_at']) || $dueNoticeQueueStatus === 'sent';
 ?>
 
 <div class="table-actions">
@@ -34,8 +36,12 @@ $cycleEscalationPolicy = (string)($monitor['latest_escalation_policy'] ?? $monit
 			<input type="hidden" name="redirect" value="<?= e($actionRedirect) ?>">
 			<button type="submit" class="btn-table-inline"><?= e__('monitors.force_due.submit') ?></button>
 		</form>
-	<?php elseif ($debugEnabled && $actionStatus === 'awaiting' && empty($monitor['due_notice_sent_at'])): ?>
-		<?php if ($mailEnabled): ?>
+	<?php elseif ($debugEnabled && $actionStatus === 'awaiting' && !$dueNoticeSatisfied): ?>
+		<?php if (in_array($dueNoticeQueueStatus, ['queued', 'retrying', 'processing'], true)): ?>
+			<button type="button" class="btn-table-inline" disabled title="<?= e__('monitors.send_due_notice.pending_hint') ?>"><?= e__('monitors.send_due_notice.pending') ?></button>
+		<?php elseif ($dueNoticeQueueStatus === 'failed'): ?>
+			<button type="button" class="btn-table-inline" disabled title="<?= e__('monitors.send_due_notice.failed_hint') ?>"><?= e__('monitors.send_due_notice.failed_short') ?></button>
+		<?php elseif ($mailEnabled): ?>
 			<form method="post" action="<?= e($base_url) ?>/monitors/send-due-notice">
 				<?= csrf_field() ?>
 				<input type="hidden" name="id" value="<?= (int)$monitor['id'] ?>">

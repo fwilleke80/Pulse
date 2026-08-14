@@ -83,6 +83,35 @@ final class RecipientPortalRepository
 	}
 
 	/**
+	 * @brief Resolves language metadata for a portal token even after the delivery is no longer active.
+	 *
+	 * This deliberately returns only non-sensitive presentation metadata. It is used so revoked or
+	 * expired portal pages can still render in the recipient's configured language without making
+	 * the delivery usable again.
+	 *
+	 * @param string $rawToken Raw 64-character portal invitation token.
+	 * @return array<string, mixed>|null Minimal delivery metadata or null.
+	 */
+	public function FindLanguageMetadataByToken(string $rawToken): ?array
+	{
+		if (preg_match('/^[a-f0-9]{64}$/i', $rawToken) !== 1)
+		{
+			return null;
+		}
+
+		$statement = $this->_database->GetConnection()->prepare(<<<'SQL'
+			SELECT id AS delivery_id, notification_locale
+			FROM recipient_release_deliveries
+			WHERE portal_token_hash = :token_hash
+			LIMIT 1
+		SQL);
+		$statement->execute(['token_hash' => hash('sha256', $rawToken)]);
+		$row = $statement->fetch(PDO::FETCH_ASSOC);
+
+		return is_array($row) ? $row : null;
+	}
+
+	/**
 	 * @brief Creates one new short-lived access code and invalidates older unused codes.
 	 * @param int $deliveryId Recipient release delivery ID.
 	 * @param string $codeHash Password-hash representation of the generated code.

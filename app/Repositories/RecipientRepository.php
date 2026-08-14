@@ -325,6 +325,74 @@ final class RecipientRepository
 	}
 
 	/**
+	 * @brief Returns recipient-specific portal and delivery activity already captured in the audit log.
+	 * @return array<int, array<string, mixed>> Newest activity first.
+	 */
+	public function FindPortalActivityForUser(int $monitorContactId, int $userId, int $limit = 100): array
+	{
+		$limit = max(1, min(200, $limit));
+		$statement = $this->_database->GetConnection()->prepare(<<<SQL
+			SELECT
+				a.event_type,
+				a.context_json,
+				a.created_at,
+				rrd.id AS delivery_id,
+				rdd.title AS document_title
+			FROM monitor_contacts mc
+			INNER JOIN monitors m
+				ON m.id = mc.monitor_id
+				AND m.user_id = :user_id
+			INNER JOIN audit_log a
+				ON a.user_id = m.user_id
+				AND a.entity_type = 'monitor'
+				AND a.entity_id = m.id
+			INNER JOIN recipient_release_deliveries rrd
+				ON rrd.monitor_id = mc.monitor_id
+				AND rrd.contact_id = mc.contact_id
+				AND rrd.id = CAST(JSON_UNQUOTE(JSON_EXTRACT(a.context_json, '$.delivery_id')) AS UNSIGNED)
+			LEFT JOIN recipient_delivery_documents rdd
+				ON rdd.recipient_delivery_id = rrd.id
+				AND rdd.id = CAST(JSON_UNQUOTE(JSON_EXTRACT(a.context_json, '$.document_snapshot_id')) AS UNSIGNED)
+			WHERE mc.id = :monitor_contact_id
+				AND a.event_type IN
+				(
+					'mail.recipient_sent',
+					'mail.recipient_failed',
+					'recipient.portal_code_requested',
+					'recipient.portal_code_sent',
+					'recipient.portal_code_rate_limited',
+					'recipient.portal_code_failed',
+					'recipient.portal_access_granted',
+					'recipient.portal_document_downloaded',
+					'recipient.portal_all_documents_downloaded',
+					'recipient.portal_revoked',
+					'recipient.portal_closed_by_recipient'
+				)
+			ORDER BY a.created_at DESC, a.id DESC
+			LIMIT {$limit}
+		SQL);
+		$statement->execute([
+			'user_id' => $userId,
+			'monitor_contact_id' => $monitorContactId,
+		]);
+		$rows = $statement->fetchAll(PDO::FETCH_ASSOC);
+
+		if (!is_array($rows))
+		{
+			return [];
+		}
+
+		foreach ($rows as &$row)
+		{
+			$context = json_decode((string)($row['context_json'] ?? ''), true);
+			$row['context'] = is_array($context) ? $context : [];
+		}
+		unset($row);
+
+		return $rows;
+	}
+
+	/**
 	 * @brief Finds the latest currently available released portal for one monitor recipient.
 	 * @return array<string, mixed>|null Delivery row or null.
 	 */

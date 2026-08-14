@@ -126,6 +126,7 @@ final class RecipientController extends BaseController
 			'documents' => $this->_documentRepository->FindAllByMonitorIdForUser((int)$recipient['monitor_id'], (int)$user['id']),
 			'assignedDocumentIds' => $this->_recipientRepository->FindAssignedDocumentIdsForUser((int)$recipient['id'], (int)$user['id']),
 			'deliveryHistory' => $this->_recipientRepository->FindDeliveryHistoryForUser((int)$recipient['id'], (int)$user['id']),
+			'portalActivity' => $this->_recipientRepository->FindPortalActivityForUser((int)$recipient['id'], (int)$user['id']),
 			'preview' => $preview,
 			'defaultPreview' => $defaultPreview,
 			'defaultTemplate' => $defaultTemplate,

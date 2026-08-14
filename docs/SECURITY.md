@@ -34,7 +34,7 @@ If a secret is exposed, change it. Removing a leaked value from a file does not 
 
 ## Administrator configuration
 
-Pulse 0.9.x provides an **Administration** area for runtime configuration. Access is enforced server-side using the authenticated user's `administrator` role; hiding the navigation item is only a convenience, not the security boundary. Authenticated non-administrators receive HTTP 403 for Administration routes.
+Pulse provides an **Administration** area for runtime configuration. Access is enforced server-side using the authenticated user's `administrator` role; hiding the navigation item is only a convenience, not the security boundary. Authenticated non-administrators receive HTTP 403 for Administration routes.
 
 Administration uses the root `.env` file as the single persistent configuration source. Pulse does not copy these values into a parallel settings table. The PHP account therefore needs write access to `.env`, while the file must remain outside `public/` and should be readable/writable only by the minimum required server accounts. Updates are written through a temporary file and atomically replace the old file so a partial write does not leave a truncated configuration. Unknown keys and comments are preserved.
 
@@ -129,7 +129,7 @@ This means a compromise of the hosting account, database, filesystem, or an unen
 - editable text documents
 - uploaded document contents
 
-Pulse 0.8.3 provides a recipient-portal invitation, authentication layer, and authenticated document delivery. Final recipient emails can contain a long-lived, recipient-specific portal URL. The raw portal token is generated randomly and stored only as a SHA-256 hash in the delivery record; the queued email body necessarily contains the raw URL until delivery, after which Pulse redacts it from the queue record.
+Pulse provides a recipient-portal invitation, authentication layer, and authenticated document delivery. Final recipient emails can contain a long-lived, recipient-specific portal URL. The raw portal token is generated randomly and stored only as a SHA-256 hash in the delivery record; the queued email body necessarily contains the raw URL until delivery, after which Pulse redacts it from the queue record.
 
 Requesting portal access creates a random one-time code valid for 30 minutes. Pulse stores only a password hash of the code and redacts the raw code from the mail queue after delivery or terminal cancellation. Requesting a later code invalidates earlier unused codes. Portal pages never display the configured recipient email address. Code-request responses are intentionally generic so they do not disclose mail-account details or delivery state.
 

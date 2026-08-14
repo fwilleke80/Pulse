@@ -1,4 +1,4 @@
--- Pulse 0.8.5 reference database schema
+-- Pulse reference database schema
 -- MySQL 8+ / MariaDB 10.6+
 -- Pulse applies database/migrations automatically. Do not import this reference file over an existing database.
 -- ----
@@ -367,21 +367,6 @@ CREATE TABLE recipient_portal_codes
 	FOREIGN KEY (recipient_delivery_id) REFERENCES recipient_release_deliveries(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE access_tokens
-(
-	id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-	user_id BIGINT UNSIGNED NOT NULL,
-	token_hash CHAR(64) NOT NULL UNIQUE,
-	token_purpose VARCHAR(50) NOT NULL,
-	check_cycle_id BIGINT NULL,
-	contact_id BIGINT NULL,
-	document_id BIGINT NULL,
-	expires_at DATETIME NOT NULL,
-	used_at DATETIME NULL,
-	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-	FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 CREATE TABLE mail_queue
 (
 	id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -450,15 +435,6 @@ CREATE TABLE audit_log
 	message TEXT NOT NULL,
 	context_json JSON NULL,
 	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE app_settings
-(
-	id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-	user_id BIGINT UNSIGNED NOT NULL,
-	setting_key VARCHAR(100) NOT NULL,
-	setting_value TEXT NULL,
-	UNIQUE(user_id, setting_key)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE login_attempts

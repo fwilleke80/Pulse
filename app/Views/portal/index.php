@@ -8,7 +8,7 @@ declare(strict_types=1);
 
 /** @var array<string, mixed> $delivery */
 /** @var string $token */
-/** @var bool $codeSent */
+/** @var bool $codeRequested */
 /** @var bool $isAuthenticatedForDelivery */
 /** @var string|null $validationError */
 /** @var string $base_url */
@@ -18,10 +18,10 @@ ob_start();
 <h1><?= e__('portal.heading') ?></h1>
 <p><?= e__('portal.intro', ['owner' => (string)$delivery['owner_name']]) ?></p>
 
-<?php if ($codeSent): ?>
+<?php if ($codeRequested): ?>
 	<div class="flash flash-success" role="status">
-		<strong><?= e__('portal.code.sent.heading') ?></strong><br>
-		<?= e__('portal.code.sent.message') ?>
+		<strong><?= e__('portal.code.requested.heading') ?></strong><br>
+		<?= e__('portal.code.requested.message') ?>
 	</div>
 <?php endif; ?>
 

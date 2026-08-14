@@ -68,8 +68,7 @@ final class RecipientPortalController extends BaseController
 
 		if (!is_array($delivery))
 		{
-			http_response_code(404);
-			return $this->_view->Render('portal.invalid');
+			return $this->UnavailablePortal($token, $this->_request->QueryString('lang', 10));
 		}
 
 		$this->UseRecipientLanguage((string)$delivery['notification_locale'], $token, $this->_request->QueryString('lang', 10));
@@ -77,7 +76,7 @@ final class RecipientPortalController extends BaseController
 		return $this->_view->Render('portal.index', [
 			'delivery' => $this->PublicDelivery($delivery),
 			'token' => $token,
-			'codeSent' => $this->_request->QueryString('notice', 20) === 'sent',
+			'codeRequested' => $this->_request->QueryString('notice', 20) === 'requested',
 			'isAuthenticatedForDelivery' => $this->_portalService->HasValidSession($this->_session, $token, (int)$delivery['delivery_id']),
 		]);
 	}
@@ -113,7 +112,7 @@ final class RecipientPortalController extends BaseController
 		}
 
 		// Deliberately identical for sent, rate-limited, and delivery-failure outcomes.
-		$this->Redirect('/portal?token=' . rawurlencode($token) . '&notice=sent');
+		$this->Redirect('/portal?token=' . rawurlencode($token) . '&notice=requested');
 	}
 
 	/** @brief Verifies and consumes an emailed access code. */
@@ -124,8 +123,7 @@ final class RecipientPortalController extends BaseController
 
 		if (!is_array($delivery))
 		{
-			http_response_code(404);
-			return $this->_view->Render('portal.invalid');
+			return $this->UnavailablePortal($token);
 		}
 
 		$this->UseRecipientLanguage((string)$delivery['notification_locale'], $token);
@@ -137,7 +135,7 @@ final class RecipientPortalController extends BaseController
 			return $this->_view->Render('portal.index', [
 				'delivery' => $this->PublicDelivery($delivery),
 				'token' => $token,
-				'codeSent' => false,
+				'codeRequested' => false,
 				'isAuthenticatedForDelivery' => false,
 				'validationError' => __('portal.code.invalid'),
 			]);
@@ -155,8 +153,7 @@ final class RecipientPortalController extends BaseController
 
 		if (!is_array($delivery))
 		{
-			http_response_code(404);
-			return $this->_view->Render('portal.invalid');
+			return $this->UnavailablePortal($token, $this->_request->QueryString('lang', 10));
 		}
 
 		$this->UseRecipientLanguage((string)$delivery['notification_locale'], $token, $this->_request->QueryString('lang', 10));
@@ -226,8 +223,7 @@ final class RecipientPortalController extends BaseController
 
 		if (!is_array($delivery))
 		{
-			http_response_code(404);
-			return $this->_view->Render('portal.invalid');
+			return $this->UnavailablePortal($token, $this->_request->QueryString('lang', 10));
 		}
 
 		$this->UseRecipientLanguage((string)$delivery['notification_locale'], $token, $this->_request->QueryString('lang', 10));
@@ -266,8 +262,7 @@ final class RecipientPortalController extends BaseController
 
 		if (!is_array($delivery))
 		{
-			http_response_code(404);
-			return $this->_view->Render('portal.invalid');
+			return $this->UnavailablePortal($token);
 		}
 
 		$this->UseRecipientLanguage((string)$delivery['notification_locale'], $token);
@@ -318,8 +313,7 @@ final class RecipientPortalController extends BaseController
 
 		if (!$this->_portalService->ClosePermanently($this->_session, $token, (int)$delivery['delivery_id']))
 		{
-			http_response_code(404);
-			return $this->_view->Render('portal.invalid');
+			return $this->UnavailablePortal($token);
 		}
 
 		$this->Redirect('/portal/closed?lang=' . rawurlencode($closedLocale));
@@ -337,7 +331,7 @@ final class RecipientPortalController extends BaseController
 
 		if (!is_array($document))
 		{
-			$this->DocumentNotFound();
+			$this->DocumentNotFound($token);
 		}
 
 		$filename = $this->DocumentDownloadFilename($document);
@@ -357,7 +351,7 @@ final class RecipientPortalController extends BaseController
 
 		if ($path === null)
 		{
-			$this->DocumentNotFound();
+			$this->DocumentNotFound($token);
 		}
 
 		$this->SendDownloadHeaders($filename, (string)($document['mime_type'] ?? 'application/octet-stream'));
@@ -376,7 +370,7 @@ final class RecipientPortalController extends BaseController
 	/** @brief Serves a safely inline-viewable document snapshot after checking recipient authorization. */
 	public function ViewDocument(): void
 	{
-		[, $delivery] = $this->RequireAuthenticatedDelivery();
+		[$token, $delivery] = $this->RequireAuthenticatedDelivery();
 		$document = $this->_portalService->DocumentForDelivery(
 			(int)$delivery['delivery_id'],
 			$this->_request->QueryInt('document')
@@ -384,14 +378,14 @@ final class RecipientPortalController extends BaseController
 
 		if (!is_array($document))
 		{
-			$this->DocumentNotFound();
+			$this->DocumentNotFound($token);
 		}
 
 		$contentType = $this->InlineContentType($document);
 
 		if ($contentType === null)
 		{
-			$this->DocumentNotFound();
+			$this->DocumentNotFound($token);
 		}
 
 		$filename = $this->DocumentDownloadFilename($document);
@@ -410,7 +404,7 @@ final class RecipientPortalController extends BaseController
 
 		if ($path === null)
 		{
-			$this->DocumentNotFound();
+			$this->DocumentNotFound($token);
 		}
 
 		$this->SendInlineHeaders($filename, $contentType);
@@ -428,7 +422,7 @@ final class RecipientPortalController extends BaseController
 	/** @brief Streams every available delivery document as one portable ZIP/ZIP64 archive. */
 	public function DownloadAll(): void
 	{
-		[, $delivery] = $this->RequireAuthenticatedDelivery();
+		[$token, $delivery] = $this->RequireAuthenticatedDelivery();
 		$documents = $this->_portalService->DocumentsForDelivery((int)$delivery['delivery_id']);
 		$available = array_values(array_filter(
 			$documents,
@@ -438,7 +432,7 @@ final class RecipientPortalController extends BaseController
 
 		if ($available === [])
 		{
-			$this->DocumentNotFound();
+			$this->DocumentNotFound($token);
 		}
 
 		$filename = $this->SafeFilename((string)$delivery['owner_name']) . '-documents.zip';
@@ -481,7 +475,7 @@ final class RecipientPortalController extends BaseController
 
 		if (!is_array($delivery))
 		{
-			$this->DocumentNotFound();
+			$this->UnavailablePortalAndExit($token);
 		}
 
 		$this->UseRecipientLanguage((string)$delivery['notification_locale'], $token);
@@ -643,12 +637,32 @@ final class RecipientPortalController extends BaseController
 		header('X-Content-Type-Options: nosniff');
 	}
 
-	/** @brief Returns a generic 404 without revealing whether a snapshot or stored file once existed. */
-	private function DocumentNotFound(): never
+	/** @brief Returns a styled generic document 404 without revealing whether a snapshot or stored file once existed. */
+	private function DocumentNotFound(string $token): never
 	{
 		http_response_code(404);
-		header('Content-Type: text/plain; charset=utf-8');
-		echo __('portal.document.not_found');
+		$this->_view->SetGlobals([
+			'currentTarget' => '/portal/access?token=' . rawurlencode($token),
+		], true);
+		echo $this->_view->Render('portal.document-unavailable');
+		exit;
+	}
+
+	/** @brief Renders an unavailable portal while preserving recipient-language context for known tokens. */
+	private function UnavailablePortal(string $token, string $linkLocale = ''): string
+	{
+		$this->UseUnavailablePortalLanguage($token, $linkLocale);
+		$this->_view->SetGlobals([
+			'currentTarget' => '/portal?token=' . rawurlencode($token),
+		], true);
+		http_response_code(404);
+		return $this->_view->Render('portal.invalid');
+	}
+
+	/** @brief Emits the styled unavailable-portal response for streaming endpoints and stops execution. */
+	private function UnavailablePortalAndExit(string $token): never
+	{
+		echo $this->UnavailablePortal($token);
 		exit;
 	}
 
@@ -667,7 +681,7 @@ final class RecipientPortalController extends BaseController
 	}
 
 	/** @brief Selects portal language with a per-invitation session override. */
-	private function UseRecipientLanguage(string $storedLocale, string $token, string $linkLocale = ''): void
+	private function UseRecipientLanguage(?string $storedLocale, string $token, string $linkLocale = ''): void
 	{
 		$locale = $this->_languages->Resolve($storedLocale);
 		$sessionLocale = $this->_session->Get(RecipientPortalLanguagePreference::SessionKey($token));
@@ -683,5 +697,22 @@ final class RecipientPortalController extends BaseController
 
 		setTranslator(new Translator($this->_languagePath, $locale));
 		$this->_view->SetGlobals(['locale' => $locale], true);
+	}
+
+	/** @brief Restores language selection for an expired/revoked portal without requiring an active delivery. */
+	private function UseUnavailablePortalLanguage(string $token, string $linkLocale = ''): void
+	{
+		$metadata = $this->_portalService->FindLanguageMetadata($token);
+		$storedLocale = is_array($metadata) ? (string)($metadata['notification_locale'] ?? '') : null;
+		$sessionLocale = $this->_session->Get(RecipientPortalLanguagePreference::SessionKey($token));
+
+		if (
+			$storedLocale !== null
+			|| ($linkLocale !== '' && $this->_languages->IsSupported($linkLocale))
+			|| (is_string($sessionLocale) && $this->_languages->IsSupported($sessionLocale))
+		)
+		{
+			$this->UseRecipientLanguage($storedLocale, $token, $linkLocale);
+		}
 	}
 }

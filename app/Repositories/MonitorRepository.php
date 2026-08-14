@@ -83,6 +83,16 @@ class MonitorRepository
 					LIMIT 1
 				) AS due_notice_sent_at,
 				(
+					SELECT mq.status
+					FROM mail_queue mq
+					INNER JOIN check_cycles due_cc ON due_cc.id = mq.check_cycle_id
+					WHERE due_cc.monitor_id = monitors.id
+					  AND due_cc.status IN (\'scheduled\',\'awaiting\',\'safety_pending\',\'overdue\',\'escalated\')
+					  AND mq.mail_type = \'owner_due_notice\'
+					ORDER BY mq.id DESC
+					LIMIT 1
+				) AS due_notice_queue_status,
+				(
 					SELECT cc.escalation_policy_snapshot
 					FROM check_cycles cc
 					WHERE cc.monitor_id = monitors.id

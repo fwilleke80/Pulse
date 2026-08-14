@@ -174,7 +174,7 @@ Safety-contact invitation and reminder text can be customized per monitor. When 
 
 Runtime settings come from process environment variables and the root `.env` file. Process environment variables take precedence. The root `.env` file remains the single persistent source for application configuration; Pulse does not maintain a parallel database-backed settings layer.
 
-Pulse 0.9.x provides an administrator-only configuration surface implemented by `AdministrationController`. Authorization is enforced server-side through the user's `role`, introduced by migration `018_administrator_role.sql`. Existing pre-0.9.0 users are promoted to `administrator`; the schema default remains `user` so future multi-user account creation does not implicitly grant system administration.
+Pulse provides an administrator-only configuration surface implemented by `AdministrationController`. Authorization is enforced server-side through the user's `role`, introduced by migration `018_administrator_role.sql`. Existing pre-0.9.0 users are promoted to `administrator`; the schema default remains `user` so future multi-user account creation does not implicitly grant system administration.
 
 `EnvironmentFile` provides the read/write boundary for Administration. It preserves unknown `.env` keys and comments, encodes changed values safely, and replaces the file atomically. SMTP passwords and the web-cron token are not rendered back into HTML. Process-level environment overrides remain effective at runtime and are reported in the Installation tab.
 
@@ -213,7 +213,7 @@ Uploaded document content is:
 
 Editable text documents and message text are stored in the database. Uploaded-file records also store an editable display title and optional description separately from the immutable internal storage basename.
 
-This private storage model prevents direct public file access, but it is not encryption. Pulse 0.8.3 provides authenticated recipient document delivery and a visual recipient download page; encrypted document/message storage remains later work.
+This private storage model prevents direct public file access, but it is not encryption. Pulse provides authenticated recipient document delivery and a visual recipient download page; encrypted document/message storage remains later work.
 
 
 ## Recipient portal and document delivery

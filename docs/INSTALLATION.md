@@ -1,6 +1,6 @@
 # Installing Pulse
 
-Pulse 0.9.3 includes a guided browser installer. A normal installation no longer requires you to create or edit `.env` manually.
+Pulse includes a guided browser installer. A normal installation no longer requires you to create or edit `.env` manually.
 
 ## Requirements
 
@@ -29,7 +29,7 @@ python3 tools/write_version.py
 To set the release explicitly:
 
 ```bash
-PULSE_VERSION=0.9.3 python3 tools/write_version.py
+PULSE_VERSION=0.9.5 python3 tools/write_version.py
 ```
 
 A packaged release already contains its generated `config/version.php`. Pulse still starts if that file is missing, but displays **version unavailable**.

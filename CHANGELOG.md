@@ -1,3 +1,28 @@
+## 0.9.5 - 2026-08-14
+
+### Changed
+- Reworked Pulse-created text document cards in the recipient portal to show the actual snapshotted text in a compact, bounded, scrollable preview instead of a large generic TXT placeholder.
+- Changed **Close access permanently** in the authenticated recipient portal from a text link to a proper button.
+- Added a **Time** column to Administration → Mail so the queue can also be read as a chronological activity list.
+- Changed public access-code request feedback to the deliberately non-committal **Access code requested** wording. This remains accurate when a request is rate-limited or downstream mail delivery fails without exposing internal delivery state.
+- Expanded Recipient → History with a portal activity timeline for significant existing audit events, including notification delivery, access-code activity, successful authentication, downloads, revocation, and recipient-initiated closure. Mere unauthenticated page opens are intentionally not treated as recipient activity because automated mail scanners may follow links.
+- Made development due-notice actions queue-aware so an already queued, processing, sent, or permanently failed notice is represented more accurately instead of continuing to offer a stale send action.
+
+### Fixed
+- Removed the obsolete Recipient Editor notice claiming that documents are not delivered and that the secure portal is only a future milestone.
+- Fixed language resolution for revoked, expired, closed, or otherwise unavailable recipient portals. Recipient/link language and the footer language selector now continue to work after a delivery becomes inactive.
+- Replaced the bare `File not found` response from stale/revoked document URLs with a Pulse-styled unavailable-document page while continuing to enforce revocation server-side.
+- Fixed the closed-portal language selector so changing language replaces the stale `lang` query parameter instead of immediately switching back.
+- Bounded portal document preview dimensions so mixed document cards remain visually balanced and responsive.
+
+### Database cleanup
+- Added migration `020_remove_legacy_tables.sql` to remove the unused foundation-era `access_tokens` and per-user `app_settings` tables. No current Pulse runtime code references either table.
+- Removed those legacy tables from the reference schema. Historical migrations remain unchanged so existing migration checksum validation is preserved.
+
+### Documentation
+- Updated recipient-delivery documentation for text previews and the new activity timeline.
+- Removed remaining obsolete pre-secure-portal/version-specific wording from current documentation and configuration-template comments.
+
 ## 0.9.4 - 2026-08-14
 
 ### Fixed

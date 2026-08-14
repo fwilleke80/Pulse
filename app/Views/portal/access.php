@@ -89,7 +89,11 @@ ob_start();
 				$downloadUrl = $base_url . '/portal/document/download?token=' . rawurlencode($token) . '&document=' . (int)$document['id'];
 				?>
 				<article class="portal-document-card">
-					<?php if (!empty($document['image_preview'])): ?>
+					<?php if ((string)($document['storage_type'] ?? '') === 'text'): ?>
+						<div class="portal-document-preview portal-document-preview-text" aria-label="<?= e__('portal.documents.text_preview_named', ['name' => (string)$document['title']]) ?>">
+							<pre><?= e((string)($document['text_content'] ?? '')) ?></pre>
+						</div>
+					<?php elseif (!empty($document['image_preview'])): ?>
 						<a class="portal-document-preview portal-document-preview-image" href="<?= e($viewUrl) ?>" target="_blank" rel="noopener noreferrer" aria-label="<?= e__('portal.documents.view_named', ['name' => (string)$document['title']]) ?>">
 							<img src="<?= e($viewUrl) ?>" alt="<?= e((string)$document['title']) ?>" loading="lazy" decoding="async">
 						</a>
@@ -137,7 +141,10 @@ ob_start();
 	<section class="portal-close-access" aria-labelledby="portal-close-access-heading">
 		<h2 id="portal-close-access-heading"><?= e__('portal.close.link_heading') ?></h2>
 		<p><?= e__('portal.close.link_hint') ?></p>
-		<a class="danger-link" href="<?= e($base_url) ?>/portal/close?token=<?= e(rawurlencode($token)) ?>"><?= e__('portal.close.link') ?></a>
+		<form method="get" action="<?= e($base_url) ?>/portal/close">
+			<input type="hidden" name="token" value="<?= e($token) ?>">
+			<button type="submit" class="btn-danger"><?= e__('portal.close.link') ?></button>
+		</form>
 	</section>
 <?php endif; ?>
 <?php

@@ -298,12 +298,12 @@ ob_start();
 					<p><?= e__('profile.notifications.queue_details.empty') ?></p>
 				<?php else: ?>
 					<div class="table-scroll"><table class="mail-queue-table"><thead><tr>
-						<th><?= e__('profile.notifications.queue_details.id') ?></th><th><?= e__('profile.notifications.queue_details.type') ?></th><th><?= e__('profile.notifications.queue_details.recipient') ?></th><th><?= e__('profile.notifications.queue_details.status') ?></th><th><?= e__('profile.notifications.queue_details.attempts') ?></th><th><?= e__('profile.notifications.queue_details.next_attempt') ?></th><th><?= e__('profile.notifications.queue_details.last_error') ?></th>
+						<th><?= e__('profile.notifications.queue_details.id') ?></th><th><?= e__('profile.notifications.queue_details.time') ?></th><th><?= e__('profile.notifications.queue_details.type') ?></th><th><?= e__('profile.notifications.queue_details.recipient') ?></th><th><?= e__('profile.notifications.queue_details.status') ?></th><th><?= e__('profile.notifications.queue_details.attempts') ?></th><th><?= e__('profile.notifications.queue_details.next_attempt') ?></th><th><?= e__('profile.notifications.queue_details.last_error') ?></th>
 					</tr></thead><tbody>
 					<?php foreach ($mailQueueEntries as $queueEntry): ?>
 						<?php $status = (string)$queueEntry['status']; $typeKey = 'profile.notifications.mail_type.' . (string)$queueEntry['mail_type']; $isWaiting = in_array($status, ['queued', 'retrying', 'processing'], true); ?>
 						<tr>
-							<td><code>#<?= (int)$queueEntry['id'] ?></code></td><td><?= e__($typeKey) ?></td><td><code><?= e((string)$queueEntry['recipient_email']) ?></code></td>
+							<td><code>#<?= (int)$queueEntry['id'] ?></code></td><td><time datetime="<?= e((string)$queueEntry['created_at']) ?>"><?= e(format_datetime((string)$queueEntry['created_at'])) ?></time></td><td><?= e__($typeKey) ?></td><td><code><?= e((string)$queueEntry['recipient_email']) ?></code></td>
 							<td><?php if ($status === 'retrying'): ?><span class="status-badge status-mail-retrying"><?= e__('profile.notifications.status.retrying_wait', ['wait' => format_retry_wait((string)$queueEntry['available_at'])]) ?></span><?php elseif ($status === 'failed'): ?><span class="status-badge status-mail-failed"><?= e__('profile.notifications.status.failed_terminal') ?></span><?php else: ?><span class="status-badge status-mail-<?= e($status) ?>"><?= e__('profile.notifications.status.' . $status) ?></span><?php endif; ?></td>
 							<td><?= (int)$queueEntry['attempt_count'] ?> / <?= (int)$queueEntry['max_attempts'] ?></td>
 							<td><?php if ($isWaiting): ?><time datetime="<?= e((string)$queueEntry['available_at']) ?>"><?= e(format_datetime((string)$queueEntry['available_at'])) ?></time><?php else: ?><span aria-hidden="true">—</span><?php endif; ?></td>

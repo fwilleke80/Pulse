@@ -54,6 +54,15 @@ final class RecipientPortalService
 	}
 
 	/**
+	 * @brief Resolves only language metadata for an invitation, including revoked or expired deliveries.
+	 * @return array<string, mixed>|null Minimal delivery metadata or null.
+	 */
+	public function FindLanguageMetadata(string $rawToken): ?array
+	{
+		return $this->_portalRepository->FindLanguageMetadataByToken($rawToken);
+	}
+
+	/**
 	 * @brief Generates and queues a new access code when rate limits permit it.
 	 * @return int|null Queue ID, or null when no new code was issued.
 	 */

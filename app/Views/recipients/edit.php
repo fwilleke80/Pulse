@@ -12,6 +12,7 @@ declare(strict_types=1);
 /** @var array<int, array<string, mixed>> $documents */
 /** @var array<int> $assignedDocumentIds */
 /** @var array<int, array<string, mixed>> $deliveryHistory */
+/** @var array<int, array<string, mixed>> $portalActivity */
 /** @var array{subject: string, body_text: string} $preview */
 /** @var array{subject: string, body_text: string} $defaultPreview */
 /** @var array{subject: string, body_text: string} $defaultTemplate */
@@ -190,7 +191,6 @@ ob_start();
 						<?php endforeach; ?>
 					</div>
 				<?php endif; ?>
-				<div class="privacy-note"><strong><?= e__('recipients.documents.gated_heading') ?></strong> <?= e__('recipients.documents.gated_message') ?></div>
 			</section>
 			<button type="submit" class="btn-primary"><?= e__('recipients.documents.save') ?></button>
 		</form>
@@ -251,6 +251,57 @@ ob_start();
 						</tbody>
 					</table>
 				</div>
+			<?php endif; ?>
+		</section>
+
+		<section class="configuration-block recipient-activity-history">
+			<h2><?= e__('recipients.history.activity.heading') ?></h2>
+			<p class="form-hint"><?= e__('recipients.history.activity.hint') ?></p>
+			<?php if ($portalActivity === []): ?>
+				<p><?= e__('recipients.history.activity.none') ?></p>
+			<?php else: ?>
+				<?php
+				$activityKeys = [
+					'mail.recipient_sent' => 'recipients.history.activity.notification_sent',
+					'mail.recipient_failed' => 'recipients.history.activity.notification_failed',
+					'recipient.portal_code_requested' => 'recipients.history.activity.code_requested',
+					'recipient.portal_code_sent' => 'recipients.history.activity.code_sent',
+					'recipient.portal_code_rate_limited' => 'recipients.history.activity.code_rate_limited',
+					'recipient.portal_code_failed' => 'recipients.history.activity.code_failed',
+					'recipient.portal_access_granted' => 'recipients.history.activity.access_granted',
+					'recipient.portal_document_downloaded' => 'recipients.history.activity.document_downloaded',
+					'recipient.portal_all_documents_downloaded' => 'recipients.history.activity.all_downloaded',
+					'recipient.portal_revoked' => 'recipients.history.activity.revoked',
+					'recipient.portal_closed_by_recipient' => 'recipients.history.activity.closed',
+				];
+				?>
+				<ol class="recipient-activity-timeline">
+					<?php foreach ($portalActivity as $activity): ?>
+						<?php
+						$eventType = (string)($activity['event_type'] ?? '');
+						$key = $activityKeys[$eventType] ?? null;
+						$context = is_array($activity['context'] ?? null) ? $activity['context'] : [];
+						$params = [];
+
+						if ($eventType === 'recipient.portal_document_downloaded')
+						{
+							$params['document'] = trim((string)($activity['document_title'] ?? '')) !== ''
+								? (string)$activity['document_title']
+								: __('recipients.history.activity.document_unknown');
+						}
+						elseif ($eventType === 'recipient.portal_all_documents_downloaded')
+						{
+							$params['count'] = max(0, (int)($context['document_count'] ?? 0));
+						}
+						?>
+						<?php if ($key !== null): ?>
+							<li>
+								<time datetime="<?= e((string)$activity['created_at']) ?>"><?= e(format_datetime((string)$activity['created_at'])) ?></time>
+								<span><?= e__($key, $params) ?></span>
+							</li>
+						<?php endif; ?>
+					<?php endforeach; ?>
+				</ol>
 			<?php endif; ?>
 		</section>
 	</section>
