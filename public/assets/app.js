@@ -66,6 +66,26 @@ document.addEventListener('DOMContentLoaded', function ()
 		confirmPassword.addEventListener('input', checkPasswords);
 	}
 
+	const cronTokenField = document.querySelector('[data-cron-token]');
+	const cronTokenGenerator = document.querySelector('[data-generate-cron-token]');
+
+	if (cronTokenField && cronTokenGenerator && window.crypto && window.crypto.getRandomValues)
+	{
+		/** @brief Generates a copyable web-cron token locally without retrieving the stored secret. */
+		cronTokenGenerator.addEventListener('click', function ()
+		{
+			const bytes = new Uint8Array(32);
+			window.crypto.getRandomValues(bytes);
+			cronTokenField.value = Array.from(bytes, function (byte)
+			{
+				return byte.toString(16).padStart(2, '0');
+			}).join('');
+			cronTokenField.type = 'text';
+			cronTokenField.focus();
+			cronTokenField.select();
+		});
+	}
+
 	for (const editor of document.querySelectorAll('[data-monitor-tabs]'))
 	{
 		const tabs = Array.from(editor.querySelectorAll('[data-tab-target]'));

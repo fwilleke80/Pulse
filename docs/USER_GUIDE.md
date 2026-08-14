@@ -153,22 +153,32 @@ If the required confirmation is not reached before the safety-contact stage ends
 
 Under **Messages & content → Safety-contact email**, you can replace the default subject and body used for the first safety-contact email and for later reminders **separately for each supported language**. Each installed language gets its own tab, and Pulse chooses the matching version from each safety contact's **Pulse interface language**. The templates support `{app}` (the Pulse application name), `{name}` (the safety contact's name), `{owner}` (the monitor owner's display name), `{monitor}` (the monitor name), and `{url}` (the safety-confirmation page URL). Reminder text additionally supports `{number}` (the current reminder number) and `{total}` (the configured total number of safety reminders). Leave a language-specific subject/body pair empty to use Pulse's built-in default for that language; the default can be revealed in the editor. The same contact language controls the safety-confirmation page, the recipient portal, and Pulse-authored portal access-code mail.
 
+## Administration
+
+Users with the **administrator** role have an **Administration** entry in the main navigation. The page is divided into responsive tabs for **General**, **Security**, **Files**, **Mail**, **Cron**, and **Installation**. The route is protected server-side as well as hidden from non-administrators.
+
+Editable application settings are saved directly to Pulse's root `.env` file. A warning marker appears on any tab with an actionable configuration problem, and the summary at the top links directly to the affected section. Secrets such as the SMTP password and web-cron token are never displayed back to the browser.
+
+The **Installation** tab currently shows database connection values only as read-only status information. They are required before Pulse can boot and will be handled by the planned 0.9.x installation wizard.
+
+
 ## Notifications and failed mail
 
 Owner reminders, safety-contact requests, and recipient messages all use Pulse's mail queue.
 
-Open **Profile → Notifications** to:
+Administrators can open **Administration → Mail** to:
 
+- configure SMTP and queue/retry behaviour
 - see whether mail is enabled
-- send a test notification
-- review pending, sent, and failed mail
+- send a test notification to the current administrator address
+- review pending, sent, and failed mail across the installation
 - retry permanently failed notifications after fixing the cause
 
 A failed email does not count as successfully delivered. Pulse shows a warning rather than pretending the notification happened.
 
 Your profile has separate **Website language** and **Notification language** settings. Website language controls the authenticated Pulse interface and is remembered across login/logout; changing the footer language selector updates that persistent website preference. Notification language controls Pulse-authored owner due notices, reminders, and test mail. Contacts have a **Pulse interface language** for Pulse-owned pages such as safety confirmation and the recipient portal. That contact language also selects localized Pulse fallback text when safety-contact or recipient mail is left at its built-in default, and it controls Pulse-authored portal access-code mail.
 
-If SMTP settings are changed, send another test before relying on the system.
+If SMTP settings are changed under Administration, send another test before relying on the system.
 
 ## Pause and resume
 
@@ -201,7 +211,7 @@ Pulse supports two kinds of monitor documents:
 
 Create and maintain documents under the monitor's **Documents** tab. Assign them to individual people from **Recipients → Edit recipient → Documents**. Uploaded files have a separate display title and optional short description. Both can be edited later without renaming or moving the private stored file.
 
-The default upload policy accepts PDF, RTF, OpenDocument Text, Word `.docx`, JPEG, PNG, and plain text files up to 25 MiB. The server administrator can change the upload limit and MIME allowlist in `.env`; larger configured limits are also constrained by PHP and web-server upload settings such as `upload_max_filesize` and `post_max_size`.
+The default upload policy accepts PDF, RTF, OpenDocument Text, Word `.docx`, JPEG, PNG, and plain text files up to 25 MiB. An administrator can change the upload limit and MIME allowlist under **Administration → Files**; larger configured limits are also constrained by PHP and web-server upload settings such as `upload_max_filesize` and `post_max_size`.
 
 Pulse inspects the uploaded content rather than trusting the filename. Stored files receive internal names and are not served directly from the public web directory.
 

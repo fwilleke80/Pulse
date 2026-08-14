@@ -1,3 +1,26 @@
+## 0.9.0 - 2026-08-14
+
+### Added
+- Added an administrator-only **Administration** area with explicit server-side role authorization and responsive tabs for General, Security, Files, Mail, Cron, and Installation.
+- Added migration `018_administrator_role.sql`; all accounts from pre-0.9.0 single-user installations are promoted to `administrator`, while the schema is ready for non-administrator users later.
+- Added a configuration-health summary and per-tab warning indicators for actionable setup problems such as disabled mail, missing web-cron token, an unwritable `.env`, or process-level environment overrides.
+- Added safe `.env` editing that preserves comments and unknown keys, using atomic replacement when possible and an exclusive-lock fallback when only the file itself is writable.
+
+### Changed
+- Moved all SMTP configuration, test-mail controls, retry actions, queue inspection, and debug queue controls from **Profile** to **Administration → Mail**. Profile now contains user-specific account data only.
+- Mail queue status in Administration is installation-wide rather than scoped to the currently signed-in owner, preparing operations for future multi-user support.
+- Runtime application settings are now maintained through Administration while remaining backed by the single root `.env` configuration source. Database credentials remain read-only because they are required before Pulse can boot; the planned 0.9.x installer will own initial bootstrap configuration.
+- Dashboard mail-configuration warnings now direct administrators to **Administration → Mail**.
+- Added `PULSE_SESSION_NAME` and `PULSE_HSTS_ENABLED` to `.env.example` so the documented environment surface matches the Administration editor.
+
+### Security
+- Administrator routes return HTTP 403 to authenticated users without the `administrator` role; navigation visibility is not relied on for authorization.
+- Existing SMTP passwords and web-cron tokens are never rendered back into the Administration form. Blank secret fields preserve the current value; clearing a secret requires an explicit action. New web-cron tokens can be generated locally in the browser so they can be copied before saving.
+- Saving unrelated settings does not copy process-level secret overrides into `.env`.
+
+### Documentation
+- Updated installation, user, tutorial, security, architecture, and README documentation for the new Administration workflow.
+
 ## 0.8.9 - 2026-08-14
 
 ### Added

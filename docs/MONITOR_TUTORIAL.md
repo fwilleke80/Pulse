@@ -155,7 +155,7 @@ For genuinely time-critical danger, an email-based multi-day workflow is the wro
 7. Choose **Direct recipient notification** or **Safety-contact confirmation** under **Escalation**.
 8. If using safety contacts, choose the contacts, required confirmation count, timing, and postponement period.
 9. Review every warning under **Review & activation**.
-10. Send a successful SMTP test from **Profile → Notifications**.
+10. Send a successful SMTP test from **Administration → Mail**.
 
 ## Write a useful recipient message
 
@@ -176,7 +176,7 @@ Avoid passwords, recovery keys, and highly sensitive secrets. The message is sto
 Use non-sensitive test contacts and wording for the first rehearsal.
 
 1. Confirm that your cron job runs once per minute.
-2. Send a test from **Profile → Notifications**.
+2. Send a test from **Administration → Mail**.
 3. Confirm that a due monitor produces the expected owner notification.
 4. Rehearse a safety-contact flow if you intend to use one.
 5. Confirm that opening a safety link alone changes nothing and that an explicit response is required.

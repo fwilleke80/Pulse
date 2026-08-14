@@ -24,6 +24,7 @@ CREATE TABLE users
 	email VARCHAR(255) NOT NULL UNIQUE,
 	password_hash VARCHAR(255) NOT NULL,
 	display_name VARCHAR(255) NOT NULL,
+	role ENUM('user','administrator') NOT NULL DEFAULT 'user',
 	notification_locale VARCHAR(10) NULL,
 	website_locale VARCHAR(10) NULL,
 	is_active TINYINT(1) NOT NULL DEFAULT 1,

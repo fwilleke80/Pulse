@@ -119,7 +119,7 @@ class CompleteConfigurationSourceTest extends TestCase
 	public function testDeploymentDocumentationRequiresTheVersionGeneratorBeforeUpload(): void
 	{
 		$readme = (string)file_get_contents(dirname(__DIR__, 2) . '/README.md');
-		$upgrade = (string)file_get_contents(dirname(__DIR__, 2) . '/docs/UPGRADING.md');
+		$upgrade = (string)file_get_contents(dirname(__DIR__, 2) . '/docs/INSTALLATION.md');
 
 		self::assertStringContainsString('python3 tools/write_version.py', $readme);
 		self::assertStringContainsString('before uploading', strtolower($readme));

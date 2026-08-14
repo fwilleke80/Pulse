@@ -42,6 +42,9 @@ $versionLabel = trim((string)$appVersion) !== ''
 	<a href="<?= e($base_url) ?>/monitors"><?= e__('nav.monitors') ?></a>
 	<a href="<?= e($base_url) ?>/contacts"><?= e__('nav.contacts') ?></a>
 	<a href="<?= e($base_url) ?>/profile"><?= e__('nav.profile') ?></a>
+	<?php if (is_array($currentUser) && (string)($currentUser['role'] ?? 'user') === 'administrator'): ?>
+		<a href="<?= e($base_url) ?>/administration"><?= e__('nav.administration') ?></a>
+	<?php endif; ?>
 	<form method="post" action="<?= e($base_url) ?>/logout" class="nav-form">
 		<?= csrf_field() ?>
 		<button type="submit" class="nav-link-button"><?= e__('nav.logout') ?></button>

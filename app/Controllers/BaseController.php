@@ -85,6 +85,31 @@ abstract class BaseController
 	}
 
 	/**
+	 * @brief Returns the current authenticated administrator or terminates with HTTP 403.
+	 * @return array<string, mixed>
+	 */
+	protected function RequireAdministrator(): array
+	{
+		$user = $this->RequireUser();
+
+		if ((string)($user['role'] ?? 'user') !== 'administrator')
+		{
+			$this->_logger->Warning('Administrator-only route rejected', [
+				'user_id' => (int)$user['id'],
+				'path' => $this->_request->Path(),
+			]);
+			http_response_code(403);
+			echo $this->_view->Render('home.error', [
+				'heading' => __('administration.forbidden.heading'),
+				'message' => __('administration.forbidden.message'),
+			]);
+			exit;
+		}
+
+		return $user;
+	}
+
+	/**
 	 * @brief Stores a flash message.
 	 * @param string $type Message type.
 	 * @param string $message Message text.

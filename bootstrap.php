@@ -12,6 +12,7 @@ use Pulse\Core\CsrfTokenManager;
 use Pulse\Core\ConfigurationValidator;
 use Pulse\Core\Database;
 use Pulse\Core\Environment;
+use Pulse\Core\EnvironmentFile;
 use Pulse\Core\ErrorHandler;
 use Pulse\Core\Logger;
 use Pulse\Core\LanguageCatalog;
@@ -81,6 +82,7 @@ $errorHandler = new ErrorHandler($logger, false);
 $errorHandler->Register();
 
 Environment::Load(__DIR__ . '/.env');
+$environmentFile = new EnvironmentFile(__DIR__ . '/.env');
 
 $appConfig = require __DIR__ . '/config/app.php';
 $languagePath = __DIR__ . '/app/Lang';
@@ -221,6 +223,8 @@ $view->SetGlobals([
 
 return [
 	'config' => $appConfig,
+	'dbConfig' => $dbConfig,
+	'environmentFile' => $environmentFile,
 	'db' => $database,
 	'appliedMigrations' => $appliedMigrations,
 	'router' => $router,

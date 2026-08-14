@@ -61,7 +61,9 @@ ob_start();
 			<strong><?= e__('dashboard.notifications.disabled.heading') ?></strong>
 			<p><?= e__('dashboard.notifications.disabled.message') ?></p>
 		</div>
-		<a href="<?= e($base_url) ?>/profile#notifications" class="button-link"><?= e__('dashboard.notifications.disabled.action') ?></a>
+		<?php if ((string)($user['role'] ?? 'user') === 'administrator'): ?>
+			<a href="<?= e($base_url) ?>/administration?tab=mail" class="button-link"><?= e__('dashboard.notifications.disabled.action') ?></a>
+		<?php endif; ?>
 	</section>
 <?php endif; ?>
 

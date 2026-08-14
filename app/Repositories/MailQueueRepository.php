@@ -589,6 +589,26 @@ final class MailQueueRepository
 	}
 
 	/**
+	 * @brief Returns recent queue entries across the installation for an administrator.
+	 * @param int $limit Maximum number of rows to return.
+	 * @return array<int, array<string, mixed>>
+	 */
+	public function FindRecent(int $limit = 50): array
+	{
+		$limit = max(1, min(200, $limit));
+		$rows = $this->_database->GetConnection()->query('
+			SELECT
+				id, user_id, mail_type, recipient_email, subject, status, attempt_count, max_attempts,
+				last_error, available_at, sent_at, failed_at, cancelled_at, created_at, updated_at
+			FROM mail_queue
+			ORDER BY id DESC
+			LIMIT ' . $limit . '
+		')->fetchAll(PDO::FETCH_ASSOC);
+
+		return is_array($rows) ? $rows : [];
+	}
+
+	/**
 	 * @brief Clears safe unsent owner/test jobs for a debug-mode operator.
 	 *
 	 * Safety-contact, recipient-notification, and access-code jobs are deliberately
@@ -609,6 +629,40 @@ final class MailQueueRepository
 		$statement->execute(['user_id' => $userId]);
 
 		return $statement->rowCount();
+	}
+
+	/**
+	 * @brief Clears safe unsent owner/test jobs across the installation in debug mode.
+	 * @return int Number of queue rows removed.
+	 */
+	public function ClearDebugQueue(): int
+	{
+		$statement = $this->_database->GetConnection()->prepare('
+			DELETE FROM mail_queue
+			WHERE mail_type IN (\'test\', \'owner_due_notice\', \'owner_reminder\')
+				AND status IN (\'queued\', \'retrying\', \'failed\', \'cancelled\')
+		');
+		$statement->execute();
+
+		return $statement->rowCount();
+	}
+
+	/** @return array<string, int> @brief Returns queue counts across the installation. */
+	public function CountByStatus(): array
+	{
+		$counts = ['queued' => 0, 'retrying' => 0, 'processing' => 0, 'sent' => 0, 'failed' => 0, 'cancelled' => 0];
+		$rows = $this->_database->GetConnection()->query('
+			SELECT status, COUNT(*) AS total
+			FROM mail_queue
+			GROUP BY status
+		')->fetchAll(PDO::FETCH_ASSOC);
+
+		foreach ($rows as $row)
+		{
+			$counts[(string)$row['status']] = (int)$row['total'];
+		}
+
+		return $counts;
 	}
 
 	/** @return array<string, int> @brief Returns queue counts for a user. */

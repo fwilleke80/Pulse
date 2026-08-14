@@ -192,15 +192,15 @@ class NotificationInfrastructureSourceTest extends TestCase
 	{
 		$controller = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Controllers/HomeController.php');
 		$dashboard = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Views/home/dashboard.php');
-		$profile = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Views/profile/index.php');
+		$administration = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Views/administration/index.php');
 		$styles = (string)file_get_contents(dirname(__DIR__, 2) . '/public/assets/style.css');
 
 		self::assertStringContainsString("'mailEnabled' =>", $controller);
 		self::assertStringContainsString('dashboard-system-warning', $dashboard);
 		self::assertStringContainsString('dashboard.notifications.disabled.message', $dashboard);
-		self::assertStringContainsString('<?php if ($mailEnabled): ?>', $profile);
-		self::assertStringContainsString('type="button" disabled', $profile);
-		self::assertStringContainsString('class="btn-secondary" disabled', $profile);
+		self::assertStringContainsString('<?php if ($mailEnabled): ?>', $administration);
+		self::assertStringContainsString('type="button" disabled', $administration);
+		self::assertStringContainsString('class="btn-secondary"', $administration);
 		self::assertStringContainsString('button:disabled', $styles);
 	}
 	public function testRecipientPortalUsesVisualCardsSafeViewsAndStreamingZip64(): void

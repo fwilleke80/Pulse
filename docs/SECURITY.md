@@ -32,6 +32,16 @@ Database, SMTP, and cron credentials belong in process environment variables or 
 
 If a secret is exposed, change it. Removing a leaked value from a file does not make the old credential safe again.
 
+## Administrator configuration
+
+Pulse 0.9.0 provides an **Administration** area for runtime configuration. Access is enforced server-side using the authenticated user's `administrator` role; hiding the navigation item is only a convenience, not the security boundary. Authenticated non-administrators receive HTTP 403 for Administration routes.
+
+Administration uses the root `.env` file as the single persistent configuration source. Pulse does not copy these values into a parallel settings table. The PHP account therefore needs write access to `.env`, while the file must remain outside `public/` and should be readable/writable only by the minimum required server accounts. Updates are written through a temporary file and atomically replace the old file so a partial write does not leave a truncated configuration. Unknown keys and comments are preserved.
+
+SMTP passwords and web-cron tokens are treated as write-only values in the Administration UI: Pulse indicates whether they are configured but never places the existing secret in an HTML input. Leaving a secret field blank preserves the value already stored in `.env`; clearing or regenerating it requires an explicit action. Process-level environment variables still take precedence over `.env`, and Administration shows when managed keys are being overridden.
+
+Database connection values remain read-only in Administration because they are needed before Pulse can bootstrap and authenticate an administrator. The planned 0.9.x installer will own initial creation of those boot-critical settings.
+
 ## HTTPS and sessions
 
 Production installations should use HTTPS exclusively.
@@ -76,7 +86,7 @@ A safety contact can confirm recent contact or state that they cannot confirm it
 
 Pulse checks uploaded content using Fileinfo rather than trusting the browser-supplied MIME type or original filename. Files are renamed internally and stored outside the public web root.
 
-Allowed file types and maximum size are configurable in `.env`.
+Allowed file types and maximum size are configured under **Administration → Files** and remain persisted in `.env`.
 
 Downloads use conservative browser headers and are delivered only after authentication and ownership checks.
 
@@ -139,7 +149,7 @@ Before relying on a production Pulse installation:
 - use secure cookies
 - set the exact trusted production hostname
 - point the web document root at `public/`
-- restrict `.env`, storage, database, backup, and log permissions
+- keep `.env` outside `public/`, writable by the PHP account for Administration, and inaccessible to web clients; restrict storage, database, backup, and log permissions
 - run `tools/write_version.py` before uploading a release
 - keep database and uploaded-document backups
 - remember that current backups containing messages or documents are not encrypted by Pulse

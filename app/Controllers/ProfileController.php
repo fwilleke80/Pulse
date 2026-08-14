@@ -1,35 +1,32 @@
 <?php
 
+/**
+ * @file ProfileController.php
+ * @brief User-specific account profile controller.
+ * @author Frank Willeke
+ */
+
 declare(strict_types=1);
 
 namespace Pulse\Controllers;
 
-use Pulse\Core\Session;
-use Pulse\Core\View;
 use Pulse\Core\Logger;
-use Pulse\Core\WebsiteLanguagePreference;
 use Pulse\Core\NotificationLanguage;
 use Pulse\Core\Request;
+use Pulse\Core\Session;
+use Pulse\Core\View;
+use Pulse\Core\WebsiteLanguagePreference;
 use Pulse\Repositories\UserRepository;
-use Pulse\Repositories\MailQueueRepository;
 use Pulse\Services\AuthService;
-use Pulse\Services\TestNotificationService;
 
 /**
- * @brief Controller for the user profile page.
+ * @brief Controller for personal profile data and password management.
  */
 class ProfileController extends BaseController
 {
 	private UserRepository $_userRepository;
 	private int $_passwordMinimumLength;
-	private MailQueueRepository $_mailQueueRepository;
-	private TestNotificationService $_testNotificationService;
-	private bool $_mailEnabled;
-	private bool $_debugEnabled;
 	private NotificationLanguage $_notificationLanguage;
-
-	/** @var array<string, mixed> */
-	private array $_mailConfig;
 
 	/**
 	 * @brief Constructs the profile controller.
@@ -40,12 +37,7 @@ class ProfileController extends BaseController
 	 * @param Request $request Current request.
 	 * @param UserRepository $userRepository User repository.
 	 * @param int $passwordMinimumLength Minimum accepted password length.
-	 * @param MailQueueRepository $mailQueueRepository Mail queue status repository.
-	 * @param TestNotificationService $testNotificationService SMTP test service.
-	 * @param bool $mailEnabled Whether automatic mail delivery is enabled.
-	 * @param bool $debugEnabled Whether debug-only queue controls are enabled.
 	 * @param NotificationLanguage $notificationLanguage Recipient-language resolver.
-	 * @param array<string, mixed> $mailConfig Effective SMTP/mail configuration.
 	 */
 	public function __construct(
 		View $view,
@@ -55,27 +47,17 @@ class ProfileController extends BaseController
 		Request $request,
 		UserRepository $userRepository,
 		int $passwordMinimumLength,
-		MailQueueRepository $mailQueueRepository,
-		TestNotificationService $testNotificationService,
-		bool $mailEnabled,
-		bool $debugEnabled,
-		NotificationLanguage $notificationLanguage,
-		array $mailConfig
+		NotificationLanguage $notificationLanguage
 	)
 	{
 		parent::__construct($view, $session, $auth, $logger, $request);
 		$this->_userRepository = $userRepository;
 		$this->_passwordMinimumLength = $passwordMinimumLength;
-		$this->_mailQueueRepository = $mailQueueRepository;
-		$this->_testNotificationService = $testNotificationService;
-		$this->_mailEnabled = $mailEnabled;
-		$this->_debugEnabled = $debugEnabled;
 		$this->_notificationLanguage = $notificationLanguage;
-		$this->_mailConfig = $mailConfig;
 	}
 
 	/**
-	 * @brief Displays the profile page.
+	 * @brief Displays the personal profile page.
 	 * @return string
 	 */
 	public function Index(): string
@@ -84,11 +66,6 @@ class ProfileController extends BaseController
 
 		return $this->_view->Render('profile.index', [
 			'user' => $user,
-			'mailEnabled' => $this->_mailEnabled,
-			'mailQueueCounts' => $this->_mailQueueRepository->CountByStatusForUser((int)$user['id']),
-			'mailQueueEntries' => $this->_mailQueueRepository->FindRecentForUser((int)$user['id'], 50),
-			'debugEnabled' => $this->_debugEnabled,
-			'latestTestNotification' => $this->_mailQueueRepository->FindLatestTestForUser((int)$user['id']),
 			'notificationLocales' => $this->_notificationLanguage->SupportedLocales(),
 			'notificationLocale' => $this->_notificationLanguage->Resolve(
 				isset($user['notification_locale']) ? (string)$user['notification_locale'] : null
@@ -96,70 +73,7 @@ class ProfileController extends BaseController
 			'websiteLocale' => $this->_notificationLanguage->Resolve(
 				isset($user['website_locale']) ? (string)$user['website_locale'] : null
 			),
-			'mailConnection' => [
-				'host' => (string)($this->_mailConfig['host'] ?? ''),
-				'port' => (int)($this->_mailConfig['port'] ?? 0),
-				'encryption' => (string)($this->_mailConfig['encryption'] ?? ''),
-				'username' => (string)($this->_mailConfig['username'] ?? ''),
-				'password_configured' => (string)($this->_mailConfig['password'] ?? '') !== '',
-				'from_address' => (string)($this->_mailConfig['from_address'] ?? ''),
-			],
 		]);
-	}
-
-	/**
-	 * @brief Queues and immediately attempts a test notification to the current profile address.
-	 */
-	public function SendTestNotification(): void
-	{
-		$user = $this->RequireUser();
-		$status = $this->_testNotificationService->SendForUser($user);
-		$key = match ($status)
-		{
-			'sent' => 'profile.notifications.test.sent',
-			'retrying' => 'profile.notifications.test.retrying',
-			'failed' => 'profile.notifications.test.failed',
-			'disabled' => 'profile.notifications.test.disabled',
-			default => 'profile.notifications.test.queued',
-		};
-		$type = $status === 'sent' ? 'success' : ($status === 'disabled' || $status === 'failed' ? 'error' : 'warning');
-		$this->Flash($type, __($key));
-		$this->Redirect('/profile#notifications');
-	}
-
-	/** @brief Requeues this owner's permanently failed notifications for another cron attempt. */
-	public function RetryFailedNotifications(): void
-	{
-		$user = $this->RequireUser();
-		$count = $this->_mailQueueRepository->RetryFailedForUser((int)$user['id']);
-		$this->Flash(
-			$count > 0 ? 'success' : 'warning',
-			__($count > 0 ? 'profile.notifications.retry.success' : 'profile.notifications.retry.none', ['count' => $count])
-		);
-		$this->Redirect('/profile#notifications');
-	}
-
-	/** @brief Clears safe unsent owner/test queue jobs when debug mode is enabled. */
-	public function ClearNotificationQueue(): void
-	{
-		$user = $this->RequireUser();
-
-		if (!$this->_debugEnabled)
-		{
-			http_response_code(404);
-			exit;
-		}
-
-		$count = $this->_mailQueueRepository->ClearDebugQueueForUser((int)$user['id']);
-		$this->_logger->Warning('Debug mail queue cleared', [
-			'user_id' => (int)$user['id'],
-			'cleared' => $count,
-		]);
-		$this->Flash(
-			$count > 0 ? 'success' : 'warning',
-			__($count > 0 ? 'profile.notifications.clear.success' : 'profile.notifications.clear.none', ['count' => $count])
-		);
-		$this->Redirect('/profile#mail-queue');
 	}
 
 	/**

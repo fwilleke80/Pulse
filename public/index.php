@@ -8,6 +8,7 @@
 
 declare(strict_types=1);
 
+use Pulse\Controllers\AdministrationController;
 use Pulse\Controllers\AuthController;
 use Pulse\Controllers\ContactController;
 use Pulse\Controllers\DocumentController;
@@ -24,6 +25,8 @@ use Pulse\Core\SecurityHeaders;
 $container = require dirname(__DIR__) . '/bootstrap.php';
 
 $config = $container['config'];
+$dbConfig = $container['dbConfig'];
+$environmentFile = $container['environmentFile'];
 $db = $container['db'];
 $router = $container['router'];
 $view = $container['view'];
@@ -90,12 +93,21 @@ $profileController = new ProfileController(
 	$request,
 	$userRepository,
 	(int)$config['security']['password_minimum_length'],
+	$notificationLanguage
+);
+$administrationController = new AdministrationController(
+	$view,
+	$session,
+	$auth,
+	$logger,
+	$request,
+	$environmentFile,
 	$mailQueueRepository,
 	$testNotificationService,
-	(bool)$config['mail']['enabled'],
 	(bool)$config['debug'],
-	$notificationLanguage,
-	(array)$config['mail']
+	(bool)$config['mail']['enabled'],
+	(array)$config['available_locales'],
+	$dbConfig
 );
 $monitorController = new MonitorController(
 	$view,
@@ -171,9 +183,12 @@ $router->Post('/contacts/delete', [$contactController, 'Delete']);
 $router->Get('/profile', [$profileController, 'Index']);
 $router->Post('/profile/update', [$profileController, 'Update']);
 $router->Post('/profile/password', [$profileController, 'ChangePassword']);
-$router->Post('/profile/notifications/test', [$profileController, 'SendTestNotification']);
-$router->Post('/profile/notifications/retry', [$profileController, 'RetryFailedNotifications']);
-$router->Post('/profile/notifications/clear', [$profileController, 'ClearNotificationQueue']);
+
+$router->Get('/administration', [$administrationController, 'Index']);
+$router->Post('/administration/update', [$administrationController, 'Update']);
+$router->Post('/administration/mail/test', [$administrationController, 'SendTestNotification']);
+$router->Post('/administration/mail/retry', [$administrationController, 'RetryFailedNotifications']);
+$router->Post('/administration/mail/clear', [$administrationController, 'ClearNotificationQueue']);
 
 $router->Get('/monitors', [$monitorController, 'Index']);
 $router->Get('/monitors/new', [$monitorController, 'New']);

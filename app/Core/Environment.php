@@ -81,9 +81,15 @@ final class Environment
 				$first = $value[0];
 				$last = $value[strlen($value) - 1];
 
-				if (($first === '"' && $last === '"') || ($first === "'" && $last === "'"))
+				if ($first === "'" && $last === "'")
 				{
 					$value = substr($value, 1, -1);
+				}
+				else if ($first === '"' && $last === '"')
+				{
+					$value = substr($value, 1, -1);
+					$value = str_replace('\\"', '"', $value);
+					$value = str_replace('\\\\', '\\', $value);
 				}
 			}
 
