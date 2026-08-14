@@ -1,3 +1,23 @@
+## 0.8.2 - 2026-08-14
+
+### Added
+- Added a calmer recipient-facing download page headed by the delivery owner, with the released personal message followed by a responsive document-card grid.
+- Image documents now appear as lazy-loaded visual previews when their MIME type is safe for inline display.
+- Added authorization-checked **View** actions for passive browser-safe formats such as PDF, common raster images, and plain text; active formats remain download-only.
+- Document cards now show the recipient-facing title, description, compact file type, file size, and individual **View**/**Download** actions.
+- **Download all** now shows the number and total size of available documents before download.
+
+### Changed
+- Replaced the temporary-file bulk ZIP implementation with a direct store-only ZIP/ZIP64 stream. Large collections are read from private storage in chunks and written directly to the HTTP response without constructing a second full archive on disk or in PHP memory.
+- Recipient download streams release the PHP session lock before sending file payloads so image previews and parallel downloads do not unnecessarily block one another.
+- Removed the application-level 100 MiB ceiling on `PULSE_UPLOAD_MAXIMUM_BYTES`; the default remains 25 MiB, while administrators may opt into larger limits subject to PHP/web-server upload limits.
+- The authenticated recipient page no longer foregrounds the internal monitor name. Its presentation is deliberately personal rather than administrative.
+
+### Security
+- Inline viewing uses an explicit passive MIME allowlist. SVG, HTML, office documents, archives, and unknown binary formats are not rendered inline.
+- Image previews and inline views use the same active portal-token and authenticated-session checks as downloads; stored files still have no public storage URL.
+- Bulk archives use ZIP64 metadata when classic ZIP size/count/offset limits are exceeded.
+
 ## 0.8.1 - 2026-08-14
 
 ### Added

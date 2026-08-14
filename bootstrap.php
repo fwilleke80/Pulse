@@ -158,10 +158,7 @@ if (!is_string($locale) || !in_array($locale, $availableLocales, true))
 
 $translator = new Translator($languagePath, $locale, $languageCatalog->FallbackLocale());
 $notificationComposer = new NotificationComposer($notificationLanguage, $languagePath, $appConfig);
-$recipientPortalArchiveBuilder = new RecipientPortalArchiveBuilder(
-	$documentService,
-	__DIR__ . '/storage/tmp/recipient-portal'
-);
+$recipientPortalArchiveBuilder = new RecipientPortalArchiveBuilder($documentService);
 $recipientPortalService = new RecipientPortalService(
 	$recipientPortalRepository,
 	$mailQueueRepository,

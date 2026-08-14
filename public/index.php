@@ -213,6 +213,7 @@ $router->Get('/portal', [$recipientPortalController, 'Show']);
 $router->Post('/portal/code/request', [$recipientPortalController, 'RequestCode']);
 $router->Post('/portal/code/verify', [$recipientPortalController, 'VerifyCode']);
 $router->Get('/portal/access', [$recipientPortalController, 'Access']);
+$router->Get('/portal/document/view', [$recipientPortalController, 'ViewDocument']);
 $router->Get('/portal/document/download', [$recipientPortalController, 'DownloadDocument']);
 $router->Get('/portal/documents/download-all', [$recipientPortalController, 'DownloadAll']);
 

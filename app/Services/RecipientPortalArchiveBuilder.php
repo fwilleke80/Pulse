@@ -2,7 +2,7 @@
 
 /**
  * @file RecipientPortalArchiveBuilder.php
- * @brief Builds portable store-only ZIP archives without requiring the PHP zip extension.
+ * @brief Streams portable store-only ZIP/ZIP64 archives without requiring the PHP zip extension.
  * @author Frank Willeke
  */
 
@@ -13,226 +13,349 @@ namespace Pulse\Services;
 use RuntimeException;
 
 /**
- * @brief Creates a temporary ZIP containing one recipient delivery's immutable document snapshot.
+ * @brief Streams one recipient delivery's immutable document snapshot as a ZIP archive.
  */
 final class RecipientPortalArchiveBuilder
 {
+	private const UINT16_MAX = 0xffff;
+	private const UINT32_MAX = 0xffffffff;
+	private const COPY_CHUNK_BYTES = 1048576;
+
 	private DocumentService $_documentService;
-	private string $_temporaryDirectory;
+	private int $_bytesWritten = 0;
 
 	/**
 	 * @brief Constructs the archive builder.
 	 * @param DocumentService $documentService Private document storage resolver.
-	 * @param string $temporaryDirectory Private temporary directory.
 	 */
-	public function __construct(DocumentService $documentService, string $temporaryDirectory)
+	public function __construct(DocumentService $documentService)
 	{
 		$this->_documentService = $documentService;
-		$this->_temporaryDirectory = rtrim($temporaryDirectory, '/\\');
 	}
 
 	/**
-	 * @brief Builds a temporary archive and returns its path.
+	 * @brief Streams an archive directly to a writable output stream.
 	 * @param array<int, array<string, mixed>> $documents Recipient delivery snapshots.
-	 * @return string Absolute temporary ZIP path.
+	 * @param resource $output Writable destination such as php://output.
+	 * @return int Number of documents written to the archive.
 	 */
-	public function Build(array $documents): string
+	public function Stream(array $documents, $output): int
 	{
-		$this->EnsureTemporaryDirectory();
-		$path = tempnam($this->_temporaryDirectory, 'pulse-portal-');
-
-		if (!is_string($path) || $path === '')
+		if (!is_resource($output))
 		{
-			throw new RuntimeException('Unable to allocate recipient portal archive.');
+			throw new RuntimeException('Recipient portal ZIP output is not writable.');
 		}
 
-		$handle = fopen($path, 'w+b');
+		$entries = $this->PrepareEntries($documents);
 
-		if ($handle === false)
+		if ($entries === [])
 		{
-			@unlink($path);
-			throw new RuntimeException('Unable to open recipient portal archive.');
+			throw new RuntimeException('No recipient portal documents are available for the archive.');
 		}
 
-		try
+		$this->_bytesWritten = 0;
+		$centralEntries = [];
+		[$dosTime, $dosDate] = $this->DosDateTime();
+
+		foreach ($entries as $entry)
 		{
-			$this->WriteArchive($handle, $documents);
-			fflush($handle);
-		}
-		catch (\Throwable $throwable)
-		{
-			fclose($handle);
-			@unlink($path);
-			throw $throwable;
+			$centralEntries[] = $this->WriteEntry($output, $entry, $dosTime, $dosDate);
 		}
 
-		fclose($handle);
-		return $path;
+		$this->WriteCentralDirectory($output, $centralEntries);
+		return count($centralEntries);
 	}
 
 	/**
-	 * @brief Writes the ZIP structures and payloads.
-	 * @param resource $handle Writable archive stream.
-	 * @param array<int, array<string, mixed>> $documents Recipient snapshot documents.
+	 * @brief Resolves document payloads and safe unique archive names before any response body is streamed.
+	 * @param array<int, array<string, mixed>> $documents Recipient delivery snapshots.
+	 * @return array<int, array<string, mixed>> Prepared archive entries.
 	 */
-	private function WriteArchive($handle, array $documents): void
+	private function PrepareEntries(array $documents): array
 	{
 		$entries = [];
 		$usedNames = [];
-		[$dosTime, $dosDate] = $this->DosDateTime();
 
 		foreach ($documents as $document)
 		{
 			$name = $this->UniqueFilename($this->DocumentFilename($document), $usedNames);
-			$offset = ftell($handle);
-
-			if (!is_int($offset))
-			{
-				throw new RuntimeException('Unable to determine ZIP archive offset.');
-			}
 
 			if ((string)($document['storage_type'] ?? '') === 'text')
 			{
 				$data = (string)($document['text_content'] ?? '');
-				$size = strlen($data);
-				$crc = (int)hexdec(hash('crc32b', $data));
-				$this->WriteLocalHeader($handle, $name, $crc, $size, $dosTime, $dosDate);
-				$this->WriteAll($handle, $data);
+				$entries[] = [
+					'name' => $name,
+					'kind' => 'text',
+					'data' => $data,
+					'size' => strlen($data),
+				];
+				continue;
 			}
-			else
+
+			$filePath = $this->_documentService->ResolvePortalSnapshotFile($document);
+
+			if ($filePath === null || !is_readable($filePath))
 			{
-				$filePath = $this->_documentService->ResolvePortalSnapshotFile($document);
+				continue;
+			}
 
-				if ($filePath === null)
-				{
-					continue;
-				}
+			$fileSize = filesize($filePath);
 
-				$fileSize = filesize($filePath);
-
-				if (!is_int($fileSize) || $fileSize < 0 || $fileSize > 0xffffffff)
-				{
-					continue;
-				}
-
-				$crcHex = hash_file('crc32b', $filePath);
-
-				if (!is_string($crcHex))
-				{
-					continue;
-				}
-
-				$source = fopen($filePath, 'rb');
-
-				if ($source === false)
-				{
-					continue;
-				}
-
-				$size = $fileSize;
-				$crc = (int)hexdec($crcHex);
-				$this->WriteLocalHeader($handle, $name, $crc, $size, $dosTime, $dosDate);
-				$copied = stream_copy_to_stream($source, $handle);
-				fclose($source);
-
-				if (!is_int($copied) || $copied !== $size)
-				{
-					throw new RuntimeException('Unable to read a complete recipient portal document.');
-				}
+			if (!is_int($fileSize) || $fileSize < 0)
+			{
+				continue;
 			}
 
 			$entries[] = [
 				'name' => $name,
-				'crc' => $crc,
-				'size' => $size,
-				'offset' => $offset,
-				'time' => $dosTime,
-				'date' => $dosDate,
+				'kind' => 'file',
+				'path' => $filePath,
+				'size' => $fileSize,
 			];
 		}
 
-		$centralOffset = ftell($handle);
+		return $entries;
+	}
 
-		if (!is_int($centralOffset))
+	/**
+	 * @brief Writes one local entry and returns metadata needed by the central directory.
+	 * @param resource $output Writable archive stream.
+	 * @param array<string, mixed> $entry Prepared entry.
+	 * @return array<string, mixed> Central-directory metadata.
+	 */
+	private function WriteEntry($output, array $entry, int $dosTime, int $dosDate): array
+	{
+		$name = (string)$entry['name'];
+		$size = (int)$entry['size'];
+		$offset = $this->_bytesWritten;
+		$zip64Size = $size >= self::UINT32_MAX;
+		$versionNeeded = $zip64Size ? 45 : 20;
+		$flags = 0x0808; // UTF-8 + data descriptor.
+		$localExtra = '';
+
+		if ($zip64Size)
 		{
-			throw new RuntimeException('Unable to determine ZIP central-directory offset.');
+			$zip64Payload = $this->PackUInt64($size) . $this->PackUInt64($size);
+			$localExtra = pack('vv', 0x0001, strlen($zip64Payload)) . $zip64Payload;
 		}
+
+		$sizeField = $zip64Size ? self::UINT32_MAX : 0;
+		$localHeader = pack(
+			'VvvvvvVVVvv',
+			0x04034b50,
+			$versionNeeded,
+			$flags,
+			0,
+			$dosTime,
+			$dosDate,
+			0,
+			$sizeField,
+			$sizeField,
+			strlen($name),
+			strlen($localExtra)
+		);
+		$this->WriteAll($output, $localHeader . $name . $localExtra);
+
+		$hash = hash_init('crc32b');
+		$actualSize = 0;
+
+		if ((string)$entry['kind'] === 'text')
+		{
+			$data = (string)$entry['data'];
+			hash_update($hash, $data);
+			$this->WriteAll($output, $data);
+			$actualSize = strlen($data);
+		}
+		else
+		{
+			$source = fopen((string)$entry['path'], 'rb');
+
+			if ($source === false)
+			{
+				throw new RuntimeException('Unable to open a recipient portal document for ZIP streaming.');
+			}
+
+			try
+			{
+				while (!feof($source))
+				{
+					$chunk = fread($source, self::COPY_CHUNK_BYTES);
+
+					if ($chunk === false)
+					{
+						throw new RuntimeException('Unable to read a recipient portal document while streaming ZIP data.');
+					}
+
+					if ($chunk === '')
+					{
+						continue;
+					}
+
+					hash_update($hash, $chunk);
+					$this->WriteAll($output, $chunk);
+					$actualSize += strlen($chunk);
+				}
+			}
+			finally
+			{
+				fclose($source);
+			}
+		}
+
+		if ($actualSize !== $size)
+		{
+			throw new RuntimeException('A recipient portal document changed while its ZIP archive was being streamed.');
+		}
+
+		$crcHex = hash_final($hash);
+		$crc = (int)hexdec($crcHex);
+		$descriptor = pack('VV', 0x08074b50, $crc);
+
+		if ($zip64Size)
+		{
+			$descriptor .= $this->PackUInt64($size) . $this->PackUInt64($size);
+		}
+		else
+		{
+			$descriptor .= pack('VV', $size, $size);
+		}
+
+		$this->WriteAll($output, $descriptor);
+
+		return [
+			'name' => $name,
+			'crc' => $crc,
+			'size' => $size,
+			'offset' => $offset,
+			'time' => $dosTime,
+			'date' => $dosDate,
+		];
+	}
+
+	/**
+	 * @brief Writes the central directory and ZIP64 end structures when required.
+	 * @param resource $output Writable archive stream.
+	 * @param array<int, array<string, mixed>> $entries Written entry metadata.
+	 */
+	private function WriteCentralDirectory($output, array $entries): void
+	{
+		$centralOffset = $this->_bytesWritten;
 
 		foreach ($entries as $entry)
 		{
 			$name = (string)$entry['name'];
+			$size = (int)$entry['size'];
+			$offset = (int)$entry['offset'];
+			$zip64Size = $size >= self::UINT32_MAX;
+			$zip64Offset = $offset >= self::UINT32_MAX;
+			$zip64 = $zip64Size || $zip64Offset;
+			$extraPayload = '';
+
+			if ($zip64Size)
+			{
+				$extraPayload .= $this->PackUInt64($size) . $this->PackUInt64($size);
+			}
+
+			if ($zip64Offset)
+			{
+				$extraPayload .= $this->PackUInt64($offset);
+			}
+
+			$extra = $extraPayload !== '' ? pack('vv', 0x0001, strlen($extraPayload)) . $extraPayload : '';
+			$version = $zip64 ? 45 : 20;
 			$header = pack(
 				'VvvvvvvVVVvvvvvVV',
 				0x02014b50,
-				20,
-				20,
-				0x0800,
+				$version,
+				$version,
+				0x0808,
 				0,
 				(int)$entry['time'],
 				(int)$entry['date'],
 				(int)$entry['crc'],
-				(int)$entry['size'],
-				(int)$entry['size'],
+				$zip64Size ? self::UINT32_MAX : $size,
+				$zip64Size ? self::UINT32_MAX : $size,
 				strlen($name),
+				strlen($extra),
 				0,
 				0,
 				0,
 				0,
-				0,
-				(int)$entry['offset']
+				$zip64Offset ? self::UINT32_MAX : $offset
 			);
-			$this->WriteAll($handle, $header . $name);
+			$this->WriteAll($output, $header . $name . $extra);
 		}
 
-		$endOffset = ftell($handle);
-
-		if (!is_int($endOffset))
-		{
-			throw new RuntimeException('Unable to determine ZIP end offset.');
-		}
-
-		$centralSize = $endOffset - $centralOffset;
+		$centralSize = $this->_bytesWritten - $centralOffset;
 		$count = count($entries);
-		$this->WriteAll($handle, pack('VvvvvVVv', 0x06054b50, 0, 0, $count, $count, $centralSize, $centralOffset, 0));
-	}
+		$needsZip64 = $count >= self::UINT16_MAX
+			|| $centralSize >= self::UINT32_MAX
+			|| $centralOffset >= self::UINT32_MAX;
 
-	/** @brief Writes one local ZIP file header. @param resource $handle Archive stream. */
-	private function WriteLocalHeader($handle, string $name, int $crc, int $size, int $dosTime, int $dosDate): void
-	{
-		$header = pack(
-			'VvvvvvVVVvv',
-			0x04034b50,
-			20,
-			0x0800,
-			0,
-			$dosTime,
-			$dosDate,
-			$crc,
-			$size,
-			$size,
-			strlen($name),
-			0
+		if ($needsZip64)
+		{
+			$zip64EndOffset = $this->_bytesWritten;
+			$zip64End = pack('V', 0x06064b50)
+				. $this->PackUInt64(44)
+				. pack('vvVV', 45, 45, 0, 0)
+				. $this->PackUInt64($count)
+				. $this->PackUInt64($count)
+				. $this->PackUInt64($centralSize)
+				. $this->PackUInt64($centralOffset);
+			$this->WriteAll($output, $zip64End);
+			$this->WriteAll(
+				$output,
+				pack('VV', 0x07064b50, 0) . $this->PackUInt64($zip64EndOffset) . pack('V', 1)
+			);
+		}
+
+		$this->WriteAll(
+			$output,
+			pack(
+				'VvvvvVVv',
+				0x06054b50,
+				0,
+				0,
+				$count >= self::UINT16_MAX ? self::UINT16_MAX : $count,
+				$count >= self::UINT16_MAX ? self::UINT16_MAX : $count,
+				$centralSize >= self::UINT32_MAX ? self::UINT32_MAX : $centralSize,
+				$centralOffset >= self::UINT32_MAX ? self::UINT32_MAX : $centralOffset,
+				0
+			)
 		);
-		$this->WriteAll($handle, $header . $name);
 	}
 
-	/** @brief Writes a complete binary string or fails. @param resource $handle Output stream. */
-	private function WriteAll($handle, string $data): void
+	/** @brief Writes a complete binary string and tracks the streamed archive offset. @param resource $output Writable stream. */
+	private function WriteAll($output, string $data): void
 	{
 		$length = strlen($data);
 		$written = 0;
 
 		while ($written < $length)
 		{
-			$count = fwrite($handle, substr($data, $written));
+			$count = fwrite($output, substr($data, $written));
 
 			if (!is_int($count) || $count <= 0)
 			{
-				throw new RuntimeException('Unable to write recipient portal archive.');
+				throw new RuntimeException('Unable to stream recipient portal ZIP data.');
 			}
 
 			$written += $count;
+			$this->_bytesWritten += $count;
 		}
+	}
+
+	/** @brief Packs one non-negative integer as an unsigned little-endian 64-bit value. */
+	private function PackUInt64(int $value): string
+	{
+		if ($value < 0)
+		{
+			throw new RuntimeException('ZIP64 values cannot be negative.');
+		}
+
+		$low = $value % 0x100000000;
+		$high = intdiv($value, 0x100000000);
+		return pack('VV', $low, $high);
 	}
 
 	/** @brief Returns an archive filename based on the recipient-facing title. */
@@ -289,14 +412,5 @@ final class RecipientPortalArchiveBuilder
 		$dosTime = ((int)$parts['hours'] << 11) | ((int)$parts['minutes'] << 5) | ((int)$parts['seconds'] >> 1);
 		$dosDate = (($year - 1980) << 9) | ((int)$parts['mon'] << 5) | (int)$parts['mday'];
 		return [$dosTime, $dosDate];
-	}
-
-	/** @brief Creates the private temporary directory when necessary. */
-	private function EnsureTemporaryDirectory(): void
-	{
-		if (!is_dir($this->_temporaryDirectory) && !@mkdir($this->_temporaryDirectory, 0700, true) && !is_dir($this->_temporaryDirectory))
-		{
-			throw new RuntimeException('Unable to create recipient portal temporary directory.');
-		}
 	}
 }

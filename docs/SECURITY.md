@@ -117,13 +117,15 @@ This means a compromise of the hosting account, database, filesystem, or an unen
 - editable text documents
 - uploaded document contents
 
-Pulse 0.8.1 provides a recipient-portal invitation, authentication layer, and authenticated document delivery. Final recipient emails can contain a long-lived, recipient-specific portal URL. The raw portal token is generated randomly and stored only as a SHA-256 hash in the delivery record; the queued email body necessarily contains the raw URL until delivery, after which Pulse redacts it from the queue record.
+Pulse 0.8.2 provides a recipient-portal invitation, authentication layer, and authenticated document delivery. Final recipient emails can contain a long-lived, recipient-specific portal URL. The raw portal token is generated randomly and stored only as a SHA-256 hash in the delivery record; the queued email body necessarily contains the raw URL until delivery, after which Pulse redacts it from the queue record.
 
 Requesting portal access creates a random one-time code valid for 30 minutes. Pulse stores only a password hash of the code and redacts the raw code from the mail queue after delivery or terminal cancellation. Requesting a later code invalidates earlier unused codes. Portal pages never display the configured recipient email address. Code-request responses are intentionally generic so they do not disclose mail-account details or delivery state.
 
 Portal access can expire automatically according to the policy snapshotted for that recipient delivery, and the authenticated owner can revoke an individual delivery at any time. Expiry and revocation invalidate the portal before any authenticated page is rendered.
 
-Document listing and downloads require both an active portal invitation and a matching authenticated recipient session. Recipient document assignments, titles/descriptions, and text-document content are snapshotted when the release is staged so later monitor edits cannot change an issued delivery. File payloads remain in private non-public storage and are streamed only after authorization. Pulse still does not provide application-level encryption at rest; that remains planned work for highly sensitive deployments.
+Document listing, inline viewing, previews, and downloads require both an active portal invitation and a matching authenticated recipient session. Recipient document assignments, titles/descriptions, and text-document content are snapshotted when the release is staged so later monitor edits cannot change an issued delivery. File payloads remain in private non-public storage and are streamed only after authorization. Inline rendering is restricted to a passive MIME allowlist; potentially active formats such as SVG or HTML remain download-only.
+
+**Download all** streams a store-only ZIP/ZIP64 archive directly from authorized private files. It does not create a second complete temporary copy and does not load the delivery into PHP memory. Pulse still does not provide application-level encryption at rest; that remains planned work for highly sensitive deployments.
 
 Application-level encryption will reduce the risk from database dumps, filesystem copies, and backups, but it cannot completely protect against an attacker who controls the running PHP account and can read both application memory and encryption keys. Server and hosting security remain part of the overall threat model.
 

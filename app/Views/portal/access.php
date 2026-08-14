@@ -1,7 +1,7 @@
 <?php
 /**
  * @file access.php
- * @brief Authenticated recipient portal with the immutable released-document snapshot.
+ * @brief Calm authenticated recipient portal with a visual immutable document snapshot.
  * @author Frank Willeke
  */
 declare(strict_types=1);
@@ -10,14 +10,12 @@ declare(strict_types=1);
 /** @var array<int, array<string, mixed>> $documents */
 /** @var string $token */
 /** @var string $base_url */
+/** @var int $availableDocumentCount */
+/** @var int $totalDownloadBytes */
 
-$availableDocumentCount = count(array_filter(
-	$documents,
-	static fn (array $document): bool => !empty($document['download_available'])
-));
-$formatSize = static function (?int $bytes): string
+$formatSize = static function (int $bytes): string
 {
-	$bytes = max(0, (int)$bytes);
+	$bytes = max(0, $bytes);
 
 	if ($bytes < 1024)
 	{
@@ -39,28 +37,20 @@ $formatSize = static function (?int $bytes): string
 
 ob_start();
 ?>
-<div class="portal-delivery-heading">
-	<div>
-		<h1><?= e__('portal.access.heading') ?></h1>
-		<p><?= e__('portal.access.intro', ['owner' => (string)$delivery['owner_name']]) ?></p>
-	</div>
+<header class="portal-delivery-hero">
+	<p class="portal-delivery-eyebrow"><?= e__('portal.access.eyebrow') ?></p>
+	<h1><?= e__('portal.access.heading_owner', ['owner' => (string)$delivery['owner_name']]) ?></h1>
+	<p class="portal-delivery-intro"><?= e__('portal.access.intro') ?></p>
 	<?php if (!empty($delivery['portal_expires_at'])): ?>
-		<span class="portal-expiry-badge"><?= e__('portal.access.available_until', ['date' => format_datetime((string)$delivery['portal_expires_at'])]) ?></span>
+		<p class="portal-availability-note"><?= e__('portal.access.available_until', ['date' => format_datetime((string)$delivery['portal_expires_at'])]) ?></p>
 	<?php else: ?>
-		<span class="portal-expiry-badge"><?= e__('portal.access.no_expiry') ?></span>
+		<p class="portal-availability-note"><?= e__('portal.access.no_expiry') ?></p>
 	<?php endif; ?>
-</div>
-
-<div class="configuration-block">
-	<dl class="recipient-summary-list">
-		<div><dt><?= e__('portal.access.from') ?></dt><dd><?= e((string)$delivery['owner_name']) ?></dd></div>
-		<div><dt><?= e__('portal.access.monitor') ?></dt><dd><?= e((string)$delivery['monitor_name']) ?></dd></div>
-	</dl>
-</div>
+</header>
 
 <?php if (trim((string)($delivery['message_body'] ?? '')) !== ''): ?>
 	<section class="portal-message-card" aria-labelledby="portal-message-heading">
-		<h2 id="portal-message-heading"><?= e__('portal.access.message.heading') ?></h2>
+		<h2 id="portal-message-heading"><?= e__('portal.access.message.heading_owner', ['owner' => (string)$delivery['owner_name']]) ?></h2>
 		<?php if (trim((string)($delivery['message_subject'] ?? '')) !== ''): ?>
 			<strong class="portal-message-subject"><?= e((string)$delivery['message_subject']) ?></strong>
 		<?php endif; ?>
@@ -69,13 +59,19 @@ ob_start();
 <?php endif; ?>
 
 <section class="portal-documents-section" aria-labelledby="portal-documents-heading">
-	<div class="section-heading portal-documents-heading-row">
+	<div class="portal-documents-heading-row">
 		<div>
 			<h2 id="portal-documents-heading"><?= e__('portal.documents.heading') ?></h2>
-			<p><?= e__('portal.documents.intro', ['count' => count($documents)]) ?></p>
+			<p><?= e__('portal.documents.intro_warm', ['count' => count($documents)]) ?></p>
 		</div>
 		<?php if ($availableDocumentCount > 0): ?>
-			<a class="button-link" href="<?= e($base_url) ?>/portal/documents/download-all?token=<?= e(rawurlencode($token)) ?>"><?= e__('portal.documents.download_all') ?></a>
+			<a class="btn-primary portal-download-all" href="<?= e($base_url) ?>/portal/documents/download-all?token=<?= e(rawurlencode($token)) ?>">
+				<span><?= e__('portal.documents.download_all') ?></span>
+				<small><?= e__('portal.documents.download_all_summary', [
+					'count' => $availableDocumentCount,
+					'size' => $formatSize($totalDownloadBytes),
+				]) ?></small>
+			</a>
 		<?php endif; ?>
 	</div>
 
@@ -84,36 +80,41 @@ ob_start();
 			<p><?= e__('portal.documents.none') ?></p>
 		</div>
 	<?php else: ?>
-		<div class="portal-document-list">
+		<div class="portal-document-grid">
 			<?php foreach ($documents as $document): ?>
+				<?php
+				$viewUrl = $base_url . '/portal/document/view?token=' . rawurlencode($token) . '&document=' . (int)$document['id'];
+				$downloadUrl = $base_url . '/portal/document/download?token=' . rawurlencode($token) . '&document=' . (int)$document['id'];
+				?>
 				<article class="portal-document-card">
-					<div class="portal-document-main">
-						<div class="portal-document-title-row">
-							<h3><?= e((string)$document['title']) ?></h3>
-							<span class="mini-status"><?= e__((string)$document['storage_type'] === 'text' ? 'portal.documents.type.text' : 'portal.documents.type.file') ?></span>
+					<?php if (!empty($document['image_preview'])): ?>
+						<a class="portal-document-preview portal-document-preview-image" href="<?= e($viewUrl) ?>" target="_blank" rel="noopener noreferrer" aria-label="<?= e__('portal.documents.view_named', ['name' => (string)$document['title']]) ?>">
+							<img src="<?= e($viewUrl) ?>" alt="<?= e((string)$document['title']) ?>" loading="lazy" decoding="async">
+						</a>
+					<?php else: ?>
+						<div class="portal-document-preview portal-document-preview-type" aria-hidden="true">
+							<span><?= e((string)$document['type_label']) ?></span>
 						</div>
+					<?php endif; ?>
+
+					<div class="portal-document-content">
+						<h3><?= e((string)$document['title']) ?></h3>
 						<?php if (trim((string)($document['description'] ?? '')) !== ''): ?>
 							<p class="portal-document-description"><?= nl2br(e((string)$document['description'])) ?></p>
 						<?php endif; ?>
 						<div class="portal-document-meta">
-							<?php if ((string)$document['storage_type'] === 'file'): ?>
-								<span><?= e($formatSize(isset($document['file_size_bytes']) ? (int)$document['file_size_bytes'] : null)) ?></span>
-								<?php if (!empty($document['original_filename'])): ?>
-									<span><?= e__('portal.documents.original_file', ['name' => (string)$document['original_filename']]) ?></span>
-								<?php endif; ?>
-							<?php endif; ?>
+							<span><?= e((string)$document['type_label']) ?></span>
+							<span aria-hidden="true">·</span>
+							<span><?= e($formatSize((int)$document['size_bytes'])) ?></span>
 						</div>
-
-						<?php if ((string)$document['storage_type'] === 'text' && trim((string)($document['text_content'] ?? '')) !== ''): ?>
-							<details class="portal-text-document">
-								<summary><?= e__('portal.documents.read_text') ?></summary>
-								<div class="portal-text-content"><?= nl2br(e((string)$document['text_content'])) ?></div>
-							</details>
-						<?php endif; ?>
 					</div>
+
 					<div class="portal-document-actions">
+						<?php if (!empty($document['view_available'])): ?>
+							<a class="button-link" href="<?= e($viewUrl) ?>" target="_blank" rel="noopener noreferrer"><?= e__('portal.documents.view') ?></a>
+						<?php endif; ?>
 						<?php if (!empty($document['download_available'])): ?>
-							<a class="button-link" href="<?= e($base_url) ?>/portal/document/download?token=<?= e(rawurlencode($token)) ?>&amp;document=<?= (int)$document['id'] ?>"><?= e__('portal.documents.download') ?></a>
+							<a class="button-link" href="<?= e($downloadUrl) ?>"><?= e__('portal.documents.download') ?></a>
 						<?php else: ?>
 							<span class="table-warning table-warning-critical"><?= e__('portal.documents.unavailable') ?></span>
 						<?php endif; ?>
@@ -121,6 +122,10 @@ ob_start();
 				</article>
 			<?php endforeach; ?>
 		</div>
+	<?php endif; ?>
+
+	<?php if ($availableDocumentCount > 0 && $totalDownloadBytes >= 536870912): ?>
+		<p class="form-hint portal-large-download-note"><?= e__('portal.documents.large_download_note') ?></p>
 	<?php endif; ?>
 </section>
 

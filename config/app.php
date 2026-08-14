@@ -39,7 +39,7 @@ return [
 		'password_minimum_length' => Environment::GetInt('PULSE_PASSWORD_MINIMUM_LENGTH', 12, 8, 128),
 	],
 	'uploads' => [
-		'maximum_bytes' => Environment::GetInt('PULSE_UPLOAD_MAXIMUM_BYTES', 26214400, 1024, 104857600),
+		'maximum_bytes' => Environment::GetInt('PULSE_UPLOAD_MAXIMUM_BYTES', 26214400, 1024),
 		'allowed_mime_types' => Environment::GetList('PULSE_UPLOAD_ALLOWED_MIME_TYPES', [
 			'application/pdf',
 			'application/rtf',

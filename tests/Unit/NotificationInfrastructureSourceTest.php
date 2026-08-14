@@ -203,4 +203,22 @@ class NotificationInfrastructureSourceTest extends TestCase
 		self::assertStringContainsString('class="btn-secondary" disabled', $profile);
 		self::assertStringContainsString('button:disabled', $styles);
 	}
+	public function testRecipientPortalUsesVisualCardsSafeViewsAndStreamingZip64(): void
+	{
+		$routes = (string)file_get_contents(dirname(__DIR__, 2) . '/public/index.php');
+		$controller = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Controllers/RecipientPortalController.php');
+		$view = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Views/portal/access.php');
+		$archive = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Services/RecipientPortalArchiveBuilder.php');
+
+		self::assertStringContainsString("Get('/portal/document/view'", $routes);
+		self::assertStringContainsString('InlineContentType', $controller);
+		self::assertStringNotContainsString("'image/svg+xml'", $controller);
+		self::assertStringContainsString('portal-document-grid', $view);
+		self::assertStringContainsString('portal-document-preview-image', $view);
+		self::assertStringContainsString('loading="lazy"', $view);
+		self::assertStringContainsString('PackUInt64', $archive);
+		self::assertStringContainsString('0x06064b50', $archive);
+		self::assertStringNotContainsString('tempnam', $archive);
+	}
+
 }

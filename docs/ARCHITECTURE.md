@@ -205,7 +205,7 @@ Uploaded document content is:
 
 Editable text documents and message text are stored in the database. Uploaded-file records also store an editable display title and optional description separately from the immutable internal storage basename.
 
-This private storage model prevents direct public file access, but it is not encryption. Pulse 0.8.1 adds authenticated recipient document delivery; encrypted document/message storage remains later work.
+This private storage model prevents direct public file access, but it is not encryption. Pulse 0.8.2 provides authenticated recipient document delivery and a visual recipient download page; encrypted document/message storage remains later work.
 
 
 ## Recipient portal and document delivery
@@ -215,6 +215,10 @@ Each staged `recipient_release_deliveries` row receives an independent 256-bit r
 `recipient_portal_codes` stores short-lived authentication challenges. Codes are human-readable random values, valid for 30 minutes and one use, while only `password_hash()` output is persisted. Requesting a replacement invalidates earlier unused codes. Successful verification establishes a session entry scoped to the hashed portal token. Every authenticated portal request still revalidates the underlying delivery, so owner revocation or automatic expiry immediately makes an existing browser session unusable.
 
 The public pre-authentication portal intentionally does not reveal the configured recipient email address, document metadata, or document content. After code verification, Pulse resolves the immutable `recipient_delivery_documents` snapshot for that delivery. Every document request rechecks both the active delivery token and the matching recipient session before streaming content. Text content and recipient-facing metadata are snapshotted at release; uploaded files remain in private storage and are referenced by immutable stored basenames.
+
+The authenticated presentation layer uses reusable document cards and does not expose internal monitor-management controls. An authorization-checked inline-view endpoint is limited to passive MIME types (PDF, plain text, and common raster images); active or unknown formats remain attachment-only. Image previews use that same endpoint and therefore require the same recipient session as explicit downloads.
+
+Bulk download is implemented by `RecipientPortalArchiveBuilder` as a direct store-only ZIP stream. It maintains only central-directory metadata in memory, reads file payloads in bounded chunks, and emits ZIP64 structures when classic ZIP count, size, or offset limits are exceeded. The implementation does not require the PHP `zip` extension and does not create a second full-size temporary archive. Long-running document responses release the PHP session lock before payload streaming so one recipient download does not serialize every other portal request from that browser.
 
 ## Localized monitor mail templates
 

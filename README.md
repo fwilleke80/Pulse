@@ -16,7 +16,7 @@ You tell Pulse how often you expect to check in. As long as you continue to do s
 ## Installation
 
 1. Extract the complete source archive locally into the Pulse project directory.
-2. Before uploading any PHP files, run `python3 tools/write_version.py`. This generates `config/version.php`; upload that generated file with the application. In a tagged Git checkout the script derives the version from Git, while a packaged archive retains its packaged version. Set `PULSE_VERSION=0.8.1` for an explicit release value when needed.
+2. Before uploading any PHP files, run `python3 tools/write_version.py`. This generates `config/version.php`; upload that generated file with the application. In a tagged Git checkout the script derives the version from Git, while a packaged archive retains its packaged version. Set `PULSE_VERSION=0.8.2` for an explicit release value when needed.
 3. Copy `.env.example` to `.env` and enter the real URL and database credentials.
 4. Create an empty database.
 5. Upload the project and ensure `storage/logs`, `storage/tmp`, and `storage/uploads` are writable by PHP but not publicly accessible.

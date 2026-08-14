@@ -167,11 +167,30 @@ final class RecipientPortalController extends BaseController
 		}
 
 		$documents = $this->_portalService->DocumentsForDelivery((int)$delivery['delivery_id']);
+		$totalDownloadBytes = 0;
+		$availableDocumentCount = 0;
 
 		foreach ($documents as &$document)
 		{
-			$document['download_available'] = (string)($document['storage_type'] ?? '') === 'text'
-				|| $this->_documentService->ResolvePortalSnapshotFile($document) !== null;
+			$isText = (string)($document['storage_type'] ?? '') === 'text';
+			$filePath = $isText ? null : $this->_documentService->ResolvePortalSnapshotFile($document);
+			$downloadAvailable = $isText || $filePath !== null;
+			$sizeBytes = $isText
+				? strlen((string)($document['text_content'] ?? ''))
+				: max(0, (int)($document['file_size_bytes'] ?? 0));
+			$inlineType = $downloadAvailable ? $this->InlineContentType($document) : null;
+
+			$document['download_available'] = $downloadAvailable;
+			$document['view_available'] = $inlineType !== null;
+			$document['image_preview'] = $inlineType !== null && str_starts_with($inlineType, 'image/');
+			$document['size_bytes'] = $sizeBytes;
+			$document['type_label'] = $this->DocumentTypeLabel($document);
+
+			if ($downloadAvailable)
+			{
+				$availableDocumentCount++;
+				$totalDownloadBytes += $sizeBytes;
+			}
 		}
 		unset($document);
 
@@ -179,6 +198,8 @@ final class RecipientPortalController extends BaseController
 			'delivery' => $this->AuthenticatedDelivery($delivery),
 			'documents' => $documents,
 			'token' => $token,
+			'availableDocumentCount' => $availableDocumentCount,
+			'totalDownloadBytes' => $totalDownloadBytes,
 		]);
 	}
 
@@ -197,6 +218,7 @@ final class RecipientPortalController extends BaseController
 		}
 
 		$filename = $this->DocumentDownloadFilename($document);
+		$this->PrepareForStreaming();
 
 		if ((string)$document['storage_type'] === 'text')
 		{
@@ -228,7 +250,59 @@ final class RecipientPortalController extends BaseController
 		exit;
 	}
 
-	/** @brief Streams every available delivery document as one portable ZIP archive. */
+	/** @brief Serves a safely inline-viewable document snapshot after checking recipient authorization. */
+	public function ViewDocument(): void
+	{
+		[, $delivery] = $this->RequireAuthenticatedDelivery();
+		$document = $this->_portalService->DocumentForDelivery(
+			(int)$delivery['delivery_id'],
+			$this->_request->QueryInt('document')
+		);
+
+		if (!is_array($document))
+		{
+			$this->DocumentNotFound();
+		}
+
+		$contentType = $this->InlineContentType($document);
+
+		if ($contentType === null)
+		{
+			$this->DocumentNotFound();
+		}
+
+		$filename = $this->DocumentDownloadFilename($document);
+		$this->PrepareForStreaming();
+
+		if ((string)$document['storage_type'] === 'text')
+		{
+			$content = (string)($document['text_content'] ?? '');
+			$this->SendInlineHeaders($filename, $contentType);
+			header('Content-Length: ' . strlen($content));
+			echo $content;
+			exit;
+		}
+
+		$path = $this->_documentService->ResolvePortalSnapshotFile($document);
+
+		if ($path === null)
+		{
+			$this->DocumentNotFound();
+		}
+
+		$this->SendInlineHeaders($filename, $contentType);
+		$fileSize = filesize($path);
+
+		if (is_int($fileSize))
+		{
+			header('Content-Length: ' . $fileSize);
+		}
+
+		readfile($path);
+		exit;
+	}
+
+	/** @brief Streams every available delivery document as one portable ZIP/ZIP64 archive. */
 	public function DownloadAll(): void
 	{
 		[, $delivery] = $this->RequireAuthenticatedDelivery();
@@ -244,19 +318,35 @@ final class RecipientPortalController extends BaseController
 			$this->DocumentNotFound();
 		}
 
-		$archive = $this->_archiveBuilder->Build($available);
-		$filename = $this->SafeFilename((string)$delivery['monitor_name']) . '-documents.zip';
+		$filename = $this->SafeFilename((string)$delivery['owner_name']) . '-documents.zip';
+		$this->PrepareForStreaming();
 		$this->SendDownloadHeaders($filename, 'application/zip');
-		$fileSize = filesize($archive);
+		header('X-Accel-Buffering: no');
 
-		if (is_int($fileSize))
+		$output = fopen('php://output', 'wb');
+
+		if ($output === false)
 		{
-			header('Content-Length: ' . $fileSize);
+			exit;
 		}
 
-		$this->_portalService->RecordDownloadAll((int)$delivery['delivery_id'], count($available));
-		readfile($archive);
-		@unlink($archive);
+		try
+		{
+			$writtenCount = $this->_archiveBuilder->Stream($available, $output);
+			$this->_portalService->RecordDownloadAll((int)$delivery['delivery_id'], $writtenCount);
+		}
+		catch (Throwable $throwable)
+		{
+			$this->_logger->Error('Recipient download-all stream failed', [
+				'delivery_id' => (int)$delivery['delivery_id'],
+				'exception' => get_class($throwable),
+			]);
+		}
+		finally
+		{
+			fclose($output);
+		}
+
 		exit;
 	}
 
@@ -321,6 +411,80 @@ final class RecipientPortalController extends BaseController
 		$filename = preg_replace('~[\\/\x00-\x1F\x7F]+~u', '-', trim($filename)) ?? '';
 		$filename = trim($filename, " .\t\n\r\0\x0B-");
 		return $filename !== '' ? $filename : 'document';
+	}
+
+	/** @brief Releases the PHP session lock and output buffers before a potentially long recipient stream. */
+	private function PrepareForStreaming(): void
+	{
+		if (session_status() === PHP_SESSION_ACTIVE)
+		{
+			session_write_close();
+		}
+
+		@set_time_limit(0);
+
+		while (ob_get_level() > 0)
+		{
+			ob_end_clean();
+		}
+	}
+
+	/** @brief Returns a safe inline content type, or null for download-only formats. */
+	private function InlineContentType(array $document): ?string
+	{
+		if ((string)($document['storage_type'] ?? '') === 'text')
+		{
+			return 'text/plain; charset=utf-8';
+		}
+
+		$mimeType = strtolower(trim((string)($document['mime_type'] ?? '')));
+		$allowed = [
+			'application/pdf',
+			'image/gif',
+			'image/jpeg',
+			'image/png',
+			'image/webp',
+			'image/avif',
+			'text/plain',
+		];
+
+		return in_array($mimeType, $allowed, true) ? $mimeType : null;
+	}
+
+	/** @brief Returns a compact recipient-facing file-type label. */
+	private function DocumentTypeLabel(array $document): string
+	{
+		if ((string)($document['storage_type'] ?? '') === 'text')
+		{
+			return 'TXT';
+		}
+
+		$extension = strtoupper(pathinfo((string)($document['original_filename'] ?? ''), PATHINFO_EXTENSION));
+
+		if ($extension !== '')
+		{
+			return substr($extension, 0, 8);
+		}
+
+		$mimeType = strtolower((string)($document['mime_type'] ?? ''));
+		return match ($mimeType)
+		{
+			'application/pdf' => 'PDF',
+			'image/jpeg' => 'JPG',
+			'image/png' => 'PNG',
+			default => __('portal.documents.type.file'),
+		};
+	}
+
+	/** @brief Emits non-cacheable inline-view headers for passive content types only. */
+	private function SendInlineHeaders(string $filename, string $contentType): void
+	{
+		$asciiFilename = preg_replace('/[^A-Za-z0-9._ -]/', '_', $filename) ?: 'document';
+		header('Content-Type: ' . $contentType);
+		header('Content-Disposition: inline; filename="' . str_replace('"', '', $asciiFilename) . '"; filename*=UTF-8\'\'' . rawurlencode($filename));
+		header('Cache-Control: no-store, private');
+		header('Pragma: no-cache');
+		header('X-Content-Type-Options: nosniff');
 	}
 
 	/** @brief Emits non-cacheable attachment headers. */

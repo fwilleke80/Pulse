@@ -199,7 +199,7 @@ Pulse supports two kinds of monitor documents:
 
 You can assign documents to individual recipients from the recipient configuration page or document form. Uploaded files have a separate display title and optional short description. Both can be edited later without renaming or moving the private stored file.
 
-The default upload policy accepts PDF, RTF, OpenDocument Text, Word `.docx`, JPEG, PNG, and plain text files up to 25 MiB. The server administrator can change the upload limits and MIME allowlist in `.env`.
+The default upload policy accepts PDF, RTF, OpenDocument Text, Word `.docx`, JPEG, PNG, and plain text files up to 25 MiB. The server administrator can change the upload limit and MIME allowlist in `.env`; larger configured limits are also constrained by PHP and web-server upload settings such as `upload_max_filesize` and `post_max_size`.
 
 Pulse inspects the uploaded content rather than trusting the filename. Stored files receive internal names and are not served directly from the public web directory.
 
@@ -209,13 +209,15 @@ A final recipient notification contains that recipient's private `{url}`. Openin
 
 Access codes are sent to the configured recipient address without displaying that address on the portal page. A code is valid for 30 minutes, can be used once, and is replaced when a later code is successfully requested. Pulse stores only a password hash of the code. After successful verification, the current browser receives a recipient-portal session governed by the normal Pulse session idle and absolute timeouts.
 
-The authenticated portal shows the released message and only the documents assigned to that recipient when the release was staged. File documents show their recipient-facing title and description and can be downloaded individually. Text documents can be read in the portal or downloaded as text files. **Download all** produces a ZIP containing every currently available document in that delivery.
+The authenticated portal is intentionally recipient-facing rather than administrative. It starts with the delivery owner and released personal message, followed by a responsive grid of the documents assigned to that recipient when the release was staged. Each card shows its recipient-facing title, description, file type, size, and download action. Safe passive formats can also be viewed directly: common raster images appear as lazy-loaded previews, while PDF, supported images, and plain text get a **View** action. Active formats such as HTML or SVG are not rendered inline.
+
+**Download all** shows the number and combined size of the available documents and streams a store-only ZIP/ZIP64 archive directly to the recipient. Pulse does not first build a second full-size temporary archive, so PHP memory and private temporary-storage use stay essentially independent of the total delivery size. Very large transfers are still subject to the hosting server, reverse proxy, network connection, and browser timeouts; individual downloads remain available if a bulk transfer is interrupted.
 
 The recipient's document set is a release snapshot. Later changes to monitor assignments, document titles/descriptions, or text documents do not silently rewrite an already released delivery. Uploaded file payloads are immutable after upload; if an editable source document is removed while a released delivery still references its stored file, Pulse retains that private file for the delivery.
 
 Under **Messages & documents**, choose how long new recipient portals remain available after the final notification is successfully sent: 30 days, 90 days, one year, a custom duration, or no automatic expiry. The owner can revoke an individual released portal from that recipient's delivery history. Existing deliveries keep the lifetime snapshotted when they were staged.
 
-Recipient-side **Close access permanently** is not part of 0.8.1 yet. It is intended only for deliveries without automatic expiry and will use a deliberately guarded confirmation flow.
+Recipient-side **Close access permanently** is not part of 0.8.2 yet. It is intended only for deliveries without automatic expiry and will use a deliberately guarded confirmation flow.
 
 Uploaded files, editable text documents, and recipient messages are also not encrypted at rest yet. Do not use the current release as storage for final highly sensitive secrets or cryptographic recovery material.
 
