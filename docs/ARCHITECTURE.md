@@ -205,8 +205,16 @@ Uploaded document content is:
 
 Editable text documents and message text are stored in the database. Uploaded-file records also store an editable display title and optional description separately from the immutable internal storage basename.
 
-This private storage model prevents direct public file access, but it is not encryption. The current release does not yet provide encrypted document/message storage or recipient document delivery.
+This private storage model prevents direct public file access, but it is not encryption. Pulse 0.8.1 adds authenticated recipient document delivery; encrypted document/message storage remains later work.
 
+
+## Recipient portal and document delivery
+
+Each staged `recipient_release_deliveries` row receives an independent 256-bit random portal token. Only its SHA-256 hash is stored with the delivery; the raw token exists in the outgoing recipient email until that queue item is delivered, then the queue body is redacted. Portal availability is snapshotted per delivery and its expiry clock begins only when the final recipient notification is successfully accepted for delivery.
+
+`recipient_portal_codes` stores short-lived authentication challenges. Codes are human-readable random values, valid for 30 minutes and one use, while only `password_hash()` output is persisted. Requesting a replacement invalidates earlier unused codes. Successful verification establishes a session entry scoped to the hashed portal token. Every authenticated portal request still revalidates the underlying delivery, so owner revocation or automatic expiry immediately makes an existing browser session unusable.
+
+The public pre-authentication portal intentionally does not reveal the configured recipient email address, document metadata, or document content. After code verification, Pulse resolves the immutable `recipient_delivery_documents` snapshot for that delivery. Every document request rechecks both the active delivery token and the matching recipient session before streaming content. Text content and recipient-facing metadata are snapshotted at release; uploaded files remain in private storage and are referenced by immutable stored basenames.
 
 ## Localized monitor mail templates
 

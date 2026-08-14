@@ -12,6 +12,8 @@ declare(strict_types=1);
 /** @var array<int> $assignedContactIds */
 /** @var array<int> $safetyContactIds */
 /** @var array<int, array<string, mixed>> $monitorContacts */
+/** @var array<int, array{source: string, locale: string, issues: array<int, string>}> $recipientConfigurationIssues */
+/** @var int $defaultRecipientTemplateIssueCount */
 /** @var array<int, array<string, mixed>> $documents */
 /** @var array<int, array<string, string>> $messageOverrides */
 /** @var array<string, array<string, array{subject: string, body_text: string}>> $mailTemplates */
@@ -28,7 +30,26 @@ $uncheckedContactCount = count(array_filter(
 ));
 $currentStatus = monitor_status($monitor);
 $messageOverrideCount = count($messageOverrides);
-$hasCompleteMessageCoverage = true;
+$portalExpiryDays = isset($monitor['recipient_portal_expiry_days']) ? (int)$monitor['recipient_portal_expiry_days'] : null;
+$portalExpiryMode = $portalExpiryDays === null
+	? 'none'
+	: (in_array($portalExpiryDays, [30, 90, 365], true) ? (string)$portalExpiryDays : 'custom');
+$recipientConfigurationWarningCount = count($recipientConfigurationIssues);
+$recipientMessageWarningCount = max(0, (int)$defaultRecipientTemplateIssueCount);
+
+foreach ($recipientConfigurationIssues as $configurationIssue)
+{
+	foreach ((array)($configurationIssue['issues'] ?? []) as $issueCode)
+	{
+		if ($issueCode !== 'unchecked_recipient')
+		{
+			$recipientMessageWarningCount++;
+			break;
+		}
+	}
+}
+
+$hasCompleteMessageCoverage = $recipientMessageWarningCount === 0;
 $tabDefinitions = [
 	'schedule' => 'monitors.tabs.schedule',
 	'recipients' => 'monitors.tabs.recipients',
@@ -71,6 +92,14 @@ ob_start();
 			>
 				<span class="tab-number"><?= $tabNumber ?></span>
 				<span class="tab-label"><?= e__($translationKey) ?></span>
+				<?php
+				$tabHasWarning = ($tabName === 'recipients' && $recipientConfigurationWarningCount > 0)
+					|| ($tabName === 'messages' && $recipientMessageWarningCount > 0)
+					|| ($tabName === 'review' && $recipientConfigurationWarningCount > 0);
+				?>
+				<?php if ($tabHasWarning): ?>
+					<span class="tab-warning-indicator" title="<?= e__('monitors.tabs.configuration_warning') ?>" aria-label="<?= e__('monitors.tabs.configuration_warning') ?>">!</span>
+				<?php endif; ?>
 			</a>
 		<?php endforeach; ?>
 	</div>
@@ -124,6 +153,7 @@ ob_start();
 				<div class="recipient-overview-list">
 					<?php foreach ($monitorContacts as $monitorContact): ?>
 						<?php $override = $messageOverrides[(int)$monitorContact['id']] ?? null; ?>
+					<?php $configurationIssue = $recipientConfigurationIssues[(int)$monitorContact['id']] ?? null; ?>
 						<article class="recipient-overview-card">
 							<div class="recipient-overview-identity">
 								<strong><?= e((string)$monitorContact['name']) ?></strong>
@@ -137,6 +167,25 @@ ob_start();
 									<span class="mini-status mini-status-<?= e((string)$monitorContact['latest_delivery_status']) ?>"><?= e__('recipients.delivery.status.' . (string)$monitorContact['latest_delivery_status']) ?></span>
 								<?php endif; ?>
 							</div>
+							<?php if (is_array($configurationIssue)): ?>
+								<div class="recipient-overview-warning" role="alert">
+									<?php foreach ((array)$configurationIssue['issues'] as $issueCode): ?>
+										<?php if ($issueCode === 'recipient_portal_url_missing'): ?>
+											<?php if ((string)$configurationIssue['source'] === 'personal'): ?>
+												<span><?= e__('recipients.overview.issue.url_missing.personal') ?></span>
+											<?php else: ?>
+												<span><?= e__('recipients.overview.issue.url_missing.default', ['language' => notification_language_name((string)$configurationIssue['locale'])]) ?></span>
+											<?php endif; ?>
+										<?php elseif ($issueCode === 'unchecked_recipient'): ?>
+											<span><?= e__('recipients.overview.issue.unchecked') ?></span>
+										<?php elseif ($issueCode === 'incomplete_message'): ?>
+											<span><?= e__('recipients.overview.issue.incomplete') ?></span>
+										<?php elseif ($issueCode === 'recipient_portal_url_in_subject'): ?>
+											<span><?= e__('recipients.overview.issue.url_in_subject') ?></span>
+										<?php endif; ?>
+									<?php endforeach; ?>
+								</div>
+							<?php endif; ?>
 							<a class="button-link" href="<?= e($base_url) ?>/monitors/recipients/edit?id=<?= (int)$monitorContact['id'] ?>"><?= e__('recipients.overview.edit') ?></a>
 						</article>
 					<?php endforeach; ?>
@@ -212,18 +261,38 @@ ob_start();
 							<?php $templateFieldLocale = language_field_suffix($templateLocale); ?>
 							<?php $recipientTemplate = $mailTemplates['recipient_default'][$templateLocale] ?? ['subject' => '', 'body_text' => '']; ?>
 							<?php $recipientDefault = $mailDefaults['recipient_default'][$templateLocale] ?? ['subject' => '', 'body_text' => '']; ?>
-							<div class="language-template-panel" data-language-panel="<?= e($templateLocale) ?>">
+							<?php $recipientTemplateBody = trim((string)$recipientTemplate['body_text']); ?>
+							<?php $recipientTemplateUrlMissing = $recipientTemplateBody !== '' && !str_contains($recipientTemplateBody, '{url}'); ?>
+							<?php
+							$recipientTemplateUsers = array_values(array_map(
+								static fn (array $contact): string => (string)$contact['name'],
+								array_filter(
+									$monitorContacts,
+									static fn (array $contact): bool => (string)($contact['notification_locale'] ?? '') === $templateLocale
+										&& !isset($messageOverrides[(int)$contact['id']])
+								)
+							));
+							?>
+							<div class="language-template-panel" data-language-panel="<?= e($templateLocale) ?>" data-recipient-template-validation data-empty-valid="true">
 								<label for="recipient_default_subject_<?= e($templateFieldLocale) ?>"><?= e__('monitors.messages.subject') ?></label>
 								<input type="text" id="recipient_default_subject_<?= e($templateFieldLocale) ?>" name="recipient_default_subject_<?= e($templateFieldLocale) ?>" value="<?= e((string)$recipientTemplate['subject']) ?>">
 
 								<label for="recipient_default_body_<?= e($templateFieldLocale) ?>"><?= e__('monitors.messages.body') ?></label>
-								<textarea id="recipient_default_body_<?= e($templateFieldLocale) ?>" name="recipient_default_body_<?= e($templateFieldLocale) ?>" rows="8"><?= e((string)$recipientTemplate['body_text']) ?></textarea>
+								<textarea id="recipient_default_body_<?= e($templateFieldLocale) ?>" name="recipient_default_body_<?= e($templateFieldLocale) ?>" rows="8" data-recipient-template-body><?= e((string)$recipientTemplate['body_text']) ?></textarea>
+								<div class="template-validation-warning" role="alert" data-recipient-url-warning<?= $recipientTemplateUrlMissing ? '' : ' hidden' ?>>
+									<strong><?= e__('mail.validation.portal_url_missing.heading') ?></strong>
+									<?= e__('monitors.messages.portal_url_missing_warning', ['language' => notification_language_name($templateLocale)]) ?>
+									<?php if ($recipientTemplateUsers !== []): ?>
+										<small><?= e__('monitors.messages.portal_url_missing_recipients', ['recipients' => implode(', ', $recipientTemplateUsers)]) ?></small>
+									<?php endif; ?>
+								</div>
 								<p class="form-hint placeholder-help">
 									<?= e__('monitors.messages.placeholders') ?>
 									<code>{app}</code> — <?= e__('mail.placeholders.app') ?>;
 									<code>{name}</code> — <?= e__('mail.placeholders.name') ?>;
 									<code>{owner}</code> — <?= e__('mail.placeholders.owner') ?>;
-									<code>{monitor}</code> — <?= e__('mail.placeholders.monitor') ?>.
+									<code>{monitor}</code> — <?= e__('mail.placeholders.monitor') ?>;
+									<code>{url}</code> — <?= e__('mail.placeholders.recipient_url') ?>.
 								</p>
 								<p class="form-hint"><?= e__('mail.templates.empty_uses_default') ?></p>
 
@@ -236,6 +305,24 @@ ob_start();
 								</details>
 							</div>
 						<?php endforeach; ?>
+					</div>
+
+					<div class="configuration-block portal-expiry-settings" data-portal-expiry>
+						<h3><?= e__('monitors.messages.portal_expiry.heading') ?></h3>
+						<p class="form-hint"><?= e__('monitors.messages.portal_expiry.hint') ?></p>
+						<label for="recipient_portal_expiry_mode"><?= e__('monitors.messages.portal_expiry.label') ?></label>
+						<select id="recipient_portal_expiry_mode" name="recipient_portal_expiry_mode" data-portal-expiry-mode>
+							<option value="none"<?= $portalExpiryMode === 'none' ? ' selected' : '' ?>><?= e__('monitors.messages.portal_expiry.none') ?></option>
+							<option value="30"<?= $portalExpiryMode === '30' ? ' selected' : '' ?>><?= e__('monitors.messages.portal_expiry.30') ?></option>
+							<option value="90"<?= $portalExpiryMode === '90' ? ' selected' : '' ?>><?= e__('monitors.messages.portal_expiry.90') ?></option>
+							<option value="365"<?= $portalExpiryMode === '365' ? ' selected' : '' ?>><?= e__('monitors.messages.portal_expiry.365') ?></option>
+							<option value="custom"<?= $portalExpiryMode === 'custom' ? ' selected' : '' ?>><?= e__('monitors.messages.portal_expiry.custom') ?></option>
+						</select>
+						<div data-portal-expiry-custom<?= $portalExpiryMode === 'custom' ? '' : ' hidden' ?>>
+							<label for="recipient_portal_expiry_custom_days"><?= e__('monitors.messages.portal_expiry.custom_days') ?></label>
+							<input type="number" id="recipient_portal_expiry_custom_days" name="recipient_portal_expiry_custom_days" min="1" max="3650" value="<?= $portalExpiryMode === 'custom' ? (int)$portalExpiryDays : 90 ?>">
+						</div>
+						<p class="form-hint"><?= e__('monitors.messages.portal_expiry.starts_on_send') ?></p>
 					</div>
 
 					<p class="form-hint"><?= e__('monitors.messages.recipient_pages_hint') ?></p>
@@ -519,13 +606,16 @@ ob_start();
 			<?php if ($uncheckedContactCount > 0 && empty($monitor['is_paused'])): ?>
 				<div class="review-warning"><?= e__('monitors.review.warning.unchecked', ['count' => $uncheckedContactCount]) ?></div>
 			<?php endif; ?>
+			<?php if ($recipientMessageWarningCount > 0): ?>
+				<div class="review-warning"><?= e__('monitors.review.warning.recipient_configuration', ['count' => $recipientMessageWarningCount]) ?></div>
+			<?php endif; ?>
 				<?php if (!$hasCompleteMessageCoverage): ?>
 				<div class="review-warning"><?= e__('monitors.review.warning.no_message') ?></div>
 				<?php endif; ?>
 				<?php if ((string)$monitor['escalation_policy'] === 'safety_contact' && $safetyContactIds === []): ?>
 					<div class="review-warning"><?= e__('monitors.review.warning.no_safety_contacts') ?></div>
 				<?php endif; ?>
-			<?php if ($monitorContacts !== [] && $uncheckedContactCount === 0 && $hasCompleteMessageCoverage): ?>
+			<?php if ($monitorContacts !== [] && $recipientConfigurationWarningCount === 0 && $hasCompleteMessageCoverage): ?>
 				<div class="review-ready"><?= e__('monitors.review.ready') ?></div>
 			<?php endif; ?>
 		</div>

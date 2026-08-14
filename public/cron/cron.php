@@ -48,8 +48,11 @@ if (!(bool)$container['config']['mail']['enabled'])
 	exit;
 }
 
-$container['notificationScheduler']->Run();
-$container['mailQueueWorker']->Process((int)$container['config']['mail']['worker_batch_size']);
-$container['logger']->Info('Web cron notification run completed');
+$scheduleResult = $container['notificationScheduler']->Run();
+$mailResult = $container['mailQueueWorker']->Process((int)$container['config']['mail']['worker_batch_size']);
+$container['logger']->Info('Web cron notification run completed', [
+	'schedule' => $scheduleResult,
+	'mail_queue' => $mailResult,
+]);
 
 echo "OK\n";

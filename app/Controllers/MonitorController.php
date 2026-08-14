@@ -25,6 +25,7 @@ use Pulse\Services\MailQueueWorker;
 use Pulse\Services\MonitorExecutionService;
 use Pulse\Services\NotificationComposer;
 use Pulse\Services\NotificationScheduler;
+use Pulse\Services\RecipientMessageValidator;
 
 /**
  * @brief Handles monitor configuration without owning document HTTP actions.
@@ -110,9 +111,23 @@ class MonitorController extends BaseController
 		$user = $this->RequireUser();
 		$this->_monitorExecutionService->SynchronizeDueCyclesForUser((int)$user['id']);
 
+		$userId = (int)$user['id'];
+		$monitors = $this->_monitorRepository->FindAllByUserId($userId);
+
+		foreach ($monitors as &$monitor)
+		{
+			$monitorId = (int)$monitor['id'];
+			$monitorContacts = $this->_monitorRepository->FindMonitorContactsByMonitorIdForUser($monitorId, $userId);
+			$messageOverrides = $this->_messageRepository->FindByMonitorIdForUser($monitorId, $userId);
+			$mailTemplates = $this->_messageRepository->FindLocalizedTemplatesForMonitor($monitorId, $userId);
+			$issues = $this->RecipientConfigurationIssues($monitorContacts, $messageOverrides, $mailTemplates);
+			$monitor['recipient_configuration_issue_count'] = count($issues) + $this->LocalizedRecipientDefaultIssueCount($mailTemplates);
+		}
+		unset($monitor);
+
 		return $this->_view->Render('monitors.index', [
 			'user' => $user,
-			'monitors' => $this->_monitorRepository->FindAllByUserId((int)$user['id']),
+			'monitors' => $monitors,
 			'debugEnabled' => $this->_debugEnabled,
 			'mailEnabled' => $this->_mailEnabled,
 		]);
@@ -190,13 +205,18 @@ class MonitorController extends BaseController
 		}
 		unset($document);
 
+		$monitorContacts = $this->_monitorRepository->FindMonitorContactsByMonitorIdForUser($monitorId, (int)$user['id']);
+		$recipientConfigurationIssues = $this->RecipientConfigurationIssues($monitorContacts, $messageOverrides, $mailTemplates);
+
 		return $this->_view->Render('monitors.edit', [
 			'user' => $user,
 			'monitor' => $monitor,
 			'contacts' => $this->_contactRepository->FindAllByUserId((int)$user['id']),
 			'assignedContactIds' => $this->_monitorRepository->FindContactIdsByMonitorId($monitorId),
 			'safetyContactIds' => $this->_monitorRepository->FindSafetyContactIdsByMonitorIdForUser($monitorId, (int)$user['id']),
-			'monitorContacts' => $this->_monitorRepository->FindMonitorContactsByMonitorIdForUser($monitorId, (int)$user['id']),
+			'monitorContacts' => $monitorContacts,
+			'recipientConfigurationIssues' => $recipientConfigurationIssues,
+			'defaultRecipientTemplateIssueCount' => $this->LocalizedRecipientDefaultIssueCount($mailTemplates),
 			'documents' => $documents,
 			'messageOverrides' => $messageOverrides,
 			'mailTemplates' => $mailTemplates,
@@ -277,10 +297,23 @@ class MonitorController extends BaseController
 
 		$templates = $this->LocalizedTemplateInput('recipient_default');
 
-		if (!$this->ValidateLocalizedTemplatePairs($templates, 'monitors.messages.flash.default_incomplete', false, '/monitors/edit?id=' . $monitorId . '&tab=messages'))
+		$expiryMode = $this->_request->PostString('recipient_portal_expiry_mode', 20);
+		$expiryDays = match ($expiryMode)
 		{
-			return;
+			'30' => 30,
+			'90' => 90,
+			'365' => 365,
+			'custom' => $this->_request->PostInt('recipient_portal_expiry_custom_days'),
+			default => null,
+		};
+
+		if ($expiryDays !== null && ($expiryDays < 1 || $expiryDays > 3650))
+		{
+			$this->Flash('error', __('monitors.messages.portal_expiry.invalid'));
+			$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=messages');
 		}
+
+		$this->_monitorRepository->UpdateRecipientPortalAvailabilityForUser($monitorId, $userId, $expiryDays);
 
 		$this->_messageRepository->ReplaceLocalizedTemplatesForMonitor(
 			$monitorId,
@@ -289,7 +322,21 @@ class MonitorController extends BaseController
 			$templates
 		);
 		$this->_logger->Info('Monitor messages updated', ['user_id' => $userId, 'monitor_id' => $monitorId]);
-		$this->Flash('success', __('monitors.messages.flash.updated'));
+		$hasDraftIssues = false;
+
+		foreach ($templates as $template)
+		{
+			if (RecipientMessageValidator::Validate((string)$template['subject'], (string)$template['body_text']) !== [])
+			{
+				$hasDraftIssues = true;
+				break;
+			}
+		}
+
+		$this->Flash(
+			$hasDraftIssues ? 'warning' : 'success',
+			__($hasDraftIssues ? 'monitors.messages.flash.saved_with_warnings' : 'monitors.messages.flash.updated')
+		);
 		$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=messages');
 	}
 
@@ -477,6 +524,7 @@ class MonitorController extends BaseController
 
 		foreach ($this->_escalationService->FindPendingQueueIdsForSafetyInvitations($cycleId) as $queueId)
 		{
+			$this->_mailQueueWorker->PrepareImmediateDebugRetry($queueId);
 			$outcome = $this->_mailQueueWorker->ProcessById($queueId);
 
 			if ($outcome === 'sent')
@@ -528,7 +576,7 @@ class MonitorController extends BaseController
 
 		if ($release['status'] === 'blocked')
 		{
-			$this->Flash('error', __('monitors.send_recipients.blocked'));
+			$this->Flash('error', $this->RecipientReleaseBlockedMessage((array)($release['issues'] ?? [])));
 			$this->Redirect($this->RuntimeRedirect());
 		}
 
@@ -537,6 +585,7 @@ class MonitorController extends BaseController
 
 		foreach ($this->_escalationService->FindPendingQueueIdsForRelease($release['release_id']) as $queueId)
 		{
+			$this->_mailQueueWorker->PrepareImmediateDebugRetry($queueId);
 			$outcome = $this->_mailQueueWorker->ProcessById($queueId);
 
 			if ($outcome === 'sent')
@@ -554,6 +603,115 @@ class MonitorController extends BaseController
 			: ($failed > 0 ? 'monitors.send_recipients.failed' : 'monitors.send_recipients.queued');
 		$this->Flash($sent > 0 ? 'success' : ($failed > 0 ? 'error' : 'warning'), __($key, ['count' => $sent]));
 		$this->Redirect($this->RuntimeRedirect());
+	}
+
+
+	/**
+	 * @brief Counts invalid non-empty monitor-wide recipient default drafts across installed languages.
+	 * @param array<string, array<string, array{subject: string, body_text: string}>> $mailTemplates Monitor-wide templates.
+	 */
+	private function LocalizedRecipientDefaultIssueCount(array $mailTemplates): int
+	{
+		$count = 0;
+
+		foreach ((array)($mailTemplates['recipient_default'] ?? []) as $template)
+		{
+			if (RecipientMessageValidator::Validate(
+				(string)($template['subject'] ?? ''),
+				(string)($template['body_text'] ?? '')
+			) !== [])
+			{
+				$count++;
+			}
+		}
+
+		return $count;
+	}
+
+	/**
+	 * @brief Returns validation issues for the effective message of each configured recipient.
+	 * @param array<int, array<string, mixed>> $monitorContacts Monitor recipient assignments.
+	 * @param array<int, array<string, string>> $messageOverrides Personal recipient templates keyed by assignment ID.
+	 * @param array<string, array<string, array{subject: string, body_text: string}>> $mailTemplates Monitor-wide localized templates.
+	 * @return array<int, array{source: string, locale: string, issues: array<int, string>}>
+	 */
+	private function RecipientConfigurationIssues(array $monitorContacts, array $messageOverrides, array $mailTemplates): array
+	{
+		$result = [];
+
+		foreach ($monitorContacts as $monitorContact)
+		{
+			$assignmentId = (int)$monitorContact['id'];
+			$locale = (string)($monitorContact['notification_locale'] ?? 'en');
+			$override = $messageOverrides[$assignmentId] ?? null;
+			$source = is_array($override) ? 'personal' : 'default';
+			$template = is_array($override)
+				? $override
+				: (array)($mailTemplates['recipient_default'][$locale] ?? ['subject' => '', 'body_text' => '']);
+			$issues = RecipientMessageValidator::Validate(
+				(string)($template['subject'] ?? ''),
+				(string)($template['body_text'] ?? '')
+			);
+
+			if (empty($monitorContact['email_checked_at']))
+			{
+				array_unshift($issues, 'unchecked_recipient');
+			}
+
+			if ($issues !== [])
+			{
+				$result[$assignmentId] = [
+					'source' => $source,
+					'locale' => $locale,
+					'issues' => array_values(array_unique($issues)),
+				];
+			}
+		}
+
+		return $result;
+	}
+
+	/**
+	 * @brief Builds an actionable debug-release error including affected recipient names.
+	 * @param array<int, array{reason?: string, recipient_name?: string}> $issues Release validation issues.
+	 */
+	private function RecipientReleaseBlockedMessage(array $issues): string
+	{
+		if ($issues === [])
+		{
+			return __('monitors.send_recipients.blocked');
+		}
+
+		$grouped = [];
+
+		foreach ($issues as $issue)
+		{
+			$reason = (string)($issue['reason'] ?? '');
+			$name = trim((string)($issue['recipient_name'] ?? ''));
+
+			if ($reason === '')
+			{
+				continue;
+			}
+
+			$grouped[$reason] ??= [];
+
+			if ($name !== '')
+			{
+				$grouped[$reason][] = $name;
+			}
+		}
+
+		$parts = [];
+
+		foreach ($grouped as $reason => $names)
+		{
+			$names = array_values(array_unique($names));
+			$key = 'monitors.send_recipients.blocked_reason.' . $reason;
+			$parts[] = __($key, ['recipients' => implode(', ', $names)]);
+		}
+
+		return __('monitors.send_recipients.blocked_detailed', ['details' => implode(' ', $parts)]);
 	}
 
 	/**
@@ -619,10 +777,17 @@ class MonitorController extends BaseController
 	 * @param string $incompleteKey Translation key for incomplete pairs.
 	 * @param bool $requireUrl Whether non-empty bodies must include {url}.
 	 * @param string $redirect Redirect target.
+	 * @param string $urlRequiredKey Translation key for a missing required URL placeholder.
 	 */
-	private function ValidateLocalizedTemplatePairs(array $templates, string $incompleteKey, bool $requireUrl, string $redirect): bool
+	private function ValidateLocalizedTemplatePairs(
+		array $templates,
+		string $incompleteKey,
+		bool $requireUrl,
+		string $redirect,
+		string $urlRequiredKey = 'monitors.escalation.messages.flash.url_required'
+	): bool
 	{
-		foreach ($templates as $template)
+		foreach ($templates as $templateLocale => $template)
 		{
 			$subject = trim((string)($template['subject'] ?? ''));
 			$body = trim((string)($template['body_text'] ?? ''));
@@ -635,7 +800,13 @@ class MonitorController extends BaseController
 
 			if ($requireUrl && $body !== '' && !str_contains($body, '{url}'))
 			{
-				$this->Flash('error', __('monitors.escalation.messages.flash.url_required'));
+				$this->Flash('error', __($urlRequiredKey, ['language' => notification_language_name((string)$templateLocale)]));
+				$this->Redirect($redirect);
+			}
+
+			if ($requireUrl && str_contains($subject, '{url}'))
+			{
+				$this->Flash('error', __('mail.templates.flash.url_in_subject'));
 				$this->Redirect($redirect);
 			}
 		}

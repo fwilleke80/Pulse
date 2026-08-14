@@ -19,6 +19,8 @@ use Pulse\Repositories\MonitorRepository;
 use Pulse\Repositories\RecipientRepository;
 use Pulse\Services\AuthService;
 use Pulse\Services\NotificationComposer;
+use Pulse\Services\RecipientPortalService;
+use Pulse\Services\RecipientMessageValidator;
 use Throwable;
 
 /**
@@ -30,6 +32,7 @@ final class RecipientController extends BaseController
 	private MonitorRepository $_monitorRepository;
 	private DocumentRepository $_documentRepository;
 	private NotificationComposer $_composer;
+	private RecipientPortalService $_portalService;
 
 	/** @brief Constructs the monitor-recipient controller. */
 	public function __construct(
@@ -41,7 +44,8 @@ final class RecipientController extends BaseController
 		RecipientRepository $recipientRepository,
 		MonitorRepository $monitorRepository,
 		DocumentRepository $documentRepository,
-		NotificationComposer $composer
+		NotificationComposer $composer,
+		RecipientPortalService $portalService
 	)
 	{
 		parent::__construct($view, $session, $auth, $logger, $request);
@@ -49,6 +53,7 @@ final class RecipientController extends BaseController
 		$this->_monitorRepository = $monitorRepository;
 		$this->_documentRepository = $documentRepository;
 		$this->_composer = $composer;
+		$this->_portalService = $portalService;
 	}
 
 	/** @brief Displays one dedicated monitor-recipient page. */
@@ -63,11 +68,12 @@ final class RecipientController extends BaseController
 			$this->Redirect('/monitors');
 		}
 
-		$effectiveSubject = trim((string)($recipient['override_subject'] ?? '')) !== ''
-			? (string)$recipient['override_subject']
+		$hasOverride = !empty($recipient['override_message_id']);
+		$effectiveSubject = $hasOverride
+			? (string)($recipient['override_subject'] ?? '')
 			: (string)($recipient['default_message_subject'] ?? '');
-		$effectiveBody = trim((string)($recipient['override_body'] ?? '')) !== ''
-			? (string)$recipient['override_body']
+		$effectiveBody = $hasOverride
+			? (string)($recipient['override_body'] ?? '')
 			: (string)($recipient['default_message_body'] ?? '');
 		$preview = $this->_composer->ComposeRecipientNotification([
 			'recipient_name' => (string)$recipient['name'],
@@ -86,6 +92,15 @@ final class RecipientController extends BaseController
 			'message_body' => (string)($recipient['default_message_body'] ?? ''),
 		]);
 
+		$messageIssues = RecipientMessageValidator::Validate(
+			(string)($recipient['override_subject'] ?? ''),
+			(string)($recipient['override_body'] ?? '')
+		);
+		$defaultMessageIssues = RecipientMessageValidator::Validate(
+			(string)($recipient['default_message_subject'] ?? ''),
+			(string)($recipient['default_message_body'] ?? '')
+		);
+
 		return $this->_view->Render('recipients.edit', [
 			'user' => $user,
 			'recipient' => $recipient,
@@ -94,6 +109,8 @@ final class RecipientController extends BaseController
 			'deliveryHistory' => $this->_recipientRepository->FindDeliveryHistoryForUser((int)$recipient['id'], (int)$user['id']),
 			'preview' => $preview,
 			'defaultPreview' => $defaultPreview,
+			'messageIssues' => $messageIssues,
+			'defaultMessageIssues' => $defaultMessageIssues,
 		]);
 	}
 
@@ -138,12 +155,6 @@ final class RecipientController extends BaseController
 		$subject = $this->_request->PostString('message_subject', 255);
 		$body = $this->_request->PostString('message_body', 1000000, false);
 
-		if ($useOverride && ($subject === '' || trim($body) === ''))
-		{
-			$this->Flash('error', __('recipients.flash.message_incomplete'));
-			$this->Redirect('/monitors/recipients/edit?id=' . $monitorContactId);
-		}
-
 		$this->_recipientRepository->UpdateConfigurationForUser(
 			$monitorContactId,
 			$userId,
@@ -157,7 +168,38 @@ final class RecipientController extends BaseController
 			'monitor_id' => (int)$recipient['monitor_id'],
 			'monitor_contact_id' => $monitorContactId,
 		]);
-		$this->Flash('success', __('recipients.flash.updated'));
+		$issues = $useOverride ? RecipientMessageValidator::Validate($subject, $body) : [];
+		$this->Flash(
+			$issues !== [] ? 'warning' : 'success',
+			__($issues !== [] ? 'recipients.flash.saved_with_warnings' : 'recipients.flash.updated')
+		);
+		$this->Redirect('/monitors/recipients/edit?id=' . $monitorContactId);
+	}
+
+	/** @brief Revokes one previously released recipient portal delivery for the authenticated owner. */
+	public function RevokePortal(): void
+	{
+		$user = $this->RequireUser();
+		$userId = (int)$user['id'];
+		$monitorContactId = $this->_request->PostInt('recipient_id');
+		$deliveryId = $this->_request->PostInt('delivery_id');
+		$recipient = $this->_recipientRepository->FindByIdForUser($monitorContactId, $userId);
+
+		if (!is_array($recipient))
+		{
+			$this->Flash('error', __('recipients.flash.not_found'));
+			$this->Redirect('/monitors');
+		}
+
+		if ($this->_portalService->RevokeForUser($deliveryId, $userId))
+		{
+			$this->Flash('success', __('recipients.portal.revoke.success'));
+		}
+		else
+		{
+			$this->Flash('warning', __('recipients.portal.revoke.unavailable'));
+		}
+
 		$this->Redirect('/monitors/recipients/edit?id=' . $monitorContactId);
 	}
 

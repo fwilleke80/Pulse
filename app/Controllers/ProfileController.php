@@ -24,7 +24,11 @@ class ProfileController extends BaseController
 	private MailQueueRepository $_mailQueueRepository;
 	private TestNotificationService $_testNotificationService;
 	private bool $_mailEnabled;
+	private bool $_debugEnabled;
 	private NotificationLanguage $_notificationLanguage;
+
+	/** @var array<string, mixed> */
+	private array $_mailConfig;
 
 	/**
 	 * @brief Constructs the profile controller.
@@ -38,7 +42,9 @@ class ProfileController extends BaseController
 	 * @param MailQueueRepository $mailQueueRepository Mail queue status repository.
 	 * @param TestNotificationService $testNotificationService SMTP test service.
 	 * @param bool $mailEnabled Whether automatic mail delivery is enabled.
+	 * @param bool $debugEnabled Whether debug-only queue controls are enabled.
 	 * @param NotificationLanguage $notificationLanguage Recipient-language resolver.
+	 * @param array<string, mixed> $mailConfig Effective SMTP/mail configuration.
 	 */
 	public function __construct(
 		View $view,
@@ -51,7 +57,9 @@ class ProfileController extends BaseController
 		MailQueueRepository $mailQueueRepository,
 		TestNotificationService $testNotificationService,
 		bool $mailEnabled,
-		NotificationLanguage $notificationLanguage
+		bool $debugEnabled,
+		NotificationLanguage $notificationLanguage,
+		array $mailConfig
 	)
 	{
 		parent::__construct($view, $session, $auth, $logger, $request);
@@ -60,7 +68,9 @@ class ProfileController extends BaseController
 		$this->_mailQueueRepository = $mailQueueRepository;
 		$this->_testNotificationService = $testNotificationService;
 		$this->_mailEnabled = $mailEnabled;
+		$this->_debugEnabled = $debugEnabled;
 		$this->_notificationLanguage = $notificationLanguage;
+		$this->_mailConfig = $mailConfig;
 	}
 
 	/**
@@ -75,11 +85,21 @@ class ProfileController extends BaseController
 			'user' => $user,
 			'mailEnabled' => $this->_mailEnabled,
 			'mailQueueCounts' => $this->_mailQueueRepository->CountByStatusForUser((int)$user['id']),
+			'mailQueueEntries' => $this->_mailQueueRepository->FindRecentForUser((int)$user['id'], 50),
+			'debugEnabled' => $this->_debugEnabled,
 			'latestTestNotification' => $this->_mailQueueRepository->FindLatestTestForUser((int)$user['id']),
 			'notificationLocales' => $this->_notificationLanguage->SupportedLocales(),
 			'notificationLocale' => $this->_notificationLanguage->Resolve(
 				isset($user['notification_locale']) ? (string)$user['notification_locale'] : null
 			),
+			'mailConnection' => [
+				'host' => (string)($this->_mailConfig['host'] ?? ''),
+				'port' => (int)($this->_mailConfig['port'] ?? 0),
+				'encryption' => (string)($this->_mailConfig['encryption'] ?? ''),
+				'username' => (string)($this->_mailConfig['username'] ?? ''),
+				'password_configured' => (string)($this->_mailConfig['password'] ?? '') !== '',
+				'from_address' => (string)($this->_mailConfig['from_address'] ?? ''),
+			],
 		]);
 	}
 
@@ -113,6 +133,29 @@ class ProfileController extends BaseController
 			__($count > 0 ? 'profile.notifications.retry.success' : 'profile.notifications.retry.none', ['count' => $count])
 		);
 		$this->Redirect('/profile#notifications');
+	}
+
+	/** @brief Clears safe unsent owner/test queue jobs when debug mode is enabled. */
+	public function ClearNotificationQueue(): void
+	{
+		$user = $this->RequireUser();
+
+		if (!$this->_debugEnabled)
+		{
+			http_response_code(404);
+			exit;
+		}
+
+		$count = $this->_mailQueueRepository->ClearDebugQueueForUser((int)$user['id']);
+		$this->_logger->Warning('Debug mail queue cleared', [
+			'user_id' => (int)$user['id'],
+			'cleared' => $count,
+		]);
+		$this->Flash(
+			$count > 0 ? 'success' : 'warning',
+			__($count > 0 ? 'profile.notifications.clear.success' : 'profile.notifications.clear.none', ['count' => $count])
+		);
+		$this->Redirect('/profile#mail-queue');
 	}
 
 	/**

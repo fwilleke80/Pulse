@@ -282,11 +282,35 @@ final class SmtpMailTransport implements MailTransportInterface
 		}
 		while ($continued);
 
+		$response = implode("\n", $lines);
+
 		if (!in_array($code, $expectedCodes, true))
 		{
-			throw new MailTransportException('SMTP rejected the operation with status ' . $code . '.');
+			$detail = $this->SanitizeServerResponse($response);
+			$message = 'SMTP rejected the operation with status ' . $code . '.';
+
+			if ($detail !== '')
+			{
+				$message .= ' Server response: ' . $detail;
+			}
+
+			throw new MailTransportException($message);
 		}
 
-		return implode("\n", $lines);
+		return $response;
+	}
+
+	/**
+	 * @brief Converts an SMTP server response into bounded log/UI-safe diagnostic text.
+	 * @param string $response Raw SMTP response.
+	 * @return string
+	 */
+	private function SanitizeServerResponse(string $response): string
+	{
+		$singleLine = preg_replace('/[\r\n\t]+/', ' ', $response) ?? '';
+		$printable = preg_replace('/[^\x20-\x7E\x80-\xFF]/', '', $singleLine) ?? '';
+		$normalized = trim(preg_replace('/\s+/', ' ', $printable) ?? '');
+
+		return strlen($normalized) > 500 ? substr($normalized, 0, 500) . '…' : $normalized;
 	}
 }

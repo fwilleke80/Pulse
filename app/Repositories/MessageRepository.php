@@ -164,11 +164,6 @@ class MessageRepository
 					continue;
 				}
 
-				if ($subject === '' || $body === '')
-				{
-					throw new RuntimeException('Localized mail templates require both subject and body.');
-				}
-
 				$insert->execute([
 					'monitor_id' => $monitorId,
 					'template_key' => $templateKey,

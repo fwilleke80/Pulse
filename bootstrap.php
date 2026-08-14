@@ -30,6 +30,7 @@ use Pulse\Repositories\MailQueueRepository;
 use Pulse\Repositories\MessageRepository;
 use Pulse\Repositories\MonitorRepository;
 use Pulse\Repositories\RecipientRepository;
+use Pulse\Repositories\RecipientPortalRepository;
 use Pulse\Repositories\UserRepository;
 use Pulse\Services\AuthService;
 use Pulse\Services\DocumentService;
@@ -40,6 +41,8 @@ use Pulse\Services\MonitorExecutionService;
 use Pulse\Services\MonitorStateMachine;
 use Pulse\Services\NotificationComposer;
 use Pulse\Services\NotificationScheduler;
+use Pulse\Services\RecipientPortalArchiveBuilder;
+use Pulse\Services\RecipientPortalService;
 use Pulse\Services\TestNotificationService;
 
 $composerAutoloader = __DIR__ . '/vendor/autoload.php';
@@ -120,6 +123,7 @@ $userRepository = new UserRepository($database);
 $contactRepository = new ContactRepository($database);
 $monitorRepository = new MonitorRepository($database);
 $recipientRepository = new RecipientRepository($database);
+$recipientPortalRepository = new RecipientPortalRepository($database);
 $documentRepository = new DocumentRepository($database);
 $messageRepository = new MessageRepository($database);
 $mailQueueRepository = new MailQueueRepository($database);
@@ -154,6 +158,17 @@ if (!is_string($locale) || !in_array($locale, $availableLocales, true))
 
 $translator = new Translator($languagePath, $locale, $languageCatalog->FallbackLocale());
 $notificationComposer = new NotificationComposer($notificationLanguage, $languagePath, $appConfig);
+$recipientPortalArchiveBuilder = new RecipientPortalArchiveBuilder(
+	$documentService,
+	__DIR__ . '/storage/tmp/recipient-portal'
+);
+$recipientPortalService = new RecipientPortalService(
+	$recipientPortalRepository,
+	$mailQueueRepository,
+	$notificationComposer,
+	$logger,
+	(int)$appConfig['mail']['max_attempts']
+);
 $escalationService = new EscalationService(
 	$database,
 	$monitorStateMachine,
@@ -219,10 +234,13 @@ return [
 	'languageCatalog' => $languageCatalog,
 	'notificationLanguage' => $notificationLanguage,
 	'notificationComposer' => $notificationComposer,
+	'recipientPortalService' => $recipientPortalService,
+	'recipientPortalArchiveBuilder' => $recipientPortalArchiveBuilder,
 	'logger' => $logger,
 	'contactRepository' => $contactRepository,
 	'monitorRepository' => $monitorRepository,
 	'recipientRepository' => $recipientRepository,
+	'recipientPortalRepository' => $recipientPortalRepository,
 	'documentRepository' => $documentRepository,
 	'messageRepository' => $messageRepository,
 	'mailQueueRepository' => $mailQueueRepository,

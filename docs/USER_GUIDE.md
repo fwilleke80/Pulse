@@ -111,7 +111,7 @@ Editing a contact updates the reusable contact record. Removing a contact also r
 
 Each monitor can have a custom default recipient message **per supported language**. The editor provides one tab for every installed Pulse language. Pulse automatically chooses the version matching each recipient's **Pulse interface language**. A recipient can still override the monitor-wide template with a personal subject and body. If a language-specific monitor template is left empty, Pulse uses its built-in localized recipient message instead; the editor lets you reveal that fallback text on demand.
 
-Custom recipient subject/body templates support `{app}` (the Pulse application name), `{name}` (the recipient's name), `{owner}` (the monitor owner's display name), and `{monitor}` (the monitor name). The editor shows these meanings beside the text fields. The recipient page shows the exact expanded message Pulse will queue. Pulse does not silently add a second explanatory wrapper around custom text.
+Custom recipient subject/body templates support `{app}` (the Pulse application name), `{name}` (the recipient's name), `{owner}` (the monitor owner's display name), `{monitor}` (the monitor name), and `{url}` (that recipient's private portal URL). Custom recipient bodies must contain `{url}`; Pulse does not silently append a link to text you wrote. For security, `{url}` is not allowed in the subject. The editor shows these meanings beside the text fields. The recipient page shows the exact expanded message Pulse will queue. Pulse does not silently add a second explanatory wrapper around custom text. Pulse flags a missing `{url}` directly in the monitor default-message editor, on a recipient's personal-message editor, and on the Recipients overview. If release is blocked, the debug send action reports the concrete reason and names the affected recipients. Saving remains non-destructive: incomplete/invalid recipient mail drafts are saved with warnings, while the monitor/editor tabs and monitor list are flagged. Only the actual recipient release is blocked until the effective message is valid.
 
 A useful message should make sense on its own. Consider explaining:
 
@@ -149,7 +149,7 @@ If the required confirmation is not reached before the safety-contact stage ends
 
 ### Custom safety-contact email text
 
-On **Safety & escalation**, you can replace the default subject and body used for the first safety-contact email and for later reminders **separately for each supported language**. Each installed language gets its own tab, and Pulse chooses the matching version from each safety contact's **Pulse interface language**. The templates support `{app}` (the Pulse application name), `{name}` (the safety contact's name), `{owner}` (the monitor owner's display name), `{monitor}` (the monitor name), and `{url}` (the safety-confirmation page URL). Reminder text additionally supports `{number}` (the current reminder number) and `{total}` (the configured total number of safety reminders). Leave a language-specific subject/body pair empty to use Pulse's built-in default for that language; the default can be revealed in the editor. The same contact language controls the safety-confirmation page and, later, the recipient portal.
+On **Safety & escalation**, you can replace the default subject and body used for the first safety-contact email and for later reminders **separately for each supported language**. Each installed language gets its own tab, and Pulse chooses the matching version from each safety contact's **Pulse interface language**. The templates support `{app}` (the Pulse application name), `{name}` (the safety contact's name), `{owner}` (the monitor owner's display name), `{monitor}` (the monitor name), and `{url}` (the safety-confirmation page URL). Reminder text additionally supports `{number}` (the current reminder number) and `{total}` (the configured total number of safety reminders). Leave a language-specific subject/body pair empty to use Pulse's built-in default for that language; the default can be revealed in the editor. The same contact language controls the safety-confirmation page, the recipient portal, and Pulse-authored portal access-code mail.
 
 ## Notifications and failed mail
 
@@ -164,7 +164,7 @@ Open **Profile → Notifications** to:
 
 A failed email does not count as successfully delivered. Pulse shows a warning rather than pretending the notification happened.
 
-Your profile has its own **Notification language** for Pulse-authored owner due notices, reminders, and test mail. Contacts have a **Pulse interface language** for Pulse-owned pages such as safety confirmation and the future recipient portal. That language also selects localized Pulse fallback text when safety-contact or recipient mail is left at its built-in default.
+Your profile has its own **Notification language** for Pulse-authored owner due notices, reminders, and test mail. Contacts have a **Pulse interface language** for Pulse-owned pages such as safety confirmation and the recipient portal. That language also selects localized Pulse fallback text when safety-contact or recipient mail is left at its built-in default, and it controls Pulse-authored portal access-code mail.
 
 If SMTP settings are changed, send another test before relying on the system.
 
@@ -203,13 +203,19 @@ The default upload policy accepts PDF, RTF, OpenDocument Text, Word `.docx`, JPE
 
 Pulse inspects the uploaded content rather than trusting the filename. Stored files receive internal names and are not served directly from the public web directory.
 
-### Important current limitation
+### Recipient portal and documents
 
-Recipient document delivery is **not active** in Pulse 0.7.6. Assigning a document to a recipient prepares that relationship for the future secure document portal, but current recipient emails contain:
+A final recipient notification contains that recipient's private `{url}`. Opening the URL does **not** reveal documents. The page can request a short-lived access code or accept one that was already received.
 
-- no attachment
-- no document content
-- no document download link
+Access codes are sent to the configured recipient address without displaying that address on the portal page. A code is valid for 30 minutes, can be used once, and is replaced when a later code is successfully requested. Pulse stores only a password hash of the code. After successful verification, the current browser receives a recipient-portal session governed by the normal Pulse session idle and absolute timeouts.
+
+The authenticated portal shows the released message and only the documents assigned to that recipient when the release was staged. File documents show their recipient-facing title and description and can be downloaded individually. Text documents can be read in the portal or downloaded as text files. **Download all** produces a ZIP containing every currently available document in that delivery.
+
+The recipient's document set is a release snapshot. Later changes to monitor assignments, document titles/descriptions, or text documents do not silently rewrite an already released delivery. Uploaded file payloads are immutable after upload; if an editable source document is removed while a released delivery still references its stored file, Pulse retains that private file for the delivery.
+
+Under **Messages & documents**, choose how long new recipient portals remain available after the final notification is successfully sent: 30 days, 90 days, one year, a custom duration, or no automatic expiry. The owner can revoke an individual released portal from that recipient's delivery history. Existing deliveries keep the lifetime snapshotted when they were staged.
+
+Recipient-side **Close access permanently** is not part of 0.8.1 yet. It is intended only for deliveries without automatic expiry and will use a deliberately guarded confirmation flow.
 
 Uploaded files, editable text documents, and recipient messages are also not encrypted at rest yet. Do not use the current release as storage for final highly sensitive secrets or cryptographic recovery material.
 

@@ -330,8 +330,22 @@ class DocumentService
 			throw new DocumentException('monitors.documents.flash.document_not_found');
 		}
 
+		$storedFilename = (string)($document['stored_filename'] ?? '');
+		$preserveStoredFile = (string)($document['storage_type'] ?? '') === 'file'
+			&& $this->_documentRepository->IsStoredFileReferencedByRecipientDelivery($storedFilename);
 		$this->_documentRepository->DeleteById($documentId);
-		$this->RemoveStoredFile((string)($document['stored_filename'] ?? ''));
+
+		if (!$preserveStoredFile)
+		{
+			$this->RemoveStoredFile($storedFilename);
+		}
+		else
+		{
+			$this->_logger->Info('Stored document retained for an immutable recipient delivery', [
+				'monitor_id' => $monitorId,
+				'document_id' => $documentId,
+			]);
+		}
 		$this->_logger->Info('Document deleted', [
 			'user_id' => $userId,
 			'monitor_id' => $monitorId,
@@ -353,11 +367,18 @@ class DocumentService
 		}
 
 		$documents = $this->_documentRepository->FindAllByMonitorIdForUser($monitorId, $userId);
+		$retainedStoredFiles = $this->_documentRepository->FindRecipientDeliveryStoredFilenamesForMonitor($monitorId);
 		$this->_monitorRepository->DeleteForUser($monitorId, $userId);
+		$storedFiles = $retainedStoredFiles;
 
 		foreach ($documents as $document)
 		{
-			$this->RemoveStoredFile((string)($document['stored_filename'] ?? ''));
+			$storedFiles[] = (string)($document['stored_filename'] ?? '');
+		}
+
+		foreach (array_values(array_unique($storedFiles)) as $storedFilename)
+		{
+			$this->RemoveStoredFile($storedFilename);
 		}
 
 		return true;
@@ -392,6 +413,21 @@ class DocumentService
 		}
 
 		return ['document' => $document, 'path' => $path];
+	}
+
+	/**
+	 * @brief Resolves one immutable portal snapshot to a downloadable file path when it represents an uploaded file.
+	 * @param array<string, mixed> $snapshot Recipient-delivery document snapshot.
+	 * @return string|null Absolute private path, or null for missing/non-file snapshots.
+	 */
+	public function ResolvePortalSnapshotFile(array $snapshot): ?string
+	{
+		if ((string)($snapshot['storage_type'] ?? '') !== 'file')
+		{
+			return null;
+		}
+
+		return $this->ResolveStoredFile((string)($snapshot['stored_filename'] ?? ''));
 	}
 
 	/** @brief Keeps only monitor contacts belonging to the owned monitor. @param int $userId User ID. @param int $monitorId Monitor ID. @param array<int> $recipientIds Requested IDs. @return array<int> */

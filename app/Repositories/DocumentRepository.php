@@ -312,6 +312,44 @@ class DocumentRepository
 		return array_map('intval', $rows);
 	}
 
+	/** @brief Returns whether a stored file is still referenced by any immutable recipient delivery snapshot. */
+	public function IsStoredFileReferencedByRecipientDelivery(string $storedFilename): bool
+	{
+		if ($storedFilename === '')
+		{
+			return false;
+		}
+
+		$statement = $this->_database->GetConnection()->prepare(<<<'SQL'
+			SELECT COUNT(*)
+			FROM recipient_delivery_documents
+			WHERE stored_filename = :stored_filename
+		SQL);
+		$statement->execute(['stored_filename' => $storedFilename]);
+
+		return (int)$statement->fetchColumn() > 0;
+	}
+
+	/**
+	 * @brief Returns stored filenames retained by recipient-delivery snapshots for one monitor.
+	 * @return array<int, string> Unique stored basenames.
+	 */
+	public function FindRecipientDeliveryStoredFilenamesForMonitor(int $monitorId): array
+	{
+		$statement = $this->_database->GetConnection()->prepare(<<<'SQL'
+			SELECT DISTINCT rdd.stored_filename
+			FROM recipient_delivery_documents rdd
+			INNER JOIN recipient_release_deliveries rrd ON rrd.id = rdd.recipient_delivery_id
+			WHERE rrd.monitor_id = :monitor_id
+			  AND rdd.stored_filename IS NOT NULL
+			  AND rdd.stored_filename <> ''
+		SQL);
+		$statement->execute(['monitor_id' => $monitorId]);
+		$rows = $statement->fetchAll(PDO::FETCH_COLUMN);
+
+		return is_array($rows) ? array_values(array_unique(array_map('strval', $rows))) : [];
+	}
+
 	/**
 	 * @brief Replaces all recipient assignments for a document.
 	 * @param int $documentId Document ID.

@@ -91,7 +91,7 @@ For example:
 - **Escalated** is recorded only after at least one final recipient message is accepted by SMTP
 - a complete final-delivery failure leaves the monitor **Overdue** rather than falsely claiming escalation
 
-Recipient releases use snapshots of the recipient identity, address, language, subject, and body. Editing a contact or message afterward cannot silently rewrite a message that has already been staged.
+Recipient releases use snapshots of the recipient identity, address, language, subject, body, and portal-availability policy. Editing a contact or message afterward cannot silently rewrite a message that has already been staged.
 
 The mail worker uses idempotency keys, row locking, and expiring leases so overlapping cron runs do not intentionally deliver the same queue item at the same time.
 
@@ -117,9 +117,13 @@ This means a compromise of the hosting account, database, filesystem, or an unen
 - editable text documents
 - uploaded document contents
 
-Recipient document delivery is also not active yet. Current recipient emails contain no document attachment, document content, or document-access URL.
+Pulse 0.8.1 provides a recipient-portal invitation, authentication layer, and authenticated document delivery. Final recipient emails can contain a long-lived, recipient-specific portal URL. The raw portal token is generated randomly and stored only as a SHA-256 hash in the delivery record; the queued email body necessarily contains the raw URL until delivery, after which Pulse redacts it from the queue record.
 
-Before Pulse is appropriate for final highly sensitive documents, it still needs the planned encrypted storage and secure recipient document portal.
+Requesting portal access creates a random one-time code valid for 30 minutes. Pulse stores only a password hash of the code and redacts the raw code from the mail queue after delivery or terminal cancellation. Requesting a later code invalidates earlier unused codes. Portal pages never display the configured recipient email address. Code-request responses are intentionally generic so they do not disclose mail-account details or delivery state.
+
+Portal access can expire automatically according to the policy snapshotted for that recipient delivery, and the authenticated owner can revoke an individual delivery at any time. Expiry and revocation invalidate the portal before any authenticated page is rendered.
+
+Document listing and downloads require both an active portal invitation and a matching authenticated recipient session. Recipient document assignments, titles/descriptions, and text-document content are snapshotted when the release is staged so later monitor edits cannot change an issued delivery. File payloads remain in private non-public storage and are streamed only after authorization. Pulse still does not provide application-level encryption at rest; that remains planned work for highly sensitive deployments.
 
 Application-level encryption will reduce the risk from database dumps, filesystem copies, and backups, but it cannot completely protect against an attacker who controls the running PHP account and can read both application memory and encryption keys. Server and hosting security remain part of the overall threat model.
 

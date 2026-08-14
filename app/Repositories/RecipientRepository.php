@@ -48,6 +48,7 @@ final class RecipientRepository
 				c.email,
 				c.notification_locale,
 				c.email_checked_at,
+				cm.id AS override_message_id,
 				cm.subject AS override_subject,
 				cm.body_text AS override_body,
 				EXISTS
@@ -270,7 +271,15 @@ final class RecipientRepository
 
 		$limit = max(1, min(100, $limit));
 		$statement = $this->_database->GetConnection()->prepare('
-			SELECT rrd.status, rrd.recipient_email, rrd.sent_at, rrd.failed_at, rrd.created_at, rr.status AS release_status
+			SELECT rrd.id, rrd.status, rrd.recipient_email, rrd.sent_at, rrd.failed_at, rrd.created_at,
+				rrd.portal_released_at, rrd.portal_expires_at, rrd.portal_revoked_at,
+				CASE
+					WHEN rrd.portal_revoked_at IS NOT NULL THEN \'revoked\'
+					WHEN rrd.portal_released_at IS NULL THEN \'not_released\'
+					WHEN rrd.portal_expires_at IS NOT NULL AND rrd.portal_expires_at <= UTC_TIMESTAMP() THEN \'expired\'
+					ELSE \'available\'
+				END AS portal_status,
+				rr.status AS release_status
 			FROM recipient_release_deliveries rrd
 			INNER JOIN recipient_releases rr ON rr.id = rrd.release_id
 			WHERE rrd.monitor_id = :monitor_id AND rrd.contact_id = :contact_id

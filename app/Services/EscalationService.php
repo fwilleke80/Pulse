@@ -241,7 +241,7 @@ final class EscalationService
 
 	/**
 	 * @brief Stages immutable recipient messages and queue jobs for one overdue cycle.
-	 * @return array{status: string, queued: int, release_id: int}
+	 * @return array{status: string, queued: int, release_id: int, issues?: array<int, array{reason: string, recipient_name: string}>}
 	 */
 	public function StageRecipientRelease(int $cycleId): array
 	{
@@ -255,7 +255,7 @@ final class EscalationService
 			if (!is_array($cycle) || !in_array((string)$cycle['status'], [MonitorStateMachine::OVERDUE, MonitorStateMachine::ESCALATED], true))
 			{
 				$connection->commit();
-				return ['status' => 'unavailable', 'queued' => 0, 'release_id' => 0];
+				return ['status' => 'unavailable', 'queued' => 0, 'release_id' => 0, 'issues' => []];
 			}
 
 			$existing = $connection->prepare('SELECT * FROM recipient_releases WHERE check_cycle_id = :cycle_id FOR UPDATE');
@@ -267,24 +267,25 @@ final class EscalationService
 				$count = $connection->prepare('SELECT COUNT(*) FROM recipient_release_deliveries WHERE release_id = :release_id');
 				$count->execute(['release_id' => (int)$release['id']]);
 				$connection->commit();
-				return ['status' => (string)$release['status'], 'queued' => (int)$count->fetchColumn(), 'release_id' => (int)$release['id']];
+				return ['status' => (string)$release['status'], 'queued' => (int)$count->fetchColumn(), 'release_id' => (int)$release['id'], 'issues' => []];
 			}
 
 			$recipients = $this->FindReleaseRecipients($connection, (int)$cycle['monitor_id']);
-			$blockedReason = $this->ReleaseBlockedReason($recipients);
+			$blockedIssues = $this->ReleaseBlockedIssues($recipients);
+			$blockedReason = $blockedIssues[0]['reason'] ?? null;
 
 			if ($blockedReason !== null)
 			{
 				if (is_array($release) && (string)$release['blocked_reason'] === $blockedReason)
 				{
 					$connection->commit();
-					return ['status' => 'blocked', 'queued' => 0, 'release_id' => (int)$release['id']];
+					return ['status' => 'blocked', 'queued' => 0, 'release_id' => (int)$release['id'], 'issues' => $blockedIssues];
 				}
 
 				$releaseId = $this->UpsertBlockedRelease($connection, $cycle, $blockedReason);
-				$this->WriteAudit($connection, $cycle, 'recipient.release_blocked', ['reason' => $blockedReason]);
+				$this->WriteAudit($connection, $cycle, 'recipient.release_blocked', ['reason' => $blockedReason, 'issues' => $blockedIssues]);
 				$connection->commit();
-				return ['status' => 'blocked', 'queued' => 0, 'release_id' => $releaseId];
+				return ['status' => 'blocked', 'queued' => 0, 'release_id' => $releaseId, 'issues' => $blockedIssues];
 			}
 
 			$now = $this->Now();
@@ -319,6 +320,8 @@ final class EscalationService
 
 			foreach ($recipients as $recipient)
 			{
+				$rawPortalToken = bin2hex(random_bytes(32));
+				$portalUrl = $this->_composer->RecipientPortalUrl($rawPortalToken, (string)$recipient['notification_locale']);
 				$content = $this->_composer->ComposeRecipientNotification([
 					'recipient_name' => (string)$recipient['name'],
 					'notification_locale' => (string)$recipient['notification_locale'],
@@ -326,17 +329,29 @@ final class EscalationService
 					'monitor_name' => (string)$cycle['monitor_name'],
 					'message_subject' => (string)$recipient['message_subject'],
 					'message_body' => (string)$recipient['message_body'],
+					'portal_url' => $portalUrl,
+				]);
+				$storedContent = $this->_composer->ComposeRecipientNotification([
+					'recipient_name' => (string)$recipient['name'],
+					'notification_locale' => (string)$recipient['notification_locale'],
+					'owner_name' => (string)$cycle['owner_name'],
+					'monitor_name' => (string)$cycle['monitor_name'],
+					'message_subject' => (string)$recipient['message_subject'],
+					'message_body' => (string)$recipient['message_body'],
+					'portal_url' => '[Recipient portal link redacted]',
 				]);
 				$insertDelivery = $connection->prepare('
 					INSERT INTO recipient_release_deliveries
 					(
 						release_id, check_cycle_id, monitor_id, contact_id, recipient_name,
-						recipient_email, notification_locale, subject, body_text, status, created_at, updated_at
+						recipient_email, notification_locale, portal_token_hash, portal_availability_days,
+						subject, body_text, status, created_at, updated_at
 					)
 					VALUES
 					(
 						:release_id, :check_cycle_id, :monitor_id, :contact_id, :recipient_name,
-						:recipient_email, :notification_locale, :subject, :body_text, \'queued\', :created_at, :updated_at
+						:recipient_email, :notification_locale, :portal_token_hash, :portal_availability_days,
+						:subject, :body_text, \'queued\', :created_at, :updated_at
 					)
 				');
 				$insertDelivery->execute([
@@ -347,12 +362,15 @@ final class EscalationService
 					'recipient_name' => (string)$recipient['name'],
 					'recipient_email' => (string)$recipient['email'],
 					'notification_locale' => (string)$recipient['notification_locale'],
-					'subject' => $content['subject'],
-					'body_text' => $content['body_text'],
+					'portal_token_hash' => hash('sha256', $rawPortalToken),
+					'portal_availability_days' => $recipient['portal_availability_days'],
+					'subject' => $storedContent['subject'],
+					'body_text' => $storedContent['body_text'],
 					'created_at' => $now,
 					'updated_at' => $now,
 				]);
 				$deliveryId = (int)$connection->lastInsertId();
+				$this->SnapshotRecipientDocuments($connection, $deliveryId, (int)$recipient['monitor_contact_id']);
 				$queueId = $this->InsertQueue($connection, [
 					'user_id' => (int)$cycle['user_id'],
 					'check_cycle_id' => $cycleId,
@@ -360,6 +378,7 @@ final class EscalationService
 					'contact_id' => (int)$recipient['contact_id'],
 					'safety_request_id' => null,
 					'recipient_delivery_id' => $deliveryId,
+					'recipient_portal_code_id' => null,
 					'mail_type' => 'recipient_notification',
 					'idempotency_key' => 'recipient-notification:' . $cycleId . ':' . (int)$recipient['contact_id'],
 					'reminder_number' => null,
@@ -372,6 +391,7 @@ final class EscalationService
 				$updateDelivery->execute(['queue_id' => $queueId, 'id' => $deliveryId]);
 			}
 
+
 			$this->WriteAudit($connection, $cycle, 'recipient.release_staged', [
 				'release_id' => $releaseId,
 				'recipient_count' => count($recipients),
@@ -379,7 +399,7 @@ final class EscalationService
 			$connection->commit();
 			$this->_logger->Info('Recipient release staged', ['cycle_id' => $cycleId, 'recipient_count' => count($recipients)]);
 
-			return ['status' => 'pending', 'queued' => count($recipients), 'release_id' => $releaseId];
+			return ['status' => 'pending', 'queued' => count($recipients), 'release_id' => $releaseId, 'issues' => []];
 		}
 		catch (Throwable $throwable)
 		{
@@ -817,12 +837,41 @@ final class EscalationService
 		}
 	}
 
+	/**
+	 * @brief Snapshots the documents assigned to one recipient at release staging time.
+	 * @param PDO $connection Active release transaction.
+	 * @param int $deliveryId Recipient delivery ID.
+	 * @param int $monitorContactId Monitor-recipient assignment ID.
+	 */
+	private function SnapshotRecipientDocuments(PDO $connection, int $deliveryId, int $monitorContactId): void
+	{
+		$statement = $connection->prepare(<<<'SQL'
+			INSERT INTO recipient_delivery_documents
+			(
+				recipient_delivery_id, source_document_id, title, description, storage_type,
+				text_content, stored_filename, original_filename, mime_type, file_size_bytes, created_at
+			)
+			SELECT
+				:delivery_id, d.id, d.title, d.description, d.storage_type,
+				d.text_content, d.stored_filename, d.original_filename, d.mime_type, d.file_size_bytes, UTC_TIMESTAMP()
+			FROM document_monitor_contacts dmc
+			INNER JOIN documents d ON d.id = dmc.document_id
+			WHERE dmc.monitor_contact_id = :monitor_contact_id
+			ORDER BY d.created_at ASC, d.id ASC
+		SQL);
+		$statement->execute([
+			'delivery_id' => $deliveryId,
+			'monitor_contact_id' => $monitorContactId,
+		]);
+	}
+
 	/** @return array<int, array<string, mixed>> @brief Resolves current recipient/message configuration. */
 	private function FindReleaseRecipients(PDO $connection, int $monitorId): array
 	{
 		$statement = $connection->prepare('
 			SELECT
-				mc.contact_id, c.name, c.email, c.notification_locale, c.email_checked_at,
+				mc.id AS monitor_contact_id, mc.contact_id, c.name, c.email, c.notification_locale, c.email_checked_at,
+				m.recipient_portal_expiry_days AS portal_availability_days,
 				COALESCE(cm.subject, mmt.subject) AS message_subject,
 				COALESCE(cm.body_text, mmt.body_text) AS message_body
 			FROM monitor_contacts mc
@@ -842,24 +891,38 @@ final class EscalationService
 		return is_array($rows) ? $rows : [];
 	}
 
-	/** @brief Returns a fail-closed release configuration problem. */
-	private function ReleaseBlockedReason(array $recipients): ?string
+	/**
+	 * @brief Returns every fail-closed recipient release configuration problem.
+	 * @return array<int, array{reason: string, recipient_name: string}>
+	 */
+	private function ReleaseBlockedIssues(array $recipients): array
 	{
 		if ($recipients === [])
 		{
-			return 'no_recipients';
+			return [['reason' => 'no_recipients', 'recipient_name' => '']];
 		}
+
+		$issues = [];
 
 		foreach ($recipients as $recipient)
 		{
+			$recipientName = trim((string)($recipient['name'] ?? ''));
+
 			if (empty($recipient['email_checked_at']))
 			{
-				return 'unchecked_recipient';
+				$issues[] = ['reason' => 'unchecked_recipient', 'recipient_name' => $recipientName];
 			}
 
+			$subject = (string)($recipient['message_subject'] ?? '');
+			$body = (string)($recipient['message_body'] ?? '');
+
+			foreach (RecipientMessageValidator::Validate($subject, $body) as $reason)
+			{
+				$issues[] = ['reason' => $reason, 'recipient_name' => $recipientName];
+			}
 		}
 
-		return null;
+		return $issues;
 	}
 
 	/** @brief Inserts or updates a blocked release marker. */
@@ -971,6 +1034,8 @@ final class EscalationService
 			SET status = \'cancelled\',
 				body_text = CASE
 					WHEN mail_type IN (\'safety_invitation\', \'safety_reminder\') THEN \'[Safety link redacted after cancellation]\'
+					WHEN mail_type = \'recipient_notification\' THEN \'[Recipient portal link redacted after cancellation]\'
+					WHEN mail_type = \'recipient_access_code\' THEN \'[Access code redacted after cancellation]\'
 					ELSE body_text
 				END,
 				cancelled_at = :cancelled_at, updated_at = :updated_at
@@ -986,13 +1051,13 @@ final class EscalationService
 		$statement = $connection->prepare('
 			INSERT INTO mail_queue
 			(
-				user_id, check_cycle_id, monitor_id, contact_id, safety_request_id, recipient_delivery_id,
+				user_id, check_cycle_id, monitor_id, contact_id, safety_request_id, recipient_delivery_id, recipient_portal_code_id,
 				mail_type, idempotency_key, reminder_number, recipient_email, subject, body_text,
 				status, attempt_count, max_attempts, available_at, created_at, updated_at
 			)
 			VALUES
 			(
-				:user_id, :check_cycle_id, :monitor_id, :contact_id, :safety_request_id, :recipient_delivery_id,
+				:user_id, :check_cycle_id, :monitor_id, :contact_id, :safety_request_id, :recipient_delivery_id, :recipient_portal_code_id,
 				:mail_type, :idempotency_key, :reminder_number, :recipient_email, :subject, :body_text,
 				\'queued\', 0, :max_attempts, :available_at, UTC_TIMESTAMP(), UTC_TIMESTAMP()
 			)
@@ -1005,6 +1070,7 @@ final class EscalationService
 			'contact_id' => $message['contact_id'],
 			'safety_request_id' => $message['safety_request_id'],
 			'recipient_delivery_id' => $message['recipient_delivery_id'],
+			'recipient_portal_code_id' => $message['recipient_portal_code_id'] ?? null,
 			'mail_type' => (string)$message['mail_type'],
 			'idempotency_key' => (string)$message['idempotency_key'],
 			'reminder_number' => $message['reminder_number'],

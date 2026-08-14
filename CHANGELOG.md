@@ -1,3 +1,63 @@
+## 0.8.1 - 2026-08-14
+
+### Added
+- Added the authenticated recipient document portal after successful access-code verification.
+- Recipient portals now show the released message plus the immutable document set assigned to that recipient when the delivery was staged.
+- Added recipient-facing document title/description display, expandable text documents, secure individual downloads, and a **Download all** ZIP archive.
+- Added migration `014_recipient_portal_documents.sql`, including best-effort backfill for existing 0.8.0 sent deliveries.
+- Added audit events for individual document downloads and download-all requests.
+- Added warning indicators to monitor editor tabs and the monitor list when recipient notification configuration still needs attention.
+
+### Changed
+- Recipient-specific and monitor-default recipient mail drafts are now always saveable, even when incomplete or missing the mandatory `{url}` placeholder. Warnings remain visible and actual recipient release stays fail-closed until the configuration is valid.
+- Empty/incomplete recipient-specific overrides now remain explicit drafts instead of silently collapsing back to the monitor default.
+- Uploaded files referenced by an immutable recipient-delivery snapshot are retained when their editable source document is removed, so an already released portal is not broken by later monitor editing.
+
+### Security
+- Portal document listing and download require both a still-valid recipient portal token and the matching authenticated recipient session.
+- Document assignments and recipient-facing document metadata/text are snapshotted at release staging time so later monitor edits cannot silently alter an existing delivery.
+- Uploaded file payloads remain in Pulse's private non-public storage and are streamed only through an authorization-checked portal endpoint.
+- `Download all` uses an internal store-only ZIP writer and does not require the optional PHP zip extension.
+
+## 0.8.0 hotfix - 2026-08-13
+
+### Added
+- Added a collapsible mail-queue diagnostics table to Profile → Notifications showing recent queue jobs, status, attempt count, next eligible retry time, recipient, and last error.
+- Added a debug-only **Clear queue** control. For safety, it removes only unsent owner/test jobs that Pulse can recreate; safety-contact, recipient-delivery, and access-code jobs are preserved.
+
+### Fixed
+- Recipient-release blocking errors now state the concrete configuration problem and name the affected recipients instead of showing only a generic blocked message.
+- Recipient cards now flag invalid effective recipient mail configuration, including personal or language-specific default messages that are missing `{url}`.
+- Recipient-specific and monitor-default mail editors now show a live warning as soon as a custom body is missing the mandatory `{url}` portal placeholder.
+- Default-recipient template save errors now identify the affected language when `{url}` is missing.
+- Debug "Send ... now" actions now bypass an existing queue job's retry backoff instead of merely reporting its `retrying` state.
+- Permanently failed debug-test jobs can be explicitly reopened with a fresh attempt budget without creating duplicate queue rows.
+- Web cron completion logs now include scheduler and mail-worker result counts, making it clear how many queued jobs were claimed, sent, retried, failed, or cancelled.
+
+## 0.8.0 - 2026-08-13
+
+### SMTP diagnostics hotfix
+- Preserve the sanitized SMTP server response text for failed operations instead of reporting only the numeric status code.
+- Include the mail worker error in warning log context.
+- Show the effective non-secret SMTP host, port, encryption, username, password-configured state, and sender address on the Profile page for troubleshooting.
+
+
+### Added
+- Added recipient-specific private portal URLs through the `{url}` recipient-mail placeholder.
+- Added the public recipient portal landing page with separate actions to request or enter an access code.
+- Added random one-time access codes valid for 30 minutes; only password hashes are stored and requesting a later code invalidates earlier unused codes.
+- Added recipient-portal sessions after successful code verification. Document listing/download remains intentionally deferred to 0.8.1.
+- Added configurable recipient portal availability: 30 days, 90 days, one year, a custom duration, or no automatic expiry.
+- Added per-delivery owner revocation from recipient delivery history.
+- Added migration `013_recipient_portal_foundation.sql`.
+
+### Security
+- Portal invitation tokens are 256-bit random values stored only as SHA-256 hashes in delivery records.
+- Portal lifetime starts only after the recipient notification is successfully sent.
+- Recipient notification queue bodies are redacted after delivery/cancellation; access-code bodies are redacted after delivery/cancellation/final failure.
+- The public portal never displays the configured recipient email address, and code-request responses are deliberately generic.
+- Custom recipient email bodies must contain `{url}`; `{url}` is prohibited in subjects to avoid credential leakage into subject-oriented logs.
+
 ## 0.7.8 - 2026-08-13
 
 ### Fixed

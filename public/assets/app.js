@@ -155,6 +155,26 @@ document.addEventListener('DOMContentLoaded', function ()
 		}
 	}
 
+	for (const expirySettings of document.querySelectorAll('[data-portal-expiry]'))
+	{
+		const mode = expirySettings.querySelector('[data-portal-expiry-mode]');
+		const custom = expirySettings.querySelector('[data-portal-expiry-custom]');
+
+		if (!mode || !custom)
+		{
+			continue;
+		}
+
+		/** @brief Shows the custom day count only when the custom expiry policy is selected. */
+		const updatePortalExpiry = function ()
+		{
+			custom.hidden = mode.value !== 'custom';
+		};
+
+		mode.addEventListener('change', updatePortalExpiry);
+		updatePortalExpiry();
+	}
+
 	for (const override of document.querySelectorAll('[data-message-override]'))
 	{
 		const toggle = override.querySelector('[data-message-override-toggle]');
@@ -178,6 +198,38 @@ document.addEventListener('DOMContentLoaded', function ()
 
 		toggle.addEventListener('change', updateOverride);
 		updateOverride();
+	}
+
+
+	for (const validation of document.querySelectorAll('[data-recipient-template-validation]'))
+	{
+		const body = validation.querySelector('[data-recipient-template-body]');
+		const warning = validation.querySelector('[data-recipient-url-warning]');
+		const toggle = validation.querySelector('[data-message-override-toggle]');
+		const emptyValid = validation.dataset.emptyValid === 'true';
+
+		if (!body || !warning)
+		{
+			continue;
+		}
+
+		/** @brief Shows a live warning when a custom recipient body cannot provide the portal link. */
+		const updateRecipientUrlWarning = function ()
+		{
+			const enabled = !toggle || toggle.checked;
+			const value = body.value.trim();
+			const missingUrl = enabled && ((value === '' && !emptyValid) || (value !== '' && !value.includes('{url}')));
+			warning.hidden = !missingUrl;
+		};
+
+		body.addEventListener('input', updateRecipientUrlWarning);
+
+		if (toggle)
+		{
+			toggle.addEventListener('change', updateRecipientUrlWarning);
+		}
+
+		updateRecipientUrlWarning();
 	}
 
 

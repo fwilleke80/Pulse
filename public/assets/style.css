@@ -1071,7 +1071,49 @@ small
 
 .recipient-overview-card > .button-link
 {
+	grid-column: 3;
+	grid-row: 1;
 	white-space: nowrap;
+}
+
+.recipient-overview-warning,
+.template-validation-warning
+{
+	padding: 0.65rem 0.75rem;
+	border: 1px solid color-mix(in srgb, var(--danger) 36%, var(--border));
+	border-radius: 8px;
+	background: color-mix(in srgb, var(--danger) 8%, var(--surface));
+	color: var(--danger);
+	font-size: 0.88rem;
+}
+
+.recipient-overview-warning
+{
+	display: grid;
+	grid-column: 1 / -1;
+	gap: 0.2rem;
+}
+
+.template-validation-warning
+{
+	margin: 0.65rem 0;
+}
+
+.template-validation-warning strong,
+.template-validation-warning small
+{
+	display: block;
+}
+
+.template-validation-warning strong
+{
+	margin-bottom: 0.15rem;
+}
+
+.template-validation-warning small
+{
+	margin-top: 0.25rem;
+	color: inherit;
 }
 
 .recipient-safety-hint
@@ -1773,6 +1815,13 @@ footer
 		grid-template-columns: 1fr;
 	}
 
+	.recipient-overview-card > .button-link,
+	.recipient-overview-warning
+	{
+		grid-column: auto;
+		grid-row: auto;
+	}
+
 	.recipient-overview-meta
 	{
 		grid-template-columns: 1fr;
@@ -1948,4 +1997,323 @@ footer
 .placeholder-help
 {
 	line-height: 1.65;
+}
+
+.portal-access-grid
+{
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+	gap: 1rem;
+	align-items: start;
+}
+
+.inline-form
+{
+	display: inline;
+	margin: 0 0 0 0.5rem;
+}
+
+.danger-link
+{
+	color: var(--danger);
+}
+
+.portal-expiry-settings
+{
+	margin-top: 1rem;
+}
+
+.smtp-diagnostics
+{
+	margin-top: 0.25rem;
+	padding: 0.7rem 0.85rem;
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	background: var(--surface-subtle);
+}
+
+.smtp-diagnostics summary
+{
+	cursor: pointer;
+	font-weight: 650;
+}
+
+.smtp-diagnostics dl
+{
+	display: grid;
+	gap: 0.35rem;
+	margin: 0.7rem 0 0.5rem;
+}
+
+.smtp-diagnostics dl > div
+{
+	display: grid;
+	grid-template-columns: minmax(8rem, 0.35fr) 1fr;
+	gap: 0.75rem;
+}
+
+.smtp-diagnostics dt
+{
+	color: var(--muted);
+}
+
+.smtp-diagnostics dd
+{
+	margin: 0;
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+
+@media (max-width: 680px)
+{
+	.smtp-diagnostics dl > div
+	{
+		grid-template-columns: 1fr;
+		gap: 0.1rem;
+	}
+}
+
+.mail-queue-panel
+{
+	margin-top: 1rem;
+	padding: 0.8rem 1rem;
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	background: var(--surface-subtle);
+}
+
+.mail-queue-panel > summary
+{
+	cursor: pointer;
+	font-weight: 700;
+}
+
+.mail-queue-table
+{
+	min-width: 980px;
+	font-size: 0.86rem;
+}
+
+.mail-queue-table code
+{
+	white-space: nowrap;
+}
+
+.mail-queue-error
+{
+	max-width: 28rem;
+}
+
+.mail-queue-error details > summary
+{
+	cursor: pointer;
+	white-space: nowrap;
+}
+
+.mail-queue-error small
+{
+	display: block;
+	margin-top: 0.35rem;
+	white-space: normal;
+}
+
+.debug-queue-controls
+{
+	margin-top: 1rem;
+	padding-top: 1rem;
+	border-top: 1px solid var(--border);
+}
+
+.debug-queue-controls p
+{
+	margin: 0.35rem 0 0.7rem;
+}
+
+.mail-queue-panel .muted
+{
+	color: var(--muted);
+}
+
+/* Recipient portal delivery */
+.portal-delivery-heading,
+.portal-documents-heading-row,
+.portal-document-card,
+.portal-document-title-row
+{
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+}
+
+.portal-delivery-heading
+{
+	align-items: flex-start;
+	margin-bottom: 1rem;
+}
+
+.portal-delivery-heading h1,
+.portal-document-card h3
+{
+	margin-top: 0;
+}
+
+.portal-expiry-badge
+{
+	flex: 0 0 auto;
+	padding: 0.35rem 0.65rem;
+	border: 1px solid var(--border);
+	border-radius: 999px;
+	background: var(--surface-subtle);
+	color: var(--muted);
+	font-size: 0.8rem;
+}
+
+.portal-message-card
+{
+	margin: 1.25rem 0;
+	padding: 1rem 1.1rem;
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	background: var(--surface-subtle);
+}
+
+.portal-message-card h2
+{
+	margin-top: 0;
+}
+
+.portal-message-subject
+{
+	display: block;
+	margin-bottom: 0.65rem;
+}
+
+.portal-message-body,
+.portal-text-content
+{
+	line-height: 1.6;
+	white-space: normal;
+}
+
+.portal-documents-section
+{
+	margin-top: 1.5rem;
+}
+
+.portal-documents-heading-row
+{
+	align-items: flex-end;
+}
+
+.portal-document-list
+{
+	display: grid;
+	gap: 0.75rem;
+}
+
+.portal-document-card
+{
+	align-items: flex-start;
+	padding: 1rem;
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	background: var(--surface);
+}
+
+.portal-document-main
+{
+	min-width: 0;
+	flex: 1 1 auto;
+}
+
+.portal-document-title-row
+{
+	justify-content: flex-start;
+	gap: 0.6rem;
+}
+
+.portal-document-title-row h3
+{
+	margin-bottom: 0;
+}
+
+.portal-document-description
+{
+	margin: 0.55rem 0;
+	color: var(--text);
+}
+
+.portal-document-meta
+{
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.35rem 0.9rem;
+	margin-top: 0.45rem;
+	color: var(--muted);
+	font-size: 0.82rem;
+}
+
+.portal-document-actions
+{
+	flex: 0 0 auto;
+}
+
+.portal-text-document
+{
+	margin-top: 0.75rem;
+	padding-top: 0.6rem;
+	border-top: 1px solid var(--border);
+}
+
+.portal-text-document summary
+{
+	cursor: pointer;
+	font-weight: 650;
+}
+
+.portal-text-content
+{
+	margin-top: 0.75rem;
+	padding: 0.8rem;
+	border-radius: 8px;
+	background: var(--background);
+}
+
+.portal-security-note
+{
+	margin-top: 1rem;
+}
+
+@media (max-width: 680px)
+{
+	.portal-delivery-heading,
+	.portal-documents-heading-row,
+	.portal-document-card
+	{
+		align-items: stretch;
+		flex-direction: column;
+	}
+
+	.portal-expiry-badge,
+	.portal-document-actions .button-link
+	{
+		align-self: flex-start;
+	}
+}
+
+.tab-warning-indicator
+{
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 1.15rem;
+	height: 1.15rem;
+	margin-left: 0.25rem;
+	border-radius: 999px;
+	background: var(--warning);
+	color: #111;
+	font-size: 0.75rem;
+	font-weight: 800;
+	line-height: 1;
 }

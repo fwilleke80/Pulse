@@ -202,6 +202,7 @@ final class NotificationComposer
 			'name' => (string)($recipient['recipient_name'] ?? ''),
 			'owner' => (string)($recipient['owner_name'] ?? ''),
 			'monitor' => (string)($recipient['monitor_name'] ?? ''),
+			'url' => (string)($recipient['portal_url'] ?? ($this->_baseUrl . '/portal?token=…')),
 		];
 
 		if (trim((string)($recipient['message_subject'] ?? '')) !== '' && trim((string)($recipient['message_body'] ?? '')) !== '')
@@ -216,6 +217,42 @@ final class NotificationComposer
 			'subject' => $this->Translate($locale, 'mail.recipient_notification.subject', $params),
 			'body_text' => $this->Translate($locale, 'mail.recipient_notification.body', $params),
 		];
+	}
+
+
+	/**
+	 * @brief Composes the Pulse-authored short-lived recipient access-code email.
+	 * @param array<string, mixed> $recipient Recipient delivery and generated code snapshot.
+	 * @return array{subject: string, body_text: string}
+	 */
+	public function ComposeRecipientAccessCode(array $recipient): array
+	{
+		$locale = $this->_languages->Resolve(isset($recipient['notification_locale']) ? (string)$recipient['notification_locale'] : null);
+		$params = [
+			'app' => $this->_appName,
+			'name' => (string)($recipient['recipient_name'] ?? ''),
+			'owner' => (string)($recipient['owner_name'] ?? ''),
+			'monitor' => (string)($recipient['monitor_name'] ?? ''),
+			'code' => (string)($recipient['access_code'] ?? ''),
+			'minutes' => (int)($recipient['valid_minutes'] ?? 30),
+		];
+
+		return [
+			'subject' => $this->Translate($locale, 'mail.recipient_access_code.subject', $params),
+			'body_text' => $this->Translate($locale, 'mail.recipient_access_code.body', $params),
+		];
+	}
+
+	/**
+	 * @brief Builds a recipient portal invitation URL for a raw token and locale.
+	 * @param string $rawToken Raw 64-character portal token.
+	 * @param string $locale Recipient locale.
+	 * @return string Absolute portal URL.
+	 */
+	public function RecipientPortalUrl(string $rawToken, string $locale): string
+	{
+		$locale = $this->_languages->Resolve($locale);
+		return $this->_baseUrl . '/portal?token=' . rawurlencode($rawToken) . '&lang=' . rawurlencode($locale);
 	}
 
 	/**

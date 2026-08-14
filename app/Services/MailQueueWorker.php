@@ -84,6 +84,17 @@ final class MailQueueWorker
 		return $this->Deliver($job, $workerId);
 	}
 
+
+	/**
+	 * @brief Bypasses retry backoff for one explicit debug delivery action.
+	 * @param int $jobId Queue job ID.
+	 * @return bool True when the job can be retried immediately.
+	 */
+	public function PrepareImmediateDebugRetry(int $jobId): bool
+	{
+		return $this->_queue->PrepareImmediateDebugRetry($jobId);
+	}
+
 	/** @brief Performs one transport attempt and persists the result. */
 	private function Deliver(array $job, string $workerId): string
 	{
@@ -125,6 +136,7 @@ final class MailQueueWorker
 				'mail_type' => (string)$job['mail_type'],
 				'attempt' => (int)$job['attempt_count'],
 				'queue_status' => $status,
+				'error' => $error,
 			]);
 			return in_array($status, ['retrying', 'failed'], true) ? $status : 'failed';
 		}

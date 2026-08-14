@@ -68,6 +68,7 @@ CREATE TABLE monitors
 	safety_invitation_body LONGTEXT NULL,
 	safety_reminder_subject VARCHAR(255) NULL,
 	safety_reminder_body LONGTEXT NULL,
+	recipient_portal_expiry_days INT UNSIGNED NULL,
 	is_paused TINYINT(1) NOT NULL DEFAULT 0,
 	paused_at DATETIME NULL,
 	last_confirmed_at DATETIME NULL,
@@ -268,6 +269,12 @@ CREATE TABLE recipient_release_deliveries
 	recipient_name VARCHAR(255) NOT NULL,
 	recipient_email VARCHAR(255) NOT NULL,
 	notification_locale VARCHAR(10) NOT NULL,
+	portal_token_hash CHAR(64) NULL,
+	portal_availability_days INT UNSIGNED NULL,
+	portal_released_at DATETIME NULL,
+	portal_expires_at DATETIME NULL,
+	portal_revoked_at DATETIME NULL,
+	portal_last_access_at DATETIME NULL,
 	subject VARCHAR(255) NOT NULL,
 	body_text LONGTEXT NOT NULL,
 	status ENUM('queued','sent','failed','cancelled') NOT NULL DEFAULT 'queued',
@@ -281,10 +288,51 @@ CREATE TABLE recipient_release_deliveries
 	UNIQUE KEY uq_recipient_release_deliveries_release_contact (release_id, contact_id),
 	INDEX idx_recipient_release_deliveries_contact (monitor_id, contact_id, created_at),
 	INDEX idx_recipient_release_deliveries_status (release_id, status),
+	UNIQUE KEY uq_recipient_release_deliveries_portal_token (portal_token_hash),
+	INDEX idx_recipient_release_deliveries_portal_runtime (portal_token_hash, portal_revoked_at, portal_expires_at),
 	FOREIGN KEY (release_id) REFERENCES recipient_releases(id) ON DELETE CASCADE,
 	FOREIGN KEY (check_cycle_id) REFERENCES check_cycles(id) ON DELETE CASCADE,
 	FOREIGN KEY (monitor_id) REFERENCES monitors(id) ON DELETE CASCADE,
 	FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE recipient_delivery_documents
+(
+	id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+	recipient_delivery_id BIGINT UNSIGNED NOT NULL,
+	source_document_id BIGINT UNSIGNED NULL,
+	title VARCHAR(255) NOT NULL,
+	description TEXT NULL,
+	storage_type ENUM('text','file') NOT NULL,
+	text_content LONGTEXT NULL,
+	stored_filename VARCHAR(255) NULL,
+	original_filename VARCHAR(255) NULL,
+	mime_type VARCHAR(255) NULL,
+	file_size_bytes BIGINT NULL,
+	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	UNIQUE KEY uq_recipient_delivery_documents_source (recipient_delivery_id, source_document_id),
+	INDEX idx_recipient_delivery_documents_delivery (recipient_delivery_id, id),
+	INDEX idx_recipient_delivery_documents_stored_file (stored_filename),
+	FOREIGN KEY (recipient_delivery_id)
+		REFERENCES recipient_release_deliveries(id)
+		ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE recipient_portal_codes
+(
+	id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+	recipient_delivery_id BIGINT UNSIGNED NOT NULL,
+	code_hash VARCHAR(255) NOT NULL,
+	attempt_count INT UNSIGNED NOT NULL DEFAULT 0,
+	expires_at DATETIME NOT NULL,
+	sent_at DATETIME NULL,
+	used_at DATETIME NULL,
+	invalidated_at DATETIME NULL,
+	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+	INDEX idx_recipient_portal_codes_delivery (recipient_delivery_id, created_at),
+	INDEX idx_recipient_portal_codes_runtime (recipient_delivery_id, expires_at, used_at, invalidated_at),
+	FOREIGN KEY (recipient_delivery_id) REFERENCES recipient_release_deliveries(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE access_tokens
@@ -311,6 +359,7 @@ CREATE TABLE mail_queue
 	contact_id BIGINT UNSIGNED NULL,
 	safety_request_id BIGINT UNSIGNED NULL,
 	recipient_delivery_id BIGINT UNSIGNED NULL,
+	recipient_portal_code_id BIGINT UNSIGNED NULL,
 	mail_type VARCHAR(50) NOT NULL,
 	idempotency_key VARCHAR(191) NOT NULL,
 	reminder_number INT UNSIGNED NULL,
@@ -337,6 +386,7 @@ CREATE TABLE mail_queue
 	INDEX idx_mail_queue_cycle (check_cycle_id, mail_type, reminder_number),
 	INDEX idx_mail_queue_safety_request (safety_request_id),
 	INDEX idx_mail_queue_recipient_delivery (recipient_delivery_id),
+	INDEX idx_mail_queue_recipient_portal_code (recipient_portal_code_id),
 	INDEX idx_mail_queue_user_created (user_id, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

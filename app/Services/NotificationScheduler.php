@@ -184,7 +184,9 @@ final class NotificationScheduler
 			return null;
 		}
 
-		return $this->EnqueueDueNotice($cycle, new DateTimeImmutable('now', new DateTimeZone('UTC')));
+		$jobId = $this->EnqueueDueNotice($cycle, new DateTimeImmutable('now', new DateTimeZone('UTC')));
+		$this->_queue->PrepareImmediateDebugRetry($jobId);
+		return $jobId;
 	}
 
 	/** @brief Synchronizes due cycles for every active account. */

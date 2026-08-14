@@ -61,6 +61,7 @@ ob_start();
 					$uncheckedContactCount = (int)($monitor['unchecked_contact_count'] ?? 0);
 					$failedNotificationCount = (int)($monitor['failed_notification_count'] ?? 0);
 					$releaseBlocked = (string)($monitor['latest_release_status'] ?? '') === 'blocked';
+					$recipientConfigurationIssueCount = (int)($monitor['recipient_configuration_issue_count'] ?? 0);
 					$cycleEscalationPolicy = (string)($monitor['latest_escalation_policy'] ?? $monitor['escalation_policy'] ?? 'direct');
 					?>
 					<tr class="monitor-row monitor-row-<?= e($statusClass) ?>">
@@ -79,6 +80,9 @@ ob_start();
 							<?php endif; ?>
 							<?php if ($releaseBlocked): ?>
 								<small class="table-warning table-warning-critical"><?= e__('monitors.notifications.release_blocked_short') ?></small>
+							<?php endif; ?>
+							<?php if ($recipientConfigurationIssueCount > 0): ?>
+								<small class="table-warning table-warning-critical"><?= e__('monitors.index.configuration_warning', ['count' => $recipientConfigurationIssueCount]) ?></small>
 							<?php endif; ?>
 							<?php if ($uncheckedContactCount > 0 && empty($monitor['is_paused'])): ?>
 								<small class="table-warning"><?= e__(

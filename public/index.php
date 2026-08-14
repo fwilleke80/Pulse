@@ -16,6 +16,7 @@ use Pulse\Controllers\LanguageController;
 use Pulse\Controllers\MonitorController;
 use Pulse\Controllers\ProfileController;
 use Pulse\Controllers\RecipientController;
+use Pulse\Controllers\RecipientPortalController;
 use Pulse\Controllers\SafetyController;
 use Pulse\Core\NotFoundException;
 use Pulse\Core\SecurityHeaders;
@@ -47,6 +48,8 @@ $testNotificationService = $container['testNotificationService'];
 $notificationLanguage = $container['notificationLanguage'];
 $notificationComposer = $container['notificationComposer'];
 $escalationService = $container['escalationService'];
+$recipientPortalService = $container['recipientPortalService'];
+$recipientPortalArchiveBuilder = $container['recipientPortalArchiveBuilder'];
 
 (new SecurityHeaders())->Apply($request, (array)$config['security']);
 header('Cache-Control: no-store');
@@ -90,7 +93,9 @@ $profileController = new ProfileController(
 	$mailQueueRepository,
 	$testNotificationService,
 	(bool)$config['mail']['enabled'],
-	$notificationLanguage
+	(bool)$config['debug'],
+	$notificationLanguage,
+	(array)$config['mail']
 );
 $monitorController = new MonitorController(
 	$view,
@@ -122,7 +127,8 @@ $recipientController = new RecipientController(
 	$recipientRepository,
 	$monitorRepository,
 	$documentRepository,
-	$notificationComposer
+	$notificationComposer,
+	$recipientPortalService
 );
 $safetyController = new SafetyController(
 	$view,
@@ -132,6 +138,19 @@ $safetyController = new SafetyController(
 	$request,
 	$escalationService,
 	$notificationLanguage,
+	dirname(__DIR__) . '/app/Lang'
+);
+$recipientPortalController = new RecipientPortalController(
+	$view,
+	$session,
+	$auth,
+	$logger,
+	$request,
+	$recipientPortalService,
+	$mailQueueWorker,
+	$notificationLanguage,
+	$documentService,
+	$recipientPortalArchiveBuilder,
 	dirname(__DIR__) . '/app/Lang'
 );
 
@@ -154,6 +173,7 @@ $router->Post('/profile/update', [$profileController, 'Update']);
 $router->Post('/profile/password', [$profileController, 'ChangePassword']);
 $router->Post('/profile/notifications/test', [$profileController, 'SendTestNotification']);
 $router->Post('/profile/notifications/retry', [$profileController, 'RetryFailedNotifications']);
+$router->Post('/profile/notifications/clear', [$profileController, 'ClearNotificationQueue']);
 
 $router->Get('/monitors', [$monitorController, 'Index']);
 $router->Get('/monitors/new', [$monitorController, 'New']);
@@ -172,6 +192,7 @@ $router->Post('/monitors/send-recipient-notifications', [$monitorController, 'Se
 $router->Get('/monitors/recipients/edit', [$recipientController, 'Edit']);
 $router->Post('/monitors/recipients/add', [$recipientController, 'Add']);
 $router->Post('/monitors/recipients/update', [$recipientController, 'Update']);
+$router->Post('/monitors/recipients/portal/revoke', [$recipientController, 'RevokePortal']);
 $router->Post('/monitors/recipients/remove', [$recipientController, 'Remove']);
 
 $router->Post('/monitors/documents/upload', [$documentController, 'Upload']);
@@ -188,6 +209,12 @@ $router->Post('/logout', [$authController, 'Logout']);
 $router->Post('/language/set', [$languageController, 'Set']);
 $router->Get('/safety/confirm', [$safetyController, 'Show']);
 $router->Post('/safety/respond', [$safetyController, 'Respond']);
+$router->Get('/portal', [$recipientPortalController, 'Show']);
+$router->Post('/portal/code/request', [$recipientPortalController, 'RequestCode']);
+$router->Post('/portal/code/verify', [$recipientPortalController, 'VerifyCode']);
+$router->Get('/portal/access', [$recipientPortalController, 'Access']);
+$router->Get('/portal/document/download', [$recipientPortalController, 'DownloadDocument']);
+$router->Get('/portal/documents/download-all', [$recipientPortalController, 'DownloadAll']);
 
 try
 {

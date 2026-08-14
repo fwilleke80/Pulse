@@ -50,6 +50,7 @@ final class MailQueueRepository
 					contact_id,
 					safety_request_id,
 					recipient_delivery_id,
+					recipient_portal_code_id,
 					mail_type,
 					idempotency_key,
 					reminder_number,
@@ -71,6 +72,7 @@ final class MailQueueRepository
 					:contact_id,
 					:safety_request_id,
 					:recipient_delivery_id,
+					:recipient_portal_code_id,
 					:mail_type,
 					:idempotency_key,
 					:reminder_number,
@@ -93,6 +95,7 @@ final class MailQueueRepository
 				'contact_id' => $message['contact_id'] ?? null,
 				'safety_request_id' => $message['safety_request_id'] ?? null,
 				'recipient_delivery_id' => $message['recipient_delivery_id'] ?? null,
+				'recipient_portal_code_id' => $message['recipient_portal_code_id'] ?? null,
 				'mail_type' => (string)$message['mail_type'],
 				'idempotency_key' => (string)$message['idempotency_key'],
 				'reminder_number' => $message['reminder_number'] ?? null,
@@ -144,8 +147,20 @@ final class MailQueueRepository
 				AND locked_until < UTC_TIMESTAMP()
 		');
 		$statement->execute();
+		$recovered = $statement->rowCount();
 
-		return $statement->rowCount();
+		$invalidate = $this->_database->GetConnection()->prepare('
+			UPDATE recipient_portal_codes rpc
+			INNER JOIN mail_queue mq ON mq.recipient_portal_code_id = rpc.id
+			SET rpc.invalidated_at = COALESCE(rpc.invalidated_at, UTC_TIMESTAMP()), rpc.updated_at = UTC_TIMESTAMP(),
+				mq.body_text = \'[Access code redacted after final lease failure]\', mq.updated_at = UTC_TIMESTAMP()
+			WHERE mq.mail_type = \'recipient_access_code\'
+				AND mq.status = \'failed\'
+				AND rpc.used_at IS NULL
+		');
+		$invalidate->execute();
+
+		return $recovered;
 	}
 
 	/**
@@ -168,6 +183,39 @@ final class MailQueueRepository
 	{
 		$jobs = $this->Claim($workerId, 1, $leaseSeconds, $jobId);
 		return $jobs[0] ?? null;
+	}
+
+
+	/**
+	 * @brief Makes one queued debug mail eligible for an immediate delivery attempt.
+	 *
+	 * Retry backoff is deliberately bypassed only for an explicit debug action. A
+	 * permanently failed job is re-opened with a fresh attempt budget so the
+	 * operator can test again after correcting SMTP configuration.
+	 *
+	 * @param int $jobId Queue job ID.
+	 * @return bool True when the job is eligible for an immediate retry.
+	 */
+	public function PrepareImmediateDebugRetry(int $jobId): bool
+	{
+		$statement = $this->_database->GetConnection()->prepare('
+			UPDATE mail_queue
+			SET
+				status = CASE WHEN status = \'failed\' THEN \'retrying\' ELSE status END,
+				attempt_count = CASE WHEN status = \'failed\' THEN 0 ELSE attempt_count END,
+				available_at = UTC_TIMESTAMP(),
+				failed_at = CASE WHEN status = \'failed\' THEN NULL ELSE failed_at END,
+				locked_at = NULL,
+				locked_until = NULL,
+				locked_by = NULL,
+				lease_token = NULL,
+				updated_at = UTC_TIMESTAMP()
+			WHERE id = :id
+				AND status IN (\'queued\', \'retrying\', \'failed\')
+		');
+		$statement->execute(['id' => $jobId]);
+
+		return $statement->rowCount() === 1;
 	}
 
 	/**
@@ -229,6 +277,31 @@ final class MailQueueRepository
 			return (int)$statement->fetchColumn() === 1;
 		}
 
+
+		if ($mailType === 'recipient_access_code')
+		{
+			$statement = $this->_database->GetConnection()->prepare('
+				SELECT COUNT(*)
+				FROM recipient_portal_codes rpc
+				INNER JOIN recipient_release_deliveries rrd ON rrd.id = rpc.recipient_delivery_id
+				WHERE rpc.id = :code_id
+					AND rrd.id = :delivery_id
+					AND rrd.status = \'sent\'
+					AND rrd.portal_released_at IS NOT NULL
+					AND rrd.portal_revoked_at IS NULL
+					AND (rrd.portal_expires_at IS NULL OR rrd.portal_expires_at > UTC_TIMESTAMP())
+					AND rpc.used_at IS NULL
+					AND rpc.invalidated_at IS NULL
+					AND rpc.expires_at > UTC_TIMESTAMP()
+			');
+			$statement->execute([
+				'code_id' => (int)$job['recipient_portal_code_id'],
+				'delivery_id' => (int)$job['recipient_delivery_id'],
+			]);
+
+			return (int)$statement->fetchColumn() === 1;
+		}
+
 		return true;
 	}
 
@@ -257,6 +330,8 @@ final class MailQueueRepository
 					status = \'sent\',
 					body_text = CASE
 						WHEN mail_type IN (\'safety_invitation\', \'safety_reminder\') THEN \'[Safety link redacted after delivery]\'
+						WHEN mail_type = \'recipient_notification\' THEN \'[Recipient portal link redacted after delivery]\'
+						WHEN mail_type = \'recipient_access_code\' THEN \'[Access code redacted after delivery]\'
 						ELSE body_text
 					END,
 					sent_at = :sent_at,
@@ -286,6 +361,10 @@ final class MailQueueRepository
 			elseif ((string)$job['mail_type'] === 'recipient_notification')
 			{
 				$this->RecordRecipientNotificationSent($connection, $job, $now);
+			}
+			elseif ((string)$job['mail_type'] === 'recipient_access_code')
+			{
+				$this->RecordRecipientAccessCodeSent($connection, $job, $now);
 			}
 
 			$connection->commit();
@@ -369,6 +448,8 @@ final class MailQueueRepository
 				status = \'cancelled\',
 				body_text = CASE
 					WHEN mail_type IN (\'safety_invitation\', \'safety_reminder\') THEN \'[Safety link redacted after cancellation]\'
+					WHEN mail_type = \'recipient_notification\' THEN \'[Recipient portal link redacted after cancellation]\'
+					WHEN mail_type = \'recipient_access_code\' THEN \'[Access code redacted after cancellation]\'
 					ELSE body_text
 				END,
 				cancelled_at = UTC_TIMESTAMP(),
@@ -393,6 +474,8 @@ final class MailQueueRepository
 			SET status = \'cancelled\',
 				body_text = CASE
 					WHEN mail_type IN (\'safety_invitation\', \'safety_reminder\') THEN \'[Safety link redacted after cancellation]\'
+					WHEN mail_type = \'recipient_notification\' THEN \'[Recipient portal link redacted after cancellation]\'
+					WHEN mail_type = \'recipient_access_code\' THEN \'[Access code redacted after cancellation]\'
 					ELSE body_text
 				END,
 				cancelled_at = UTC_TIMESTAMP(), updated_at = UTC_TIMESTAMP()
@@ -432,6 +515,7 @@ final class MailQueueRepository
 				SELECT id
 				FROM mail_queue
 				WHERE status = \'failed\'
+					AND mail_type <> \'recipient_access_code\'
 					' . $userFilter . '
 				ORDER BY failed_at ASC, id ASC
 				LIMIT ' . $limit . '
@@ -478,6 +562,53 @@ final class MailQueueRepository
 			$connection->rollBack();
 			throw $throwable;
 		}
+	}
+
+	/**
+	 * @brief Returns recent queue entries for one authenticated owner.
+	 * @param int $userId Owner user ID.
+	 * @param int $limit Maximum number of rows to return.
+	 * @return array<int, array<string, mixed>>
+	 */
+	public function FindRecentForUser(int $userId, int $limit = 50): array
+	{
+		$limit = max(1, min(200, $limit));
+		$statement = $this->_database->GetConnection()->prepare('
+			SELECT
+				id, mail_type, recipient_email, subject, status, attempt_count, max_attempts,
+				last_error, available_at, sent_at, failed_at, cancelled_at, created_at, updated_at
+			FROM mail_queue
+			WHERE user_id = :user_id
+			ORDER BY id DESC
+			LIMIT ' . $limit . '
+		');
+		$statement->execute(['user_id' => $userId]);
+		$rows = $statement->fetchAll(PDO::FETCH_ASSOC);
+
+		return is_array($rows) ? $rows : [];
+	}
+
+	/**
+	 * @brief Clears safe unsent owner/test jobs for a debug-mode operator.
+	 *
+	 * Safety-contact, recipient-notification, and access-code jobs are deliberately
+	 * preserved because deleting those immutable jobs can strand an active
+	 * escalation or invalidate a credential that cannot be reconstructed.
+	 *
+	 * @param int $userId Owner user ID.
+	 * @return int Number of queue rows removed.
+	 */
+	public function ClearDebugQueueForUser(int $userId): int
+	{
+		$statement = $this->_database->GetConnection()->prepare('
+			DELETE FROM mail_queue
+			WHERE user_id = :user_id
+				AND mail_type IN (\'test\', \'owner_due_notice\', \'owner_reminder\')
+				AND status IN (\'queued\', \'retrying\', \'failed\', \'cancelled\')
+		');
+		$statement->execute(['user_id' => $userId]);
+
+		return $statement->rowCount();
 	}
 
 	/** @return array<string, int> @brief Returns queue counts for a user. */
@@ -784,10 +915,22 @@ final class MailQueueRepository
 		$update = $connection->prepare('
 			UPDATE recipient_release_deliveries
 			SET status = \'sent\', sent_at = :sent_at, failed_at = NULL, cancelled_at = NULL,
+				portal_expires_at = CASE
+					WHEN portal_released_at IS NULL AND portal_availability_days IS NOT NULL
+					THEN TIMESTAMPADD(DAY, portal_availability_days, :portal_expiry_base)
+					ELSE portal_expires_at
+				END,
+				portal_released_at = COALESCE(portal_released_at, :portal_released_at),
 				last_error = NULL, updated_at = :updated_at
 			WHERE id = :id AND status IN (\'queued\', \'cancelled\')
 		');
-		$update->execute(['sent_at' => $now, 'updated_at' => $now, 'id' => $deliveryId]);
+		$update->execute([
+			'sent_at' => $now,
+			'portal_released_at' => $now,
+			'portal_expiry_base' => $now,
+			'updated_at' => $now,
+			'id' => $deliveryId,
+		]);
 
 		if ($update->rowCount() !== 1)
 		{
@@ -844,6 +987,25 @@ final class MailQueueRepository
 		]);
 	}
 
+
+	/** @brief Records successful delivery of a short-lived recipient access code. */
+	private function RecordRecipientAccessCodeSent(PDO $connection, array $job, string $now): void
+	{
+		$update = $connection->prepare('
+			UPDATE recipient_portal_codes
+			SET sent_at = :sent_at, updated_at = :updated_at
+			WHERE id = :id AND used_at IS NULL AND invalidated_at IS NULL
+		');
+		$update->execute([
+			'sent_at' => $now,
+			'updated_at' => $now,
+			'id' => (int)$job['recipient_portal_code_id'],
+		]);
+		$this->InsertAudit($connection, $job, 'recipient.portal_code_sent', $now, [
+			'delivery_id' => $job['recipient_delivery_id'],
+		]);
+	}
+
 	/** @brief Mirrors a final queue failure into its safety or recipient delivery state. */
 	private function RecordLinkedFinalFailure(PDO $connection, array $job, string $error, string $now): void
 	{
@@ -854,6 +1016,26 @@ final class MailQueueRepository
 			$this->InsertAudit($connection, $job, 'mail.safety_failed', $now, [
 				'safety_request_id' => $job['safety_request_id'],
 				'mail_type' => $mailType,
+			]);
+			return;
+		}
+
+		if ($mailType === 'recipient_access_code')
+		{
+			$update = $connection->prepare('
+				UPDATE recipient_portal_codes
+				SET invalidated_at = COALESCE(invalidated_at, :invalidated_at), updated_at = :updated_at
+				WHERE id = :id AND used_at IS NULL
+			');
+			$update->execute([
+				'invalidated_at' => $now,
+				'updated_at' => $now,
+				'id' => (int)$job['recipient_portal_code_id'],
+			]);
+			$redact = $connection->prepare('UPDATE mail_queue SET body_text = \'[Access code redacted after final failure]\' WHERE id = :id');
+			$redact->execute(['id' => (int)$job['id']]);
+			$this->InsertAudit($connection, $job, 'recipient.portal_code_failed', $now, [
+				'delivery_id' => $job['recipient_delivery_id'],
 			]);
 			return;
 		}

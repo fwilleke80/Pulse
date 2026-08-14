@@ -57,6 +57,7 @@ class MonitorRepository
 				safety_invitation_body,
 				safety_reminder_subject,
 				safety_reminder_body,
+				recipient_portal_expiry_days,
 				is_paused,
 				paused_at,
 				last_confirmed_at,
@@ -162,6 +163,7 @@ class MonitorRepository
 				safety_invitation_body,
 				safety_reminder_subject,
 				safety_reminder_body,
+				recipient_portal_expiry_days,
 				is_paused,
 				paused_at,
 				last_confirmed_at,
@@ -472,6 +474,24 @@ class MonitorRepository
 			'safety_invitation_body' => $safetyInvitationBody,
 			'safety_reminder_subject' => $safetyReminderSubject,
 			'safety_reminder_body' => $safetyReminderBody,
+		]);
+	}
+
+	/**
+	 * @brief Updates the recipient portal availability policy for an owned monitor.
+	 * @param int|null $expiryDays Days after successful recipient notification, or null for no automatic expiry.
+	 */
+	public function UpdateRecipientPortalAvailabilityForUser(int $monitorId, int $userId, ?int $expiryDays): void
+	{
+		$statement = $this->_database->GetConnection()->prepare('
+			UPDATE monitors
+			SET recipient_portal_expiry_days = :expiry_days, updated_at = UTC_TIMESTAMP()
+			WHERE id = :id AND user_id = :user_id
+		');
+		$statement->execute([
+			'expiry_days' => $expiryDays,
+			'id' => $monitorId,
+			'user_id' => $userId,
 		]);
 	}
 

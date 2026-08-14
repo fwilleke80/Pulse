@@ -7,7 +7,10 @@ declare(strict_types=1);
 /** @var string $notificationLocale */
 /** @var bool $mailEnabled */
 /** @var array<string, int> $mailQueueCounts */
+/** @var array<int, array<string, mixed>> $mailQueueEntries */
 /** @var array<string, mixed>|null $latestTestNotification */
+/** @var array<string, mixed> $mailConnection */
+/** @var bool $debugEnabled */
 /** @var string $base_url */
 
 ob_start();
@@ -138,6 +141,20 @@ ob_start();
 		</div>
 	</div>
 
+	<?php if ($mailEnabled): ?>
+		<details class="smtp-diagnostics">
+			<summary><?= e__('profile.notifications.smtp.heading') ?></summary>
+			<dl>
+				<div><dt><?= e__('profile.notifications.smtp.host') ?></dt><dd><code><?= e((string)$mailConnection['host']) ?>:<?= (int)$mailConnection['port'] ?></code></dd></div>
+				<div><dt><?= e__('profile.notifications.smtp.encryption') ?></dt><dd><code><?= e(strtoupper((string)$mailConnection['encryption'])) ?></code></dd></div>
+				<div><dt><?= e__('profile.notifications.smtp.username') ?></dt><dd><code><?= e((string)$mailConnection['username']) ?></code></dd></div>
+				<div><dt><?= e__('profile.notifications.smtp.password') ?></dt><dd><?= e__(!empty($mailConnection['password_configured']) ? 'profile.notifications.smtp.configured' : 'profile.notifications.smtp.not_configured') ?></dd></div>
+				<div><dt><?= e__('profile.notifications.smtp.from_address') ?></dt><dd><code><?= e((string)$mailConnection['from_address']) ?></code></dd></div>
+			</dl>
+			<small><?= e__('profile.notifications.smtp.hint') ?></small>
+		</details>
+	<?php endif; ?>
+
 	<?php if (is_array($latestTestNotification)): ?>
 		<div class="notification-last-test">
 			<strong><?= e__('profile.notifications.last_test') ?></strong>
@@ -176,6 +193,76 @@ ob_start();
 			<button type="button" class="btn-secondary" disabled aria-describedby="mail-disabled-help"><?= e__('profile.notifications.retry.submit') ?></button>
 		<?php endif; ?>
 	<?php endif; ?>
+
+	<?php $activeQueueCount = (int)$mailQueueCounts['queued'] + (int)$mailQueueCounts['retrying'] + (int)$mailQueueCounts['processing'] + (int)$mailQueueCounts['failed']; ?>
+	<details class="mail-queue-panel" id="mail-queue"<?= $activeQueueCount > 0 ? ' open' : '' ?>>
+		<summary><?= e__('profile.notifications.queue_details.heading', ['count' => count($mailQueueEntries)]) ?></summary>
+		<p class="muted"><?= e__('profile.notifications.queue_details.hint') ?></p>
+
+		<?php if ($mailQueueEntries === []): ?>
+			<p><?= e__('profile.notifications.queue_details.empty') ?></p>
+		<?php else: ?>
+			<div class="table-scroll">
+				<table class="mail-queue-table">
+					<thead>
+						<tr>
+							<th><?= e__('profile.notifications.queue_details.id') ?></th>
+							<th><?= e__('profile.notifications.queue_details.type') ?></th>
+							<th><?= e__('profile.notifications.queue_details.recipient') ?></th>
+							<th><?= e__('profile.notifications.queue_details.status') ?></th>
+							<th><?= e__('profile.notifications.queue_details.attempts') ?></th>
+							<th><?= e__('profile.notifications.queue_details.next_attempt') ?></th>
+							<th><?= e__('profile.notifications.queue_details.last_error') ?></th>
+						</tr>
+					</thead>
+					<tbody>
+						<?php foreach ($mailQueueEntries as $queueEntry): ?>
+							<?php
+							$status = (string)$queueEntry['status'];
+							$typeKey = 'profile.notifications.mail_type.' . (string)$queueEntry['mail_type'];
+							$isWaiting = in_array($status, ['queued', 'retrying', 'processing'], true);
+							?>
+							<tr>
+								<td><code>#<?= (int)$queueEntry['id'] ?></code></td>
+								<td><?= e__($typeKey) ?></td>
+								<td><code><?= e((string)$queueEntry['recipient_email']) ?></code></td>
+								<td><span class="status-badge status-mail-<?= e($status) ?>"><?= e__('profile.notifications.status.' . $status) ?></span></td>
+								<td><?= (int)$queueEntry['attempt_count'] ?> / <?= (int)$queueEntry['max_attempts'] ?></td>
+								<td>
+									<?php if ($isWaiting): ?>
+										<time datetime="<?= e((string)$queueEntry['available_at']) ?>"><?= e(format_datetime((string)$queueEntry['available_at'])) ?></time>
+									<?php else: ?>
+										<span aria-hidden="true">—</span>
+									<?php endif; ?>
+								</td>
+								<td class="mail-queue-error">
+									<?php if (!empty($queueEntry['last_error'])): ?>
+										<details>
+											<summary><?= e__('profile.notifications.queue_details.show_error') ?></summary>
+											<small><?= e((string)$queueEntry['last_error']) ?></small>
+										</details>
+									<?php else: ?>
+										<span aria-hidden="true">—</span>
+									<?php endif; ?>
+								</td>
+							</tr>
+						<?php endforeach; ?>
+					</tbody>
+				</table>
+			</div>
+		<?php endif; ?>
+
+		<?php if ($debugEnabled): ?>
+			<div class="debug-queue-controls">
+				<strong><?= e__('profile.notifications.clear.heading') ?></strong>
+				<p><?= e__('profile.notifications.clear.hint') ?></p>
+				<form method="post" action="<?= e($base_url) ?>/profile/notifications/clear" data-confirm="<?= e__('profile.notifications.clear.confirm') ?>">
+					<?= csrf_field() ?>
+					<button type="submit" class="btn-danger"><?= e__('profile.notifications.clear.submit') ?></button>
+				</form>
+			</div>
+		<?php endif; ?>
+	</details>
 </section>
 
 <?php

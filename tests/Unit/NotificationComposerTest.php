@@ -176,11 +176,12 @@ class NotificationComposerTest extends TestCase
 			'monitor_name' => 'Weekly check',
 			'notification_locale' => 'en',
 			'message_subject' => '{app}: note from {owner} for {name}',
-			'message_body' => 'Hello {name}. This concerns {monitor}.',
+			'message_body' => 'Hello {name}. This concerns {monitor}. Open {url}',
+			'portal_url' => 'https://pulse.example.com/portal?token=abc',
 		]);
 
 		self::assertSame('Pulse: note from Owner for Recipient', $message['subject']);
-		self::assertSame('Hello Recipient. This concerns Weekly check.', $message['body_text']);
+		self::assertSame('Hello Recipient. This concerns Weekly check. Open https://pulse.example.com/portal?token=abc', $message['body_text']);
 		self::assertStringNotContainsString('/documents/', $message['body_text']);
 		self::assertStringNotContainsString('/access', $message['body_text']);
 	}
@@ -200,6 +201,32 @@ class NotificationComposerTest extends TestCase
 		self::assertSame('[Pulse] Nachricht von Frank', $message['subject']);
 		self::assertStringContainsString('Hallo Empfänger', $message['body_text']);
 		self::assertStringContainsString('Wichtiger Monitor', $message['body_text']);
+	}
+
+	public function testRecipientPortalUrlCarriesRecipientLanguage(): void
+	{
+		$composer = $this->Composer();
+		$url = $composer->RecipientPortalUrl(str_repeat('a', 64), 'de');
+
+		self::assertStringContainsString('/portal?token=' . str_repeat('a', 64), $url);
+		self::assertStringContainsString('&lang=de', $url);
+	}
+
+	public function testRecipientAccessCodeMailContainsCodeAndLifetime(): void
+	{
+		$composer = $this->Composer();
+		$message = $composer->ComposeRecipientAccessCode([
+			'recipient_name' => 'Recipient',
+			'owner_name' => 'Owner',
+			'monitor_name' => 'Weekly check',
+			'notification_locale' => 'en',
+			'access_code' => 'mako-rift',
+			'valid_minutes' => 30,
+		]);
+
+		self::assertStringContainsString('mako-rift', $message['body_text']);
+		self::assertStringContainsString('30 minutes', $message['body_text']);
+		self::assertStringNotContainsString('@', $message['body_text']);
 	}
 
 	public function testBuiltInTemplatesCanBePreviewedInARequestedLanguage(): void

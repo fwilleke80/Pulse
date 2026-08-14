@@ -14,9 +14,11 @@ declare(strict_types=1);
 /** @var array<int, array<string, mixed>> $deliveryHistory */
 /** @var array{subject: string, body_text: string} $preview */
 /** @var array{subject: string, body_text: string} $defaultPreview */
+/** @var array<int, string> $messageIssues */
+/** @var array<int, string> $defaultMessageIssues */
 /** @var string $base_url */
 
-$hasOverride = trim((string)($recipient['override_subject'] ?? '')) !== '' || trim((string)($recipient['override_body'] ?? '')) !== '';
+$hasOverride = !empty($recipient['override_message_id']);
 
 ob_start();
 ?>
@@ -53,7 +55,7 @@ ob_start();
 	<?= csrf_field() ?>
 	<input type="hidden" name="id" value="<?= (int)$recipient['id'] ?>">
 
-	<section class="configuration-block" data-message-override>
+	<section class="configuration-block" data-message-override data-recipient-template-validation data-empty-valid="false">
 		<h2><?= e__('recipients.message.heading') ?></h2>
 		<label class="compact-check">
 			<input type="checkbox" name="use_message_override" value="1" data-message-override-toggle <?= $hasOverride ? 'checked' : '' ?>>
@@ -64,13 +66,18 @@ ob_start();
 			<label for="message_subject"><?= e__('monitors.messages.subject') ?></label>
 			<input type="text" id="message_subject" name="message_subject" value="<?= e((string)($recipient['override_subject'] ?? '')) ?>">
 			<label for="message_body"><?= e__('monitors.messages.body') ?></label>
-			<textarea id="message_body" name="message_body" rows="10"><?= e((string)($recipient['override_body'] ?? '')) ?></textarea>
+			<textarea id="message_body" name="message_body" rows="10" data-recipient-template-body><?= e((string)($recipient['override_body'] ?? '')) ?></textarea>
+			<div class="template-validation-warning" role="alert" data-recipient-url-warning<?= ($hasOverride && in_array('recipient_portal_url_missing', $messageIssues, true)) ? '' : ' hidden' ?>>
+				<strong><?= e__('mail.validation.portal_url_missing.heading') ?></strong>
+				<?= e__('recipients.message.portal_url_missing_warning') ?>
+			</div>
 			<p class="form-hint">
 				<?= e__('recipients.message.placeholders') ?>
 				<code>{app}</code> — <?= e__('mail.placeholders.app') ?>;
 				<code>{name}</code> — <?= e__('mail.placeholders.name') ?>;
 				<code>{owner}</code> — <?= e__('mail.placeholders.owner') ?>;
-				<code>{monitor}</code> — <?= e__('mail.placeholders.monitor') ?>.
+				<code>{monitor}</code> — <?= e__('mail.placeholders.monitor') ?>;
+				<code>{url}</code> — <?= e__('mail.placeholders.recipient_url') ?>.
 			</p>
 			<p class="form-hint"><?= e__('recipients.message.custom_hint') ?></p>
 		</div>
@@ -79,6 +86,13 @@ ob_start();
 			<div><strong><?= e__('recipients.preview.subject') ?>:</strong> <?= e($defaultPreview['subject']) ?></div>
 			<pre><?= e($defaultPreview['body_text']) ?></pre>
 		</div>
+		<?php if (in_array('recipient_portal_url_missing', $defaultMessageIssues, true)): ?>
+			<div class="template-validation-warning" role="alert">
+				<strong><?= e__('mail.validation.portal_url_missing.heading') ?></strong>
+				<?= e__('recipients.message.default_portal_url_missing_warning', ['language' => notification_language_name((string)$recipient['notification_locale'])]) ?>
+				<a href="<?= e($base_url) ?>/monitors/edit?id=<?= (int)$recipient['monitor_id'] ?>&amp;tab=messages"><?= e__('recipients.message.edit_default') ?></a>
+			</div>
+		<?php endif; ?>
 	</section>
 
 	<section class="configuration-block">
@@ -127,7 +141,7 @@ ob_start();
 	<?php else: ?>
 		<div class="table-scroll">
 			<table>
-				<thead><tr><th><?= e__('recipients.history.created') ?></th><th><?= e__('recipients.history.address') ?></th><th><?= e__('recipients.history.status') ?></th><th><?= e__('recipients.history.sent') ?></th></tr></thead>
+				<thead><tr><th><?= e__('recipients.history.created') ?></th><th><?= e__('recipients.history.address') ?></th><th><?= e__('recipients.history.status') ?></th><th><?= e__('recipients.history.sent') ?></th><th><?= e__('recipients.history.portal') ?></th></tr></thead>
 				<tbody>
 				<?php foreach ($deliveryHistory as $delivery): ?>
 					<tr>
@@ -135,6 +149,19 @@ ob_start();
 						<td><?= e((string)$delivery['recipient_email']) ?></td>
 						<td><span class="mini-status mini-status-<?= e((string)$delivery['status']) ?>"><?= e__('recipients.delivery.status.' . (string)$delivery['status']) ?></span></td>
 						<td><?= e(format_datetime(isset($delivery['sent_at']) ? (string)$delivery['sent_at'] : null)) ?></td>
+						<td>
+							<span><?= e__('recipients.portal.status.' . (string)$delivery['portal_status']) ?></span>
+							<?php if ((string)$delivery['portal_status'] === 'available'): ?>
+								<form method="post" action="<?= e($base_url) ?>/monitors/recipients/portal/revoke" data-confirm="<?= e__('recipients.portal.revoke.confirm') ?>" class="inline-form">
+									<?= csrf_field() ?>
+									<input type="hidden" name="recipient_id" value="<?= (int)$recipient['id'] ?>">
+									<input type="hidden" name="delivery_id" value="<?= (int)$delivery['id'] ?>">
+									<button type="submit" class="link-button danger-link"><?= e__('recipients.portal.revoke.submit') ?></button>
+								</form>
+							<?php elseif ((string)$delivery['portal_status'] === 'expired' && !empty($delivery['portal_expires_at'])): ?>
+								<small><?= e(format_datetime((string)$delivery['portal_expires_at'])) ?></small>
+							<?php endif; ?>
+						</td>
 					</tr>
 				<?php endforeach; ?>
 				</tbody>

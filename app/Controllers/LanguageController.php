@@ -12,6 +12,7 @@ namespace Pulse\Controllers;
 
 use Pulse\Core\Logger;
 use Pulse\Core\Request;
+use Pulse\Core\RecipientPortalLanguagePreference;
 use Pulse\Core\SafeRedirect;
 use Pulse\Core\SafetyLanguagePreference;
 use Pulse\Core\Session;
@@ -49,6 +50,15 @@ class LanguageController extends BaseController
 		if (!in_array($locale, $this->_supportedLocales, true))
 		{
 			$this->Flash('error', __('flash.language_unsupported'));
+			$this->Redirect($redirect);
+		}
+
+		$portalToken = RecipientPortalLanguagePreference::TokenFromRedirect($redirect);
+
+		if ($portalToken !== null)
+		{
+			$this->_session->Set(RecipientPortalLanguagePreference::SessionKey($portalToken), $locale);
+			$this->_logger->Info('Recipient portal language changed', ['locale' => $locale]);
 			$this->Redirect($redirect);
 		}
 
