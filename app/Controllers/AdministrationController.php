@@ -90,6 +90,13 @@ final class AdministrationController extends BaseController
 		$user = $this->RequireAdministrator();
 		$activeTab = $this->NormalizeTab($this->_request->QueryString('tab', 32));
 		$settings = $this->CurrentSettings();
+		$availableTimezones = DateTimeZone::listIdentifiers();
+
+		if (!in_array($settings['PULSE_DISPLAY_TIMEZONE'], $availableTimezones, true))
+		{
+			array_unshift($availableTimezones, $settings['PULSE_DISPLAY_TIMEZONE']);
+		}
+
 		$processOverrides = $this->ProcessOverrides(array_keys($settings));
 		$issues = $this->ConfigurationIssues($settings, $processOverrides);
 
@@ -98,6 +105,7 @@ final class AdministrationController extends BaseController
 			'activeTab' => $activeTab,
 			'settings' => $settings,
 			'availableLocales' => $this->_availableLocales,
+			'availableTimezones' => $availableTimezones,
 			'environmentWritable' => $this->_environmentFile->IsWritable(),
 			'environmentExists' => is_file($this->_environmentFile->Path()),
 			'processOverrides' => $processOverrides,
@@ -155,9 +163,11 @@ final class AdministrationController extends BaseController
 		{
 			// Validate both the persisted .env configuration and the effective runtime
 			// configuration when the web-server process overrides selected keys.
-			$this->ValidateSettings($values, $fileSmtpPassword, $fileCronToken);
+			$validationValues = $values;
+			$validationValues['PULSE_BASE_URL'] = Environment::Get('PULSE_BASE_URL');
+			$this->ValidateSettings($validationValues, $fileSmtpPassword, $fileCronToken);
 
-			$runtimeValues = $values;
+			$runtimeValues = $validationValues;
 
 			foreach (array_keys($runtimeValues) as $key)
 			{
@@ -263,7 +273,6 @@ final class AdministrationController extends BaseController
 		return [
 			'PULSE_ENV' => Environment::Get('PULSE_ENV', 'production'),
 			'PULSE_DEBUG' => Environment::GetBool('PULSE_DEBUG', false) ? 'true' : 'false',
-			'PULSE_APP_NAME' => Environment::Get('PULSE_APP_NAME', 'Pulse'),
 			'PULSE_BASE_URL' => Environment::Get('PULSE_BASE_URL'),
 			'PULSE_DISPLAY_TIMEZONE' => Environment::Get('PULSE_DISPLAY_TIMEZONE', 'Europe/Berlin'),
 			'PULSE_DEFAULT_LOCALE' => Environment::Get('PULSE_DEFAULT_LOCALE', 'de'),
@@ -288,7 +297,7 @@ final class AdministrationController extends BaseController
 			'PULSE_SMTP_USERNAME' => Environment::Get('PULSE_SMTP_USERNAME'),
 			'PULSE_SMTP_PASSWORD' => Environment::Get('PULSE_SMTP_PASSWORD') !== '' ? '__configured__' : '',
 			'PULSE_MAIL_FROM_ADDRESS' => Environment::Get('PULSE_MAIL_FROM_ADDRESS'),
-			'PULSE_MAIL_FROM_NAME' => Environment::Get('PULSE_MAIL_FROM_NAME', Environment::Get('PULSE_APP_NAME', 'Pulse')),
+			'PULSE_MAIL_FROM_NAME' => Environment::Get('PULSE_MAIL_FROM_NAME', 'Pulse'),
 			'PULSE_SMTP_TIMEOUT_SECONDS' => Environment::Get('PULSE_SMTP_TIMEOUT_SECONDS', '15'),
 			'PULSE_MAIL_MAX_ATTEMPTS' => Environment::Get('PULSE_MAIL_MAX_ATTEMPTS', '5'),
 			'PULSE_MAIL_RETRY_DELAYS_SECONDS' => Environment::Get('PULSE_MAIL_RETRY_DELAYS_SECONDS', '60,300,1800,7200'),
@@ -307,8 +316,6 @@ final class AdministrationController extends BaseController
 		return [
 			'PULSE_ENV' => strtolower($this->_request->PostString('PULSE_ENV', 32)),
 			'PULSE_DEBUG' => $this->_request->PostBool('PULSE_DEBUG') ? 'true' : 'false',
-			'PULSE_APP_NAME' => $this->_request->PostString('PULSE_APP_NAME', 120),
-			'PULSE_BASE_URL' => rtrim($this->_request->PostString('PULSE_BASE_URL', 2048), '/'),
 			'PULSE_DISPLAY_TIMEZONE' => $this->_request->PostString('PULSE_DISPLAY_TIMEZONE', 128),
 			'PULSE_DEFAULT_LOCALE' => $this->_request->PostString('PULSE_DEFAULT_LOCALE', 10),
 			'PULSE_TRUSTED_HOSTS' => $this->NormalizeCsv($this->_request->PostString('PULSE_TRUSTED_HOSTS', 4096)),
@@ -353,11 +360,6 @@ final class AdministrationController extends BaseController
 		if (!in_array($environment, ['production', 'development', 'testing'], true))
 		{
 			throw new RuntimeException('PULSE_ENV must be production, development, or testing.');
-		}
-
-		if ((string)$values['PULSE_APP_NAME'] === '')
-		{
-			throw new RuntimeException('PULSE_APP_NAME must not be empty.');
 		}
 
 		$baseUrl = (string)$values['PULSE_BASE_URL'];
@@ -580,7 +582,7 @@ final class AdministrationController extends BaseController
 
 		if ((string)$settings['PULSE_BASE_URL'] === '')
 		{
-			$issues[] = ['tab' => 'general', 'key' => 'administration.health.base_url_missing', 'type' => 'warning'];
+			$issues[] = ['tab' => 'installation', 'key' => 'administration.health.base_url_missing', 'type' => 'warning'];
 		}
 
 		if (!$this->_mailEnabled)

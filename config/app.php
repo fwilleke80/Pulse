@@ -15,7 +15,7 @@ $isProduction = $environment === 'production';
 $trustedHosts = array_map('strtolower', Environment::GetList('PULSE_TRUSTED_HOSTS'));
 
 return [
-	'name' => Environment::Get('PULSE_APP_NAME', 'Pulse'),
+	'name' => 'Pulse',
 	'env' => $environment,
 	'debug' => !$isProduction && Environment::GetBool('PULSE_DEBUG', false),
 	'base_url' => rtrim(Environment::Get('PULSE_BASE_URL'), '/'),
@@ -58,7 +58,7 @@ return [
 		'username' => Environment::Get('PULSE_SMTP_USERNAME'),
 		'password' => Environment::Get('PULSE_SMTP_PASSWORD'),
 		'from_address' => Environment::Get('PULSE_MAIL_FROM_ADDRESS'),
-		'from_name' => Environment::Get('PULSE_MAIL_FROM_NAME', Environment::Get('PULSE_APP_NAME', 'Pulse')),
+		'from_name' => Environment::Get('PULSE_MAIL_FROM_NAME', 'Pulse'),
 		'timeout_seconds' => Environment::GetInt('PULSE_SMTP_TIMEOUT_SECONDS', 15, 2, 120),
 		'max_attempts' => Environment::GetInt('PULSE_MAIL_MAX_ATTEMPTS', 5, 1, 20),
 		'retry_delays_seconds' => Environment::GetIntList('PULSE_MAIL_RETRY_DELAYS_SECONDS', [60, 300, 1800, 7200]),

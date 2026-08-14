@@ -159,7 +159,7 @@ Users with the **administrator** role have an **Administration** entry in the ma
 
 Editable application settings are saved directly to Pulse's root `.env` file. A warning marker appears on any tab with an actionable configuration problem, and the summary at the top links directly to the affected section. Secrets such as the SMTP password and web-cron token are never displayed back to the browser.
 
-The **Installation** tab currently shows database connection values only as read-only status information. They are required before Pulse can boot and will be handled by the planned 0.9.x installation wizard.
+The **Installation** tab shows the public base URL and database connection values as read-only installation information. The base URL is used for absolute links, while database values are required before Pulse can boot; both will be handled by the planned 0.9.x installation wizard.
 
 
 ## Notifications and failed mail

@@ -34,7 +34,7 @@ ob_start();
 		<tbody>
 			<?php foreach ($contacts as $contact): ?>
 				<tr>
-					<td><?= e((string)$contact['name']) ?></td>
+					<td><a href="<?= e($base_url) ?>/contacts/edit?id=<?= (int)$contact['id'] ?>"><strong><?= e((string)$contact['name']) ?></strong></a></td>
 					<td><a href="mailto:<?= e((string)$contact['email']) ?>"><?= e((string)$contact['email']) ?></a></td>
 					<td>
 						<?php if (!empty($contact['email_checked_at'])): ?>
@@ -47,10 +47,6 @@ ob_start();
 					<td><?= e(abbrev((string)$contact['notes'], 40)) ?></td>
 					<td>
 						<div class="table-actions">
-							<form method="get" action="<?= e($base_url) ?>/contacts/edit">
-								<input type="hidden" name="id" value="<?= (int)$contact['id'] ?>">
-								<button type="submit" class="btn-table-inline"><?= e__('contacts.index.table.buttons.edit') ?></button>
-							</form>
 							<form method="post" action="<?= e($base_url) ?>/contacts/delete" data-confirm="<?= e__('contacts.index.flash.delete_confirm', ['name' => $contact['name']]) ?>">
 								<?= csrf_field() ?>
 								<input type="hidden" name="id" value="<?= (int)$contact['id'] ?>">

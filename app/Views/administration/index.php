@@ -12,6 +12,7 @@ declare(strict_types=1);
 /** @var string $activeTab */
 /** @var array<string, string> $settings */
 /** @var array<int, string> $availableLocales */
+/** @var array<int, string> $availableTimezones */
 /** @var bool $environmentWritable */
 /** @var bool $environmentExists */
 /** @var array<int, string> $processOverrides */
@@ -101,32 +102,13 @@ ob_start();
 
 		<div class="field-grid field-grid-two">
 			<label>
-				<?= e__('administration.field.app_name') ?>
-				<input type="text" name="PULSE_APP_NAME" form="administration-settings-form" value="<?= e($settings['PULSE_APP_NAME']) ?>" required>
-				<small><code>PULSE_APP_NAME</code></small>
-			</label>
-			<label>
 				<?= e__('administration.field.environment') ?>
 				<select name="PULSE_ENV" form="administration-settings-form">
 					<?php foreach (['production', 'development', 'testing'] as $environment): ?>
 						<option value="<?= e($environment) ?>"<?= $settings['PULSE_ENV'] === $environment ? ' selected' : '' ?>><?= e($environment) ?></option>
 					<?php endforeach; ?>
 				</select>
-				<small><code>PULSE_ENV</code></small>
-			</label>
-		</div>
-
-		<label>
-			<?= e__('administration.field.base_url') ?>
-			<input type="url" name="PULSE_BASE_URL" form="administration-settings-form" value="<?= e($settings['PULSE_BASE_URL']) ?>" placeholder="https://pulse.example.com" required>
-			<small><?= e__('administration.field.base_url_hint') ?> · <code>PULSE_BASE_URL</code></small>
-		</label>
-
-		<div class="field-grid field-grid-two">
-			<label>
-				<?= e__('administration.field.display_timezone') ?>
-				<input type="text" name="PULSE_DISPLAY_TIMEZONE" form="administration-settings-form" value="<?= e($settings['PULSE_DISPLAY_TIMEZONE']) ?>" required>
-				<small><?= e__('administration.field.display_timezone_hint') ?> · <code>PULSE_DISPLAY_TIMEZONE</code></small>
+				<small><?= e__('administration.field.environment_hint') ?></small>
 			</label>
 			<label>
 				<?= e__('administration.field.default_locale') ?>
@@ -135,14 +117,24 @@ ob_start();
 						<option value="<?= e($localeOption) ?>"<?= $settings['PULSE_DEFAULT_LOCALE'] === $localeOption ? ' selected' : '' ?>><?= e(language_name($localeOption)) ?></option>
 					<?php endforeach; ?>
 				</select>
-				<small><code>PULSE_DEFAULT_LOCALE</code></small>
+				<small><?= e__('administration.field.default_locale_hint') ?></small>
 			</label>
 		</div>
 
 		<label>
+			<?= e__('administration.field.display_timezone') ?>
+			<select name="PULSE_DISPLAY_TIMEZONE" form="administration-settings-form">
+				<?php foreach ($availableTimezones as $timezoneOption): ?>
+					<option value="<?= e($timezoneOption) ?>"<?= $settings['PULSE_DISPLAY_TIMEZONE'] === $timezoneOption ? ' selected' : '' ?>><?= e($timezoneOption) ?></option>
+				<?php endforeach; ?>
+			</select>
+			<small><?= e__('administration.field.display_timezone_hint') ?></small>
+		</label>
+
+		<label>
 			<?= e__('administration.field.trusted_hosts') ?>
 			<input type="text" name="PULSE_TRUSTED_HOSTS" form="administration-settings-form" value="<?= e($settings['PULSE_TRUSTED_HOSTS']) ?>" placeholder="pulse.example.com">
-			<small><?= e__('administration.field.trusted_hosts_hint') ?> · <code>PULSE_TRUSTED_HOSTS</code></small>
+			<small><?= e__('administration.field.trusted_hosts_hint') ?></small>
 		</label>
 
 		<div class="checkbox-row">
@@ -150,7 +142,7 @@ ob_start();
 				<input type="checkbox" name="PULSE_DEBUG" form="administration-settings-form" value="1"<?= $settings['PULSE_DEBUG'] === 'true' ? ' checked' : '' ?>>
 				<?= e__('administration.field.debug') ?>
 			</label>
-			<small><?= e__('administration.field.debug_hint') ?> · <code>PULSE_DEBUG</code></small>
+			<small><?= e__('administration.field.debug_hint') ?></small>
 		</div>
 	</section>
 
@@ -164,7 +156,7 @@ ob_start();
 			<label>
 				<?= e__('administration.field.session_name') ?>
 				<input type="text" name="PULSE_SESSION_NAME" form="administration-settings-form" value="<?= e($settings['PULSE_SESSION_NAME']) ?>" required>
-				<small><code>PULSE_SESSION_NAME</code></small>
+				<small><?= e__('administration.field.session_name_hint') ?></small>
 			</label>
 			<label>
 				<?= e__('administration.field.cookie_samesite') ?>
@@ -173,33 +165,33 @@ ob_start();
 						<option value="<?= e($sameSite) ?>"<?= $settings['PULSE_COOKIE_SAMESITE'] === $sameSite ? ' selected' : '' ?>><?= e($sameSite) ?></option>
 					<?php endforeach; ?>
 				</select>
-				<small><code>PULSE_COOKIE_SAMESITE</code></small>
+				<small><?= e__('administration.field.cookie_samesite_hint') ?></small>
 			</label>
 		</div>
 
 		<div class="field-grid field-grid-three">
-			<label><?= e__('administration.field.session_idle') ?><input type="number" min="300" name="PULSE_SESSION_IDLE_TIMEOUT" form="administration-settings-form" value="<?= e($settings['PULSE_SESSION_IDLE_TIMEOUT']) ?>" required><small><code>PULSE_SESSION_IDLE_TIMEOUT</code></small></label>
-			<label><?= e__('administration.field.session_absolute') ?><input type="number" min="1800" name="PULSE_SESSION_ABSOLUTE_TIMEOUT" form="administration-settings-form" value="<?= e($settings['PULSE_SESSION_ABSOLUTE_TIMEOUT']) ?>" required><small><code>PULSE_SESSION_ABSOLUTE_TIMEOUT</code></small></label>
-			<label><?= e__('administration.field.session_regeneration') ?><input type="number" min="60" name="PULSE_SESSION_REGENERATION_INTERVAL" form="administration-settings-form" value="<?= e($settings['PULSE_SESSION_REGENERATION_INTERVAL']) ?>" required><small><code>PULSE_SESSION_REGENERATION_INTERVAL</code></small></label>
+			<label><?= e__('administration.field.session_idle') ?><input type="number" min="300" name="PULSE_SESSION_IDLE_TIMEOUT" form="administration-settings-form" value="<?= e($settings['PULSE_SESSION_IDLE_TIMEOUT']) ?>" required><small><?= e__('administration.field.session_idle_hint') ?></small></label>
+			<label><?= e__('administration.field.session_absolute') ?><input type="number" min="1800" name="PULSE_SESSION_ABSOLUTE_TIMEOUT" form="administration-settings-form" value="<?= e($settings['PULSE_SESSION_ABSOLUTE_TIMEOUT']) ?>" required><small><?= e__('administration.field.session_absolute_hint') ?></small></label>
+			<label><?= e__('administration.field.session_regeneration') ?><input type="number" min="60" name="PULSE_SESSION_REGENERATION_INTERVAL" form="administration-settings-form" value="<?= e($settings['PULSE_SESSION_REGENERATION_INTERVAL']) ?>" required><small><?= e__('administration.field.session_regeneration_hint') ?></small></label>
 		</div>
 
 		<div class="field-grid field-grid-two">
 			<div class="checkbox-row">
 				<label><input type="checkbox" name="PULSE_COOKIE_SECURE" form="administration-settings-form" value="1"<?= $settings['PULSE_COOKIE_SECURE'] === 'true' ? ' checked' : '' ?>><?= e__('administration.field.cookie_secure') ?></label>
-				<small><code>PULSE_COOKIE_SECURE</code></small>
+				<small><?= e__('administration.field.cookie_secure_hint') ?></small>
 			</div>
 			<div class="checkbox-row">
 				<label><input type="checkbox" name="PULSE_HSTS_ENABLED" form="administration-settings-form" value="1"<?= $settings['PULSE_HSTS_ENABLED'] === 'true' ? ' checked' : '' ?>><?= e__('administration.field.hsts') ?></label>
-				<small><code>PULSE_HSTS_ENABLED</code></small>
+				<small><?= e__('administration.field.hsts_hint') ?></small>
 			</div>
 		</div>
 
 		<h3 class="subsection-heading"><?= e__('administration.security.login_heading') ?></h3>
 		<div class="field-grid field-grid-four">
-			<label><?= e__('administration.field.login_attempts') ?><input type="number" min="2" max="50" name="PULSE_LOGIN_MAX_ATTEMPTS" form="administration-settings-form" value="<?= e($settings['PULSE_LOGIN_MAX_ATTEMPTS']) ?>" required><small><code>PULSE_LOGIN_MAX_ATTEMPTS</code></small></label>
-			<label><?= e__('administration.field.login_window') ?><input type="number" min="60" name="PULSE_LOGIN_WINDOW_SECONDS" form="administration-settings-form" value="<?= e($settings['PULSE_LOGIN_WINDOW_SECONDS']) ?>" required><small><code>PULSE_LOGIN_WINDOW_SECONDS</code></small></label>
-			<label><?= e__('administration.field.login_block') ?><input type="number" min="60" name="PULSE_LOGIN_BLOCK_SECONDS" form="administration-settings-form" value="<?= e($settings['PULSE_LOGIN_BLOCK_SECONDS']) ?>" required><small><code>PULSE_LOGIN_BLOCK_SECONDS</code></small></label>
-			<label><?= e__('administration.field.password_minimum') ?><input type="number" min="8" max="128" name="PULSE_PASSWORD_MINIMUM_LENGTH" form="administration-settings-form" value="<?= e($settings['PULSE_PASSWORD_MINIMUM_LENGTH']) ?>" required><small><code>PULSE_PASSWORD_MINIMUM_LENGTH</code></small></label>
+			<label><?= e__('administration.field.login_attempts') ?><input type="number" min="2" max="50" name="PULSE_LOGIN_MAX_ATTEMPTS" form="administration-settings-form" value="<?= e($settings['PULSE_LOGIN_MAX_ATTEMPTS']) ?>" required><small><?= e__('administration.field.login_attempts_hint') ?></small></label>
+			<label><?= e__('administration.field.login_window') ?><input type="number" min="60" name="PULSE_LOGIN_WINDOW_SECONDS" form="administration-settings-form" value="<?= e($settings['PULSE_LOGIN_WINDOW_SECONDS']) ?>" required><small><?= e__('administration.field.login_window_hint') ?></small></label>
+			<label><?= e__('administration.field.login_block') ?><input type="number" min="60" name="PULSE_LOGIN_BLOCK_SECONDS" form="administration-settings-form" value="<?= e($settings['PULSE_LOGIN_BLOCK_SECONDS']) ?>" required><small><?= e__('administration.field.login_block_hint') ?></small></label>
+			<label><?= e__('administration.field.password_minimum') ?><input type="number" min="8" max="128" name="PULSE_PASSWORD_MINIMUM_LENGTH" form="administration-settings-form" value="<?= e($settings['PULSE_PASSWORD_MINIMUM_LENGTH']) ?>" required><small><?= e__('administration.field.password_minimum_hint') ?></small></label>
 		</div>
 	</section>
 
@@ -212,13 +204,13 @@ ob_start();
 		<label>
 			<?= e__('administration.field.upload_maximum') ?>
 			<input type="number" min="1024" name="PULSE_UPLOAD_MAXIMUM_BYTES" form="administration-settings-form" value="<?= e($settings['PULSE_UPLOAD_MAXIMUM_BYTES']) ?>" required>
-			<small><?= e__('administration.field.upload_maximum_hint') ?> · <code>PULSE_UPLOAD_MAXIMUM_BYTES</code></small>
+			<small><?= e__('administration.field.upload_maximum_hint') ?></small>
 		</label>
 
 		<label>
 			<?= e__('administration.field.upload_mime_types') ?>
 			<textarea name="PULSE_UPLOAD_ALLOWED_MIME_TYPES" form="administration-settings-form" rows="5" required><?= e($settings['PULSE_UPLOAD_ALLOWED_MIME_TYPES']) ?></textarea>
-			<small><?= e__('administration.field.upload_mime_types_hint') ?> · <code>PULSE_UPLOAD_ALLOWED_MIME_TYPES</code></small>
+			<small><?= e__('administration.field.upload_mime_types_hint') ?></small>
 		</label>
 	</section>
 
@@ -233,38 +225,38 @@ ob_start();
 
 		<div class="checkbox-row">
 			<label><input type="checkbox" name="PULSE_MAIL_ENABLED" form="administration-settings-form" value="1"<?= $settings['PULSE_MAIL_ENABLED'] === 'true' ? ' checked' : '' ?>><?= e__('administration.field.mail_enabled') ?></label>
-			<small><code>PULSE_MAIL_ENABLED</code></small>
+			<small><?= e__('administration.field.mail_enabled_hint') ?></small>
 		</div>
 
 		<div class="field-grid field-grid-three">
-			<label><?= e__('administration.field.smtp_host') ?><input type="text" name="PULSE_SMTP_HOST" form="administration-settings-form" value="<?= e($settings['PULSE_SMTP_HOST']) ?>"><small><code>PULSE_SMTP_HOST</code></small></label>
-			<label><?= e__('administration.field.smtp_port') ?><input type="number" min="1" max="65535" name="PULSE_SMTP_PORT" form="administration-settings-form" value="<?= e($settings['PULSE_SMTP_PORT']) ?>" required><small><code>PULSE_SMTP_PORT</code></small></label>
-			<label><?= e__('administration.field.smtp_encryption') ?><select name="PULSE_SMTP_ENCRYPTION" form="administration-settings-form"><?php foreach (['starttls', 'tls', 'none'] as $encryption): ?><option value="<?= e($encryption) ?>"<?= $settings['PULSE_SMTP_ENCRYPTION'] === $encryption ? ' selected' : '' ?>><?= e(strtoupper($encryption)) ?></option><?php endforeach; ?></select><small><code>PULSE_SMTP_ENCRYPTION</code></small></label>
+			<label><?= e__('administration.field.smtp_host') ?><input type="text" name="PULSE_SMTP_HOST" form="administration-settings-form" value="<?= e($settings['PULSE_SMTP_HOST']) ?>"><small><?= e__('administration.field.smtp_host_hint') ?></small></label>
+			<label><?= e__('administration.field.smtp_port') ?><input type="number" min="1" max="65535" name="PULSE_SMTP_PORT" form="administration-settings-form" value="<?= e($settings['PULSE_SMTP_PORT']) ?>" required><small><?= e__('administration.field.smtp_port_hint') ?></small></label>
+			<label><?= e__('administration.field.smtp_encryption') ?><select name="PULSE_SMTP_ENCRYPTION" form="administration-settings-form"><?php foreach (['starttls', 'tls', 'none'] as $encryption): ?><option value="<?= e($encryption) ?>"<?= $settings['PULSE_SMTP_ENCRYPTION'] === $encryption ? ' selected' : '' ?>><?= e(strtoupper($encryption)) ?></option><?php endforeach; ?></select><small><?= e__('administration.field.smtp_encryption_hint') ?></small></label>
 		</div>
 
 		<div class="field-grid field-grid-two">
-			<label><?= e__('administration.field.smtp_username') ?><input type="text" autocomplete="off" name="PULSE_SMTP_USERNAME" form="administration-settings-form" value="<?= e($settings['PULSE_SMTP_USERNAME']) ?>"><small><code>PULSE_SMTP_USERNAME</code></small></label>
+			<label><?= e__('administration.field.smtp_username') ?><input type="text" autocomplete="off" name="PULSE_SMTP_USERNAME" form="administration-settings-form" value="<?= e($settings['PULSE_SMTP_USERNAME']) ?>"><small><?= e__('administration.field.smtp_username_hint') ?></small></label>
 			<label>
 				<?= e__('administration.field.smtp_password') ?>
 				<input type="password" autocomplete="new-password" name="PULSE_SMTP_PASSWORD" form="administration-settings-form" value="" placeholder="<?= e__($settings['PULSE_SMTP_PASSWORD'] === '__configured__' ? 'administration.secret.configured_placeholder' : 'administration.secret.empty_placeholder') ?>">
-				<small><?= e__('administration.secret.keep_hint') ?> · <code>PULSE_SMTP_PASSWORD</code></small>
+				<small><?= e__('administration.secret.keep_hint') ?></small>
 			</label>
 		</div>
 		<div class="checkbox-row"><label><input type="checkbox" name="clear_smtp_password" form="administration-settings-form" value="1"><?= e__('administration.secret.clear_smtp') ?></label></div>
 
 		<div class="field-grid field-grid-two">
-			<label><?= e__('administration.field.mail_from_address') ?><input type="email" name="PULSE_MAIL_FROM_ADDRESS" form="administration-settings-form" value="<?= e($settings['PULSE_MAIL_FROM_ADDRESS']) ?>"><small><code>PULSE_MAIL_FROM_ADDRESS</code></small></label>
-			<label><?= e__('administration.field.mail_from_name') ?><input type="text" name="PULSE_MAIL_FROM_NAME" form="administration-settings-form" value="<?= e($settings['PULSE_MAIL_FROM_NAME']) ?>"><small><code>PULSE_MAIL_FROM_NAME</code></small></label>
+			<label><?= e__('administration.field.mail_from_address') ?><input type="email" name="PULSE_MAIL_FROM_ADDRESS" form="administration-settings-form" value="<?= e($settings['PULSE_MAIL_FROM_ADDRESS']) ?>"><small><?= e__('administration.field.mail_from_address_hint') ?></small></label>
+			<label><?= e__('administration.field.mail_from_name') ?><input type="text" name="PULSE_MAIL_FROM_NAME" form="administration-settings-form" value="<?= e($settings['PULSE_MAIL_FROM_NAME']) ?>"><small><?= e__('administration.field.mail_from_name_hint') ?></small></label>
 		</div>
 
 		<h3 class="subsection-heading"><?= e__('administration.mail.delivery_heading') ?></h3>
 		<div class="field-grid field-grid-four">
-			<label><?= e__('administration.field.smtp_timeout') ?><input type="number" min="2" max="120" name="PULSE_SMTP_TIMEOUT_SECONDS" form="administration-settings-form" value="<?= e($settings['PULSE_SMTP_TIMEOUT_SECONDS']) ?>" required><small><code>PULSE_SMTP_TIMEOUT_SECONDS</code></small></label>
-			<label><?= e__('administration.field.mail_max_attempts') ?><input type="number" min="1" max="20" name="PULSE_MAIL_MAX_ATTEMPTS" form="administration-settings-form" value="<?= e($settings['PULSE_MAIL_MAX_ATTEMPTS']) ?>" required><small><code>PULSE_MAIL_MAX_ATTEMPTS</code></small></label>
-			<label><?= e__('administration.field.mail_lease') ?><input type="number" min="30" max="1800" name="PULSE_MAIL_LEASE_SECONDS" form="administration-settings-form" value="<?= e($settings['PULSE_MAIL_LEASE_SECONDS']) ?>" required><small><code>PULSE_MAIL_LEASE_SECONDS</code></small></label>
-			<label><?= e__('administration.field.mail_batch') ?><input type="number" min="1" max="250" name="PULSE_MAIL_WORKER_BATCH_SIZE" form="administration-settings-form" value="<?= e($settings['PULSE_MAIL_WORKER_BATCH_SIZE']) ?>" required><small><code>PULSE_MAIL_WORKER_BATCH_SIZE</code></small></label>
+			<label><?= e__('administration.field.smtp_timeout') ?><input type="number" min="2" max="120" name="PULSE_SMTP_TIMEOUT_SECONDS" form="administration-settings-form" value="<?= e($settings['PULSE_SMTP_TIMEOUT_SECONDS']) ?>" required><small><?= e__('administration.field.smtp_timeout_hint') ?></small></label>
+			<label><?= e__('administration.field.mail_max_attempts') ?><input type="number" min="1" max="20" name="PULSE_MAIL_MAX_ATTEMPTS" form="administration-settings-form" value="<?= e($settings['PULSE_MAIL_MAX_ATTEMPTS']) ?>" required><small><?= e__('administration.field.mail_max_attempts_hint') ?></small></label>
+			<label><?= e__('administration.field.mail_lease') ?><input type="number" min="30" max="1800" name="PULSE_MAIL_LEASE_SECONDS" form="administration-settings-form" value="<?= e($settings['PULSE_MAIL_LEASE_SECONDS']) ?>" required><small><?= e__('administration.field.mail_lease_hint') ?></small></label>
+			<label><?= e__('administration.field.mail_batch') ?><input type="number" min="1" max="250" name="PULSE_MAIL_WORKER_BATCH_SIZE" form="administration-settings-form" value="<?= e($settings['PULSE_MAIL_WORKER_BATCH_SIZE']) ?>" required><small><?= e__('administration.field.mail_batch_hint') ?></small></label>
 		</div>
-		<label><?= e__('administration.field.mail_retry_delays') ?><input type="text" name="PULSE_MAIL_RETRY_DELAYS_SECONDS" form="administration-settings-form" value="<?= e($settings['PULSE_MAIL_RETRY_DELAYS_SECONDS']) ?>" required><small><?= e__('administration.field.mail_retry_delays_hint') ?> · <code>PULSE_MAIL_RETRY_DELAYS_SECONDS</code></small></label>
+		<label><?= e__('administration.field.mail_retry_delays') ?><input type="text" name="PULSE_MAIL_RETRY_DELAYS_SECONDS" form="administration-settings-form" value="<?= e($settings['PULSE_MAIL_RETRY_DELAYS_SECONDS']) ?>" required><small><?= e__('administration.field.mail_retry_delays_hint') ?></small></label>
 
 		<hr>
 		<div id="mail-operations" class="stack">
@@ -333,7 +325,7 @@ ob_start();
 		<label>
 			<?= e__('administration.field.cron_token') ?>
 			<input type="password" autocomplete="new-password" name="PULSE_CRON_TOKEN" form="administration-settings-form" value="" data-cron-token placeholder="<?= e__($settings['PULSE_CRON_TOKEN'] === '__configured__' ? 'administration.secret.configured_placeholder' : 'administration.secret.empty_placeholder') ?>">
-			<small><?= e__('administration.secret.keep_hint') ?> · <code>PULSE_CRON_TOKEN</code></small>
+			<small><?= e__('administration.secret.keep_hint') ?></small>
 		</label>
 		<div class="field-grid field-grid-two">
 			<div><button type="button" class="btn-secondary" data-generate-cron-token><?= e__('administration.secret.generate_cron') ?></button><small class="form-hint"><?= e__('administration.secret.generate_cron_hint') ?></small></div>
@@ -358,14 +350,22 @@ ob_start();
 		</div>
 
 		<div class="configuration-block">
+			<h3><?= e__('administration.installation.base_url_heading') ?></h3>
+			<p><?= e__('administration.installation.base_url_hint') ?></p>
+			<dl class="administration-definition-list">
+				<div><dt><?= e__('administration.field.base_url') ?></dt><dd><code><?= e($settings['PULSE_BASE_URL']) ?></code></dd></div>
+			</dl>
+		</div>
+
+		<div class="configuration-block">
 			<h3><?= e__('administration.installation.database_heading') ?></h3>
 			<p><?= e__('administration.installation.database_hint') ?></p>
 			<dl class="administration-definition-list">
-				<div><dt><code>PULSE_DB_HOST</code></dt><dd><code><?= e((string)($databaseConfig['host'] ?? '')) ?></code></dd></div>
-				<div><dt><code>PULSE_DB_PORT</code></dt><dd><code><?= (int)($databaseConfig['port'] ?? 0) ?></code></dd></div>
-				<div><dt><code>PULSE_DB_DATABASE</code></dt><dd><code><?= e((string)($databaseConfig['database'] ?? '')) ?></code></dd></div>
-				<div><dt><code>PULSE_DB_USERNAME</code></dt><dd><code><?= e((string)($databaseConfig['username'] ?? '')) ?></code></dd></div>
-				<div><dt><code>PULSE_DB_PASSWORD</code></dt><dd><?= e__((string)($databaseConfig['password'] ?? '') !== '' ? 'administration.secret.configured' : 'administration.secret.not_configured') ?></dd></div>
+				<div><dt><?= e__('administration.installation.database_host') ?></dt><dd><code><?= e((string)($databaseConfig['host'] ?? '')) ?></code></dd></div>
+				<div><dt><?= e__('administration.installation.database_port') ?></dt><dd><code><?= (int)($databaseConfig['port'] ?? 0) ?></code></dd></div>
+				<div><dt><?= e__('administration.installation.database_name') ?></dt><dd><code><?= e((string)($databaseConfig['database'] ?? '')) ?></code></dd></div>
+				<div><dt><?= e__('administration.installation.database_username') ?></dt><dd><code><?= e((string)($databaseConfig['username'] ?? '')) ?></code></dd></div>
+				<div><dt><?= e__('administration.installation.database_password') ?></dt><dd><?= e__((string)($databaseConfig['password'] ?? '') !== '' ? 'administration.secret.configured' : 'administration.secret.not_configured') ?></dd></div>
 			</dl>
 		</div>
 	</section>

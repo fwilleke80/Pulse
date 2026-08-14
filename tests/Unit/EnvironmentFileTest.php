@@ -41,14 +41,14 @@ final class EnvironmentFileTest extends TestCase
 	/** @brief Ensures comments and unrelated keys survive targeted updates. */
 	public function testUpdatePreservesCommentsAndUnknownKeys(): void
 	{
-		file_put_contents($this->_path, "# keep this\nPULSE_APP_NAME=Pulse\nUNKNOWN_KEY=keep-me\n");
+		file_put_contents($this->_path, "# keep this\nPULSE_ENV=production\nUNKNOWN_KEY=keep-me\n");
 		$file = new EnvironmentFile($this->_path);
-		$file->Update(['PULSE_APP_NAME' => 'Pulse Test', 'PULSE_CRON_TOKEN' => '12345678901234567890123456789012']);
+		$file->Update(['PULSE_ENV' => 'development', 'PULSE_CRON_TOKEN' => '12345678901234567890123456789012']);
 		$content = (string)file_get_contents($this->_path);
 
 		self::assertStringContainsString('# keep this', $content);
 		self::assertStringContainsString('UNKNOWN_KEY=keep-me', $content);
-		self::assertStringContainsString('PULSE_APP_NAME="Pulse Test"', $content);
+		self::assertStringContainsString('PULSE_ENV=development', $content);
 		self::assertStringContainsString('PULSE_CRON_TOKEN=12345678901234567890123456789012', $content);
 	}
 

@@ -212,7 +212,7 @@ ob_start();
 						</div>
 
 						<?php if ((string)$document['storage_type'] === 'text'): ?>
-							<form method="post" action="<?= e($base_url) ?>/monitors/documents/text/update">
+							<form id="document-update-<?= (int)$document['id'] ?>" method="post" action="<?= e($base_url) ?>/monitors/documents/text/update">
 								<?= csrf_field() ?>
 								<input type="hidden" name="monitor_id" value="<?= (int)$monitor['id'] ?>">
 								<input type="hidden" name="document_id" value="<?= (int)$document['id'] ?>">
@@ -220,7 +220,6 @@ ob_start();
 								<input type="text" id="text_title_<?= (int)$document['id'] ?>" name="title" value="<?= e((string)$document['title']) ?>" required>
 								<label for="text_content_<?= (int)$document['id'] ?>"><?= e__('monitors.documents.text.content') ?></label>
 								<textarea id="text_content_<?= (int)$document['id'] ?>" name="text_content" rows="8" required><?= e((string)($document['text_content'] ?? '')) ?></textarea>
-								<button type="submit"><?= e__('monitors.documents.text.update.submit') ?></button>
 							</form>
 						<?php else: ?>
 							<div class="document-metadata">
@@ -228,7 +227,7 @@ ob_start();
 								<span><?= e((string)($document['mime_type'] ?? '')) ?></span>
 								<span><?= number_format((int)($document['file_size_bytes'] ?? 0)) ?> bytes</span>
 							</div>
-							<form method="post" action="<?= e($base_url) ?>/monitors/documents/file/update">
+							<form id="document-update-<?= (int)$document['id'] ?>" method="post" action="<?= e($base_url) ?>/monitors/documents/file/update">
 								<?= csrf_field() ?>
 								<input type="hidden" name="monitor_id" value="<?= (int)$monitor['id'] ?>">
 								<input type="hidden" name="document_id" value="<?= (int)$document['id'] ?>">
@@ -237,16 +236,18 @@ ob_start();
 								<label for="file_description_<?= (int)$document['id'] ?>"><?= e__('monitors.documents.description') ?></label>
 								<textarea id="file_description_<?= (int)$document['id'] ?>" name="description" rows="3"><?= e((string)($document['description'] ?? '')) ?></textarea>
 								<p class="form-hint"><?= e__('monitors.documents.description_hint') ?></p>
-								<button type="submit"><?= e__('monitors.documents.file.update.submit') ?></button>
 							</form>
 						<?php endif; ?>
 
-						<form method="post" action="<?= e($base_url) ?>/monitors/documents/delete" data-confirm="<?= e__('monitors.documents.flash.delete_confirm') ?>" class="document-delete-form">
-							<?= csrf_field() ?>
-							<input type="hidden" name="monitor_id" value="<?= (int)$monitor['id'] ?>">
-							<input type="hidden" name="document_id" value="<?= (int)$document['id'] ?>">
-							<button type="submit" class="btn-danger"><?= e__('monitors.documents.delete.submit') ?></button>
-						</form>
+						<div class="document-card-actions">
+							<button type="submit" form="document-update-<?= (int)$document['id'] ?>"><?= e__('monitors.documents.' . ((string)$document['storage_type'] === 'text' ? 'text' : 'file') . '.update.submit') ?></button>
+							<form method="post" action="<?= e($base_url) ?>/monitors/documents/delete" data-confirm="<?= e__('monitors.documents.flash.delete_confirm') ?>" class="document-delete-form">
+								<?= csrf_field() ?>
+								<input type="hidden" name="monitor_id" value="<?= (int)$monitor['id'] ?>">
+								<input type="hidden" name="document_id" value="<?= (int)$document['id'] ?>">
+								<button type="submit" class="btn-danger"><?= e__('monitors.documents.delete.submit') ?></button>
+							</form>
+						</div>
 					</article>
 				<?php endforeach; ?>
 			</div>
@@ -275,7 +276,7 @@ ob_start();
 					?>
 					<article class="recipient-overview-card">
 						<div class="recipient-overview-identity">
-							<strong><?= e((string)$monitorContact['name']) ?></strong>
+							<strong><a href="<?= e($base_url) ?>/monitors/recipients/edit?id=<?= (int)$monitorContact['id'] ?>"><?= e((string)$monitorContact['name']) ?></a></strong>
 							<small><?= e((string)$monitorContact['email']) ?></small>
 						</div>
 						<div class="recipient-overview-meta">
@@ -301,7 +302,6 @@ ob_start();
 								<?php endforeach; ?>
 							</div>
 						<?php endif; ?>
-						<a class="button-link" href="<?= e($base_url) ?>/monitors/recipients/edit?id=<?= (int)$monitorContact['id'] ?>"><?= e__('recipients.overview.edit') ?></a>
 					</article>
 				<?php endforeach; ?>
 			</div>

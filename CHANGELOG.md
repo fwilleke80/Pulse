@@ -1,3 +1,19 @@
+## 0.9.1 - 2026-08-14
+
+### Changed
+- Simplified **Administration → General**: Pulse now has a fixed application name, timezone selection uses the standard IANA timezone list, and internal `.env` variable names beneath settings have been replaced with short purpose-oriented help text.
+- Moved the public base URL to the read-only **Administration → Installation** section. Pulse still requires the value for absolute links, but routine administration can no longer accidentally repoint a live installation to another host; the upcoming installer will own this setting.
+- Made Contact names in the Contacts list and Recipient names in Monitor Editor → Recipients open their respective editors directly, matching the clickable Monitor names. The redundant Edit buttons were removed.
+- Reworked existing document-card actions so **Save text document** / **Save document details** stays left and **Delete document** stays right on the same row without a separating rule.
+- Updated the recipient/document help text to refer to selecting a recipient rather than an Edit recipient button.
+
+### Configuration
+- `PULSE_APP_NAME` is no longer read by Pulse or included in `.env.example`; the application identity is always **Pulse**. `PULSE_MAIL_FROM_NAME` remains configurable and defaults to Pulse.
+- Existing installations may keep an old `PULSE_APP_NAME` line in `.env`; it is harmless and ignored.
+
+### Documentation
+- Updated the Administration, installation, architecture, and security documentation for the fixed application identity, read-only base URL, timezone selector, and revised setting help.
+
 ## 0.9.0 - 2026-08-14
 
 ### Added

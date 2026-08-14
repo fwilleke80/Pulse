@@ -174,13 +174,13 @@ Safety-contact invitation and reminder text can be customized per monitor. When 
 
 Runtime settings come from process environment variables and the root `.env` file. Process environment variables take precedence. The root `.env` file remains the single persistent source for application configuration; Pulse does not maintain a parallel database-backed settings layer.
 
-Pulse 0.9.0 adds an administrator-only configuration surface implemented by `AdministrationController`. Authorization is enforced server-side through the user's `role`, introduced by migration `018_administrator_role.sql`. Existing pre-0.9.0 users are promoted to `administrator`; the schema default remains `user` so future multi-user account creation does not implicitly grant system administration.
+Pulse 0.9.x provides an administrator-only configuration surface implemented by `AdministrationController`. Authorization is enforced server-side through the user's `role`, introduced by migration `018_administrator_role.sql`. Existing pre-0.9.0 users are promoted to `administrator`; the schema default remains `user` so future multi-user account creation does not implicitly grant system administration.
 
 `EnvironmentFile` provides the read/write boundary for Administration. It preserves unknown `.env` keys and comments, encodes changed values safely, and replaces the file atomically. SMTP passwords and the web-cron token are not rendered back into HTML. Process-level environment overrides remain effective at runtime and are reported in the Installation tab.
 
-The Administration UI groups runtime configuration into responsive General, Security, Files, Mail, and Cron tabs, with a read-only Installation tab for boot state such as database connection values. Configuration-health warnings are surfaced at page and tab level. All system-wide mail operations—SMTP configuration, test delivery, retry state, queue inspection, and debug queue controls—live under Administration → Mail. Profile is reserved for user-specific account information.
+The Administration UI groups runtime configuration into responsive General, Security, Files, Mail, and Cron tabs, with a read-only Installation tab for installation-level state such as the public base URL and database connection values. Configuration-health warnings are surfaced at page and tab level. All system-wide mail operations—SMTP configuration, test delivery, retry state, queue inspection, and debug queue controls—live under Administration → Mail. Profile is reserved for user-specific account information.
 
-Database connection settings remain bootstrap configuration because Pulse needs them before it can construct the database connection or authenticate an administrator. They therefore stay read-only in Administration until the planned 0.9.x installer creates the initial `.env` and first administrator account.
+The public base URL and database connection settings remain installation-level configuration. A bad public URL would cause newly generated absolute links to point at the wrong host, while database settings are needed before Pulse can construct a connection or authenticate an administrator. They therefore stay read-only in Administration until the planned 0.9.x installer creates the initial `.env` and first administrator account.
 
 Credentials are not stored in committed configuration files.
 

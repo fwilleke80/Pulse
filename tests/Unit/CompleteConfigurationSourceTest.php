@@ -128,4 +128,28 @@ class CompleteConfigurationSourceTest extends TestCase
 		self::assertStringContainsString('before uploading', strtolower($upgrade));
 		self::assertStringContainsString('config/version.php', $upgrade);
 	}
+	public function testContactsAndRecipientsUseTheirNamesAsEditLinks(): void
+	{
+		$root = dirname(__DIR__, 2);
+		$contacts = (string)file_get_contents($root . '/app/Views/contacts/index.php');
+		$monitor = (string)file_get_contents($root . '/app/Views/monitors/edit.php');
+
+		self::assertStringContainsString('/contacts/edit?id=', $contacts);
+		self::assertStringNotContainsString('contacts.index.table.buttons.edit', $contacts);
+		self::assertStringContainsString('/monitors/recipients/edit?id=', $monitor);
+		self::assertStringNotContainsString('recipients.overview.edit', $monitor);
+	}
+
+	public function testDocumentSaveAndDeleteActionsShareOneRow(): void
+	{
+		$root = dirname(__DIR__, 2);
+		$view = (string)file_get_contents($root . '/app/Views/monitors/edit.php');
+		$css = (string)file_get_contents($root . '/public/assets/style.css');
+
+		self::assertStringContainsString('class="document-card-actions"', $view);
+		self::assertStringContainsString('form="document-update-', $view);
+		self::assertStringContainsString('.document-card-actions', $css);
+		self::assertStringNotContainsString(".document-delete-form\n{\n\tdisplay: flex;\n\tjustify-content: flex-end;", $css);
+	}
+
 }

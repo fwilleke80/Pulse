@@ -2,7 +2,7 @@
 
 /**
  * @file AdministrationSourceTest.php
- * @brief Static regression checks for Pulse 0.9.0 Administration.
+ * @brief Static regression checks for Pulse 0.9.x Administration.
  * @author Frank Willeke
  */
 
@@ -69,4 +69,36 @@ final class AdministrationSourceTest extends TestCase
 		self::assertStringNotContainsString('name="PULSE_DB_PASSWORD"', $view);
 		self::assertStringNotContainsString('name="PULSE_DB_USERNAME"', $view);
 	}
+	/** @brief Ensures installation identity and bootstrap URL cannot be casually changed from Administration. */
+	public function testApplicationIdentityIsFixedAndBaseUrlIsReadOnly(): void
+	{
+		$root = dirname(__DIR__, 2);
+		$config = (string)file_get_contents($root . '/config/app.php');
+		$controller = (string)file_get_contents($root . '/app/Controllers/AdministrationController.php');
+		$view = (string)file_get_contents($root . '/app/Views/administration/index.php');
+		$example = (string)file_get_contents($root . '/.env.example');
+
+		self::assertStringContainsString("'name' => 'Pulse'", $config);
+		self::assertStringNotContainsString('PULSE_APP_NAME', $config);
+		self::assertStringNotContainsString('PULSE_APP_NAME', $controller);
+		self::assertStringNotContainsString('PULSE_APP_NAME', $example);
+		self::assertStringNotContainsString('name="PULSE_BASE_URL"', $view);
+		self::assertStringContainsString('e($settings[\'PULSE_BASE_URL\'])', $view);
+	}
+
+	/** @brief Ensures the settings UI uses standard timezone choices and purpose-oriented help instead of env-key captions. */
+	public function testAdministrationUsesTimezoneSelectorAndHumanHelp(): void
+	{
+		$root = dirname(__DIR__, 2);
+		$controller = (string)file_get_contents($root . '/app/Controllers/AdministrationController.php');
+		$view = (string)file_get_contents($root . '/app/Views/administration/index.php');
+
+		self::assertStringContainsString('DateTimeZone::listIdentifiers()', $controller);
+		self::assertStringContainsString('name="PULSE_DISPLAY_TIMEZONE"', $view);
+		self::assertStringContainsString('$availableTimezones as $timezoneOption', $view);
+		self::assertStringNotContainsString('<small><code>PULSE_', $view);
+		self::assertStringContainsString('administration.field.session_idle_hint', $view);
+		self::assertStringContainsString('administration.field.smtp_host_hint', $view);
+	}
+
 }

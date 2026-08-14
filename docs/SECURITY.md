@@ -34,13 +34,13 @@ If a secret is exposed, change it. Removing a leaked value from a file does not 
 
 ## Administrator configuration
 
-Pulse 0.9.0 provides an **Administration** area for runtime configuration. Access is enforced server-side using the authenticated user's `administrator` role; hiding the navigation item is only a convenience, not the security boundary. Authenticated non-administrators receive HTTP 403 for Administration routes.
+Pulse 0.9.x provides an **Administration** area for runtime configuration. Access is enforced server-side using the authenticated user's `administrator` role; hiding the navigation item is only a convenience, not the security boundary. Authenticated non-administrators receive HTTP 403 for Administration routes.
 
 Administration uses the root `.env` file as the single persistent configuration source. Pulse does not copy these values into a parallel settings table. The PHP account therefore needs write access to `.env`, while the file must remain outside `public/` and should be readable/writable only by the minimum required server accounts. Updates are written through a temporary file and atomically replace the old file so a partial write does not leave a truncated configuration. Unknown keys and comments are preserved.
 
 SMTP passwords and web-cron tokens are treated as write-only values in the Administration UI: Pulse indicates whether they are configured but never places the existing secret in an HTML input. Leaving a secret field blank preserves the value already stored in `.env`; clearing or regenerating it requires an explicit action. Process-level environment variables still take precedence over `.env`, and Administration shows when managed keys are being overridden.
 
-Database connection values remain read-only in Administration because they are needed before Pulse can bootstrap and authenticate an administrator. The planned 0.9.x installer will own initial creation of those boot-critical settings.
+The public base URL and database connection values remain read-only in Administration. A mistaken base URL can misdirect absolute links, and database settings are needed before Pulse can bootstrap and authenticate an administrator. The planned 0.9.x installer will own initial creation of those installation-level settings.
 
 ## HTTPS and sessions
 

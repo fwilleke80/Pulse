@@ -32,7 +32,7 @@ This creates `config/version.php`. Upload that file together with the rest of th
 If you need to set the release value explicitly, use:
 
 ```bash
-PULSE_VERSION=0.9.0  
+PULSE_VERSION=0.9.1  
 python3 tools/write_version.py
 ```
 
@@ -65,7 +65,7 @@ PULSE_DB_USERNAME
 PULSE_DB_PASSWORD
 ```
 
-For the initial boot, also review the production, cookie, and timezone settings in `.env.example`. In 0.9.0, normal runtime settings can be maintained after sign-in under **Administration** instead of editing `.env` manually. Database credentials remain boot-critical and read-only in Administration until the 0.9.x installer is added.
+For the initial boot, also review the production, cookie, and timezone settings in `.env.example`. In 0.9.x, normal runtime settings can be maintained after sign-in under **Administration** instead of editing `.env` manually. The public base URL and database credentials remain installation-level values and are read-only in Administration until the 0.9.x installer is added.
 
 Process-level environment variables override values from `.env` when both are present. Administration shows a warning when it detects such overrides because editing `.env` cannot replace a process-level value.
 
@@ -107,13 +107,13 @@ storage/tmp
 storage/uploads
 ```
 
-`.env` must remain outside the public document root. Pulse 0.9.0 needs write access to it so the administrator can save application settings safely through the web interface. The storage directories must likewise not be publicly accessible.
+`.env` must remain outside the public document root. Pulse 0.9.x needs write access to it so the administrator can save application settings safely through the web interface. The storage directories must likewise not be publicly accessible.
 
 Avoid making the complete project world-writable. Grant the web-server/PHP account only the specific file and directory permissions it needs.
 
 ## 6. Enable HTTPS
 
-Configure the site to use HTTPS before relying on Pulse in production. Set `PULSE_BASE_URL` to the final HTTPS URL and make sure the configured trusted hostname matches it.
+Configure the site to use HTTPS before relying on Pulse in production. During the current manual installation flow, set `PULSE_BASE_URL` to the final HTTPS URL and make sure the configured trusted hostname matches it. Administration displays this value under **Installation** but intentionally does not edit it; the upcoming installer will own this setting.
 
 ## 7. Start Pulse
 

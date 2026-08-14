@@ -1031,7 +1031,7 @@ small
 .recipient-overview-card
 {
 	display: grid;
-	grid-template-columns: minmax(180px, 0.85fr) minmax(280px, 1.3fr) auto;
+	grid-template-columns: minmax(180px, 0.85fr) minmax(280px, 1.3fr);
 	align-items: center;
 	gap: 0.8rem 1.25rem;
 	padding: 1rem 1.1rem;
@@ -1067,13 +1067,6 @@ small
 {
 	color: var(--text);
 	font-weight: 650;
-}
-
-.recipient-overview-card > .button-link
-{
-	grid-column: 3;
-	grid-row: 1;
-	white-space: nowrap;
 }
 
 .recipient-overview-warning,
@@ -1554,13 +1547,18 @@ small
 	font-weight: normal;
 }
 
-.document-delete-form
+.document-card-actions
 {
 	display: flex;
-	justify-content: flex-end;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75rem;
 	margin-top: 0.8rem;
-	padding-top: 0.8rem;
-	border-top: 1px solid var(--border);
+}
+
+.document-delete-form
+{
+	margin: 0;
 }
 
 .review-grid
@@ -1804,7 +1802,6 @@ footer
 		grid-template-columns: 1fr;
 	}
 
-	.recipient-overview-card > .button-link,
 	.recipient-overview-warning
 	{
 		grid-column: auto;

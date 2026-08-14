@@ -16,7 +16,7 @@ You tell Pulse how often you expect to check in. As long as you continue to do s
 ## Installation
 
 1. Extract the complete source archive locally into the Pulse project directory.
-2. Before uploading any PHP files, run `python3 tools/write_version.py`. This generates `config/version.php`; upload that generated file with the application. In a tagged Git checkout the script derives the version from Git, while a packaged archive retains its packaged version. Set `PULSE_VERSION=0.9.0` for an explicit release value when needed.
+2. Before uploading any PHP files, run `python3 tools/write_version.py`. This generates `config/version.php`; upload that generated file with the application. In a tagged Git checkout the script derives the version from Git, while a packaged archive retains its packaged version. Set `PULSE_VERSION=0.9.1` for an explicit release value when needed.
 3. Copy `.env.example` to `.env` and enter the real URL and database credentials.
 4. Create an empty database.
 5. Upload the project and ensure the root `.env` file plus `storage/logs`, `storage/tmp`, and `storage/uploads` are writable by PHP but not publicly accessible. Keep `.env` outside the web document root.
@@ -30,9 +30,9 @@ If `config/version.php` is missing, Pulse remains operational and displays **ver
 
 ## Administration
 
-Pulse 0.9.0 adds an administrator-only configuration area. Runtime settings are organized into responsive **General**, **Security**, **Files**, **Mail**, and **Cron** tabs and are written directly to the root `.env` file. Configuration problems are flagged both in the relevant tab and in the page-level health summary.
+Pulse 0.9.x provides an administrator-only configuration area. Runtime settings are organized into responsive **General**, **Security**, **Files**, **Mail**, and **Cron** tabs and are written directly to the root `.env` file. Configuration problems are flagged both in the relevant tab and in the page-level health summary. The application name is fixed as **Pulse**, timezone selection uses the standard IANA timezone list, and setting descriptions explain their purpose instead of exposing internal environment-variable names.
 
-Database credentials remain read-only under **Administration → Installation** because Pulse needs them before the application can start. The planned 0.9.x installer will create those boot-critical settings and the first administrator account.
+The public base URL and database credentials remain read-only under **Administration → Installation** because mistakes there can affect bootstrapping or absolute links. The planned 0.9.x installer will create those installation-level settings and the first administrator account.
 
 
 ## Documentation
