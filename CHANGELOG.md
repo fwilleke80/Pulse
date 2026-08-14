@@ -1,3 +1,24 @@
+## 0.8.8 - 2026-08-14
+
+### Changed
+- Recipient Editor → **Notification email** now shows the inherited **current default template** in the same compact collapsible disclosure used for other default/fallback texts.
+- The recipient-specific notification override remains the primary visible editor; expanding the disclosure reveals the inherited default subject and raw body template with placeholders.
+- Updated the disclosure label consistently in English, German, French, and Italian.
+
+### Packaging
+- Release archives continue to omit `public/secret0410/` and its contents.
+
+## 0.8.7 - 2026-08-14
+
+### Changed
+- Renamed the monitor-wide portal fields to **Default personal portal message** and **Page introduction** so their roles are clearer.
+- Reworked the built-in portal defaults: the personal portal message now focuses on the material prepared by the owner, while the page introduction explains what the private Pulse page is and why the recipient is seeing it.
+- Updated the corresponding recipient-editor labels and built-in default previews in English, German, French, and Italian.
+- Reformatted the French and Italian language files to use the same key order, section spacing, and blank-line structure as English and German.
+
+### Packaging
+- Release archives continue to omit `public/secret0410/` and its contents.
+
 ## 0.8.6 - 2026-08-14
 
 ### Changed

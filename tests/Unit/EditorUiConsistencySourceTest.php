@@ -50,6 +50,16 @@ final class EditorUiConsistencySourceTest extends TestCase
 		$this->assertStringContainsString('$preview[\'body_text\']', $view);
 	}
 
+	/** @brief Ensures the inherited recipient notification template uses the shared disclosure pattern. */
+	public function testRecipientDefaultNotificationTemplateIsCollapsible(): void
+	{
+		$view = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Views/recipients/edit.php');
+		$notificationSection = strstr($view, 'data-subtab-panel="notification"');
+		$this->assertNotFalse($notificationSection);
+		$this->assertStringContainsString('<details class="mail-default-disclosure">', (string)$notificationSection);
+		$this->assertStringContainsString("e__('recipients.message.default_preview.heading')", (string)$notificationSection);
+	}
+
 	/** @brief Ensures safety-contact placeholder help follows each message body field. */
 	public function testSafetyPlaceholderHelpAppearsBelowBodyFields(): void
 	{

@@ -109,7 +109,13 @@ ob_start();
 					<p class="form-hint placeholder-help"><?= e__('recipients.message.placeholders') ?> <code>{app}</code> — <?= e__('mail.placeholders.app') ?>; <code>{name}</code> — <?= e__('mail.placeholders.name') ?>; <code>{owner}</code> — <?= e__('mail.placeholders.owner') ?>; <code>{monitor}</code> — <?= e__('mail.placeholders.monitor') ?>; <code>{url}</code> — <?= e__('mail.placeholders.recipient_url') ?>.</p>
 					<p class="form-hint"><?= e__('recipients.message.custom_hint') ?></p>
 				</div>
-				<div class="mail-default-template"><strong><?= e__('recipients.message.default_preview.heading') ?></strong><div><strong><?= e__('recipients.preview.subject') ?>:</strong> <?= e($defaultTemplate['subject']) ?></div><pre><?= e($defaultTemplate['body_text']) ?></pre></div>
+				<details class="mail-default-disclosure">
+					<summary><?= e__('recipients.message.default_preview.heading') ?></summary>
+					<div class="mail-default-template">
+						<div><strong><?= e__('recipients.preview.subject') ?>:</strong> <?= e($defaultTemplate['subject']) ?></div>
+						<pre><?= e($defaultTemplate['body_text']) ?></pre>
+					</div>
+				</details>
 				<?php if (in_array('recipient_portal_url_missing', $defaultMessageIssues, true)): ?>
 					<div class="template-validation-warning" role="alert"><strong><?= e__('mail.validation.portal_url_missing.heading') ?></strong> <?= e__('recipients.message.default_portal_url_missing_warning', ['language' => notification_language_name((string)$recipient['notification_locale'])]) ?> <a href="<?= e($base_url) ?>/monitors/edit?id=<?= (int)$recipient['monitor_id'] ?>&amp;tab=messages&amp;section=recipient"><?= e__('recipients.message.edit_default') ?></a></div>
 				<?php endif; ?>
