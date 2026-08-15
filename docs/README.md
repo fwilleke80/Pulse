@@ -1,10 +1,13 @@
 # Pulse documentation
 
-The project root [README](../README.md) gives the short overview. The documents in this directory cover installation, everyday use, monitor design, security, and the application architecture.
+Start with the document that matches what you are trying to do:
 
-- [Installation and updates](INSTALLATION.md) — server requirements, deployment, `.env`, SMTP, cron, verification, and updates
-- [User guide](USER_GUIDE.md) — contacts, monitors, check-ins, recipients, safety contacts, messages, documents, and notifications
-- [Monitor tutorial](MONITOR_TUTORIAL.md) — practical examples for choosing monitor timing and escalation rules
-- [Security model](SECURITY.md) — security assumptions, protections, limitations, and production checklist
-- [Architecture](ARCHITECTURE.md) — application structure and the main runtime flows
+- [Installation and updates](INSTALLATION.md) — install Pulse, configure SMTP and cron, verify the server, and update a running installation
+- [User guide](USER_GUIDE.md) — everyday use of Contacts, Monitors, check-ins, recipients, safety contacts, documents, the recipient portal, Administration, and history
+- [Monitor tutorial](MONITOR_TUTORIAL.md) — choose practical timing and escalation settings and rehearse a monitor safely
+- [Security model](SECURITY.md) — protections, assumptions, known limitations, and the production checklist
+- [Architecture](ARCHITECTURE.md) — developer-oriented overview of the source tree, data model, lifecycle, queue, configuration, and recipient delivery
+- [Release audit guide](AUDIT_GUIDE.md) — repeatable development/release checks for a Pulse build
 - [Changelog](../CHANGELOG.md) — release history
+
+The project root [README](../README.md) is the short overview.

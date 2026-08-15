@@ -1,263 +1,434 @@
 # Pulse user guide
 
-Pulse is designed for situations in which something could happen to you and the people who need to know might otherwise not be informed for some time. You might use it to make sure family, friends, or other trusted people are contacted if you die or become seriously ill, or as an additional safety measure while travelling alone, going on an expedition, or spending time somewhere where help may be difficult to reach.
+Pulse is designed for situations in which something could happen to you and the people who need to know might otherwise not be informed for some time. You might use it to make sure family, friends, or other trusted people are contacted if you die or become seriously ill, or as an additional safety measure while travelling alone or spending time somewhere where help may be difficult to reach.
 
-You tell Pulse how often you expect to check in. As long as you continue to do so, nothing happens. If you stop responding, Pulse first tries to reach you and, if necessary, eventually contacts the people you selected and sends them the messages you prepared in advance.
+You tell Pulse how often you expect to check in. As long as you continue to do so, nothing happens. If you stop responding, Pulse first tries to reach you and, depending on the monitor you configured, can ask safety contacts for confirmation and eventually notify final recipients.
 
-For server setup, SMTP, and cron configuration, see [Installing Pulse](INSTALLATION.md).
+Pulse is not an emergency-response service. Its timing depends on cron, email delivery, and the availability of your server. For server setup, SMTP, cron, and updates, see [Installing Pulse](INSTALLATION.md).
 
-## The basic workflow
+## Before relying on Pulse
 
-A typical setup looks like this:
+For any monitor that matters, do these things before treating it as operational:
 
-1. Add the people you may want Pulse to contact.
-2. Create a monitor and choose how often you want to check in.
-3. Choose the recipients for that monitor.
-4. Write the message they should receive in case you stop checking in.
-5. Optionally add safety contacts who get a chance to confirm that they recently heard from you before recipient notification begins.
-6. Review the monitor and activate it.
-7. Check in periodically from the dashboard.
+1. Send a successful test from **Administration → Mail**.
+2. Confirm that **Administration → Cron** shows a recent successful cron run.
+3. Add the configured Pulse sender address or domain to safe-sender/allowlist rules on mail systems you control.
+4. Carefully check every recipient and safety-contact email address.
+5. Rehearse the workflow with harmless wording and test addresses.
+6. Make sure the recipients know how to independently verify important information before acting on it.
 
-Pulse can be used for anything from a low-urgency continuity reminder to a carefully planned dead man's switch. The [monitor tutorial](MONITOR_TUTORIAL.md) gives several practical examples.
+The [monitor tutorial](MONITOR_TUTORIAL.md) contains example schedules and a rehearsal procedure.
+
+## Key terms
+
+- **Owner** — the signed-in Pulse user whose monitors are being run.
+- **Monitor** — one check-in schedule plus its reminder, escalation, message, recipient, and document configuration.
+- **Contact** — a reusable person in your Contacts list.
+- **Recipient** — a contact assigned to receive the final notification for one particular monitor.
+- **Safety contact** — a contact who can confirm recent direct contact and thereby postpone a monitor before final recipient notification.
+- **Delivery** — the snapshotted notification and portal content prepared for one recipient during an escalation.
+- **Recipient portal** — the private page from which a recipient requests an access code and, after authentication, views or downloads the documents released to them.
+
+A single contact can be a recipient on one monitor, a safety contact on another, or both.
 
 ## Dashboard and check-ins
 
-The dashboard shows the current state of your monitors, when you last checked in, when the next check-in is due, and recent activity.
+The dashboard gives you the operational overview: monitor counts, monitor states, the next due times, the **Check in now** action, and recent activity.
 
-When at least one monitor is active, **Check in now** confirms all active monitors at once. Each monitor then starts a fresh interval using its own schedule.
+**Check in now** confirms every monitor that currently participates in normal monitoring. Each of those monitors starts a fresh interval from the time of the check-in.
 
-You do not have to wait until a monitor is due. Checking in early simply proves that you are present now and restarts that monitor's interval from the current time.
+You do not have to wait until a monitor is due. Checking in early simply proves that you are present now and restarts its interval.
 
 Paused, escalated, and archived monitors are not included in a global check-in.
 
-An escalated monitor has reached the end of its monitoring cycle and requires an explicit decision. Use **Reset and reactivate** to start a fresh cycle, or **Archive** to keep the monitor for reference without continuing normal monitoring. Resetting or archiving does not revoke recipient portal access that was already released during the previous escalation.
-
 ## Monitor statuses
 
-Pulse uses a small set of states to show where a monitor currently is:
+Pulse uses these user-facing states:
 
-- **Checked in** — the monitor is active and its next due time is still in the future
-- **Awaiting check-in** — the due time has arrived and Pulse is waiting for you
-- **Awaiting safety contact** — your own reminder phase ended and the optional safety-contact step is in progress
-- **Overdue** — all required waiting/reminder stages have completed and recipient notification is ready or being attempted
-- **Escalated** — at least one recipient notification has actually been accepted for delivery by the mail server; the monitor now waits for you to reset/reactivate or archive it
-- **Paused** — the monitor is temporarily inactive
-- **Archived** — the monitor is retained for reference and no longer participates in monitoring
+- **Checked in** — the monitor is active and its next due time is still in the future.
+- **Awaiting check-in** — the due time has arrived and Pulse is waiting for you.
+- **Awaiting safety contact** — the owner reminder phase ended and the optional safety-contact gate is in progress.
+- **Overdue** — all required waiting/reminder stages have completed and final recipient notification is ready or being attempted.
+- **Escalated** — at least one final recipient notification has been accepted for delivery by the mail server. The monitoring cycle is finished and now requires an explicit lifecycle decision.
+- **Paused** — the monitor is temporarily inactive.
+- **Archived** — the monitor is retained as a read-only record and no longer participates in monitoring.
 
-Pulse does not mark a monitor overdue merely because time passed. Required reminder stages must also have been processed successfully.
-
-## Creating and editing a monitor
-
-The monitor editor is divided into five sections.
-
-### Schedule
-
-Choose the monitor name and the timing of your own check-in process:
-
-- **Check-in interval** — how long after a successful check-in the next one becomes due
-- **Response window** — how long you have after the due notice before the first follow-up reminder
-- **Reminder interval** — time between follow-up reminders
-- **Maximum follow-up reminders** — number of reminders after the initial due notice
-
-The initial due notice is not counted as a follow-up reminder.
-
-For example, with a two-day response window and two follow-up reminders one day apart, the owner phase lasts four days after the due time:
-
-```text
-due notice → 2 days → reminder 1 → 1 day → reminder 2 → 1 day → escalation step
-```
-
-### Documents
-
-Documents belong to the monitor itself. Create text documents or upload supported files here, then edit their recipient-facing title and description. Recipient assignment is deliberately handled later from each recipient's **Documents** sub-tab, so the document library stays separate from the question of who receives what.
-
-### Recipients
-
-Recipients are the people who receive the final monitor message if the escalation process reaches them.
-
-Add an existing contact, then select the recipient's name. The recipient editor is divided into **Overview**, **Notification email**, **Portal**, **Documents**, and **History** so personal overrides, assignments, active portal presentation, and delivery history do not all compete for space on one page.
-
-### Messages & content
-
-Monitor-wide communication is collected here instead of being scattered through behavioral settings. The secondary tabs contain **Recipient email**, **Safety-contact email**, and **Portal page**. Each installed language gets its own language-specific content where appropriate.
-
-### Escalation
-
-Choose what happens after your own reminders have gone unanswered:
-
-- **Direct recipient notification** — Pulse proceeds directly to the recipients
-- **Safety-contact confirmation** — Pulse first asks selected trusted people whether they have had recent direct contact with you
-
-The safety-contact option is useful when an ordinary missed check-in should not immediately trigger the final message.
-
-### Review & activation
-
-Review the complete configuration and resolve any warnings before relying on the monitor. You can pause or resume a normal monitor. After escalation, this section instead offers **Reset and reactivate** and **Archive**.
+Pulse does not treat the passage of time alone as proof that a notification stage succeeded. Important lifecycle stages advance only after their required mail work has been processed successfully.
 
 ## Contacts
 
-A contact is a reusable person record. The same person can be a recipient on one monitor, a safety contact on another, or both.
+Open **Contacts** to maintain reusable people.
 
-For each contact, store:
+A contact can contain:
 
 - name
 - email address
-- Pulse interface language
+- **Pulse interface language**
+- an optional cell-phone number
+- optional notes
 
-Pulse asks you to confirm that you personally checked the email address. This is only a local confirmation that you reviewed the address; Pulse does not send a verification message to the contact.
+The cell-phone field is currently reference information only; Pulse 1.0 sends notifications by email.
 
-If Pulse recognizes a likely typo in a common email domain, it can display a suggestion. You remain responsible for deciding whether the address is correct.
+### Checking an email address
 
-Editing a contact updates the reusable contact record. A contact cannot be deleted while it is still assigned to any monitor as a recipient or safety contact. Remove or reassign those monitor roles first; this prevents deletion from silently changing monitor configuration or archived records.
+Pulse asks you to mark that you personally checked the contact's email address. This does not send a verification message and does not prove that the mailbox exists or belongs to that person. It records only that you reviewed the address yourself.
 
-## Recipient messages
+If Pulse recognizes a likely typo in a common email domain, it may display a suggestion. You remain responsible for deciding whether the address is correct.
 
-Each monitor can have a custom default recipient message **per supported language**. The editor provides one tab for every installed Pulse language. Pulse automatically chooses the version matching each recipient's **Pulse interface language**. A recipient can still override the monitor-wide template with a personal subject and body. If a language-specific monitor template is left empty, Pulse uses its built-in localized recipient message instead; the editor lets you reveal that fallback text on demand.
+### Editing and deleting contacts
 
-Custom recipient subject/body templates support `{app}` (the Pulse application name), `{name}` (the recipient's name), `{owner}` (the monitor owner's display name), `{monitor}` (the monitor name), and `{url}` (that recipient's private portal URL). Custom recipient bodies must contain `{url}`; Pulse does not silently append a link to text you wrote. For security, `{url}` is not allowed in the subject. The editor shows these meanings beside the text fields. The recipient page shows the exact expanded message Pulse will queue. Pulse does not silently add a second explanatory wrapper around custom text. Pulse flags a missing `{url}` directly in the monitor default-message editor, on a recipient's personal-message editor, and on the Recipients overview. If release is blocked, the debug send action reports the concrete reason and names the affected recipients. Saving remains non-destructive: incomplete/invalid recipient mail drafts are saved with warnings, while the monitor/editor tabs and monitor list are flagged. Only the actual recipient release is blocked until the effective message is valid.
+Select a contact's **name** to edit it. The compact `⋮` menu contains destructive row actions such as Delete.
 
-A useful message should make sense on its own. Consider explaining:
+A contact cannot be deleted while any monitor still uses it as a recipient or safety contact, including an archived monitor. Remove or reassign those roles first. This prevents deleting a reusable contact from silently rewriting monitor configuration or archived records.
 
-- who configured it
-- why the recipient is receiving it
-- what they should do next
-- what they should verify independently before taking consequential action
+## Creating a monitor
 
-Avoid passwords, recovery keys, or other secrets in email. Once a recipient email is sent, it also exists at the mail provider and in the recipient's mailbox.
+Choose **Add monitor** from the Monitors page. The creation form asks for the name, optional description, owner reminder timing, and optionally some initial recipients.
 
-When Pulse prepares a recipient release, it takes a snapshot of the recipient and message. Later edits affect future releases, not a message that has already been queued or sent.
+A newly created monitor starts its first active cycle immediately. If you expect to spend a long time preparing a consequential monitor, create it and then use **Pause** while you finish the configuration.
 
-## Safety contacts
+After creation, Pulse opens the full Monitor Editor.
 
-A safety contact is an optional extra step before recipient notification.
+## The Monitor Editor
 
-After your own reminder phase ends, Pulse emails the selected safety contacts. A safety contact can then explicitly choose one of two responses:
+The Monitor Editor has **seven top-level tabs**, in this order:
 
-- **Confirm recent direct contact** — indicates that they recently had direct contact with you
-- **Cannot confirm** — records that they cannot make that confirmation
+1. **Details**
+2. **Schedule**
+3. **Documents**
+4. **Recipients**
+5. **Safety & escalation**
+6. **Messages & content**
+7. **Review & activation**
 
-Simply opening the email link does nothing. The safety contact must submit a deliberate response on the Pulse page, which prevents mail scanners or link previews from accidentally confirming anything.
+Warnings appear directly on relevant tabs when configuration needs attention.
 
-You can require more than one confirmation. For example, with three safety contacts you might require two confirmations before Pulse postpones the monitor.
+Archived monitors can still be opened and inspected, but their monitor configuration is read-only. Use **Reset and reactivate** before changing an archived monitor.
 
-A qualifying confirmation closes the current cycle and schedules a fresh one using the configured postponement period. Setting postponement to `0` reuses the monitor's normal check-in interval.
+### 1. Details
 
-A safety contact cannot:
+Set the monitor's name and optional description. The description is for your own reference in the monitor list and editor.
 
-- read the final recipient message
-- see assigned documents
-- trigger recipient notification early
+### 2. Schedule
 
-If the required confirmation is not reached before the safety-contact stage ends, Pulse proceeds toward recipient notification.
+The owner phase contains four settings:
 
-### Custom safety-contact email text
+- **Check-in interval** — how long after a successful check-in the next check-in becomes due.
+- **Response window** — how long Pulse waits after the initial due notice before the first follow-up reminder.
+- **Reminder interval** — time between later follow-up reminders.
+- **Maximum follow-up reminders** — number of reminders after the initial due notice.
 
-Under **Messages & content → Safety-contact email**, you can replace the default subject and body used for the first safety-contact email and for later reminders **separately for each supported language**. Each installed language gets its own tab, and Pulse chooses the matching version from each safety contact's **Pulse interface language**. The templates support `{app}` (the Pulse application name), `{name}` (the safety contact's name), `{owner}` (the monitor owner's display name), `{monitor}` (the monitor name), and `{url}` (the safety-confirmation page URL). Reminder text additionally supports `{number}` (the current reminder number) and `{total}` (the configured total number of safety reminders). Leave a language-specific subject/body pair empty to use Pulse's built-in default for that language; the default can be revealed in the editor. The same contact language controls the safety-confirmation page, the recipient portal, and Pulse-authored portal access-code mail.
+The initial due notice is not counted as a follow-up reminder.
 
-## Administration
+For example:
 
-Users with the **administrator** role have an **Administration** entry in the main navigation. The page is divided into responsive tabs for **General**, **Security**, **Files**, **Mail**, **Cron**, and **Installation**. The route is protected server-side as well as hidden from non-administrators.
+```text
+Due notice
+  → 2 days
+Reminder 1
+  → 1 day
+Reminder 2
+  → 1 day
+Escalation stage
+```
 
-Editable application settings are saved directly to Pulse's root `.env` file. A warning marker appears on any tab with an actionable configuration problem, and the summary at the top links directly to the affected section. Secrets such as the SMTP password and web-cron token are never displayed back to the browser.
+With those settings, the owner reminder phase ends four days after the monitor first becomes due.
 
-The **Cron** tab also shows the **Last successful cron run**. Pulse warns when no successful run has ever been recorded and marks the cron status stale only after more than 24 hours without one; the actual cron frequency remains up to the installation administrator.
+### 3. Documents
 
-The **Installation** tab shows the public base URL and database connection values as read-only installation information. The installer creates these boot-critical values; Administration keeps them read-only afterward so routine settings changes cannot accidentally repoint Pulse or break its database connection.
+Documents belong to the monitor's library. You can:
 
+- create editable text documents directly in Pulse;
+- upload supported files;
+- edit recipient-facing titles and descriptions;
+- download or delete source documents.
 
-## Notifications and failed mail
+Creating a document does **not** automatically release it to every recipient. Assignment is done for each recipient separately under that recipient's **Documents** tab.
 
-Owner reminders, safety-contact requests, and recipient messages all use Pulse's mail queue.
+The default upload policy accepts PDF, RTF, OpenDocument Text, Word `.docx`, JPEG, PNG, and plain text files up to 25 MiB. Administrators can change Pulse's own limit and MIME allowlist under **Administration → Files**. PHP and web-server upload limits may impose lower limits.
 
-Administrators can open **Administration → Mail** to:
+Uploaded files are stored outside the public web directory under private storage and receive internal storage names. Pulse inspects file content using Fileinfo rather than trusting the browser-supplied filename or MIME type.
 
-- configure SMTP and queue/retry behaviour
-- see whether mail is enabled
-- send a test notification to the current administrator address
-- review pending, sent, and failed mail across the installation
-- retry permanently failed notifications after fixing the cause
+### 4. Recipients
 
-A failed email does not count as successfully delivered. Pulse shows a warning rather than pretending the notification happened.
+The Recipients tab shows the contacts that would receive the final notification if this monitor escalates. It summarizes each recipient's language, whether the notification email uses the monitor default or a personal override, and the number of assigned documents.
 
-Your profile has separate **Website language** and **Notification language** settings. Website language controls the authenticated Pulse interface and is remembered across login/logout; changing the footer language selector updates that persistent website preference. Notification language controls Pulse-authored owner due notices, reminders, and test mail. Contacts have a **Pulse interface language** for Pulse-owned pages such as safety confirmation and the recipient portal. That contact language also selects localized Pulse fallback text when safety-contact or recipient mail is left at its built-in default, and it controls Pulse-authored portal access-code mail.
+Select a recipient's **name** to open the recipient editor. Add additional recipients from the same tab.
 
-If SMTP settings are changed under Administration, send another test before relying on the system.
+Configuration warnings here can identify problems such as an unchecked address or a recipient email template that does not contain the required portal URL.
 
-For reliable delivery, add the configured Pulse sender address (and, where your mail system supports it, its sender domain) to the safe-senders/allowlist or whitelist of the mailboxes and mail servers you control. This is especially important for the owner/administrator mailbox. Where appropriate, safety contacts and recipients should also allow the Pulse sender. Allowlisting does not replace correct SMTP, SPF, DKIM, or DMARC configuration, but it reduces the chance that important Pulse mail is rejected or placed in Spam.
+Removing a recipient affects the current monitor configuration only. Historical deliveries that were already released remain independent snapshots.
 
-## Pause and resume
+### 5. Safety & escalation
 
-Use **Pause** when you temporarily do not want a monitor to expect check-ins—for example during a planned period when the monitor should not run.
+Choose one of two escalation policies:
 
-Pausing cancels the current active cycle and removes its due date. The monitor is also excluded from **Check in now**.
+- **Direct escalation** — after the owner reminder phase finishes, Pulse proceeds toward final recipient notification.
+- **Safety-contact confirmation** — Pulse first asks trusted contacts whether recent direct contact with you justifies postponing the monitor.
 
-**Resume** starts a fresh schedule from the moment you resume it. A long pause therefore does not cause the monitor to become immediately overdue.
+For a safety-contact gate, configure:
 
-## Escalated and archived monitors
+- one or more safety contacts
+- **Safety response window**
+- **Safety reminder interval**
+- **Maximum safety reminders**
+- **Confirmations required**
+- **Postpone by days**
 
-Escalation is a terminal monitoring state rather than another overdue state. Escalated monitors do not count toward **Need attention** and are not included in **Check in now**.
+A safety contact can only postpone escalation. They cannot make recipient notification happen sooner, see recipient messages, or access documents.
 
-Choose **Reset and reactivate** when you want to use the same monitor again. Pulse closes the previous monitoring cycle and starts a fresh interval from that moment. Recipient portals that were already released by the previous escalation remain available according to their own revocation/expiry rules.
+If the required confirmation count is reached, Pulse closes the current cycle and starts a new scheduled cycle. Setting **Postpone by days** to `0` uses the monitor's normal check-in interval.
 
-Choose **Archive** when the escalated monitor should no longer appear in the normal monitor list. Archived monitors are available from the **Archived** view on the Monitors page. Their monitor configuration is read-only while archived; use **Reset and reactivate** before making changes. Existing released recipient portals remain independently manageable and keep their own revocation/expiry state.
+If a safety contact explicitly says they cannot confirm recent contact, the existing timetable remains unchanged. If the confirmation requirement is not reached before the safety window finishes, Pulse continues toward recipient notification.
 
-## History
+Simply opening a safety-contact link does nothing. The contact must deliberately submit a response.
 
-Pulse records important lifecycle events such as:
+### 6. Messages & content
+
+This tab contains three secondary sections:
+
+- **Recipient email**
+- **Safety-contact email**
+- **Portal page**
+
+Each installed language has its own monitor-wide defaults where appropriate. Pulse selects the language using the recipient or safety contact's **Pulse interface language**.
+
+#### Recipient email
+
+Pulse provides localized built-in recipient email text. You may replace it with a monitor-wide subject/body for each installed language.
+
+Supported placeholders are:
+
+- `{app}` — Pulse;
+- `{name}` — recipient name;
+- `{owner}` — owner display name;
+- `{monitor}` — monitor name;
+- `{url}` — that recipient's private portal URL.
+
+A custom recipient **body must contain `{url}`**. Pulse deliberately does not append a missing link automatically. `{url}` is not allowed in the subject.
+
+A particular recipient may override the monitor-wide recipient email in the recipient editor.
+
+#### Safety-contact email
+
+The initial safety-contact invitation and later safety reminders can be customized separately for each language.
+
+They support `{app}`, `{name}`, `{owner}`, `{monitor}`, and `{url}`. Safety reminder text additionally supports `{number}` and `{total}`.
+
+Leave a language-specific subject/body pair empty to use Pulse's built-in localized text.
+
+#### Portal page
+
+The portal content is separate from the notification email. Configure:
+
+- **Personal portal message** — the owner's message shown inside the authenticated recipient portal;
+- **Page introduction** — generic explanatory text about the page;
+- **Portal expiry** — 30 days, 90 days, one year, a custom number of days, or no automatic expiry.
+
+Portal text supports `{app}`, `{name}`, `{owner}`, and `{monitor}`. It does not need `{url}` because the recipient is already on the portal.
+
+### 7. Review & activation
+
+Use this tab as the final configuration summary. It shows counts, escalation policy, next due time, and important warnings.
+
+The tab name also reflects lifecycle controls:
+
+- a normal active monitor can be **Paused**;
+- a paused monitor can be **Resumed**;
+- an escalated monitor can be **Reset and reactivated** or **Archived**;
+- an archived monitor can be **Reset and reactivated**.
+
+Newly created monitors are already active; there is no separate initial activation step.
+
+## The recipient editor
+
+Selecting a recipient's name opens a dedicated editor with **five tabs**:
+
+1. **Overview**
+2. **Notification email**
+3. **Portal**
+4. **Documents**
+5. **History**
+
+### Overview
+
+Shows the underlying contact information, address-check status, language, whether personal notification/portal overrides exist, assigned document count, and delivery-history count.
+
+Use **Edit contact details** when the reusable contact record itself needs to change.
+
+Removing the recipient from the monitor is also available here while the monitor is editable.
+
+### Notification email
+
+Choose whether the recipient uses the monitor-wide language-specific recipient template or a personal subject/body override.
+
+Pulse shows the effective/default template in a collapsible preview. The required `{url}` rule is validated here as well.
+
+### Portal
+
+Configure an optional personal portal-message override for this recipient.
+
+If the recipient currently has an active released delivery, this tab also lets the owner edit that delivery's **presentation** independently of future monitor defaults. This can change the released portal introduction/message without changing authorization or the underlying documents.
+
+### Documents
+
+Choose which current monitor documents are assigned to this recipient for future releases.
+
+If an active delivery already exists, the same tab also lets the owner edit the released documents' display titles and descriptions. These presentation edits do not change the snapshotted document set or file/text payloads.
+
+### History
+
+Shows delivery records and portal status. Available portals can be revoked by the owner from here.
+
+The activity timeline records significant recipient-side events such as:
+
+- recipient notification sent or failed
+- access code requested and sent
+- successful portal authentication
+- individual document downloads
+- **Download all**
+- owner revocation
+- permanent closure by the recipient
+
+A simple unauthenticated page load is deliberately not treated as proof that the recipient personally visited the portal because mail-security systems may automatically follow links.
+
+## Recipient releases are snapshots
+
+When Pulse stages a final recipient release, it snapshots the information needed for that delivery. Later edits to the current monitor should not silently rewrite what was already released.
+
+In particular:
+
+- removing a recipient from the current monitor does not invalidate an already released portal;
+- changing future document assignments does not change an existing delivery;
+- deleting a source text document does not remove the snapshotted text from an existing delivery;
+- uploaded file payloads needed by existing deliveries remain privately retained;
+- future monitor message/template changes affect future releases, not already queued/sent mail.
+
+The owner can still edit limited **presentation** fields for an active delivery, such as portal text and released document titles/descriptions.
+
+## Recipient portal access
+
+The final recipient email contains a private `{url}`. Opening that URL does not reveal document content.
+
+The recipient can request a short-lived access code by email. Access codes:
+
+- are valid for 30 minutes
+- can be used once
+- are rate-limited
+- are stored by Pulse only as password hashes
+
+After successful verification, the browser receives a session scoped to that specific delivery. Authentication for one recipient delivery does not authenticate another.
+
+Every View, Download, and **Download all** request rechecks whether the delivery is still available. If the owner revokes the portal or its automatic expiry is reached, an already-open browser session immediately loses access on the next server request.
+
+The authenticated portal shows the page introduction, personal portal message, and a responsive document grid. Pulse-created text documents can show a bounded text preview. Supported passive formats may also offer **View**; all authorized documents offer **Download**.
+
+**Download all** streams a ZIP/ZIP64 archive directly from authorized private content without first creating a second full-size archive on disk.
+
+## Closing recipient access permanently
+
+For a delivery configured with **no automatic expiry**, an authenticated recipient can choose **Close access permanently** after saving everything they want to keep.
+
+Pulse shows a separate warning page, offers **Download all**, requires an acknowledgement checkbox, and requires the recipient to enter a newly generated confirmation code.
+
+Closing access permanently invalidates that delivery's portal link, unused access codes, and recipient session. It does not delete the underlying documents from Pulse. The action cannot be undone from the recipient portal.
+
+Portals with an automatic expiry do not show this option.
+
+## Pause, resume, escalate, archive, and delete
+
+### Pause and resume
+
+Use **Pause** when a monitor temporarily should not expect check-ins. Pausing closes the current active cycle and removes its due date. The monitor is excluded from **Check in now** and from normal cron progression.
+
+**Resume** starts a fresh schedule from the time of the resume. Time spent paused does not make the monitor immediately overdue.
+
+### After escalation
+
+Escalation is a terminal state for that monitoring cycle. Escalated monitors do not count toward **Need attention** and are not included in **Check in now**.
+
+Choose **Reset and reactivate** to start a new monitoring cycle using the same monitor configuration. Existing recipient deliveries from the previous escalation retain their own portal/revocation/expiry state.
+
+Choose **Archive** to retain the monitor without continuing normal monitoring. Archived monitors are available through the **Archived** view on the Monitors page and are read-only until reset/reactivated.
+
+### Deleting a monitor
+
+A monitor can be deleted only while it has no recipient delivery history. Once it has produced released recipient deliveries, Pulse preserves that history and prevents deletion; use the archive lifecycle instead.
+
+## Activity and history
+
+Pulse records important lifecycle events including:
 
 - check-ins
-- due-state changes
-- reminders
-- safety-contact requests and confirmations
+- due-state transitions
+- owner reminders
+- safety-contact requests and responses
 - overdue transitions
 - recipient delivery
 - pauses and resumes
 - reset/reactivation and archiving
 
-The dashboard shows the most recent activity. Use **View complete activity** for the full history.
+The dashboard shows recent activity. Use **View complete activity** for the full installation history available to the signed-in user.
 
-## Documents
+Recipient-specific delivery and portal activity is shown in the recipient editor's **History** tab.
 
-Pulse supports two kinds of monitor documents:
+## Mail queue and failed notifications
 
-- editable text documents stored in the database
-- uploaded files stored privately outside the public web directory
+Owner notices, safety-contact messages, access codes, and recipient messages all use Pulse's mail queue.
 
-Create and maintain documents under the monitor's **Documents** tab. Assign them to individual people by selecting the recipient's name and opening that recipient's **Documents** tab. Uploaded files have a separate display title and optional short description. Both can be edited later without renaming or moving the private stored file.
+Administrators can open **Administration → Mail** to:
 
-The default upload policy accepts PDF, RTF, OpenDocument Text, Word `.docx`, JPEG, PNG, and plain text files up to 25 MiB. An administrator can change the upload limit and MIME allowlist under **Administration → Files**; larger configured limits are also constrained by PHP and web-server upload settings such as `upload_max_filesize` and `post_max_size`.
+- configure SMTP
+- enable or disable automatic delivery
+- set retry/worker behaviour
+- send a test notification;
+- inspect queued, retrying, processing, sent, and failed mail
+- see queue timestamps and attempt information
+- retry terminally failed jobs after fixing the cause
 
-Pulse inspects the uploaded content rather than trusting the filename. Stored files receive internal names and are not served directly from the public web directory.
+A failed email does not count as successfully delivered. Pulse does not advance a lifecycle stage merely because a message was supposed to have been sent.
 
-### Recipient portal and documents
+If SMTP settings are changed, send another successful test before relying on the system.
 
-A final recipient notification contains that recipient's private `{url}`. Opening the URL does **not** reveal documents. The page can request a short-lived access code or accept one that was already received.
+For reliable delivery, add the configured Pulse sender address or domain to safe-sender/allowlist or whitelist rules where practical. This complements rather than replaces correct SMTP, SPF, DKIM, and DMARC configuration.
 
-Access codes are sent to the configured recipient address without displaying that address on the portal page. A code is valid for 30 minutes, can be used once, and is replaced when a later code is successfully requested. Pulse stores only a password hash of the code. After successful verification, the current browser receives a recipient-portal session governed by the normal Pulse session idle and absolute timeouts.
+## Administration
 
-The authenticated portal is intentionally recipient-facing rather than administrative. It starts with the delivery owner, an optional monitor-wide page introduction, and a dedicated personal portal message, followed by a responsive grid of the documents assigned to that recipient when the release was staged. The personal portal message is separate from the notification email: monitor-wide defaults can be configured per language, and an individual recipient can optionally override that default. If no custom portal message or introduction is configured, Pulse uses localized built-in text. Portal text supports `{app}`, `{name}`, `{owner}`, and `{monitor}` placeholders; it does not need `{url}`. Each card shows its recipient-facing title, description, file type, size, and download action. Pulse-created text documents show a bounded scrollable text preview directly in the card; common raster images use lazy-loaded previews. PDF, supported images, and plain text also get a **View** action. Active formats such as HTML or SVG are not rendered inline.
+Users with the **administrator** role see **Administration** in the navigation. Access is also enforced server-side.
 
-**Download all** shows the number and combined size of the available documents and streams a store-only ZIP/ZIP64 archive directly to the recipient. Pulse does not first build a second full-size temporary archive, so PHP memory and private temporary-storage use stay essentially independent of the total delivery size. Very large transfers are still subject to the hosting server, reverse proxy, network connection, and browser timeouts; individual downloads remain available if a bulk transfer is interrupted.
+Administration contains six tabs:
 
-The recipient's authorized document set and file/text payloads are a release snapshot: later monitor assignments cannot add or remove documents from an already released portal. However, while an active portal is still available, the owner can edit that delivery's **presentation** independently from the recipient editor: portal introduction/message and the released documents' display titles/descriptions. These edits do not change authorization or file contents. Monitor defaults continue to affect future releases only. If an editable source document is removed while a released delivery still references its stored file, Pulse retains that private file for the delivery.
+- **General** — deployment environment, default language, display timezone, trusted hosts, and debug behavior.
+- **Security** — session cookies/timeouts, HSTS, login throttling, and password policy.
+- **Files** — upload size and MIME allowlist.
+- **Mail** — SMTP, queue/retry settings, test mail, and the installation-wide mail queue.
+- **Cron** — web-cron token, endpoint example, and **Last successful cron run**.
+- **Installation** — read-only boot-critical information such as `.env` status, public base URL, and database connection details.
 
-Under **Messages & content → Portal page**, choose how long new recipient portals remain available after the final notification is successfully sent: 30 days, 90 days, one year, a custom duration, or no automatic expiry. The owner can revoke an individual released portal from that recipient's delivery history. Existing deliveries keep the lifetime snapshotted when they were staged.
+Editable settings are saved directly to the root `.env` file. Pulse does not maintain a second database-backed configuration system.
 
-Uploaded files, editable text documents, and recipient messages are also not encrypted at rest yet. Do not use the current release as storage for final highly sensitive secrets or cryptographic recovery material.
+Secrets such as the SMTP password and web-cron token are never filled back into browser forms. Leaving a configured secret field blank keeps the saved value unless you explicitly clear or regenerate it.
 
-### Closing recipient access permanently
+Configuration warnings appear at the top of Administration and on affected tabs. **Last successful cron run** is flagged if cron has never completed successfully or if more than 24 hours have passed since the last successful run. This is only a coarse warning; you remain free to choose the actual cron cadence.
 
-For recipient portals configured with **no automatic expiry**, an authenticated recipient can choose **Close access permanently** after saving everything they want to keep. Pulse shows a separate warning page, offers **Download all**, requires an acknowledgement checkbox, and requires the recipient to type a freshly generated confirmation code before access is closed.
+## Profile and languages
 
-Closing access invalidates that recipient delivery's portal link, access codes, and authenticated session. It does **not** delete the underlying documents from Pulse. The action is intentionally irreversible from the recipient portal. Portals with an automatic expiry do not show this option.
+Your **Profile** contains personal account settings and password management.
 
-The recipient editor's **History** tab combines delivery state with a portal-activity timeline. Pulse records significant actions such as recipient notification delivery, access-code requests and sends, successful portal authentication, document downloads, owner revocation, and recipient-controlled closure. A simple unauthenticated page load is deliberately not treated as proof that the recipient visited the portal because mail-security systems may follow links automatically.
+Two language settings are separate:
 
-## Languages
+- **Website language** — controls the Pulse interface for your account.
+- **Notification language** — controls Pulse-authored owner notices and test mail sent to you.
 
-Pulse ships with English, German, French, and Italian, and installed languages are discovered automatically from `app/Lang/*.php`. Your persistent website language, your owner-notification language, and each contact's Pulse interface language are separate. Changing the footer language updates your website-language preference when logged in and keeps that choice available on logged-out pages; it does not change notification/contact languages.
+Each Contact separately has a **Pulse interface language**. Pulse uses it for that person's Pulse-owned public pages, localized built-in mail text, portal access-code email, and language-specific monitor templates.
 
-To add another language, copy an existing language file to a locale filename such as `app/Lang/it.php`, translate the strings, and set its native display name near the top:
+The footer language selector changes the current website language and, for a signed-in user, persists that website-language preference. It does not change a contact's language or your notification language.
+
+Pulse ships with English, German, French, and Italian. Installed languages are discovered from `app/Lang/*.php`.
+
+### Adding a language
+
+This is an advanced/source-level operation. Copy an existing language file to a new locale filename, translate the strings, and set its native display name near the top:
 
 ```php
 return [
@@ -267,13 +438,28 @@ return [
 ];
 ```
 
-After the file is uploaded, Pulse discovers `it` automatically. **Italiano** appears in the footer and language selectors, and monitor-wide recipient/safety email editors gain an Italian tab. No configuration entry or database migration is required.
-
-English is the fallback language. If a translation key is missing from a newly added language, Pulse uses the English string instead of exposing an internal translation key. This makes partial translations usable while they are being completed.
+Pulse discovers the file automatically. English remains the fallback for missing translation keys.
 
 ## Health checks
 
-`/health` is a minimal public liveness check.
+`/health` is a minimal public liveness endpoint.
 
-Signed-in users can also open `/health/readiness` to verify that important resources such as the database and storage are ready.
+Signed-in users can open `/health/readiness` to check important resources such as the database and private storage.
 
+These checks complement, but do not replace, testing SMTP and confirming that cron runs successfully.
+
+## Rehearsing with debug mode
+
+In a non-production environment with Debug enabled, monitor row action menus expose lifecycle test actions such as **Force due now**, manual notification steps, and the safety-window expiry helper.
+
+These actions can send real mail. Use only harmless test wording and test addresses.
+
+**Force due now** changes the monitor state; it does not itself create the due-notice queue job. The next normal cron run detects the due monitor, queues the notice, and processes eligible mail.
+
+See [Choosing a monitor setup](MONITOR_TUTORIAL.md#rehearse-before-relying-on-it) for a structured rehearsal sequence.
+
+## Current limitation: no encryption at rest
+
+Pulse 1.0 does not encrypt stored messages or documents at the application level. A compromise of the hosting account, database, filesystem, or an unencrypted backup can therefore expose those contents.
+
+Do not use the current release as the only storage location for passwords, cryptographic recovery keys, or similarly high-value secrets. See the [Security model](SECURITY.md) for details.
