@@ -626,6 +626,31 @@ class MonitorController extends BaseController
 		$this->Redirect($this->RuntimeRedirect());
 	}
 
+	/** @brief Moves the current safety-contact deadline into the past for a normal cron timeout test. */
+	public function ExpireSafetyContactWindow(): void
+	{
+		$user = $this->RequireUser();
+
+		if (!$this->_debugEnabled)
+		{
+			http_response_code(404);
+			exit;
+		}
+
+		$monitorId = $this->_request->PostInt('id');
+
+		if ($this->_escalationService->ExpireDebugSafetyWindowForUser($monitorId, (int)$user['id']))
+		{
+			$this->Flash('success', __('monitors.expire_safety.success'));
+		}
+		else
+		{
+			$this->Flash('warning', __('monitors.expire_safety.unavailable'));
+		}
+
+		$this->Redirect($this->RuntimeRedirect());
+	}
+
 	/** @brief Forces and sends an immutable recipient release through the real queue in debug mode. */
 	public function SendRecipientNotifications(): void
 	{

@@ -1,3 +1,15 @@
+## 0.9.9 - 2026-08-15
+
+### Added
+- Added a debug-only **Expire safety contact window now** action for active safety-contact gates. It moves only the safety deadline into the past so the next normal cron run exercises the production timeout path instead of forcing a recipient release directly.
+
+### Changed
+- Further tightened Monitor Editor → Recipients so the document-count column is content-sized and aligned to the row edge instead of reserving unused horizontal space.
+- Updated the monitor tutorial to distinguish the normal safety-timeout test action from the existing immediate recipient-release bypass.
+
+### Fixed
+- Fixed language recovery for expired, already-used, declined, confirmed, or otherwise inactive safety-contact links. Their snapshotted language and footer language selector now continue to work after the safety request is no longer active.
+
 ## 0.9.8 - 2026-08-15
 
 ### Changed

@@ -84,7 +84,25 @@ $monitorName = (string)($monitor['name'] ?? '');
 				<?php else: ?>
 					<button type="button" class="row-action-menu-item" disabled title="<?= e__('monitors.send_safety_contacts.mail_disabled') ?>"><?= e__('monitors.send_safety_contacts.submit') ?></button>
 				<?php endif; ?>
-			<?php elseif ($debugEnabled && in_array($actionStatus, ['awaiting', 'safety-pending', 'overdue'], true)): ?>
+			<?php elseif ($debugEnabled && $actionStatus === 'safety-pending' && $cycleEscalationPolicy === 'safety_contact'): ?>
+				<form method="post" action="<?= e($base_url) ?>/monitors/expire-safety-contact-window" data-confirm="<?= e__('monitors.expire_safety.confirm') ?>">
+					<?= csrf_field() ?>
+					<input type="hidden" name="id" value="<?= (int)$monitor['id'] ?>">
+					<input type="hidden" name="redirect" value="<?= e($actionRedirect) ?>">
+					<button type="submit" class="row-action-menu-item"><?= e__('monitors.expire_safety.submit') ?></button>
+				</form>
+
+				<?php if ($mailEnabled): ?>
+					<form method="post" action="<?= e($base_url) ?>/monitors/send-recipient-notifications" data-confirm="<?= e__('monitors.send_recipients.confirm') ?>">
+						<?= csrf_field() ?>
+						<input type="hidden" name="id" value="<?= (int)$monitor['id'] ?>">
+						<input type="hidden" name="redirect" value="<?= e($actionRedirect) ?>">
+						<button type="submit" class="row-action-menu-item row-action-menu-danger"><?= e__('monitors.send_recipients.submit') ?></button>
+					</form>
+				<?php else: ?>
+					<button type="button" class="row-action-menu-item" disabled title="<?= e__('monitors.send_recipients.mail_disabled') ?>"><?= e__('monitors.send_recipients.submit') ?></button>
+				<?php endif; ?>
+			<?php elseif ($debugEnabled && in_array($actionStatus, ['awaiting', 'overdue'], true)): ?>
 				<?php if ($mailEnabled): ?>
 					<form method="post" action="<?= e($base_url) ?>/monitors/send-recipient-notifications" data-confirm="<?= e__('monitors.send_recipients.confirm') ?>">
 						<?= csrf_field() ?>

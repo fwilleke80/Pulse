@@ -219,6 +219,7 @@ $router->Post('/monitors/archive', [$monitorController, 'Archive']);
 $router->Post('/monitors/force-due', [$monitorController, 'ForceDue']);
 $router->Post('/monitors/send-due-notice', [$monitorController, 'SendDueNotice']);
 $router->Post('/monitors/send-safety-contact-notifications', [$monitorController, 'SendSafetyContactNotifications']);
+$router->Post('/monitors/expire-safety-contact-window', [$monitorController, 'ExpireSafetyContactWindow']);
 $router->Post('/monitors/send-recipient-notifications', [$monitorController, 'SendRecipientNotifications']);
 $router->Get('/monitors/recipients/edit', [$recipientController, 'Edit']);
 $router->Post('/monitors/recipients/add', [$recipientController, 'Add']);

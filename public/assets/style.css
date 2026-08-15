@@ -3383,13 +3383,19 @@ button.row-action-menu-danger
 
 .recipient-overview-card
 {
-	grid-template-columns: minmax(220px, 1.4fr) repeat(3, minmax(120px, 1fr));
+	grid-template-columns: minmax(220px, 1.6fr) minmax(120px, max-content) minmax(150px, 1fr) max-content;
 	padding-block: 0.8rem;
 }
 
 .recipient-overview-meta
 {
 	display: contents;
+}
+
+.recipient-overview-documents
+{
+	justify-self: end;
+	white-space: nowrap;
 }
 
 @media (max-width: 900px)
@@ -3403,6 +3409,12 @@ button.row-action-menu-danger
 	.recipient-overview-warning
 	{
 		grid-column: 1 / -1;
+	}
+
+	.recipient-overview-documents
+	{
+		grid-column: 1 / -1;
+		justify-self: start;
 	}
 }
 

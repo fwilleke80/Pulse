@@ -288,9 +288,9 @@ ob_start();
 							<small><?= e((string)$monitorContact['email']) ?></small>
 						</div>
 						<div class="recipient-overview-meta">
-							<span><strong><?= e__('recipients.overview.language') ?>:</strong> <?= e(notification_language_name(isset($monitorContact['notification_locale']) ? (string)$monitorContact['notification_locale'] : null)) ?></span>
-							<span><strong><?= e__('recipients.overview.message') ?>:</strong> <?= e__(is_array($override) ? 'recipients.overview.personal' : 'recipients.overview.default') ?></span>
-							<span><?= e__('recipients.overview.documents', ['count' => (int)$monitorContact['document_count']]) ?></span>
+							<span class="recipient-overview-language"><strong><?= e__('recipients.overview.language') ?>:</strong> <?= e(notification_language_name(isset($monitorContact['notification_locale']) ? (string)$monitorContact['notification_locale'] : null)) ?></span>
+							<span class="recipient-overview-message"><strong><?= e__('recipients.overview.message') ?>:</strong> <?= e__(is_array($override) ? 'recipients.overview.personal' : 'recipients.overview.default') ?></span>
+							<span class="recipient-overview-documents"><?= e__('recipients.overview.documents', ['count' => (int)$monitorContact['document_count']]) ?></span>
 						</div>
 						<?php if (is_array($configurationIssue)): ?>
 							<div class="recipient-overview-warning" role="alert">

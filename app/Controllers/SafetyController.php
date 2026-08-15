@@ -55,6 +55,7 @@ final class SafetyController extends BaseController
 
 		if (!is_array($request))
 		{
+			$this->UseUnavailableSafetyLanguage($token, $this->_request->QueryString('lang', 10));
 			http_response_code(404);
 			return $this->_view->Render('safety.invalid');
 		}
@@ -75,6 +76,7 @@ final class SafetyController extends BaseController
 
 		if (!is_array($request))
 		{
+			$this->UseUnavailableSafetyLanguage($token);
 			http_response_code(404);
 			return $this->_view->Render('safety.invalid');
 		}
@@ -100,6 +102,23 @@ final class SafetyController extends BaseController
 		}
 
 		return $this->_view->Render('safety.result', ['result' => $result]);
+	}
+
+	/** @brief Restores language selection for an expired, used, or otherwise inactive safety link. */
+	private function UseUnavailableSafetyLanguage(string $token, string $linkLocale = ''): void
+	{
+		$metadata = $this->_escalation->FindSafetyLanguageMetadata($token);
+		$storedLocale = is_array($metadata) ? (string)($metadata['notification_locale'] ?? '') : '';
+		$sessionLocale = $this->_session->Get(SafetyLanguagePreference::SessionKey($token));
+
+		if (
+			$storedLocale !== ''
+			|| ($linkLocale !== '' && $this->_languages->IsSupported($linkLocale))
+			|| (is_string($sessionLocale) && $this->_languages->IsSupported($sessionLocale))
+		)
+		{
+			$this->UseRecipientLanguage($storedLocale, $token, $linkLocale);
+		}
 	}
 
 	/**

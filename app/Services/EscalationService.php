@@ -448,6 +448,30 @@ final class EscalationService
 	}
 
 	/**
+	 * @brief Returns snapshotted language metadata for a safety token even after it becomes inactive.
+	 * @return array{notification_locale: string}|null
+	 */
+	public function FindSafetyLanguageMetadata(string $rawToken): ?array
+	{
+		if (!$this->IsTokenShapeValid($rawToken))
+		{
+			return null;
+		}
+
+		$statement = $this->_database->GetConnection()->prepare('
+			SELECT scr.notification_locale
+			FROM safety_request_tokens srt
+			INNER JOIN safety_contact_requests scr ON scr.id = srt.safety_request_id
+			WHERE srt.token_hash = :token_hash
+			LIMIT 1
+		');
+		$statement->execute(['token_hash' => hash('sha256', $rawToken)]);
+		$row = $statement->fetch(PDO::FETCH_ASSOC);
+
+		return is_array($row) ? $row : null;
+	}
+
+	/**
 	 * @brief Records a deliberate safety-contact response and optionally postpones the monitor.
 	 * @return string invalid, confirmed_waiting, confirmed_postponed, or declined.
 	 */
@@ -531,6 +555,67 @@ final class EscalationService
 			$this->PostponeCycle($connection, $request, $now, $confirmations);
 			$connection->commit();
 			return 'confirmed_postponed';
+		}
+		catch (Throwable $throwable)
+		{
+			$connection->rollBack();
+			throw $throwable;
+		}
+	}
+
+	/**
+	 * @brief Moves one owned active safety-contact deadline into the past for timeout testing.
+	 * @return bool True when a current safety-contact gate was adjusted.
+	 */
+	public function ExpireDebugSafetyWindowForUser(int $monitorId, int $userId): bool
+	{
+		$connection = $this->_database->GetConnection();
+		$connection->beginTransaction();
+
+		try
+		{
+			$statement = $connection->prepare('
+				SELECT cc.*, m.user_id, m.name AS monitor_name
+				FROM check_cycles cc
+				INNER JOIN monitors m ON m.id = cc.monitor_id
+				WHERE cc.monitor_id = :monitor_id
+					AND m.user_id = :user_id
+					AND m.is_paused = 0
+					AND m.is_archived = 0
+					AND cc.status = \'safety_pending\'
+					AND cc.safety_gate_started_at IS NOT NULL
+					AND cc.safety_gate_deadline_at IS NOT NULL
+				ORDER BY cc.id DESC
+				LIMIT 1
+				FOR UPDATE
+			');
+			$statement->execute(['monitor_id' => $monitorId, 'user_id' => $userId]);
+			$cycle = $statement->fetch(PDO::FETCH_ASSOC);
+
+			if (!is_array($cycle))
+			{
+				$connection->commit();
+				return false;
+			}
+
+			$now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
+			$deadline = $now->modify('-1 second')->format('Y-m-d H:i:s');
+			$updatedAt = $now->format('Y-m-d H:i:s');
+			$update = $connection->prepare('
+				UPDATE check_cycles
+				SET safety_gate_deadline_at = :deadline, updated_at = :updated_at
+				WHERE id = :id
+			');
+			$update->execute([
+				'deadline' => $deadline,
+				'updated_at' => $updatedAt,
+				'id' => (int)$cycle['id'],
+			]);
+			$this->WriteAudit($connection, $cycle, 'monitor.debug_safety_window_expired', [
+				'cycle_id' => (int)$cycle['id'],
+			]);
+			$connection->commit();
+			return true;
 		}
 		catch (Throwable $throwable)
 		{

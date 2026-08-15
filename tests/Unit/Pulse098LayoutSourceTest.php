@@ -31,7 +31,8 @@ final class Pulse098LayoutSourceTest extends TestCase
 		$root = dirname(__DIR__, 2);
 		$style = (string)file_get_contents($root . '/public/assets/style.css');
 
-		self::assertStringContainsString('grid-template-columns: minmax(220px, 1.4fr) repeat(3, minmax(120px, 1fr));', $style);
+		self::assertStringContainsString('grid-template-columns: minmax(220px, 1.6fr) minmax(120px, max-content) minmax(150px, 1fr) max-content;', $style);
+		self::assertStringContainsString('.recipient-overview-documents', $style);
 		self::assertStringContainsString(".recipient-overview-meta\n{\n\tdisplay: contents;", $style);
 	}
 }
