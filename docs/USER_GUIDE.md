@@ -108,7 +108,7 @@ Pulse asks you to confirm that you personally checked the email address. This is
 
 If Pulse recognizes a likely typo in a common email domain, it can display a suggestion. You remain responsible for deciding whether the address is correct.
 
-Editing a contact updates the reusable contact record. Removing a contact also removes its assignments to monitors.
+Editing a contact updates the reusable contact record. A contact cannot be deleted while it is still assigned to any monitor as a recipient or safety contact. Remove or reassign those monitor roles first; this prevents deletion from silently changing monitor configuration or archived records.
 
 ## Recipient messages
 
@@ -160,6 +160,8 @@ Users with the **administrator** role have an **Administration** entry in the ma
 
 Editable application settings are saved directly to Pulse's root `.env` file. A warning marker appears on any tab with an actionable configuration problem, and the summary at the top links directly to the affected section. Secrets such as the SMTP password and web-cron token are never displayed back to the browser.
 
+The **Cron** tab also shows the **Last successful cron run**. Pulse warns when no successful run has ever been recorded and marks the cron status stale only after more than 24 hours without one; the actual cron frequency remains up to the installation administrator.
+
 The **Installation** tab shows the public base URL and database connection values as read-only installation information. The installer creates these boot-critical values; Administration keeps them read-only afterward so routine settings changes cannot accidentally repoint Pulse or break its database connection.
 
 
@@ -180,6 +182,8 @@ A failed email does not count as successfully delivered. Pulse shows a warning r
 Your profile has separate **Website language** and **Notification language** settings. Website language controls the authenticated Pulse interface and is remembered across login/logout; changing the footer language selector updates that persistent website preference. Notification language controls Pulse-authored owner due notices, reminders, and test mail. Contacts have a **Pulse interface language** for Pulse-owned pages such as safety confirmation and the recipient portal. That contact language also selects localized Pulse fallback text when safety-contact or recipient mail is left at its built-in default, and it controls Pulse-authored portal access-code mail.
 
 If SMTP settings are changed under Administration, send another test before relying on the system.
+
+For reliable delivery, add the configured Pulse sender address (and, where your mail system supports it, its sender domain) to the safe-senders/allowlist or whitelist of the mailboxes and mail servers you control. This is especially important for the owner/administrator mailbox. Where appropriate, safety contacts and recipients should also allow the Pulse sender. Allowlisting does not replace correct SMTP, SPF, DKIM, or DMARC configuration, but it reduces the chance that important Pulse mail is rejected or placed in Spam.
 
 ## Pause and resume
 

@@ -57,6 +57,7 @@ if (!(bool)$container['config']['mail']['enabled'])
 
 $scheduleResult = $container['notificationScheduler']->Run();
 $mailResult = $container['mailQueueWorker']->Process((int)$container['config']['mail']['worker_batch_size']);
+$container['systemStatusRepository']->RecordSuccessfulCronRun();
 $container['logger']->Info('Web cron notification run completed', [
 	'schedule' => $scheduleResult,
 	'mail_queue' => $mailResult,

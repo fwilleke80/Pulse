@@ -1,8 +1,8 @@
 <?php
 
 /**
- * @file Pulse099AuditSourceTest.php
- * @brief Source-level regression checks for Pulse 0.9.9 safety audit tooling and localization fixes.
+ * @file SafetyAuditSourceTest.php
+ * @brief Source-level regression checks for safety audit tooling and localization.
  * @author Frank Willeke
  */
 
@@ -12,7 +12,7 @@ namespace Pulse\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
 
-final class Pulse099AuditSourceTest extends TestCase
+final class SafetyAuditSourceTest extends TestCase
 {
 	/** @brief Ensures debug timeout testing uses the real safety deadline rather than forcing Overdue directly. */
 	public function testSafetyTimeoutDebugActionOnlyMovesTheDeadline(): void

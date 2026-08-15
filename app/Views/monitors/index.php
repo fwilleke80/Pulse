@@ -103,7 +103,7 @@ ob_start();
 							<?php
 							$actionStatus = $statusClass;
 							$actionRedirect = $showArchived ? '/monitors?view=archived' : '/monitors';
-							$actionAllowDelete = true;
+							$actionAllowDelete = (int)($monitor['release_history_count'] ?? 0) === 0;
 							require __DIR__ . '/partials/actions.php';
 							?>
 						</td>

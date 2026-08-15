@@ -24,7 +24,7 @@ final class NotificationLanguage
 	/**
 	 * @brief Constructs the resolver.
 	 * @param array<int, string> $supportedLocales Supported notification locales.
-	 * @param string $defaultLocale Fallback locale for legacy recipients.
+	 * @param string $defaultLocale Fallback locale when no explicit recipient locale is stored.
 	 */
 	public function __construct(array $supportedLocales, string $defaultLocale)
 	{

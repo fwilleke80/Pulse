@@ -1,2 +1,0 @@
--- Legacy version marker.
--- The corrected document schema is consolidated into 001_initial_schema.sql for fresh installations.

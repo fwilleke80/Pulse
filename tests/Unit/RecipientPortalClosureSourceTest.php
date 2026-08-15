@@ -35,12 +35,12 @@ final class RecipientPortalClosureSourceTest extends TestCase
 	{
 		$root = dirname(__DIR__, 2);
 		$repository = (string)file_get_contents($root . '/app/Repositories/RecipientPortalRepository.php');
-		$migration = (string)file_get_contents($root . '/database/migrations/017_recipient_portal_closure.sql');
+		$schema = (string)file_get_contents($root . '/database/migrations/001_initial_schema.sql');
 
 		self::assertStringContainsString('portal_token_hash = :token_hash', $repository);
 		self::assertStringContainsString('portal_expires_at IS NULL', $repository);
 		self::assertStringContainsString('portal_closed_by_recipient_at = UTC_TIMESTAMP()', $repository);
 		self::assertStringContainsString('recipient.portal_closed_by_recipient', $repository);
-		self::assertStringContainsString('portal_closed_by_recipient_at', $migration);
+		self::assertStringContainsString('portal_closed_by_recipient_at', $schema);
 	}
 }

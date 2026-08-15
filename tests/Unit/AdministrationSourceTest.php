@@ -2,7 +2,7 @@
 
 /**
  * @file AdministrationSourceTest.php
- * @brief Static regression checks for Pulse 0.9.x Administration.
+ * @brief Static regression checks for Pulse Administration.
  * @author Frank Willeke
  */
 
@@ -30,18 +30,19 @@ final class AdministrationSourceTest extends TestCase
 		self::assertStringContainsString('id="mail-queue"', $administration);
 	}
 
-	/** @brief Ensures Administration is protected by a real role check and existing users migrate to administrator. */
-	public function testAdministratorRoleIsEnforcedAndMigrated(): void
+	/** @brief Ensures Administration is protected by a real role check and the installer creates an administrator. */
+	public function testAdministratorRoleIsEnforcedAndInstalled(): void
 	{
 		$root = dirname(__DIR__, 2);
 		$baseController = (string)file_get_contents($root . '/app/Controllers/BaseController.php');
 		$administrationController = (string)file_get_contents($root . '/app/Controllers/AdministrationController.php');
-		$migration = (string)file_get_contents($root . '/database/migrations/018_administrator_role.sql');
+		$schema = (string)file_get_contents($root . '/database/migrations/001_initial_schema.sql');
+		$installation = (string)file_get_contents($root . '/app/Installation/InstallationService.php');
 
 		self::assertStringContainsString("!== 'administrator'", $baseController);
 		self::assertGreaterThanOrEqual(4, substr_count($administrationController, 'RequireAdministrator()'));
-		self::assertStringContainsString("role ENUM('user','administrator')", $migration);
-		self::assertStringContainsString("SET role = 'administrator'", $migration);
+		self::assertStringContainsString("role ENUM('user','administrator')", $schema);
+		self::assertStringContainsString("\'administrator\'", $installation);
 	}
 
 	/** @brief Ensures the admin editor reuses responsive tabs and warning indicators. */
@@ -99,6 +100,21 @@ final class AdministrationSourceTest extends TestCase
 		self::assertStringNotContainsString('<small><code>PULSE_', $view);
 		self::assertStringContainsString('administration.field.session_idle_hint', $view);
 		self::assertStringContainsString('administration.field.smtp_host_hint', $view);
+	}
+
+	/** @brief Ensures Administration reports cron health without assuming a frequent schedule. */
+	public function testAdministrationShowsLastSuccessfulCronRunAndUsesTwentyFourHourStaleness(): void
+	{
+		$root = dirname(__DIR__, 2);
+		$controller = (string)file_get_contents($root . '/app/Controllers/AdministrationController.php');
+		$view = (string)file_get_contents($root . '/app/Views/administration/index.php');
+
+		self::assertStringContainsString('LastSuccessfulCronRun()', $controller);
+		self::assertStringContainsString('> 86400', $controller);
+		self::assertStringContainsString('administration.health.cron_never_run', $controller);
+		self::assertStringContainsString('administration.health.cron_stale', $controller);
+		self::assertStringContainsString('administration.cron.last_successful', $view);
+		self::assertStringContainsString('format_datetime($lastSuccessfulCronRun)', $view);
 	}
 
 }

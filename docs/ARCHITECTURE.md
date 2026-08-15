@@ -174,9 +174,11 @@ Safety-contact invitation and reminder text can be customized per monitor. When 
 
 Runtime settings come from process environment variables and the root `.env` file. Process environment variables take precedence. The root `.env` file remains the single persistent source for application configuration; Pulse does not maintain a parallel database-backed settings layer.
 
-Pulse provides an administrator-only configuration surface implemented by `AdministrationController`. Authorization is enforced server-side through the user's `role`, introduced by migration `018_administrator_role.sql`. Existing pre-0.9.0 users are promoted to `administrator`; the schema default remains `user` so future multi-user account creation does not implicitly grant system administration.
+Pulse provides an administrator-only configuration surface implemented by `AdministrationController`. Authorization is enforced server-side through the user's `role`. The schema default is `user`; the installer explicitly creates the first account as `administrator`, so future multi-user account creation will not implicitly grant system administration.
 
 `EnvironmentFile` provides the read/write boundary for Administration. It preserves unknown `.env` keys and comments, encodes changed values safely, and replaces the file atomically. SMTP passwords and the web-cron token are not rendered back into HTML. Process-level environment overrides remain effective at runtime and are reported in the Installation tab.
+
+Operational runtime state is kept separate from configuration. The singleton `system_status` record stores the latest fully successful combined cron timestamp so Administration can report cron health without introducing database-backed application settings.
 
 The Administration UI groups runtime configuration into responsive General, Security, Files, Mail, and Cron tabs, with a read-only Installation tab for installation-level state such as the public base URL and database connection values. Configuration-health warnings are surfaced at page and tab level. All system-wide mail operations—SMTP configuration, test delivery, retry state, queue inspection, and debug queue controls—live under Administration → Mail. Profile is reserved for user-specific account information.
 
@@ -194,13 +196,11 @@ A missing version file does not stop the application; the UI displays **version 
 
 ## Database migrations
 
-Pulse keeps ordered SQL migrations in `database/`.
+Pulse keeps ordered SQL migrations in `database/migrations/`. The stable schema begins with `001_initial_schema.sql`, which contains the complete 1.0 baseline.
 
-At application startup, Pulse checks which migrations have already been applied and applies any pending ones before handling the request. Migration work is protected so simultaneous first requests do not intentionally apply the same migration twice.
+At application startup, Pulse checks which migrations have already been applied and applies any pending ones before handling the request. Migration work is protected by a database advisory lock so simultaneous requests do not apply the same migration twice.
 
-Normal installation and upgrading therefore do not require a separate migration command.
-
-Released migration files should not be edited after publication; schema changes should be added as new migrations.
+Future schema changes are added as new numbered migrations. Once a migration has shipped in a stable release, its checksum is part of the installation history and the file must not be edited.
 
 ## Document storage
 

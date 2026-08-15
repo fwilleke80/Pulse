@@ -50,11 +50,15 @@ ob_start();
 						<details class="row-action-menu" data-row-action-menu>
 							<summary class="row-action-menu-toggle" aria-label="<?= e__('contacts.actions.open', ['name' => (string)$contact['name']]) ?>" title="<?= e__('contacts.index.table.actions') ?>"><span aria-hidden="true">⋮</span></summary>
 							<div class="row-action-menu-panel" data-row-action-menu-panel>
-								<form method="post" action="<?= e($base_url) ?>/contacts/delete" data-confirm="<?= e__('contacts.index.flash.delete_confirm', ['name' => $contact['name']]) ?>">
-									<?= csrf_field() ?>
-									<input type="hidden" name="id" value="<?= (int)$contact['id'] ?>">
-									<button type="submit" class="row-action-menu-item row-action-menu-danger"><?= e__('contacts.index.table.buttons.delete') ?></button>
-								</form>
+								<?php if ((int)($contact['monitor_reference_count'] ?? 0) > 0): ?>
+									<button type="button" class="row-action-menu-item" disabled title="<?= e__('contacts.index.delete_in_use_hint') ?>"><?= e__('contacts.index.table.buttons.delete') ?></button>
+								<?php else: ?>
+									<form method="post" action="<?= e($base_url) ?>/contacts/delete" data-confirm="<?= e__('contacts.index.flash.delete_confirm', ['name' => $contact['name']]) ?>">
+										<?= csrf_field() ?>
+										<input type="hidden" name="id" value="<?= (int)$contact['id'] ?>">
+										<button type="submit" class="row-action-menu-item row-action-menu-danger"><?= e__('contacts.index.table.buttons.delete') ?></button>
+									</form>
+								<?php endif; ?>
 							</div>
 						</details>
 					</td>

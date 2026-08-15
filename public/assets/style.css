@@ -2434,7 +2434,7 @@ footer
 	line-height: 1;
 }
 
-/* Pulse 0.8.5 editor/navigation refinements */
+/* Editor and navigation refinements */
 .field-grid-two
 {
 	display: grid;
@@ -2779,7 +2779,7 @@ footer
 	}
 }
 
-/* Pulse 0.9.0 Administration */
+/* Administration */
 .administration-editor
 {
 	margin-top: 1.25rem;
@@ -3333,7 +3333,7 @@ button.row-action-menu-danger
 }
 
 
-/* 0.9.7 compact list actions and archived read-only presentation. */
+/* Compact list actions and archived read-only presentation. */
 .monitor-table th:last-child,
 .monitor-table td.monitor-actions-cell,
 .contacts-table th.compact-actions-heading,
@@ -3383,18 +3383,20 @@ button.row-action-menu-danger
 
 .recipient-overview-card
 {
-	grid-template-columns: minmax(220px, 1.6fr) minmax(120px, max-content) minmax(150px, 1fr) max-content;
+	grid-template-columns: minmax(220px, 1.25fr) minmax(0, 2fr);
 	padding-block: 0.8rem;
 }
 
 .recipient-overview-meta
 {
-	display: contents;
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) max-content;
+	align-items: center;
+	gap: 0.35rem 1rem;
 }
 
 .recipient-overview-documents
 {
-	justify-self: end;
 	white-space: nowrap;
 }
 
@@ -3402,19 +3404,18 @@ button.row-action-menu-danger
 {
 	.recipient-overview-card
 	{
-		grid-template-columns: repeat(2, minmax(0, 1fr));
+		grid-template-columns: 1fr;
 	}
 
 	.recipient-overview-identity,
 	.recipient-overview-warning
 	{
-		grid-column: 1 / -1;
+		grid-column: auto;
 	}
 
-	.recipient-overview-documents
+	.recipient-overview-meta
 	{
-		grid-column: 1 / -1;
-		justify-self: start;
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) max-content;
 	}
 }
 
@@ -3429,5 +3430,10 @@ button.row-action-menu-danger
 	.recipient-overview-warning
 	{
 		grid-column: auto;
+	}
+
+	.recipient-overview-meta
+	{
+		grid-template-columns: 1fr;
 	}
 }

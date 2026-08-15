@@ -147,6 +147,13 @@ class ContactController extends BaseController
 		if ($contactId > 0)
 		{
 			$contact = $this->_contactRepository->FindByIdForUser($contactId, (int)$user['id']) ?? null;
+
+			if ($contact !== null && $this->_contactRepository->IsReferencedByMonitorForUser($contactId, (int)$user['id']))
+			{
+				$this->Flash('warning', __('contacts.index.flash.delete_in_use', ['name' => (string)$contact['name']]));
+				$this->Redirect('/contacts');
+			}
+
 			$this->_contactRepository->DeleteForUser($contactId, (int)$user['id']);
 			$this->_logger->Info('Deleted contact with ID ' . $contactId . ' for user ID ' . $user['id']);
 			$this->Flash('success', __('contacts.index.flash.deleted', ['name' => $contact['name'] ?? '']));

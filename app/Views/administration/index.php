@@ -23,6 +23,8 @@ declare(strict_types=1);
 /** @var array<string, mixed>|null $latestTestNotification */
 /** @var bool $debugEnabled */
 /** @var array<string, mixed> $databaseConfig */
+/** @var string|null $lastSuccessfulCronRun */
+/** @var string $cronStatus */
 /** @var string $base_url */
 
 $tabs = [
@@ -331,6 +333,24 @@ ob_start();
 			<div><button type="button" class="btn-secondary" data-generate-cron-token><?= e__('administration.secret.generate_cron') ?></button><small class="form-hint"><?= e__('administration.secret.generate_cron_hint') ?></small></div>
 			<div class="checkbox-row"><label><input type="checkbox" name="clear_cron_token" form="administration-settings-form" value="1"><?= e__('administration.secret.clear_cron') ?></label></div>
 		</div>
+		<div class="configuration-block">
+			<h3><?= e__('administration.cron.status_heading') ?></h3>
+			<dl class="administration-definition-list">
+				<div>
+					<dt><?= e__('administration.cron.last_successful') ?></dt>
+					<dd>
+						<?php if ($lastSuccessfulCronRun === null): ?>
+							<strong><?= e__('administration.cron.never') ?></strong>
+						<?php else: ?>
+							<time datetime="<?= e($lastSuccessfulCronRun) ?>"><?= e(format_datetime($lastSuccessfulCronRun)) ?></time>
+							<?php if ($cronStatus === 'stale'): ?> <span class="status-badge status-due"><?= e__('administration.cron.stale') ?></span><?php endif; ?>
+						<?php endif; ?>
+					</dd>
+				</div>
+			</dl>
+			<small class="form-hint"><?= e__('administration.cron.status_hint') ?></small>
+		</div>
+
 		<div class="configuration-block">
 			<h3><?= e__('administration.cron.endpoint_heading') ?></h3>
 			<p><?= e__('administration.cron.endpoint_hint') ?></p>

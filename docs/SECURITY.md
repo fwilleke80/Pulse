@@ -156,6 +156,7 @@ Before relying on a production Pulse installation:
 - keep database and uploaded-document backups
 - remember that current backups containing messages or documents are not encrypted by Pulse
 - configure SMTP with TLS and send a successful test
+- add the Pulse sender address/domain to safe-senders or allowlists/whitelists where practical, especially for the owner mailbox
 - run the notification cron job once per minute
 - use only carefully checked recipient and safety-contact addresses
 - rehearse consequential monitors with non-sensitive test messages before relying on them

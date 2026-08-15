@@ -399,6 +399,12 @@ class MonitorController extends BaseController
 			$this->Redirect('/monitors?view=archived');
 		}
 
+		if (is_array($monitor) && $this->_monitorRepository->HasReleaseHistoryForUser($monitorId, (int)$user['id']))
+		{
+			$this->Flash('warning', __('monitors.index.flash.delete_has_history'));
+			$this->Redirect('/monitors');
+		}
+
 		if ($monitor !== null && $this->_documentService->DeleteMonitorForUser((int)$user['id'], $monitorId))
 		{
 			$this->_logger->Info('Monitor deleted', ['user_id' => (int)$user['id'], 'monitor_id' => $monitorId]);

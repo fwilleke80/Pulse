@@ -29,7 +29,7 @@ python3 tools/write_version.py
 To set the release explicitly:
 
 ```bash
-PULSE_VERSION=0.9.9 python3 tools/write_version.py
+PULSE_VERSION=1.0.0 python3 tools/write_version.py
 ```
 
 A packaged release already contains its generated `config/version.php`. Pulse still starts if that file is missing, but displays **version unavailable**.
@@ -38,7 +38,7 @@ A packaged release already contains its generated `config/version.php`. Pulse st
 
 Create an empty MySQL or MariaDB database and a database user that can create and modify tables inside it.
 
-Do not import `database/schema.sql` manually. The installer applies Pulse's ordered database migrations itself.
+Do not import `database/schema.sql` manually. The installer applies Pulse's database schema through the migration system.
 
 ## 3. Upload Pulse
 
@@ -97,7 +97,7 @@ The installer walks through six stages.
 
 ### System
 
-Pulse checks the PHP version, required extensions, writable directories, migrations, `.env` write access, and whether automatic installer removal is possible. Blocking failures must be corrected before continuing.
+Pulse checks the PHP version, required extensions, writable directories, database setup, `.env` write access, and whether automatic installer removal is possible. Blocking failures must be corrected before continuing.
 
 ### Database
 
@@ -117,7 +117,7 @@ Pulse generates the remaining safe defaults automatically, including trusted-hos
 
 An HTTPS base URL configures Pulse for production. An HTTP base URL configures a development installation so the application does not pretend that insecure transport is production-safe.
 
-The installer then applies all pending database migrations.
+The installer then applies the current Pulse database schema.
 
 ### Administrator
 
@@ -162,6 +162,8 @@ Configure the SMTP host, port, encryption, credentials, sender identity, and que
 
 Send a test notification. Do not rely on a consequential monitor until that test succeeds.
 
+For mailboxes and mail servers you control, add the configured Pulse sender address to the safe-senders/allowlist (often called a whitelist). If your system supports domain-level allowlisting, you may also allow the sender domain. Where appropriate, ask safety contacts and recipients to allow the Pulse sender as well. This reduces the risk of due notices, safety-contact messages, access codes, or recipient notifications being rejected or classified as Spam. It complements rather than replaces correct SMTP, SPF, DKIM, and DMARC configuration.
+
 ## 7. Configure the cron job
 
 The cron job notices due monitors, queues reminders, advances escalation, and sends eligible mail. Run it once per minute.
@@ -194,6 +196,8 @@ If command-line PHP is available:
 
 Use either web cron or command-line cron; there is normally no need to configure both.
 
+After a combined cron run completes successfully, **Administration → Cron** shows its timestamp as **Last successful cron run**. A fresh installation warns until the first successful run is recorded, and Pulse flags the status as stale only after more than 24 hours without a successful run. This deliberately allows installations that choose a slower cadence such as hourly cron.
+
 ## 8. Verify the live installation
 
 Before creating a real monitor:
@@ -208,19 +212,21 @@ Before creating a real monitor:
 
 See the [monitor tutorial](MONITOR_TUTORIAL.md) for example configurations and rehearsal guidance.
 
-## Upgrading Pulse
+## Updating Pulse
 
-1. Back up the database and `storage/uploads`.
+For releases based on the Pulse 1.0 schema baseline:
+
+1. Back up the database, `.env`, and `storage/uploads`.
 2. Extract the new release locally.
 3. If deploying from source, run `python3 tools/write_version.py` before uploading.
 4. Keep the existing server `.env` and private storage data.
 5. Upload the complete new application over the existing installation.
 6. Open Pulse in a browser.
 
-Release archives include `public/install.php` for fresh installations. On an already initialized Pulse database, the installer detects the existing active account, **does not rewrite configuration or users**, and only attempts to remove itself. If the server cannot delete it, remove `public/install.php` manually.
+Release archives include `public/install.php`. On an initialized installation, the installer recognizes the existing account and only attempts to remove itself; it does not recreate users or configuration. If the server cannot delete it, remove `public/install.php` manually.
 
-After the installer is gone, normal startup applies any pending database migrations automatically.
+After the installer is gone, normal startup applies any schema migrations introduced by the new release automatically.
 
 Finally, send a test from **Administration → Mail** and verify that cron still runs.
 
-Do not import `database/schema.sql` over an existing database. A complete-file upload is preferred so application code, assets, migrations, and language files remain on the same release.
+`database/schema.sql` is reference documentation and should not be imported over a running installation.

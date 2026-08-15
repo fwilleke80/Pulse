@@ -372,10 +372,14 @@ class DocumentService
 			return false;
 		}
 
+		if ($this->_monitorRepository->HasReleaseHistoryForUser($monitorId, $userId))
+		{
+			return false;
+		}
+
 		$documents = $this->_documentRepository->FindAllByMonitorIdForUser($monitorId, $userId);
-		$retainedStoredFiles = $this->_documentRepository->FindRecipientDeliveryStoredFilenamesForMonitor($monitorId);
 		$this->_monitorRepository->DeleteForUser($monitorId, $userId);
-		$storedFiles = $retainedStoredFiles;
+		$storedFiles = [];
 
 		foreach ($documents as $document)
 		{

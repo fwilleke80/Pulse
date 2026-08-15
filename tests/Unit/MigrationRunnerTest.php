@@ -30,6 +30,7 @@ class MigrationRunnerTest extends TestCase
 		self::assertStringContainsString('GET_LOCK(', $source);
 		self::assertStringContainsString('RELEASE_LOCK(', $source);
 		self::assertStringContainsString('RequiresMigration(', $source);
+		self::assertStringContainsString('private function TableExists(', $source);
 	}
 
 	public function testSplitStatementsIgnoresSemicolonsInStringsAndComments(): void

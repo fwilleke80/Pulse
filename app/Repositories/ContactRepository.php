@@ -46,7 +46,20 @@ class ContactRepository
 				cell_phone,
 				notes,
 				created_at,
-				updated_at
+				updated_at,
+				(
+					SELECT COUNT(*)
+					FROM monitor_contacts mc
+					INNER JOIN monitors m ON m.id = mc.monitor_id
+					WHERE mc.contact_id = contacts.id
+					  AND m.user_id = contacts.user_id
+				) + (
+					SELECT COUNT(*)
+					FROM monitor_safety_contacts msc
+					INNER JOIN monitors sm ON sm.id = msc.monitor_id
+					WHERE msc.contact_id = contacts.id
+					  AND sm.user_id = contacts.user_id
+				) AS monitor_reference_count
 			FROM contacts
 			WHERE user_id = :user_id
 			ORDER BY name ASC
@@ -118,6 +131,45 @@ class ContactRepository
 			'cell_phone' => $cellPhone,
 			'notes' => $notes,
 		]);
+	}
+
+	/**
+	 * @brief Returns whether a contact is still assigned to any owned monitor.
+	 * @param int $contactId Contact ID.
+	 * @param int $userId Owner user ID.
+	 * @return bool True when the contact is a recipient or safety contact on a monitor.
+	 */
+	public function IsReferencedByMonitorForUser(int $contactId, int $userId): bool
+	{
+		$statement = $this->_database->GetConnection()->prepare('
+			SELECT 1
+			FROM contacts c
+			WHERE c.id = :contact_id
+			  AND c.user_id = :user_id
+			  AND (
+				EXISTS (
+					SELECT 1
+					FROM monitor_contacts mc
+					INNER JOIN monitors m ON m.id = mc.monitor_id
+					WHERE mc.contact_id = c.id
+					  AND m.user_id = c.user_id
+				)
+				OR EXISTS (
+					SELECT 1
+					FROM monitor_safety_contacts msc
+					INNER JOIN monitors m ON m.id = msc.monitor_id
+					WHERE msc.contact_id = c.id
+					  AND m.user_id = c.user_id
+				)
+			  )
+			LIMIT 1
+		');
+		$statement->execute([
+			'contact_id' => $contactId,
+			'user_id' => $userId,
+		]);
+
+		return $statement->fetchColumn() !== false;
 	}
 
 	/**

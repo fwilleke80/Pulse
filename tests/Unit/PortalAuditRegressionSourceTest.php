@@ -1,8 +1,8 @@
 <?php
 
 /**
- * @file PreReleaseAuditFixesSourceTest.php
- * @brief Source-level regression checks for the Pulse 0.9.5 pre-release audit fixes.
+ * @file PortalAuditRegressionSourceTest.php
+ * @brief Source-level regression checks for recipient-portal audit fixes and clean schema baseline.
  * @author Frank Willeke
  */
 
@@ -12,7 +12,7 @@ namespace Pulse\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
 
-final class PreReleaseAuditFixesSourceTest extends TestCase
+final class PortalAuditRegressionSourceTest extends TestCase
 {
 	/** @brief Ensures recipient document delivery no longer exposes obsolete milestone copy and text previews are useful. */
 	public function testRecipientDocumentUiReflectsCurrentSecureDelivery(): void
@@ -73,19 +73,18 @@ final class PreReleaseAuditFixesSourceTest extends TestCase
 		self::assertStringContainsString('monitors.send_due_notice.pending', $actions);
 	}
 
-	/** @brief Ensures legacy foundation tables are removed only through a new migration. */
-	public function testUnusedFoundationTablesAreRemovedByNewMigration(): void
+	/** @brief Ensures the stable baseline contains only the current schema and no retired tables. */
+	public function testInitialSchemaContainsOnlyCurrentTables(): void
 	{
 		$root = dirname(__DIR__, 2);
-		$migration = (string)file_get_contents($root . '/database/migrations/020_remove_legacy_tables.sql');
-		$schema = (string)file_get_contents($root . '/database/schema.sql');
-		$foundation = (string)file_get_contents($root . '/database/migrations/001_foundation.sql');
+		$schema = (string)file_get_contents($root . '/database/migrations/001_initial_schema.sql');
+		$migrations = glob($root . '/database/migrations/*.sql');
 
-		self::assertStringContainsString('DROP TABLE IF EXISTS access_tokens', $migration);
-		self::assertStringContainsString('DROP TABLE IF EXISTS app_settings', $migration);
+		self::assertIsArray($migrations);
+		self::assertCount(1, $migrations);
 		self::assertStringNotContainsString('CREATE TABLE access_tokens', $schema);
 		self::assertStringNotContainsString('CREATE TABLE app_settings', $schema);
-		self::assertStringContainsString('CREATE TABLE access_tokens', $foundation);
-		self::assertStringContainsString('CREATE TABLE app_settings', $foundation);
+		self::assertStringContainsString('CREATE TABLE recipient_release_deliveries', $schema);
+		self::assertStringContainsString('is_archived', $schema);
 	}
 }

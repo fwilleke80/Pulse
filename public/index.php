@@ -117,6 +117,7 @@ $administrationController = new AdministrationController(
 	$request,
 	$environmentFile,
 	$mailQueueRepository,
+	$container['systemStatusRepository'],
 	$testNotificationService,
 	(bool)$config['debug'],
 	(bool)$config['mail']['enabled'],

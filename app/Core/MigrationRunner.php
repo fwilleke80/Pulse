@@ -15,7 +15,7 @@ use RuntimeException;
 use Throwable;
 
 /**
- * @brief Applies pending SQL migrations and baselines pre-0.3.0 installations.
+ * @brief Applies pending SQL migrations for the current Pulse schema.
  */
 class MigrationRunner
 {
@@ -51,7 +51,6 @@ class MigrationRunner
 		try
 		{
 			$this->EnsureMigrationTable($connection);
-			$this->BaselineLegacyInstallation($connection, $files);
 			$applied = $this->AppliedMigrations($connection);
 			$result = [];
 
@@ -278,7 +277,7 @@ class MigrationRunner
 	/** @brief Verifies an applied migration checksum. @param string $name Filename. @param string $expected Current checksum. @param string $applied Stored checksum. */
 	private function ValidateChecksum(string $name, string $expected, string $applied): void
 	{
-		if ($applied !== 'legacy-baseline' && !hash_equals($applied, $expected))
+		if (!hash_equals($applied, $expected))
 		{
 			throw new RuntimeException('Applied migration was modified: ' . $name);
 		}
@@ -318,6 +317,26 @@ class MigrationRunner
 		}
 	}
 
+	/**
+	 * @brief Returns whether a table exists in the active database.
+	 * @param PDO $connection PDO connection.
+	 * @param string $table Table name.
+	 * @return bool True when the table exists.
+	 */
+	private function TableExists(PDO $connection, string $table): bool
+	{
+		$statement = $connection->prepare('
+			SELECT 1
+			FROM information_schema.tables
+			WHERE table_schema = DATABASE()
+			  AND table_name = :table_name
+			LIMIT 1
+		');
+		$statement->execute(['table_name' => $table]);
+
+		return $statement->fetchColumn() !== false;
+	}
+
 	/** @brief Returns applied migrations indexed by filename. @param PDO $connection PDO connection. @return array<string, string> */
 	private function AppliedMigrations(PDO $connection): array
 	{
@@ -332,50 +351,4 @@ class MigrationRunner
 		return $result;
 	}
 
-	/**
-	 * @brief Marks the consolidated pre-0.3.0 schema as applied when upgrading an existing installation.
-	 * @param PDO $connection PDO connection.
-	 * @param array<int, string> $files Migration files.
-	 */
-	private function BaselineLegacyInstallation(PDO $connection, array $files): void
-	{
-		$count = (int)$connection->query('SELECT COUNT(*) FROM schema_migrations')->fetchColumn();
-
-		if ($count !== 0 || !$this->TableExists($connection, 'users'))
-		{
-			return;
-		}
-
-		$record = $connection->prepare('
-			INSERT INTO schema_migrations (migration, checksum, applied_at)
-			VALUES (:migration, :checksum, UTC_TIMESTAMP())
-		');
-
-		foreach ($files as $path)
-		{
-			$name = basename($path);
-
-			if (!str_starts_with($name, '001_') && !str_starts_with($name, '002_'))
-			{
-				continue;
-			}
-
-			$record->execute(['migration' => $name, 'checksum' => 'legacy-baseline']);
-		}
-	}
-
-	/** @brief Returns whether a table exists in the active database. @param PDO $connection PDO connection. @param string $table Table name. @return bool */
-	private function TableExists(PDO $connection, string $table): bool
-	{
-		$statement = $connection->prepare('
-			SELECT 1
-			FROM information_schema.tables
-			WHERE table_schema = DATABASE()
-			  AND table_name = :table_name
-			LIMIT 1
-		');
-		$statement->execute(['table_name' => $table]);
-
-		return $statement->fetchColumn() !== false;
-	}
 }

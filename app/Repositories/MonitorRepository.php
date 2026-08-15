@@ -120,6 +120,11 @@ class MonitorRepository
 					  AND failed_mq.status = \'failed\'
 				) AS failed_notification_count,
 				(
+					SELECT COUNT(*)
+					FROM recipient_releases history_rr
+					WHERE history_rr.monitor_id = monitors.id
+				) AS release_history_count,
+				(
 					SELECT rr.status
 					FROM recipient_releases rr
 					WHERE rr.monitor_id = monitors.id
@@ -581,6 +586,30 @@ class MonitorRepository
 			$connection->rollBack();
 			throw $throwable;
 		}
+	}
+
+	/**
+	 * @brief Returns whether an owned monitor has recipient release history.
+	 * @param int $monitorId Monitor ID.
+	 * @param int $userId Owner user ID.
+	 * @return bool True when at least one release exists.
+	 */
+	public function HasReleaseHistoryForUser(int $monitorId, int $userId): bool
+	{
+		$statement = $this->_database->GetConnection()->prepare('
+			SELECT 1
+			FROM recipient_releases rr
+			INNER JOIN monitors m ON m.id = rr.monitor_id
+			WHERE rr.monitor_id = :monitor_id
+			  AND m.user_id = :user_id
+			LIMIT 1
+		');
+		$statement->execute([
+			'monitor_id' => $monitorId,
+			'user_id' => $userId,
+		]);
+
+		return $statement->fetchColumn() !== false;
 	}
 
 	/**

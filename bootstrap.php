@@ -29,6 +29,7 @@ use Pulse\Repositories\ContactRepository;
 use Pulse\Repositories\DocumentRepository;
 use Pulse\Repositories\LoginThrottleRepository;
 use Pulse\Repositories\MailQueueRepository;
+use Pulse\Repositories\SystemStatusRepository;
 use Pulse\Repositories\MessageRepository;
 use Pulse\Repositories\MonitorRepository;
 use Pulse\Repositories\RecipientRepository;
@@ -130,6 +131,7 @@ $recipientPortalRepository = new RecipientPortalRepository($database);
 $documentRepository = new DocumentRepository($database);
 $messageRepository = new MessageRepository($database);
 $mailQueueRepository = new MailQueueRepository($database);
+$systemStatusRepository = new SystemStatusRepository($database);
 $loginThrottleRepository = new LoginThrottleRepository($database);
 $loginThrottle = new LoginThrottleService($loginThrottleRepository, (array)$appConfig['security']);
 $monitorStateMachine = new MonitorStateMachine();
@@ -248,6 +250,7 @@ return [
 	'documentRepository' => $documentRepository,
 	'messageRepository' => $messageRepository,
 	'mailQueueRepository' => $mailQueueRepository,
+	'systemStatusRepository' => $systemStatusRepository,
 	'monitorExecutionService' => $monitorExecutionService,
 	'documentService' => $documentService,
 	'loginThrottle' => $loginThrottle,

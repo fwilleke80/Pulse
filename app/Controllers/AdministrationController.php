@@ -10,6 +10,7 @@ declare(strict_types=1);
 
 namespace Pulse\Controllers;
 
+use DateTimeImmutable;
 use DateTimeZone;
 use Pulse\Core\Environment;
 use Pulse\Core\EnvironmentFile;
@@ -18,6 +19,7 @@ use Pulse\Core\Request;
 use Pulse\Core\Session;
 use Pulse\Core\View;
 use Pulse\Repositories\MailQueueRepository;
+use Pulse\Repositories\SystemStatusRepository;
 use Pulse\Services\AuthService;
 use Pulse\Services\TestNotificationService;
 use RuntimeException;
@@ -31,6 +33,7 @@ final class AdministrationController extends BaseController
 
 	private EnvironmentFile $_environmentFile;
 	private MailQueueRepository $_mailQueueRepository;
+	private SystemStatusRepository $_systemStatusRepository;
 	private TestNotificationService $_testNotificationService;
 	private bool $_debugEnabled;
 	private bool $_mailEnabled;
@@ -50,6 +53,7 @@ final class AdministrationController extends BaseController
 	 * @param Request $request Current request.
 	 * @param EnvironmentFile $environmentFile Root .env editor.
 	 * @param MailQueueRepository $mailQueueRepository Mail queue repository.
+	 * @param SystemStatusRepository $systemStatusRepository Installation runtime-status repository.
 	 * @param TestNotificationService $testNotificationService Test-mail service.
 	 * @param bool $debugEnabled Effective debug-mode state.
 	 * @param bool $mailEnabled Effective mail-delivery state.
@@ -64,6 +68,7 @@ final class AdministrationController extends BaseController
 		Request $request,
 		EnvironmentFile $environmentFile,
 		MailQueueRepository $mailQueueRepository,
+		SystemStatusRepository $systemStatusRepository,
 		TestNotificationService $testNotificationService,
 		bool $debugEnabled,
 		bool $mailEnabled,
@@ -74,6 +79,7 @@ final class AdministrationController extends BaseController
 		parent::__construct($view, $session, $auth, $logger, $request);
 		$this->_environmentFile = $environmentFile;
 		$this->_mailQueueRepository = $mailQueueRepository;
+		$this->_systemStatusRepository = $systemStatusRepository;
 		$this->_testNotificationService = $testNotificationService;
 		$this->_debugEnabled = $debugEnabled;
 		$this->_mailEnabled = $mailEnabled;
@@ -98,7 +104,9 @@ final class AdministrationController extends BaseController
 		}
 
 		$processOverrides = $this->ProcessOverrides(array_keys($settings));
-		$issues = $this->ConfigurationIssues($settings, $processOverrides);
+		$lastSuccessfulCronRun = $this->_systemStatusRepository->LastSuccessfulCronRun();
+		$cronStatus = $this->CronStatus($lastSuccessfulCronRun);
+		$issues = $this->ConfigurationIssues($settings, $processOverrides, $cronStatus);
 
 		return $this->_view->Render('administration.index', [
 			'user' => $user,
@@ -116,6 +124,8 @@ final class AdministrationController extends BaseController
 			'latestTestNotification' => $this->_mailQueueRepository->FindLatestTestForUser((int)$user['id']),
 			'debugEnabled' => $this->_debugEnabled,
 			'databaseConfig' => $this->_databaseConfig,
+			'lastSuccessfulCronRun' => $lastSuccessfulCronRun,
+			'cronStatus' => $cronStatus,
 		]);
 	}
 
@@ -569,9 +579,10 @@ final class AdministrationController extends BaseController
 	 * @brief Returns actionable configuration issues grouped by administration tab.
 	 * @param array<string, string> $settings Effective settings.
 	 * @param array<int, string> $processOverrides Process-environment override keys.
+	 * @param string $cronStatus Cron runtime status.
 	 * @return array<int, array{tab:string,key:string,type:string}>
 	 */
-	private function ConfigurationIssues(array $settings, array $processOverrides): array
+	private function ConfigurationIssues(array $settings, array $processOverrides, string $cronStatus): array
 	{
 		$issues = [];
 
@@ -595,12 +606,46 @@ final class AdministrationController extends BaseController
 			$issues[] = ['tab' => 'cron', 'key' => 'administration.health.cron_token_missing', 'type' => 'warning'];
 		}
 
+		if ($cronStatus === 'never')
+		{
+			$issues[] = ['tab' => 'cron', 'key' => 'administration.health.cron_never_run', 'type' => 'warning'];
+		}
+		else if ($cronStatus === 'stale')
+		{
+			$issues[] = ['tab' => 'cron', 'key' => 'administration.health.cron_stale', 'type' => 'warning'];
+		}
+
 		if ($processOverrides !== [])
 		{
 			$issues[] = ['tab' => 'installation', 'key' => 'administration.health.process_overrides', 'type' => 'warning'];
 		}
 
 		return $issues;
+	}
+
+	/**
+	 * @brief Classifies the latest successful combined cron run without assuming a short cadence.
+	 * @param string|null $lastSuccessfulCronRun UTC database timestamp.
+	 * @return string One of never, recent, or stale.
+	 */
+	private function CronStatus(?string $lastSuccessfulCronRun): string
+	{
+		if ($lastSuccessfulCronRun === null || trim($lastSuccessfulCronRun) === '')
+		{
+			return 'never';
+		}
+
+		try
+		{
+			$lastRun = new DateTimeImmutable($lastSuccessfulCronRun, new DateTimeZone('UTC'));
+			$now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
+
+			return ($now->getTimestamp() - $lastRun->getTimestamp()) > 86400 ? 'stale' : 'recent';
+		}
+		catch (\Throwable)
+		{
+			return 'never';
+		}
 	}
 
 	/**

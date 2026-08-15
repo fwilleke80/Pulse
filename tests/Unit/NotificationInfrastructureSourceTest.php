@@ -14,9 +14,9 @@ use PHPUnit\Framework\TestCase;
 
 class NotificationInfrastructureSourceTest extends TestCase
 {
-	public function testQueueMigrationContainsRetriesLeasesAndIdempotency(): void
+	public function testQueueSchemaContainsRetriesLeasesAndIdempotency(): void
 	{
-		$migration = (string)file_get_contents(dirname(__DIR__, 2) . '/database/migrations/006_notification_infrastructure.sql');
+		$migration = (string)file_get_contents(dirname(__DIR__, 2) . '/database/migrations/001_initial_schema.sql');
 		self::assertStringContainsString('idempotency_key', $migration);
 		self::assertStringContainsString('attempt_count', $migration);
 		self::assertStringContainsString('locked_until', $migration);
@@ -31,6 +31,7 @@ class NotificationInfrastructureSourceTest extends TestCase
 		self::assertStringContainsString("'mail:work'", $source);
 		self::assertStringContainsString("'mail:test'", $source);
 		self::assertStringContainsString("'mail:retry-failed'", $source);
+		self::assertStringContainsString('RecordSuccessfulCronRun()', $source);
 	}
 
 	public function testPublicCronRunsOnlyTheCombinedNotificationOperation(): void
@@ -40,17 +41,18 @@ class NotificationInfrastructureSourceTest extends TestCase
 		self::assertStringContainsString("Environment::Get('PULSE_CRON_TOKEN')", $source);
 		self::assertStringContainsString("['notificationScheduler']->Run()", $source);
 		self::assertStringContainsString("['mailQueueWorker']->Process(", $source);
+		self::assertStringContainsString("['systemStatusRepository']->RecordSuccessfulCronRun()", $source);
 		self::assertStringNotContainsString('$argv', $source);
 	}
 
 	public function testNotificationLanguagesBelongToRecipients(): void
 	{
-		$migration = (string)file_get_contents(dirname(__DIR__, 2) . '/database/migrations/007_recipient_notification_languages.sql');
+		$migration = (string)file_get_contents(dirname(__DIR__, 2) . '/database/migrations/001_initial_schema.sql');
 		$scheduler = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Services/NotificationScheduler.php');
 		$contactForm = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Views/contacts/edit.php');
 
-		self::assertStringContainsString('ALTER TABLE users', $migration);
-		self::assertStringContainsString('ALTER TABLE contacts', $migration);
+		self::assertStringContainsString('CREATE TABLE users', $migration);
+		self::assertStringContainsString('CREATE TABLE contacts', $migration);
 		self::assertStringContainsString('notification_locale', $scheduler);
 		self::assertStringContainsString('name="notification_locale"', $contactForm);
 	}
@@ -67,9 +69,9 @@ class NotificationInfrastructureSourceTest extends TestCase
 		self::assertStringContainsString("'mail_type' => 'recipient_notification'", $escalation);
 	}
 
-	public function testRecipientEscalationMigrationUsesHashedMultiTokenSafetyLinksAndImmutableReleases(): void
+	public function testRecipientEscalationSchemaUsesHashedMultiTokenSafetyLinksAndImmutableReleases(): void
 	{
-		$migration = (string)file_get_contents(dirname(__DIR__, 2) . '/database/migrations/009_recipient_escalation.sql');
+		$migration = (string)file_get_contents(dirname(__DIR__, 2) . '/database/migrations/001_initial_schema.sql');
 
 		self::assertStringContainsString('safety_request_tokens', $migration);
 		self::assertStringContainsString('token_hash', $migration);
@@ -80,7 +82,7 @@ class NotificationInfrastructureSourceTest extends TestCase
 
 	public function testLocalizedMonitorMessagesAreStoredSelectedAndSnapshotted(): void
 	{
-		$migration = (string)file_get_contents(dirname(__DIR__, 2) . '/database/migrations/012_localized_monitor_mail_templates.sql');
+		$migration = (string)file_get_contents(dirname(__DIR__, 2) . '/database/migrations/001_initial_schema.sql');
 		$escalation = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Services/EscalationService.php');
 		$view = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Views/monitors/edit.php');
 
@@ -117,7 +119,7 @@ class NotificationInfrastructureSourceTest extends TestCase
 
 	public function testDueNoticePrecedesTheResponseWindowReminders(): void
 	{
-		$migration = (string)file_get_contents(dirname(__DIR__, 2) . '/database/migrations/008_immediate_due_notifications.sql');
+		$migration = (string)file_get_contents(dirname(__DIR__, 2) . '/database/migrations/001_initial_schema.sql');
 		$scheduler = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Services/NotificationScheduler.php');
 
 		self::assertStringContainsString('due_notice_sent_at', $migration);
@@ -174,7 +176,7 @@ class NotificationInfrastructureSourceTest extends TestCase
 		$monitorView = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Views/monitors/edit.php');
 		$recipientView = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Views/recipients/edit.php');
 		$routes = (string)file_get_contents(dirname(__DIR__, 2) . '/public/index.php');
-		$migration = (string)file_get_contents(dirname(__DIR__, 2) . '/database/migrations/011_document_descriptions.sql');
+		$migration = (string)file_get_contents(dirname(__DIR__, 2) . '/database/migrations/001_initial_schema.sql');
 
 		self::assertStringContainsString("'mail.recipient_notification.subject'", $composer);
 		self::assertStringContainsString("'owner' =>", $composer);
@@ -185,7 +187,7 @@ class NotificationInfrastructureSourceTest extends TestCase
 		self::assertStringContainsString('recipients.message.placeholders', $recipientView);
 		self::assertStringContainsString("mail.placeholders.name", $recipientView);
 		self::assertStringContainsString('/monitors/documents/file/update', $routes);
-		self::assertStringContainsString('ADD COLUMN description TEXT NULL', $migration);
+		self::assertStringContainsString('description TEXT NULL', $migration);
 	}
 
 	public function testDisabledMailIsReportedAndCannotSubmitATest(): void

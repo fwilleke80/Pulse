@@ -9,6 +9,7 @@
 declare(strict_types=1);
 
 use Pulse\Repositories\MailQueueRepository;
+use Pulse\Repositories\SystemStatusRepository;
 use Pulse\Repositories\UserRepository;
 use Pulse\Services\MailQueueWorker;
 use Pulse\Services\NotificationScheduler;
@@ -36,7 +37,7 @@ try
 {
 	$result = match ($command)
 	{
-		'notifications:run' => RunNotifications($container['notificationScheduler'], $container['mailQueueWorker'], $mailEnabled, OptionInt($arguments, '--limit', $defaultLimit)),
+		'notifications:run' => RunNotifications($container['notificationScheduler'], $container['mailQueueWorker'], $container['systemStatusRepository'], $mailEnabled, OptionInt($arguments, '--limit', $defaultLimit)),
 		'notifications:schedule' => ScheduleNotifications($container['notificationScheduler'], $mailEnabled),
 		'mail:work' => WorkQueue($container['mailQueueWorker'], $mailEnabled, OptionInt($arguments, '--limit', $defaultLimit)),
 		'mail:test' => TestMail($container['userRepository'], $container['testNotificationService'], OptionInt($arguments, '--user-id', 0)),
@@ -61,13 +62,22 @@ catch (Throwable $throwable)
 }
 
 /** @brief Runs one complete cron tick. @return array<string, mixed> */
-function RunNotifications(NotificationScheduler $scheduler, MailQueueWorker $worker, bool $enabled, int $limit): array
+function RunNotifications(
+	NotificationScheduler $scheduler,
+	MailQueueWorker $worker,
+	SystemStatusRepository $systemStatus,
+	bool $enabled,
+	int $limit
+): array
 {
 	AssertMailEnabled($enabled);
-	return [
+	$result = [
 		'schedule' => $scheduler->Run(),
 		'worker' => $worker->Process($limit),
 	];
+	$systemStatus->RecordSuccessfulCronRun();
+
+	return $result;
 }
 
 /** @brief Runs only lifecycle synchronization and owner-notification enqueueing. @return array<string, mixed> */

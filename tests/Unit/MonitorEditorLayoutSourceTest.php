@@ -1,8 +1,8 @@
 <?php
 
 /**
- * @file Pulse098LayoutSourceTest.php
- * @brief Source-level regression checks for Pulse 0.9.8 monitor editor layout cleanup.
+ * @file MonitorEditorLayoutSourceTest.php
+ * @brief Source-level regression checks for monitor editor layout.
  * @author Frank Willeke
  */
 
@@ -12,7 +12,7 @@ namespace Pulse\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
 
-final class Pulse098LayoutSourceTest extends TestCase
+final class MonitorEditorLayoutSourceTest extends TestCase
 {
 	/** @brief Ensures archived monitor editors do not render save controls. */
 	public function testArchivedMonitorDoesNotRenderStickySaveBar(): void
@@ -31,8 +31,8 @@ final class Pulse098LayoutSourceTest extends TestCase
 		$root = dirname(__DIR__, 2);
 		$style = (string)file_get_contents($root . '/public/assets/style.css');
 
-		self::assertStringContainsString('grid-template-columns: minmax(220px, 1.6fr) minmax(120px, max-content) minmax(150px, 1fr) max-content;', $style);
+		self::assertStringContainsString('grid-template-columns: minmax(220px, 1.25fr) minmax(0, 2fr);', $style);
 		self::assertStringContainsString('.recipient-overview-documents', $style);
-		self::assertStringContainsString(".recipient-overview-meta\n{\n\tdisplay: contents;", $style);
+		self::assertStringContainsString('grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) max-content;', $style);
 	}
 }

@@ -21,7 +21,7 @@ class NotificationLanguageTest extends TestCase
 		self::assertSame('en', $languages->Resolve('en'));
 	}
 
-	public function testLegacyOrUnsupportedValueFallsBackToDeploymentDefault(): void
+	public function testUnsupportedValueFallsBackToDeploymentDefault(): void
 	{
 		$languages = new NotificationLanguage(['en', 'de'], 'de');
 		self::assertSame('de', $languages->Resolve(null));

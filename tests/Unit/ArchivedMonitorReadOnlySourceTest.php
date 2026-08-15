@@ -2,7 +2,7 @@
 
 /**
  * @file ArchivedMonitorReadOnlySourceTest.php
- * @brief Source-level regression checks for Pulse 0.9.7 archived read-only behavior and compact list actions.
+ * @brief Source-level regression checks for archived read-only behavior and compact list actions.
  * @author Frank Willeke
  */
 

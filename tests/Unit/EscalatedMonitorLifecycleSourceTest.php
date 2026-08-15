@@ -2,7 +2,7 @@
 
 /**
  * @file EscalatedMonitorLifecycleSourceTest.php
- * @brief Source-level regression checks for the Pulse 0.9.6 escalated-monitor lifecycle and row menus.
+ * @brief Source-level regression checks for escalated-monitor lifecycle and row menus.
  * @author Frank Willeke
  */
 
@@ -18,11 +18,11 @@ final class EscalatedMonitorLifecycleSourceTest extends TestCase
 	public function testArchiveStateUsesExplicitPersistentColumns(): void
 	{
 		$root = dirname(__DIR__, 2);
-		$migration = (string)file_get_contents($root . '/database/migrations/021_archive_monitors.sql');
+		$schema = (string)file_get_contents($root . '/database/migrations/001_initial_schema.sql');
 		$repository = (string)file_get_contents($root . '/app/Repositories/MonitorRepository.php');
 
-		self::assertStringContainsString('is_archived', $migration);
-		self::assertStringContainsString('archived_at', $migration);
+		self::assertStringContainsString('is_archived', $schema);
+		self::assertStringContainsString('archived_at', $schema);
 		self::assertStringContainsString('AND is_archived = :is_archived', $repository);
 	}
 

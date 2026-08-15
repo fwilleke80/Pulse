@@ -39,7 +39,7 @@ class SecurityFoundationTest extends TestCase
 		}
 	}
 
-	public function testSourceContainsNoLegacyCredentialValuesOrInlineHandlers(): void
+	public function testSourceContainsNoCommittedCredentialValuesOrInlineHandlers(): void
 	{
 		$projectRoot = dirname(__DIR__, 2);
 		$databaseConfig = (string)file_get_contents($projectRoot . '/config/database.php');

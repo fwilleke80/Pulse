@@ -1,12 +1,6 @@
--- Pulse reference database schema
+-- Pulse 1.0 baseline reference schema
 -- MySQL 8+ / MariaDB 10.6+
--- Pulse applies database/migrations automatically. Do not import this reference file over an existing database.
--- ----
--- Core user and contact data
--- Monitor configuration and monitor-contact assignments
--- Per-contact monitor messages
--- Monitor documents and document recipient assignments
--- Persisted check-in, safety-contact, recipient-mail, and future document-access tables
+-- The installer applies database/migrations automatically. This file is reference documentation only.
 
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
@@ -123,7 +117,7 @@ CREATE TABLE monitor_safety_contacts
 	UNIQUE KEY uq_monitor_safety_contacts_monitor_contact (monitor_id, contact_id),
 	INDEX idx_monitor_safety_contacts_contact (contact_id),
 	FOREIGN KEY (monitor_id) REFERENCES monitors(id) ON DELETE CASCADE,
-	FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE
+	FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE monitor_contacts
@@ -133,7 +127,7 @@ CREATE TABLE monitor_contacts
 	contact_id BIGINT UNSIGNED NOT NULL,
 	sort_order INT DEFAULT 1,
 	FOREIGN KEY (monitor_id) REFERENCES monitors(id) ON DELETE CASCADE,
-	FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE,
+	FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE RESTRICT,
 	UNIQUE(monitor_id, contact_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -287,7 +281,7 @@ CREATE TABLE recipient_releases
 	UNIQUE KEY uq_recipient_releases_cycle (check_cycle_id),
 	INDEX idx_recipient_releases_monitor (monitor_id, created_at),
 	FOREIGN KEY (check_cycle_id) REFERENCES check_cycles(id) ON DELETE CASCADE,
-	FOREIGN KEY (monitor_id) REFERENCES monitors(id) ON DELETE CASCADE,
+	FOREIGN KEY (monitor_id) REFERENCES monitors(id) ON DELETE RESTRICT,
 	FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -327,7 +321,7 @@ CREATE TABLE recipient_release_deliveries
 	INDEX idx_recipient_release_deliveries_portal_runtime (portal_token_hash, portal_revoked_at, portal_expires_at),
 	FOREIGN KEY (release_id) REFERENCES recipient_releases(id) ON DELETE CASCADE,
 	FOREIGN KEY (check_cycle_id) REFERENCES check_cycles(id) ON DELETE CASCADE,
-	FOREIGN KEY (monitor_id) REFERENCES monitors(id) ON DELETE CASCADE,
+	FOREIGN KEY (monitor_id) REFERENCES monitors(id) ON DELETE RESTRICT,
 	FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -438,6 +432,13 @@ CREATE TABLE audit_log
 	message TEXT NOT NULL,
 	context_json JSON NULL,
 	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE system_status
+(
+	id TINYINT UNSIGNED NOT NULL PRIMARY KEY,
+	last_successful_cron_at DATETIME NULL,
+	updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE login_attempts
