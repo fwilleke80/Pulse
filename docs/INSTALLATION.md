@@ -29,7 +29,7 @@ python3 tools/write_version.py
 To set the release explicitly:
 
 ```bash
-PULSE_VERSION=0.9.5 python3 tools/write_version.py
+PULSE_VERSION=0.9.8 python3 tools/write_version.py
 ```
 
 A packaged release already contains its generated `config/version.php`. Pulse still starts if that file is missing, but displays **version unavailable**.

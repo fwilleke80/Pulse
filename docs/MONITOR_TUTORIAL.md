@@ -183,7 +183,7 @@ Use non-sensitive test contacts and wording for the first rehearsal.
 6. Verify recipient delivery history on the recipient page.
 7. Correct and retry one deliberately failed test message if you want to verify the failure workflow.
 
-In a non-production environment with `PULSE_DEBUG=true`, Pulse exposes lifecycle test actions that follow the current cycle's real escalation policy. A direct monitor progresses through **Force due now** → **Send due notice now** → **Send recipient notification now**. A safety-contact monitor progresses through **Force due now** → **Send due notice now** → **Send safety contact notification now** → **Send recipient notification now**. The safety and recipient actions send real mail and deliberately bypass the remaining waiting periods, so use only non-sensitive test contacts and recipients.
+In a non-production environment with `PULSE_DEBUG=true`, Pulse exposes lifecycle test actions that follow the current cycle's real escalation policy. A direct monitor progresses through **Force due now** → **Send due notice now** → **Send recipient notification now**. A safety-contact monitor progresses through **Force due now** → **Send due notice now** → **Send safety contact notification now** → **Send recipient notification now**. The safety and recipient actions send real mail and deliberately bypass the remaining waiting periods, so use only non-sensitive test contacts and recipients. After recipient delivery escalates the monitor, use **Reset and reactivate** to begin another rehearsal cycle or **Archive** to keep the completed test monitor out of the active list. Archived monitor configuration is read-only until it is reset and reactivated.
 
 Never rehearse with wording that could alarm a real recipient.
 

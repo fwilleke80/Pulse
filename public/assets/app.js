@@ -451,3 +451,105 @@ document.addEventListener('DOMContentLoaded', function ()
 		});
 	}
 });
+
+/** @brief Positions and dismisses compact monitor row action menus. */
+document.addEventListener('DOMContentLoaded', function ()
+{
+	const menus = Array.from(document.querySelectorAll('[data-row-action-menu]'));
+
+	/** @brief Closes every row menu except an optional retained menu. */
+	const closeMenus = function (except)
+	{
+		for (const menu of menus)
+		{
+			if (menu !== except)
+			{
+				menu.removeAttribute('open');
+			}
+		}
+	};
+
+	/** @brief Positions an open menu panel within the current viewport. */
+	const positionMenu = function (menu)
+	{
+		const toggle = menu.querySelector('.row-action-menu-toggle');
+		const panel = menu.querySelector('[data-row-action-menu-panel]');
+
+		if (!toggle || !panel || !menu.open)
+		{
+			return;
+		}
+
+		panel.classList.add('is-positioned');
+		panel.style.visibility = 'hidden';
+		panel.style.left = '0px';
+		panel.style.top = '0px';
+
+		const toggleRect = toggle.getBoundingClientRect();
+		const panelRect = panel.getBoundingClientRect();
+		const gap = 6;
+		const margin = 8;
+		const left = Math.min(
+			Math.max(margin, toggleRect.right - panelRect.width),
+			Math.max(margin, window.innerWidth - panelRect.width - margin)
+		);
+		const fitsBelow = toggleRect.bottom + gap + panelRect.height <= window.innerHeight - margin;
+		const top = fitsBelow
+			? toggleRect.bottom + gap
+			: Math.max(margin, toggleRect.top - panelRect.height - gap);
+
+		panel.style.left = Math.round(left) + 'px';
+		panel.style.top = Math.round(top) + 'px';
+		panel.style.visibility = '';
+	};
+
+	for (const menu of menus)
+	{
+		menu.addEventListener('toggle', function ()
+		{
+			const panel = menu.querySelector('[data-row-action-menu-panel]');
+
+			if (menu.open)
+			{
+				closeMenus(menu);
+				positionMenu(menu);
+			}
+			else if (panel)
+			{
+				panel.classList.remove('is-positioned');
+				panel.style.left = '';
+				panel.style.top = '';
+				panel.style.visibility = '';
+			}
+		});
+	}
+
+	document.addEventListener('click', function (event)
+	{
+		if (!(event.target instanceof Element) || !event.target.closest('[data-row-action-menu]'))
+		{
+			closeMenus(null);
+		}
+	});
+
+	document.addEventListener('keydown', function (event)
+	{
+		if (event.key === 'Escape')
+		{
+			closeMenus(null);
+		}
+	});
+
+	window.addEventListener('resize', function ()
+	{
+		for (const menu of menus)
+		{
+			positionMenu(menu);
+		}
+	});
+
+	window.addEventListener('scroll', function ()
+	{
+		closeMenus(null);
+	}, true);
+});

@@ -72,7 +72,7 @@ class MonitorExecutionServiceTest extends TestCase
 		$this->_service->InitializeMonitorForUser(2, 1);
 		$result = $this->_service->CheckInAllActiveForUser(1);
 
-		self::assertSame(['updated' => 2, 'escalated' => 0], $result);
+		self::assertSame(['updated' => 2], $result);
 
 		$rows = $this->_connection?->query('
 			SELECT id, is_paused, last_confirmed_at, next_check_due_at,
@@ -117,6 +117,28 @@ class MonitorExecutionServiceTest extends TestCase
 		self::assertFalse($this->_service->ForceDueForUser(1, 1));
 	}
 
+
+	public function testEscalatedMonitorRequiresExplicitResetOrArchive(): void
+	{
+		self::assertInstanceOf(MonitorExecutionService::class, $this->_service);
+		$this->_service->InitializeMonitorForUser(1, 1);
+		self::assertTrue($this->_service->ForceDueForUser(1, 1));
+		$cycleId = (int)$this->_connection?->query("SELECT id FROM check_cycles WHERE monitor_id = 1 ORDER BY id DESC LIMIT 1")->fetchColumn();
+		$this->_connection?->exec('UPDATE check_cycles SET status = \'overdue\', overdue_at = UTC_TIMESTAMP() WHERE id = ' . $cycleId);
+		self::assertTrue($this->_service->MarkCycleEscalated($cycleId));
+
+		$result = $this->_service->CheckInAllActiveForUser(1);
+		self::assertSame(1, (int)$result['updated']);
+		self::assertSame('escalated', $this->_connection?->query('SELECT status FROM check_cycles WHERE id = ' . $cycleId)->fetchColumn());
+
+		self::assertTrue($this->_service->ArchiveEscalatedMonitorForUser(1, 1));
+		self::assertSame(1, (int)$this->_connection?->query('SELECT is_archived FROM monitors WHERE id = 1')->fetchColumn());
+		self::assertTrue($this->_service->ResetAndReactivateMonitorForUser(1, 1));
+		self::assertSame(0, (int)$this->_connection?->query('SELECT is_archived FROM monitors WHERE id = 1')->fetchColumn());
+		self::assertSame('cancelled', $this->_connection?->query('SELECT status FROM check_cycles WHERE id = ' . $cycleId)->fetchColumn());
+		self::assertSame('scheduled', $this->_connection?->query('SELECT status FROM check_cycles WHERE monitor_id = 1 ORDER BY id DESC LIMIT 1')->fetchColumn());
+	}
+
 	public function testOverdueRequiresTheInitialDueNoticeToHaveBeenSent(): void
 	{
 		self::assertInstanceOf(MonitorExecutionService::class, $this->_service);
@@ -156,6 +178,8 @@ class MonitorExecutionServiceTest extends TestCase
 				safety_confirmation_days INT UNSIGNED NULL,
 				is_paused TINYINT(1) NOT NULL DEFAULT 0,
 				paused_at DATETIME NULL,
+				is_archived TINYINT(1) NOT NULL DEFAULT 0,
+				archived_at DATETIME NULL,
 				last_confirmed_at DATETIME NULL,
 				next_check_due_at DATETIME NULL,
 				created_at DATETIME NOT NULL,

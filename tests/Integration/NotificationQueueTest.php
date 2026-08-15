@@ -153,7 +153,7 @@ class NotificationQueueTest extends TestCase
 		self::assertInstanceOf(PDO::class, $this->_connection);
 		$this->tearDown();
 		$this->_connection->exec('CREATE TABLE users (id BIGINT UNSIGNED PRIMARY KEY, email VARCHAR(255), display_name VARCHAR(255), is_active TINYINT(1)) ENGINE=InnoDB');
-		$this->_connection->exec('CREATE TABLE monitors (id BIGINT UNSIGNED PRIMARY KEY, user_id BIGINT UNSIGNED, name VARCHAR(255), is_paused TINYINT(1)) ENGINE=InnoDB');
+		$this->_connection->exec('CREATE TABLE monitors (id BIGINT UNSIGNED PRIMARY KEY, user_id BIGINT UNSIGNED, name VARCHAR(255), is_paused TINYINT(1), is_archived TINYINT(1) NOT NULL DEFAULT 0) ENGINE=InnoDB');
 		$this->_connection->exec("CREATE TABLE check_cycles
 		(
 			id BIGINT UNSIGNED PRIMARY KEY,

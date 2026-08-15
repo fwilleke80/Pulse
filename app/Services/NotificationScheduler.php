@@ -196,6 +196,7 @@ final class NotificationScheduler
 			SELECT DISTINCT user_id
 			FROM monitors
 			WHERE is_paused = 0
+			  AND is_archived = 0
 			ORDER BY user_id ASC
 		')->fetchAll(PDO::FETCH_COLUMN);
 		$opened = 0;
@@ -238,6 +239,7 @@ final class NotificationScheduler
 			INNER JOIN users u ON u.id = m.user_id
 			WHERE cc.status = \'awaiting\'
 				AND m.is_paused = 0
+				AND m.is_archived = 0
 				AND u.is_active = 1
 			ORDER BY cc.id ASC
 		')->fetchAll(PDO::FETCH_ASSOC);
@@ -278,6 +280,7 @@ final class NotificationScheduler
 				AND cc.status = \'awaiting\'
 				AND cc.due_notice_sent_at IS NULL
 				AND m.is_paused = 0
+				AND m.is_archived = 0
 				AND u.is_active = 1
 			ORDER BY cc.id DESC
 			LIMIT 1
@@ -336,6 +339,7 @@ final class NotificationScheduler
 			LEFT JOIN recipient_releases rr ON rr.check_cycle_id = cc.id
 			WHERE cc.status = \'overdue\'
 				AND m.is_paused = 0
+				AND m.is_archived = 0
 				AND u.is_active = 1
 				AND (rr.id IS NULL OR rr.status = \'blocked\')
 			ORDER BY cc.id ASC

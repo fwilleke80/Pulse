@@ -32,6 +32,7 @@ $uncheckedContactCount = count(array_filter(
 	static fn (array $contact): bool => empty($contact['email_checked_at'])
 ));
 $currentStatus = monitor_status($monitor);
+$isArchived = !empty($monitor['is_archived']);
 $messageOverrideCount = count($messageOverrides);
 $portalExpiryDays = isset($monitor['recipient_portal_expiry_days']) ? (int)$monitor['recipient_portal_expiry_days'] : null;
 $portalExpiryMode = $portalExpiryDays === null
@@ -79,6 +80,12 @@ ob_start();
 	<span class="status-badge status-<?= e($currentStatus) ?>"><?= e__('monitors.status.' . $currentStatus) ?></span>
 </div>
 
+<?php if ($isArchived): ?>
+	<div class="dashboard-system-warning archived-readonly-notice" role="status">
+		<div><strong><?= e__('monitors.archived.readonly.heading') ?></strong><p><?= e__('monitors.archived.readonly.message') ?></p></div>
+	</div>
+<?php endif; ?>
+
 <form id="monitor-settings-form" method="post" action="<?= e($base_url) ?>/monitors/update" class="form-carrier">
 	<?= csrf_field() ?>
 	<input type="hidden" name="id" value="<?= (int)$monitor['id'] ?>">
@@ -114,6 +121,7 @@ ob_start();
 		<?php endforeach; ?>
 	</div>
 
+	<fieldset class="monitor-readonly-fieldset"<?= $isArchived ? ' disabled' : '' ?>>
 	<section id="monitor-tab-details" class="monitor-tab-panel<?= $activeTab === 'details' ? ' is-active' : '' ?>" role="tabpanel" data-tab-panel="details"<?= $activeTab === 'details' ? '' : ' hidden' ?>>
 		<div class="section-heading">
 			<h2><?= e__('monitors.tabs.details') ?></h2>
@@ -283,9 +291,6 @@ ob_start();
 							<span><strong><?= e__('recipients.overview.language') ?>:</strong> <?= e(notification_language_name(isset($monitorContact['notification_locale']) ? (string)$monitorContact['notification_locale'] : null)) ?></span>
 							<span><strong><?= e__('recipients.overview.message') ?>:</strong> <?= e__(is_array($override) ? 'recipients.overview.personal' : 'recipients.overview.default') ?></span>
 							<span><?= e__('recipients.overview.documents', ['count' => (int)$monitorContact['document_count']]) ?></span>
-							<?php if (!empty($monitorContact['latest_delivery_status'])): ?>
-								<span class="mini-status mini-status-<?= e((string)$monitorContact['latest_delivery_status']) ?>"><?= e__('recipients.delivery.status.' . (string)$monitorContact['latest_delivery_status']) ?></span>
-							<?php endif; ?>
 						</div>
 						<?php if (is_array($configurationIssue)): ?>
 							<div class="recipient-overview-warning" role="alert">
@@ -554,6 +559,8 @@ ob_start();
 		</form>
 	</section>
 
+	</fieldset>
+
 	<section id="monitor-tab-review" class="monitor-tab-panel<?= $activeTab === 'review' ? ' is-active' : '' ?>" role="tabpanel" data-tab-panel="review"<?= $activeTab === 'review' ? '' : ' hidden' ?>>
 		<div class="section-heading">
 			<h2><?= e__('monitors.tabs.review') ?></h2>
@@ -578,24 +585,49 @@ ob_start();
 		</div>
 
 		<div class="activation-card">
-			<div><h3><?= e__('monitors.activation.heading') ?></h3><p><?= e__($currentStatus === 'paused' ? 'monitors.activation.paused_hint' : 'monitors.activation.active_hint') ?></p></div>
-			<form method="post" action="<?= e($base_url) ?>/monitors/<?= $currentStatus === 'paused' ? 'resume' : 'pause' ?>">
-				<?= csrf_field() ?>
-				<input type="hidden" name="id" value="<?= (int)$monitor['id'] ?>">
-				<input type="hidden" name="redirect" value="/monitors/edit?id=<?= (int)$monitor['id'] ?>&amp;tab=review">
-				<button type="submit" class="<?= $currentStatus === 'paused' ? 'btn-primary' : '' ?>"><?= e__($currentStatus === 'paused' ? 'monitors.resume.submit' : 'monitors.pause.submit') ?></button>
-			</form>
+			<?php if ($currentStatus === 'escalated'): ?>
+				<div><h3><?= e__('monitors.activation.heading') ?></h3><p><?= e__('monitors.activation.escalated_hint') ?></p></div>
+				<div class="table-actions">
+					<form method="post" action="<?= e($base_url) ?>/monitors/reset-reactivate" data-confirm="<?= e__('monitors.reset.confirm') ?>">
+						<?= csrf_field() ?>
+						<input type="hidden" name="id" value="<?= (int)$monitor['id'] ?>">
+						<button type="submit" class="btn-primary"><?= e__('monitors.reset.submit') ?></button>
+					</form>
+					<form method="post" action="<?= e($base_url) ?>/monitors/archive" data-confirm="<?= e__('monitors.archive.confirm') ?>">
+						<?= csrf_field() ?>
+						<input type="hidden" name="id" value="<?= (int)$monitor['id'] ?>">
+						<button type="submit"><?= e__('monitors.archive.submit') ?></button>
+					</form>
+				</div>
+			<?php elseif ($currentStatus === 'archived'): ?>
+				<div><h3><?= e__('monitors.activation.heading') ?></h3><p><?= e__('monitors.activation.archived_hint') ?></p></div>
+				<form method="post" action="<?= e($base_url) ?>/monitors/reset-reactivate" data-confirm="<?= e__('monitors.reset.confirm') ?>">
+					<?= csrf_field() ?>
+					<input type="hidden" name="id" value="<?= (int)$monitor['id'] ?>">
+					<button type="submit" class="btn-primary"><?= e__('monitors.reset.submit') ?></button>
+				</form>
+			<?php else: ?>
+				<div><h3><?= e__('monitors.activation.heading') ?></h3><p><?= e__($currentStatus === 'paused' ? 'monitors.activation.paused_hint' : 'monitors.activation.active_hint') ?></p></div>
+				<form method="post" action="<?= e($base_url) ?>/monitors/<?= $currentStatus === 'paused' ? 'resume' : 'pause' ?>">
+					<?= csrf_field() ?>
+					<input type="hidden" name="id" value="<?= (int)$monitor['id'] ?>">
+					<input type="hidden" name="redirect" value="/monitors/edit?id=<?= (int)$monitor['id'] ?>&amp;tab=review">
+					<button type="submit" class="<?= $currentStatus === 'paused' ? 'btn-primary' : '' ?>"><?= e__($currentStatus === 'paused' ? 'monitors.resume.submit' : 'monitors.pause.submit') ?></button>
+				</form>
+			<?php endif; ?>
 		</div>
 	</section>
 </div>
 
-<div class="editor-save-bar" data-settings-save-bar data-settings-tabs="details,schedule,escalation,review"<?= in_array($activeTab, ['details', 'schedule', 'escalation', 'review'], true) ? '' : ' hidden' ?>>
-	<span><?= e__('monitors.edit.save_hint') ?></span>
-	<div class="editor-save-actions">
-		<a href="<?= e($base_url) ?>/monitors" class="button-link editor-cancel-button"><?= e__('monitors.edit.cancel') ?></a>
-		<button type="submit" form="monitor-settings-form" class="btn-primary"><?= e__('monitors.edit.submit') ?></button>
+<?php if (!$isArchived): ?>
+	<div class="editor-save-bar" data-settings-save-bar data-settings-tabs="details,schedule,escalation,review"<?= in_array($activeTab, ['details', 'schedule', 'escalation', 'review'], true) ? '' : ' hidden' ?>>
+		<span><?= e__('monitors.edit.save_hint') ?></span>
+		<div class="editor-save-actions">
+			<a href="<?= e($base_url) ?>/monitors" class="button-link editor-cancel-button"><?= e__('monitors.edit.cancel') ?></a>
+			<button type="submit" form="monitor-settings-form" class="btn-primary"><?= e__('monitors.edit.submit') ?></button>
+		</div>
 	</div>
-</div>
+<?php endif; ?>
 
 <?php
 $content = ob_get_clean();

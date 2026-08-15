@@ -88,7 +88,7 @@ final class MonitorExecutionService
 		{
 			$monitor = $this->LockMonitorForUser($connection, $monitorId, $userId);
 
-			if (is_array($monitor) && empty($monitor['is_paused']))
+			if (is_array($monitor) && empty($monitor['is_paused']) && empty($monitor['is_archived']))
 			{
 				$this->SynchronizeMonitor($connection, $monitor, $this->UtcNow());
 			}
@@ -116,7 +116,7 @@ final class MonitorExecutionService
 		{
 			$monitor = $this->LockMonitorForUser($connection, $monitorId, $userId);
 
-			if (is_array($monitor) && empty($monitor['is_paused']))
+			if (is_array($monitor) && empty($monitor['is_paused']) && empty($monitor['is_archived']))
 			{
 				$this->SynchronizeMonitor($connection, $monitor, $this->UtcNow());
 			}
@@ -133,7 +133,7 @@ final class MonitorExecutionService
 	/**
 	 * @brief Confirms all active monitors and starts each monitor's next interval from one UTC instant.
 	 * @param int $userId Owner user ID.
-	 * @return array{updated: int, escalated: int}
+	 * @return array{updated: int}
 	 */
 	public function CheckInAllActiveForUser(int $userId): array
 	{
@@ -146,7 +146,6 @@ final class MonitorExecutionService
 			$nowValue = $this->FormatUtc($now);
 			$monitors = $this->LockActiveMonitorsForUser($connection, $userId);
 			$updated = 0;
-			$escalated = 0;
 
 			foreach ($monitors as $monitor)
 			{
@@ -162,10 +161,6 @@ final class MonitorExecutionService
 				$this->_stateMachine->AssertTransition($previousStatus, MonitorStateMachine::CONFIRMED);
 				$this->CancelQueuedReminders($connection, (int)$cycle['id'], $nowValue);
 
-				if ($previousStatus === MonitorStateMachine::ESCALATED)
-				{
-					$escalated++;
-				}
 
 				$confirm = $connection->prepare('
 					UPDATE check_cycles
@@ -217,7 +212,7 @@ final class MonitorExecutionService
 			$connection->commit();
 			$this->_logger->Info('Global manual check-in completed', ['user_id' => $userId, 'monitor_count' => $updated]);
 
-			return ['updated' => $updated, 'escalated' => $escalated];
+			return ['updated' => $updated];
 		}
 		catch (Throwable $throwable)
 		{
@@ -243,7 +238,7 @@ final class MonitorExecutionService
 			$nowValue = $this->FormatUtc($now);
 			$monitor = $this->LockMonitorForUser($connection, $monitorId, $userId);
 
-			if (!is_array($monitor) || !empty($monitor['is_paused']))
+			if (!is_array($monitor) || !empty($monitor['is_paused']) || !empty($monitor['is_archived']))
 			{
 				$connection->commit();
 				return false;
@@ -251,6 +246,12 @@ final class MonitorExecutionService
 
 			$this->SynchronizeMonitor($connection, $monitor, $now);
 			$cycle = $this->FindOpenCycleForUpdate($connection, $monitorId);
+
+			if (is_array($cycle) && (string)$cycle['status'] === MonitorStateMachine::ESCALATED)
+			{
+				$connection->commit();
+				return false;
+			}
 
 			if (is_array($cycle))
 			{
@@ -305,7 +306,7 @@ final class MonitorExecutionService
 			$nowValue = $this->FormatUtc($now);
 			$monitor = $this->LockMonitorForUser($connection, $monitorId, $userId);
 
-			if (!is_array($monitor) || empty($monitor['is_paused']))
+			if (!is_array($monitor) || empty($monitor['is_paused']) || !empty($monitor['is_archived']))
 			{
 				$connection->commit();
 				return false;
@@ -370,6 +371,158 @@ final class MonitorExecutionService
 		}
 	}
 
+
+	/**
+	 * @brief Resets an escalated or archived monitor and starts a fresh monitoring cycle.
+	 * @param int $monitorId Monitor ID.
+	 * @param int $userId Owner user ID.
+	 * @return bool True when the monitor was reset and reactivated.
+	 */
+	public function ResetAndReactivateMonitorForUser(int $monitorId, int $userId): bool
+	{
+		$connection = $this->_database->GetConnection();
+		$connection->beginTransaction();
+
+		try
+		{
+			$now = $this->UtcNow();
+			$nowValue = $this->FormatUtc($now);
+			$monitor = $this->LockMonitorForUser($connection, $monitorId, $userId);
+
+			if (!is_array($monitor))
+			{
+				$connection->commit();
+				return false;
+			}
+
+			$cycle = $this->FindOpenCycleForUpdate($connection, $monitorId);
+			$isEscalated = is_array($cycle) && (string)$cycle['status'] === MonitorStateMachine::ESCALATED;
+
+			if (!$isEscalated)
+			{
+				$connection->commit();
+				return false;
+			}
+
+			$this->_stateMachine->AssertTransition(MonitorStateMachine::ESCALATED, MonitorStateMachine::CANCELLED);
+			$cancel = $connection->prepare('
+				UPDATE check_cycles
+				SET status = :status, cancelled_at = :cancelled_at, updated_at = :updated_at
+				WHERE id = :id
+			');
+			$cancel->execute([
+				'status' => MonitorStateMachine::CANCELLED,
+				'cancelled_at' => $nowValue,
+				'updated_at' => $nowValue,
+				'id' => (int)$cycle['id'],
+			]);
+
+			$nextDue = $this->AddDays($now, (int)$monitor['check_interval_days']);
+			$nextDueValue = $this->FormatUtc($nextDue);
+			$this->InsertScheduledCycle($connection, $monitor, $now, $nextDue);
+
+			$update = $connection->prepare('
+				UPDATE monitors
+				SET
+					is_paused = 0,
+					paused_at = NULL,
+					is_archived = 0,
+					archived_at = NULL,
+					last_confirmed_at = :confirmed_at,
+					next_check_due_at = :next_due_at,
+					updated_at = :updated_at
+				WHERE id = :id
+			');
+			$update->execute([
+				'confirmed_at' => $nowValue,
+				'next_due_at' => $nextDueValue,
+				'updated_at' => $nowValue,
+				'id' => $monitorId,
+			]);
+
+			$this->WriteAudit(
+				$connection,
+				$userId,
+				'monitor.reset_reactivated',
+				$monitorId,
+				$nowValue,
+				[
+					'previous_cycle_id' => (int)$cycle['id'],
+					'next_due_at' => $nextDueValue,
+				]
+			);
+			$connection->commit();
+			$this->_logger->Info('Escalated monitor reset and reactivated', ['user_id' => $userId, 'monitor_id' => $monitorId]);
+
+			return true;
+		}
+		catch (Throwable $throwable)
+		{
+			$connection->rollBack();
+			throw $throwable;
+		}
+	}
+
+	/**
+	 * @brief Archives an escalated monitor without revoking its released recipient portals.
+	 * @param int $monitorId Monitor ID.
+	 * @param int $userId Owner user ID.
+	 * @return bool True when the monitor was archived.
+	 */
+	public function ArchiveEscalatedMonitorForUser(int $monitorId, int $userId): bool
+	{
+		$connection = $this->_database->GetConnection();
+		$connection->beginTransaction();
+
+		try
+		{
+			$nowValue = $this->FormatUtc($this->UtcNow());
+			$monitor = $this->LockMonitorForUser($connection, $monitorId, $userId);
+
+			if (!is_array($monitor) || !empty($monitor['is_archived']))
+			{
+				$connection->commit();
+				return false;
+			}
+
+			$cycle = $this->FindOpenCycleForUpdate($connection, $monitorId);
+
+			if (!is_array($cycle) || (string)$cycle['status'] !== MonitorStateMachine::ESCALATED)
+			{
+				$connection->commit();
+				return false;
+			}
+
+			$archive = $connection->prepare('
+				UPDATE monitors
+				SET is_archived = 1, archived_at = :archived_at, next_check_due_at = NULL, updated_at = :updated_at
+				WHERE id = :id
+			');
+			$archive->execute([
+				'archived_at' => $nowValue,
+				'updated_at' => $nowValue,
+				'id' => $monitorId,
+			]);
+			$this->WriteAudit(
+				$connection,
+				$userId,
+				'monitor.archived',
+				$monitorId,
+				$nowValue,
+				['cycle_id' => (int)$cycle['id']]
+			);
+			$connection->commit();
+			$this->_logger->Info('Escalated monitor archived', ['user_id' => $userId, 'monitor_id' => $monitorId]);
+
+			return true;
+		}
+		catch (Throwable $throwable)
+		{
+			$connection->rollBack();
+			throw $throwable;
+		}
+	}
+
 	/**
 	 * @brief Forces an active monitor into awaiting state for explicit development testing.
 	 * @param int $monitorId Monitor ID.
@@ -387,7 +540,7 @@ final class MonitorExecutionService
 			$nowValue = $this->FormatUtc($now);
 			$monitor = $this->LockMonitorForUser($connection, $monitorId, $userId);
 
-			if (!is_array($monitor) || !empty($monitor['is_paused']))
+			if (!is_array($monitor) || !empty($monitor['is_paused']) || !empty($monitor['is_archived']))
 			{
 				$connection->commit();
 				return false;
@@ -505,6 +658,8 @@ final class MonitorExecutionService
 					\'monitor.safety_confirmed\',
 					\'monitor.overdue\',
 					\'monitor.escalated\',
+					\'monitor.reset_reactivated\',
+					\'monitor.archived\',
 					\'monitor.paused\',
 					\'monitor.resumed\',
 					\'monitor.forced_due\',
@@ -541,6 +696,8 @@ final class MonitorExecutionService
 					\'monitor.safety_confirmed\',
 					\'monitor.overdue\',
 					\'monitor.escalated\',
+					\'monitor.reset_reactivated\',
+					\'monitor.archived\',
 					\'monitor.paused\',
 					\'monitor.resumed\',
 					\'monitor.forced_due\',
@@ -936,6 +1093,13 @@ final class MonitorExecutionService
 				'updated_at' => $nowValue,
 				'id' => $cycleId,
 			]);
+
+			if ($targetStatus === MonitorStateMachine::ESCALATED)
+			{
+				$clearDue = $connection->prepare('UPDATE monitors SET next_check_due_at = NULL, updated_at = :updated_at WHERE id = :id');
+				$clearDue->execute(['updated_at' => $nowValue, 'id' => (int)$cycle['monitor_id']]);
+			}
+
 			$this->WriteAudit(
 				$connection,
 				(int)$cycle['user_id'],
@@ -979,12 +1143,22 @@ final class MonitorExecutionService
 					safety_confirmation_days,
 					is_paused,
 				paused_at,
+				is_archived,
+				archived_at,
 				last_confirmed_at,
 				next_check_due_at,
 				created_at
 			FROM monitors
 			WHERE user_id = :user_id
 				AND is_paused = 0
+				AND is_archived = 0
+				AND NOT EXISTS
+				(
+					SELECT 1
+					FROM check_cycles active_cc
+					WHERE active_cc.monitor_id = monitors.id
+					  AND active_cc.status = \'escalated\'
+				)
 			ORDER BY id ASC
 			FOR UPDATE
 		');
@@ -1019,6 +1193,8 @@ final class MonitorExecutionService
 					safety_confirmation_days,
 					is_paused,
 				paused_at,
+				is_archived,
+				archived_at,
 				last_confirmed_at,
 				next_check_due_at,
 				created_at

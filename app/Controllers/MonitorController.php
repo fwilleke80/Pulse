@@ -112,7 +112,8 @@ class MonitorController extends BaseController
 		$this->_monitorExecutionService->SynchronizeDueCyclesForUser((int)$user['id']);
 
 		$userId = (int)$user['id'];
-		$monitors = $this->_monitorRepository->FindAllByUserId($userId);
+		$showArchived = $this->_request->QueryString('view', 20) === 'archived';
+		$monitors = $this->_monitorRepository->FindAllByUserId($userId, $showArchived);
 
 		foreach ($monitors as &$monitor)
 		{
@@ -130,6 +131,7 @@ class MonitorController extends BaseController
 			'monitors' => $monitors,
 			'debugEnabled' => $this->_debugEnabled,
 			'mailEnabled' => $this->_mailEnabled,
+			'showArchived' => $showArchived,
 		]);
 	}
 
@@ -250,6 +252,12 @@ class MonitorController extends BaseController
 			$this->Redirect('/monitors');
 		}
 
+		if (!empty($monitor['is_archived']))
+		{
+			$this->Flash('warning', __('monitors.archived.readonly.flash'));
+			$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=' . $returnTab);
+		}
+
 		$values = $this->MonitorInput();
 		$safetyContactIds = $this->AllowedContactIds((int)$user['id'], $this->_request->PostIntArray('safety_contact_ids'));
 
@@ -296,10 +304,18 @@ class MonitorController extends BaseController
 		$monitorId = $this->_request->PostInt('monitor_id');
 		$returnSection = $this->PostedMessageSection();
 
-		if ($this->_monitorRepository->FindByIdForUser($monitorId, $userId) === null)
+		$monitor = $this->_monitorRepository->FindByIdForUser($monitorId, $userId);
+
+		if ($monitor === null)
 		{
 			$this->Flash('error', __('monitors.edit.flash.notfound'));
 			$this->Redirect('/monitors');
+		}
+
+		if (!empty($monitor['is_archived']))
+		{
+			$this->Flash('warning', __('monitors.archived.readonly.flash'));
+			$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=messages&section=' . $returnSection);
 		}
 
 		$hasDraftIssues = false;
@@ -377,6 +393,12 @@ class MonitorController extends BaseController
 		$monitorId = $this->_request->PostInt('id');
 		$monitor = $this->_monitorRepository->FindByIdForUser($monitorId, (int)$user['id']);
 
+		if (is_array($monitor) && !empty($monitor['is_archived']))
+		{
+			$this->Flash('warning', __('monitors.archived.readonly.flash'));
+			$this->Redirect('/monitors?view=archived');
+		}
+
 		if ($monitor !== null && $this->_documentService->DeleteMonitorForUser((int)$user['id'], $monitorId))
 		{
 			$this->_logger->Info('Monitor deleted', ['user_id' => (int)$user['id'], 'monitor_id' => $monitorId]);
@@ -395,13 +417,6 @@ class MonitorController extends BaseController
 		if ($result['updated'] === 0)
 		{
 			$this->Flash('warning', __('monitors.check_in.none_active'));
-		}
-		elseif ($result['escalated'] > 0)
-		{
-			$this->Flash('warning', __('monitors.check_in.success_escalated', [
-				'count' => $result['updated'],
-				'escalated' => $result['escalated'],
-			]));
 		}
 		else
 		{
@@ -448,6 +463,43 @@ class MonitorController extends BaseController
 		}
 
 		$this->Redirect($this->RuntimeRedirect());
+	}
+
+
+	/** @brief Resets an escalated or archived monitor and starts a fresh monitoring cycle. */
+	public function ResetAndReactivate(): void
+	{
+		$user = $this->RequireUser();
+		$monitorId = $this->_request->PostInt('id');
+
+		if ($this->_monitorExecutionService->ResetAndReactivateMonitorForUser($monitorId, (int)$user['id']))
+		{
+			$this->Flash('success', __('monitors.reset.success'));
+		}
+		else
+		{
+			$this->Flash('warning', __('monitors.reset.unavailable'));
+		}
+
+		$this->Redirect('/monitors');
+	}
+
+	/** @brief Archives an escalated monitor without changing existing recipient portal access. */
+	public function Archive(): void
+	{
+		$user = $this->RequireUser();
+		$monitorId = $this->_request->PostInt('id');
+
+		if ($this->_monitorExecutionService->ArchiveEscalatedMonitorForUser($monitorId, (int)$user['id']))
+		{
+			$this->Flash('success', __('monitors.archive.success'));
+		}
+		else
+		{
+			$this->Flash('warning', __('monitors.archive.unavailable'));
+		}
+
+		$this->Redirect('/monitors?view=archived');
 	}
 
 	/** @brief Forces a monitor due when application debug mode is enabled. */
@@ -988,7 +1040,7 @@ class MonitorController extends BaseController
 	{
 		$target = $this->_request->PostString('redirect', 200);
 
-		if (in_array($target, ['/', '/monitors'], true))
+		if (in_array($target, ['/', '/monitors', '/monitors?view=archived'], true))
 		{
 			return $target;
 		}

@@ -73,12 +73,15 @@ CREATE TABLE monitors
 	recipient_portal_expiry_days INT UNSIGNED NULL,
 	is_paused TINYINT(1) NOT NULL DEFAULT 0,
 	paused_at DATETIME NULL,
+	is_archived TINYINT(1) NOT NULL DEFAULT 0,
+	archived_at DATETIME NULL,
 	last_confirmed_at DATETIME NULL,
 	last_safety_confirmed_at DATETIME NULL,
 	last_safety_contact_id BIGINT UNSIGNED NULL,
 	next_check_due_at DATETIME NULL,
 	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+	INDEX idx_monitors_user_archived (user_id, is_archived),
 	FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

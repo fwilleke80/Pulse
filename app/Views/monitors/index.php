@@ -12,20 +12,24 @@ declare(strict_types=1);
 /** @var string $base_url */
 /** @var bool $debugEnabled */
 /** @var bool $mailEnabled */
+/** @var bool $showArchived */
 
 $activeMonitorCount = count(array_filter(
 	$monitors,
-	static fn (array $monitor): bool => empty($monitor['is_paused'])
+	static fn (array $monitor): bool => !in_array(monitor_status($monitor), ['paused', 'escalated', 'archived'], true)
 ));
 
 ob_start();
 ?>
 
-<h1><?= e__('monitors.index.heading') ?></h1>
-<p><?= e__('monitors.index.message') ?></p>
+<h1><?= e__($showArchived ? 'monitors.index.archived.heading' : 'monitors.index.heading') ?></h1>
+<p><?= e__($showArchived ? 'monitors.index.archived.message' : 'monitors.index.message') ?></p>
 <div class="monitor-index-toolbar">
-	<a href="<?= e($base_url) ?>/monitors/new" class="button-link"><?= e__('monitors.index.add') ?></a>
-	<?php if ($activeMonitorCount > 0): ?>
+	<?php if (!$showArchived): ?>
+		<a href="<?= e($base_url) ?>/monitors/new" class="button-link"><?= e__('monitors.index.add') ?></a>
+	<?php endif; ?>
+	<a href="<?= e($base_url) ?>/monitors<?= $showArchived ? '' : '?view=archived' ?>" class="button-link monitor-view-toggle"><?= e__($showArchived ? 'monitors.index.view.active' : 'monitors.index.view.archived') ?></a>
+	<?php if (!$showArchived && $activeMonitorCount > 0): ?>
 		<form method="post" action="<?= e($base_url) ?>/monitors/check-in">
 			<?= csrf_field() ?>
 			<input type="hidden" name="redirect" value="/monitors">
@@ -34,12 +38,12 @@ ob_start();
 	<?php endif; ?>
 </div>
 
-<?php if ($activeMonitorCount > 0): ?>
+<?php if (!$showArchived && $activeMonitorCount > 0): ?>
 	<p class="form-hint"><?= e__('monitors.index.check_in_hint', ['count' => $activeMonitorCount]) ?></p>
 <?php endif; ?>
 
 <?php if ($monitors === []): ?>
-	<p><?= e__('monitors.index.no_monitors') ?></p>
+	<p><?= e__($showArchived ? 'monitors.index.no_archived' : 'monitors.index.no_monitors') ?></p>
 <?php else: ?>
 	<div class="table-scroll">
 		<table class="monitor-table">
@@ -98,7 +102,7 @@ ob_start();
 						<td class="monitor-actions-cell">
 							<?php
 							$actionStatus = $statusClass;
-							$actionRedirect = '/monitors';
+							$actionRedirect = $showArchived ? '/monitors?view=archived' : '/monitors';
 							$actionAllowDelete = true;
 							require __DIR__ . '/partials/actions.php';
 							?>

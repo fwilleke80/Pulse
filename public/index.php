@@ -214,6 +214,8 @@ $router->Post('/monitors/delete', [$monitorController, 'Delete']);
 $router->Post('/monitors/check-in', [$monitorController, 'CheckIn']);
 $router->Post('/monitors/pause', [$monitorController, 'Pause']);
 $router->Post('/monitors/resume', [$monitorController, 'Resume']);
+$router->Post('/monitors/reset-reactivate', [$monitorController, 'ResetAndReactivate']);
+$router->Post('/monitors/archive', [$monitorController, 'Archive']);
 $router->Post('/monitors/force-due', [$monitorController, 'ForceDue']);
 $router->Post('/monitors/send-due-notice', [$monitorController, 'SendDueNotice']);
 $router->Post('/monitors/send-safety-contact-notifications', [$monitorController, 'SendSafetyContactNotifications']);

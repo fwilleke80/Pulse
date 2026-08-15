@@ -28,9 +28,9 @@ When at least one monitor is active, **Check in now** confirms all active monito
 
 You do not have to wait until a monitor is due. Checking in early simply proves that you are present now and restarts that monitor's interval from the current time.
 
-Paused monitors are not included in a global check-in.
+Paused, escalated, and archived monitors are not included in a global check-in.
 
-If a monitor has already sent a recipient notification, a later check-in still starts a new cycle but cannot recall the email that was already sent.
+An escalated monitor has reached the end of its monitoring cycle and requires an explicit decision. Use **Reset and reactivate** to start a fresh cycle, or **Archive** to keep the monitor for reference without continuing normal monitoring. Resetting or archiving does not revoke recipient portal access that was already released during the previous escalation.
 
 ## Monitor statuses
 
@@ -40,8 +40,9 @@ Pulse uses a small set of states to show where a monitor currently is:
 - **Awaiting check-in** — the due time has arrived and Pulse is waiting for you
 - **Awaiting safety contact** — your own reminder phase ended and the optional safety-contact step is in progress
 - **Overdue** — all required waiting/reminder stages have completed and recipient notification is ready or being attempted
-- **Escalated** — at least one recipient notification has actually been accepted for delivery by the mail server
+- **Escalated** — at least one recipient notification has actually been accepted for delivery by the mail server; the monitor now waits for you to reset/reactivate or archive it
 - **Paused** — the monitor is temporarily inactive
+- **Archived** — the monitor is retained for reference and no longer participates in monitoring
 
 Pulse does not mark a monitor overdue merely because time passed. Required reminder stages must also have been processed successfully.
 
@@ -91,7 +92,7 @@ The safety-contact option is useful when an ordinary missed check-in should not 
 
 ### Review & activation
 
-Review the complete configuration and resolve any warnings before relying on the monitor. You can also pause or resume the monitor.
+Review the complete configuration and resolve any warnings before relying on the monitor. You can pause or resume a normal monitor. After escalation, this section instead offers **Reset and reactivate** and **Archive**.
 
 ## Contacts
 
@@ -188,6 +189,14 @@ Pausing cancels the current active cycle and removes its due date. The monitor i
 
 **Resume** starts a fresh schedule from the moment you resume it. A long pause therefore does not cause the monitor to become immediately overdue.
 
+## Escalated and archived monitors
+
+Escalation is a terminal monitoring state rather than another overdue state. Escalated monitors do not count toward **Need attention** and are not included in **Check in now**.
+
+Choose **Reset and reactivate** when you want to use the same monitor again. Pulse closes the previous monitoring cycle and starts a fresh interval from that moment. Recipient portals that were already released by the previous escalation remain available according to their own revocation/expiry rules.
+
+Choose **Archive** when the escalated monitor should no longer appear in the normal monitor list. Archived monitors are available from the **Archived** view on the Monitors page. Their monitor configuration is read-only while archived; use **Reset and reactivate** before making changes. Existing released recipient portals remain independently manageable and keep their own revocation/expiry state.
+
 ## History
 
 Pulse records important lifecycle events such as:
@@ -199,6 +208,7 @@ Pulse records important lifecycle events such as:
 - overdue transitions
 - recipient delivery
 - pauses and resumes
+- reset/reactivation and archiving
 
 The dashboard shows the most recent activity. Use **View complete activity** for the full history.
 

@@ -30,11 +30,12 @@ class MonitorRepository
 	}
 
 	/**
-	 * @brief Returns all monitors for a user.
+	 * @brief Returns active-list or archived monitors for a user.
 	 * @param int $userId User ID.
+	 * @param bool $archived Whether archived monitors should be returned.
 	 * @return array<int, array<string, mixed>>
 	 */
-	public function FindAllByUserId(int $userId): array
+	public function FindAllByUserId(int $userId, bool $archived = false): array
 	{
 		$sql = '
 			SELECT
@@ -60,6 +61,8 @@ class MonitorRepository
 				recipient_portal_expiry_days,
 				is_paused,
 				paused_at,
+				is_archived,
+				archived_at,
 				last_confirmed_at,
 				last_safety_confirmed_at,
 				last_safety_contact_id,
@@ -132,12 +135,14 @@ class MonitorRepository
 				) AS latest_release_blocked_reason
 			FROM monitors
 			WHERE user_id = :user_id
+			  AND is_archived = :is_archived
 			ORDER BY name ASC
 		';
 
 		$statement = $this->_database->GetConnection()->prepare($sql);
 		$statement->execute([
 			'user_id' => $userId,
+			'is_archived' => $archived ? 1 : 0,
 		]);
 
 		$rows = $statement->fetchAll(PDO::FETCH_ASSOC);
@@ -176,6 +181,8 @@ class MonitorRepository
 				recipient_portal_expiry_days,
 				is_paused,
 				paused_at,
+				is_archived,
+				archived_at,
 				last_confirmed_at,
 				last_safety_confirmed_at,
 				last_safety_contact_id,
@@ -607,6 +614,7 @@ class MonitorRepository
 			SELECT COUNT(*)
 			FROM monitors
 			WHERE user_id = :user_id
+			  AND is_archived = 0
 		';
 
 		$statement = $this->_database->GetConnection()->prepare($sql);
@@ -643,14 +651,7 @@ class MonitorRepository
 					SELECT COUNT(*)
 					FROM document_monitor_contacts dmc
 					WHERE dmc.monitor_contact_id = mc.id
-				) AS document_count,
-				(
-					SELECT rrd.status
-					FROM recipient_release_deliveries rrd
-					WHERE rrd.monitor_id = mc.monitor_id AND rrd.contact_id = mc.contact_id
-					ORDER BY rrd.id DESC
-					LIMIT 1
-				) AS latest_delivery_status
+				) AS document_count
 			FROM monitor_contacts mc
 			INNER JOIN monitors m
 				ON m.id = mc.monitor_id

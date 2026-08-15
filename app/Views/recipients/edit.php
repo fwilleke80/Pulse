@@ -26,6 +26,7 @@ declare(strict_types=1);
 
 $hasOverride = !empty($recipient['override_message_id']);
 $hasPortalOverride = !empty($recipient['portal_override_id']);
+$isArchivedMonitor = !empty($recipient['monitor_is_archived']);
 $sections = [
 	'overview' => 'recipients.tabs.overview',
 	'notification' => 'recipients.tabs.notification',
@@ -45,6 +46,10 @@ ob_start();
 	</div>
 	<a href="<?= e($base_url) ?>/monitors/edit?id=<?= (int)$recipient['monitor_id'] ?>&amp;tab=recipients" class="button-link"><?= e__('recipients.edit.back') ?></a>
 </div>
+
+<?php if ($isArchivedMonitor): ?>
+	<div class="dashboard-system-warning archived-readonly-notice" role="status"><div><strong><?= e__('recipients.archived.readonly.heading') ?></strong><p><?= e__('recipients.archived.readonly.message') ?></p></div></div>
+<?php endif; ?>
 
 <div class="editor-subtabs recipient-editor-tabs" data-editor-subtabs data-active-subtab="<?= e($activeSection) ?>" data-query-key="section">
 	<div class="monitor-tabs editor-subtab-list" role="tablist" aria-label="<?= e__('recipients.tabs.label') ?>">
@@ -85,15 +90,18 @@ ob_start();
 			<div class="dashboard-system-warning" role="alert"><div><strong><?= e__('recipients.snapshot.heading') ?></strong><p><?= e__('recipients.snapshot.message') ?></p></div></div>
 		<?php endif; ?>
 
-		<form method="post" action="<?= e($base_url) ?>/monitors/recipients/remove" data-confirm="<?= e__('recipients.remove.confirm', ['name' => (string)$recipient['name']]) ?>">
-			<?= csrf_field() ?>
-			<input type="hidden" name="id" value="<?= (int)$recipient['id'] ?>">
-			<button type="submit" class="btn-danger"><?= e__('recipients.remove.submit') ?></button>
-		</form>
+		<?php if (!$isArchivedMonitor): ?>
+			<form method="post" action="<?= e($base_url) ?>/monitors/recipients/remove" data-confirm="<?= e__('recipients.remove.confirm', ['name' => (string)$recipient['name']]) ?>">
+				<?= csrf_field() ?>
+				<input type="hidden" name="id" value="<?= (int)$recipient['id'] ?>">
+				<button type="submit" class="btn-danger"><?= e__('recipients.remove.submit') ?></button>
+			</form>
+		<?php endif; ?>
 	</section>
 
 	<section class="editor-subtab-panel" data-subtab-panel="notification"<?= $activeSection === 'notification' ? '' : ' hidden' ?>>
 		<form method="post" action="<?= e($base_url) ?>/monitors/recipients/update" class="stack">
+			<fieldset class="recipient-readonly-fieldset"<?= $isArchivedMonitor ? ' disabled' : '' ?>>
 			<?= csrf_field() ?>
 			<input type="hidden" name="id" value="<?= (int)$recipient['id'] ?>">
 			<input type="hidden" name="recipient_section" value="notification">
@@ -122,6 +130,7 @@ ob_start();
 				<?php endif; ?>
 			</section>
 			<button type="submit" class="btn-primary"><?= e__('recipients.edit.submit') ?></button>
+			</fieldset>
 		</form>
 
 		<section class="configuration-block">
@@ -133,6 +142,7 @@ ob_start();
 
 	<section class="editor-subtab-panel" data-subtab-panel="portal"<?= $activeSection === 'portal' ? '' : ' hidden' ?>>
 		<form method="post" action="<?= e($base_url) ?>/monitors/recipients/update" class="stack">
+			<fieldset class="recipient-readonly-fieldset"<?= $isArchivedMonitor ? ' disabled' : '' ?>>
 			<?= csrf_field() ?>
 			<input type="hidden" name="id" value="<?= (int)$recipient['id'] ?>">
 			<input type="hidden" name="recipient_section" value="portal">
@@ -148,6 +158,7 @@ ob_start();
 				<div class="mail-default-template"><strong><?= e__('recipients.portal_message.default_preview.heading') ?></strong><pre><?= e((string)$defaultPortalPreview['message_text']) ?></pre></div>
 			</section>
 			<button type="submit" class="btn-primary"><?= e__('recipients.edit.submit') ?></button>
+			</fieldset>
 		</form>
 
 		<?php if (is_array($activeDelivery)): ?>
@@ -173,6 +184,7 @@ ob_start();
 
 	<section class="editor-subtab-panel" data-subtab-panel="documents"<?= $activeSection === 'documents' ? '' : ' hidden' ?>>
 		<form method="post" action="<?= e($base_url) ?>/monitors/recipients/update" class="stack">
+			<fieldset class="recipient-readonly-fieldset"<?= $isArchivedMonitor ? ' disabled' : '' ?>>
 			<?= csrf_field() ?>
 			<input type="hidden" name="id" value="<?= (int)$recipient['id'] ?>">
 			<input type="hidden" name="recipient_section" value="documents">
@@ -193,6 +205,7 @@ ob_start();
 				<?php endif; ?>
 			</section>
 			<button type="submit" class="btn-primary"><?= e__('recipients.documents.save') ?></button>
+			</fieldset>
 		</form>
 
 		<?php if (is_array($activeDelivery)): ?>

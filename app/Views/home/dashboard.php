@@ -19,15 +19,15 @@ declare(strict_types=1);
 
 $activeMonitors = array_values(array_filter(
 	$monitors,
-	static fn (array $monitor): bool => empty($monitor['is_paused'])
+	static fn (array $monitor): bool => !in_array(monitor_status($monitor), ['paused', 'escalated', 'archived'], true)
 ));
 $pausedMonitors = array_values(array_filter(
 	$monitors,
-	static fn (array $monitor): bool => !empty($monitor['is_paused'])
+	static fn (array $monitor): bool => monitor_status($monitor) === 'paused'
 ));
 $attentionCount = count(array_filter(
 	$activeMonitors,
-	static fn (array $monitor): bool => in_array(monitor_status($monitor), ['awaiting', 'safety-pending', 'overdue', 'escalated'], true)
+	static fn (array $monitor): bool => in_array(monitor_status($monitor), ['awaiting', 'safety-pending', 'overdue'], true)
 ));
 $activityTranslationKeys = [
 	'monitor.checked_in' => 'dashboard.activity.checked_in',
@@ -37,6 +37,8 @@ $activityTranslationKeys = [
 	'monitor.safety_confirmed' => 'dashboard.activity.safety_confirmed',
 	'monitor.overdue' => 'dashboard.activity.overdue',
 	'monitor.escalated' => 'dashboard.activity.escalated',
+	'monitor.reset_reactivated' => 'dashboard.activity.reset_reactivated',
+	'monitor.archived' => 'dashboard.activity.archived',
 	'monitor.paused' => 'dashboard.activity.paused',
 	'monitor.resumed' => 'dashboard.activity.resumed',
 	'monitor.forced_due' => 'dashboard.activity.forced_due',

@@ -1,3 +1,40 @@
+## 0.9.8 - 2026-08-15
+
+### Changed
+- Archived Monitor Editor pages no longer render the sticky Cancel/Save bar because archived monitor configuration is read-only until reset/reactivation.
+- Reworked Monitor Editor → Recipients into a full-width four-column overview on desktop so recipient identity, language, email-text source, and document count use the available row width without a large empty area. The layout collapses responsively on narrower screens.
+
+## 0.9.7 - 2026-08-15
+
+### Changed
+- Archived monitors are now read-only reference records. Their monitor configuration, future recipient settings, recipient assignments, documents, schedules, escalation settings, and message defaults cannot be changed until **Reset and reactivate** starts a fresh cycle. Existing released recipient portals remain independently manageable.
+- Tightened the **Actions** columns on the Monitors page and dashboard to the compact vertical-ellipsis menu instead of reserving unnecessary table width.
+- Replaced the Contacts list's wide standalone **Delete** button with the same compact vertical-ellipsis action menu and a content-sized, right-aligned Actions column.
+- Simplified Monitor Editor → Recipients by removing the ambiguous latest-delivery **Sent** badge from the configuration overview and tightening the recipient-card metadata layout. Delivery activity remains available in each recipient's History tab.
+
+### Fixed
+- Added server-side archived-monitor guards so disabled editor controls cannot be bypassed to mutate archived monitor configuration.
+
+### Documentation
+- Updated the user guide to describe archived monitors as read-only until reset/reactivation.
+
+## 0.9.6 - 2026-08-14
+
+### Added
+- Added an explicit post-escalation lifecycle: **Reset and reactivate** starts a fresh monitoring cycle, while **Archive** removes an escalated monitor from normal monitoring views without revoking recipient portal access from the previous escalation.
+- Added an **Archived** view on the Monitors page. Archived monitors remain editable/referenceable and can later be reset and reactivated.
+- Added migration `021_archive_monitors.sql` with persistent archive state and an archive lookup index.
+
+### Changed
+- Replaced the multiple per-row monitor action buttons with one compact vertical-ellipsis action menu on both the Monitors page and dashboard monitor table. Existing pause/resume, development, and delete actions remain available from the menu.
+- Escalated monitors are now terminal until explicitly reset or archived. They no longer participate in global check-in, no longer count toward **Need attention**, and no longer count as active monitors.
+- When a monitor escalates, its next-due timestamp is cleared because no further check-in is scheduled until reset/reactivation.
+- Monitor Editor → Review & activation now shows the appropriate reset/archive controls for escalated or archived monitors instead of offering Pause.
+- Normal owner/safety notification scheduling ignores archived monitors, while already released recipient portal access remains independent of the monitor's archive state.
+
+### Documentation
+- Updated the user guide and monitor tutorial for the explicit escalated/archive lifecycle and archived monitor view.
+
 ## 0.9.5 - 2026-08-14
 
 ### Changed

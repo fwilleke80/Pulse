@@ -20,7 +20,8 @@ ob_start();
 <?php if ($contacts === []): ?>
 	<p><?= e__('contacts.index.no_contacts') ?></p>
 <?php else: ?>
-	<table>
+	<div class="table-scroll">
+	<table class="contacts-table">
 		<thead>
 			<tr>
 				<th><?= e__('contacts.index.table.name') ?></th>
@@ -28,7 +29,7 @@ ob_start();
 				<th><?= e__('contacts.index.table.address_status') ?></th>
 				<th><?= e__('contacts.index.table.cell_phone') ?></th>
 				<th><?= e__('contacts.index.table.notes') ?></th>
-				<th></th>
+				<th class="compact-actions-heading"><?= e__('contacts.index.table.actions') ?></th>
 			</tr>
 		</thead>
 		<tbody>
@@ -45,19 +46,23 @@ ob_start();
 					</td>
 					<td><a href="tel:<?= e((string)($contact['cell_phone'] ?? '')) ?>"><?= e((string)($contact['cell_phone'] ?? '')) ?></a></td>
 					<td><?= e(abbrev((string)$contact['notes'], 40)) ?></td>
-					<td>
-						<div class="table-actions">
-							<form method="post" action="<?= e($base_url) ?>/contacts/delete" data-confirm="<?= e__('contacts.index.flash.delete_confirm', ['name' => $contact['name']]) ?>">
-								<?= csrf_field() ?>
-								<input type="hidden" name="id" value="<?= (int)$contact['id'] ?>">
-								<button type="submit" class="btn-table-inline"><?= e__('contacts.index.table.buttons.delete') ?></button>
-							</form>
-						</div>
+					<td class="compact-actions-cell">
+						<details class="row-action-menu" data-row-action-menu>
+							<summary class="row-action-menu-toggle" aria-label="<?= e__('contacts.actions.open', ['name' => (string)$contact['name']]) ?>" title="<?= e__('contacts.index.table.actions') ?>"><span aria-hidden="true">⋮</span></summary>
+							<div class="row-action-menu-panel" data-row-action-menu-panel>
+								<form method="post" action="<?= e($base_url) ?>/contacts/delete" data-confirm="<?= e__('contacts.index.flash.delete_confirm', ['name' => $contact['name']]) ?>">
+									<?= csrf_field() ?>
+									<input type="hidden" name="id" value="<?= (int)$contact['id'] ?>">
+									<button type="submit" class="row-action-menu-item row-action-menu-danger"><?= e__('contacts.index.table.buttons.delete') ?></button>
+								</form>
+							</div>
+						</details>
 					</td>
 				</tr>
 			<?php endforeach; ?>
 		</tbody>
 	</table>
+	</div>
 <?php endif; ?>
 
 <?php

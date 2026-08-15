@@ -143,11 +143,13 @@ final class RecipientController extends BaseController
 	public function Add(): void
 	{
 		$user = $this->RequireUser();
+		$monitorId = $this->_request->PostInt('monitor_id');
+		$this->RejectArchivedMonitor($monitorId, (int)$user['id'], '/monitors/edit?id=' . $monitorId . '&tab=recipients');
 
 		try
 		{
 			$monitorContactId = $this->_recipientRepository->AddForMonitor(
-				$this->_request->PostInt('monitor_id'),
+				$monitorId,
 				$this->_request->PostInt('contact_id'),
 				(int)$user['id']
 			);
@@ -175,6 +177,12 @@ final class RecipientController extends BaseController
 		{
 			$this->Flash('error', __('recipients.flash.not_found'));
 			$this->Redirect('/monitors');
+		}
+
+		if (!empty($recipient['monitor_is_archived']))
+		{
+			$this->Flash('warning', __('monitors.archived.readonly.flash'));
+			$this->Redirect('/monitors/recipients/edit?id=' . $monitorContactId . '&section=' . $returnSection);
 		}
 
 		$useOverride = $returnSection === 'notification'
@@ -304,10 +312,29 @@ final class RecipientController extends BaseController
 			$this->Redirect('/monitors');
 		}
 
+		if (!empty($recipient['monitor_is_archived']))
+		{
+			$this->Flash('warning', __('monitors.archived.readonly.flash'));
+			$this->Redirect('/monitors/recipients/edit?id=' . $monitorContactId . '&section=overview');
+		}
+
 		$this->_recipientRepository->RemoveForUser($monitorContactId, $userId);
 		$this->Flash('success', __('recipients.flash.removed', ['name' => (string)$recipient['name']]));
 		$this->Redirect('/monitors/edit?id=' . (int)$recipient['monitor_id'] . '&tab=recipients');
 	}
+
+	/** @brief Rejects configuration changes for an archived monitor. */
+	private function RejectArchivedMonitor(int $monitorId, int $userId, string $redirect): void
+	{
+		$monitor = $this->_monitorRepository->FindByIdForUser($monitorId, $userId);
+
+		if (is_array($monitor) && !empty($monitor['is_archived']))
+		{
+			$this->Flash('warning', __('monitors.archived.readonly.flash'));
+			$this->Redirect($redirect);
+		}
+	}
+
 	/** @brief Returns the active recipient sub-editor section. */
 	private function ActiveSection(): string
 	{

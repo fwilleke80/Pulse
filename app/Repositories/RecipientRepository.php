@@ -41,6 +41,7 @@ final class RecipientRepository
 				mc.contact_id,
 				mc.sort_order,
 				m.name AS monitor_name,
+				m.is_archived AS monitor_is_archived,
 				u.display_name AS owner_name,
 				mmt.subject AS default_message_subject,
 				mmt.body_text AS default_message_body,

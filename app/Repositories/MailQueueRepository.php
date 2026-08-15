@@ -235,6 +235,7 @@ final class MailQueueRepository
 				WHERE cc.id = :cycle_id
 					AND cc.status = \'awaiting\'
 					AND m.is_paused = 0
+					AND m.is_archived = 0
 			');
 			$statement->execute(['cycle_id' => (int)$job['check_cycle_id']]);
 
@@ -252,6 +253,7 @@ final class MailQueueRepository
 					AND scr.status = \'pending\'
 					AND cc.status = \'safety_pending\'
 					AND m.is_paused = 0
+					AND m.is_archived = 0
 			');
 			$statement->execute(['request_id' => (int)$job['safety_request_id']]);
 

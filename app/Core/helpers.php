@@ -243,16 +243,21 @@ function format_retry_wait(?string $value): string
  */
 function is_monitor_due(array $monitor): bool
 {
-	return in_array(monitor_status($monitor), ['awaiting', 'safety-pending', 'overdue', 'escalated'], true);
+	return in_array(monitor_status($monitor), ['awaiting', 'safety-pending', 'overdue'], true);
 }
 
 /**
  * @brief Returns the user-facing monitor state identifier.
  * @param array<string, mixed> $monitor Monitor row.
- * @return string One of checked-in, awaiting, safety-pending, overdue, escalated, or paused.
+ * @return string One of checked-in, awaiting, safety-pending, overdue, escalated, paused, or archived.
  */
 function monitor_status(array $monitor): string
 {
+	if (!empty($monitor['is_archived']))
+	{
+		return 'archived';
+	}
+
 	if (!empty($monitor['is_paused']))
 	{
 		return 'paused';

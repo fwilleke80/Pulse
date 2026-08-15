@@ -73,10 +73,7 @@ class DocumentService
 		array $recipientIds
 	): int
 	{
-		if ($this->_monitorRepository->FindByIdForUser($monitorId, $userId) === null)
-		{
-			throw new DocumentException('monitors.documents.flash.monitor_not_found');
-		}
+		$this->RequireEditableMonitor($monitorId, $userId);
 
 		$error = (int)($file['error'] ?? UPLOAD_ERR_NO_FILE);
 
@@ -178,10 +175,7 @@ class DocumentService
 		array $recipientIds
 	): int
 	{
-		if ($this->_monitorRepository->FindByIdForUser($monitorId, $userId) === null)
-		{
-			throw new DocumentException('monitors.documents.flash.monitor_not_found');
-		}
+		$this->RequireEditableMonitor($monitorId, $userId);
 
 		if ($title === '' || trim($textContent) === '')
 		{
@@ -220,6 +214,7 @@ class DocumentService
 		?array $recipientIds = null
 	): void
 	{
+		$this->RequireEditableMonitor($monitorId, $userId);
 		$document = $this->_documentRepository->FindByIdForMonitorAndUser($documentId, $monitorId, $userId);
 
 		if ($document === null || (string)$document['storage_type'] !== 'text')
@@ -266,6 +261,7 @@ class DocumentService
 		?array $recipientIds = null
 	): void
 	{
+		$this->RequireEditableMonitor($monitorId, $userId);
 		$document = $this->_documentRepository->FindByIdForMonitorAndUser($documentId, $monitorId, $userId);
 
 		if ($document === null || (string)$document['storage_type'] !== 'file')
@@ -312,6 +308,7 @@ class DocumentService
 		array $recipientIds
 	): void
 	{
+		$this->RequireEditableMonitor($monitorId, $userId);
 		if ($this->_documentRepository->FindByIdForMonitorAndUser($documentId, $monitorId, $userId) === null)
 		{
 			throw new DocumentException('monitors.documents.flash.document_not_found');
@@ -331,6 +328,7 @@ class DocumentService
 	 */
 	public function DeleteForUser(int $userId, int $monitorId, int $documentId): void
 	{
+		$this->RequireEditableMonitor($monitorId, $userId);
 		$document = $this->_documentRepository->FindByIdForMonitorAndUser($documentId, $monitorId, $userId);
 
 		if ($document === null)
@@ -480,6 +478,22 @@ class DocumentService
 		$path = $this->_storageDirectory . '/' . $storedFilename;
 
 		return is_file($path) ? $path : null;
+	}
+
+	/** @brief Ensures document configuration belongs to a non-archived monitor. */
+	private function RequireEditableMonitor(int $monitorId, int $userId): void
+	{
+		$monitor = $this->_monitorRepository->FindByIdForUser($monitorId, $userId);
+
+		if ($monitor === null)
+		{
+			throw new DocumentException('monitors.documents.flash.monitor_not_found');
+		}
+
+		if (!empty($monitor['is_archived']))
+		{
+			throw new DocumentException('monitors.archived.readonly.flash');
+		}
 	}
 
 	/** @brief Removes a stored file and logs cleanup failures without exposing its name. @param string $storedFilename Stored basename. */

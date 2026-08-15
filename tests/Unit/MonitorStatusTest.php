@@ -22,6 +22,15 @@ class MonitorStatusTest extends TestCase
 		]));
 	}
 
+	public function testArchivedTakesPrecedence(): void
+	{
+		self::assertSame('archived', monitor_status([
+			'is_archived' => 1,
+			'is_paused' => 0,
+			'latest_cycle_status' => 'escalated',
+		]));
+	}
+
 	public function testEscalatedCycleIsReported(): void
 	{
 		self::assertSame('escalated', monitor_status([
