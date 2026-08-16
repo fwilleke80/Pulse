@@ -415,9 +415,9 @@ Open **Profile → Account security** to register and remove passkeys. Passkeys 
 
 A passkey may be backed by Face ID, Touch ID, Windows Hello, a hardware security key, or another authenticator supported by the browser and operating system. Pulse stores the credential identifier and public verification material; it does not receive the authenticator's private key or biometric template.
 
-For the most reliable quick-check-in setup, make sure every device you may use to respond to a reminder has access to a registered Pulse passkey. If a passkey is not available on another device, add a separate passkey for that device and give it a recognizable name such as **iPhone**, **MacBook Touch ID**, or **YubiKey**. Test each intended device before relying on quick check-in during a real reminder.
+For the most reliable quick-check-in setup, make sure a Pulse passkey is **available** on every device you may use to respond to a reminder. Passkeys may be synchronized automatically by a password manager such as iCloud Keychain, so one registered passkey can already work on several devices. Only add a separate passkey when a device or password manager cannot access an existing one. Give independently registered credentials recognizable names such as **iCloud Keychain**, **Work password manager**, or **YubiKey**, and test each intended device before relying on quick check-in during a real reminder.
 
-The normal password remains available as recovery/fallback authentication in 1.1.3. The account-security storage separates authentication methods from monitor logic so later releases can add additional methods and second-factor policies.
+The normal password remains available as recovery/fallback authentication in 1.1.4. The account-security storage separates authentication methods from monitor logic so later releases can add additional methods and second-factor policies.
 
 ### Quick check-in from reminder mail
 
@@ -425,7 +425,7 @@ Quick check-in is the recommended low-friction way to acknowledge routine Pulse 
 
 The normal flow is simply: open the reminder on a device with a Pulse passkey, activate **Quick check-in**, approve Face ID, Touch ID, Windows Hello, or the available authenticator, and Pulse performs the same global check-in as **Check in now**, confirming all active monitors at once. If the passkey is unavailable or fails, choose the password fallback and complete the same global check-in after normal authentication.
 
-Because quick check-in is intended to remove friction, do not wait for an urgent reminder to discover that a particular device has no usable passkey. Enrol the devices you actually carry or use, then rehearse the flow.
+Because quick check-in is intended to remove friction, do not wait for an urgent reminder to discover that a particular device has no usable passkey. Verify passkey availability on the devices you actually carry or use, then rehearse the flow.
 
 ## Administration
 

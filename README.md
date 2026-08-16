@@ -1,6 +1,6 @@
 # Pulse
 
-**Current stable release: 1.1.3**
+**Current stable release: 1.1.4**
 
 Pulse is a private, self-hosted check-in and notification system for situations in which something could happen to you and the people who need to know might otherwise not be informed for some time. You might use it to make sure family, friends, or other trusted people are contacted if you die or become seriously ill, or as an additional safety measure while travelling alone, going on an expedition, or spending time somewhere where help may be difficult to reach.
 
@@ -61,11 +61,11 @@ Users with the `administrator` role have access to **Administration**, organized
 
 ## Account security and quick check-in
 
-Pulse 1.1.3 includes passkeys as a general account authentication method. Register passkeys under **Profile → Account security** and use them on the normal login page. The security-method storage is deliberately generic so later releases can add additional methods or second-factor policies without tying account authentication to passkeys alone.
+Pulse 1.1.4 includes passkeys as a general account authentication method. Register passkeys under **Profile → Account security** and use them on the normal login page. The security-method storage is deliberately generic so later releases can add additional methods or second-factor policies without tying account authentication to passkeys alone.
 
 Administrators can enable **Passkey quick check-in** under **Administration → Security**. This is the lowest-effort way to perform routine check-ins: open the link in an owner reminder, authenticate with the passkey available on that device, and Pulse immediately performs the same global action as **Check in now** for all active monitors. The email link itself is not authentication, and normal password login remains available as fallback.
 
-For quick check-in to stay genuinely convenient, make sure every phone, tablet, or computer you expect to use has access to a registered Pulse passkey. If your passkey is not available across devices, register a separate passkey for each device under **Profile → Account security** before you need it. Test quick check-in from those devices during setup.
+For quick check-in to stay genuinely convenient, make sure a Pulse passkey is **available** on every phone, tablet, or computer you expect to use. Password managers such as iCloud Keychain may synchronize the same passkey across several devices automatically, so do not create duplicates unnecessarily. If a device cannot access an existing passkey, register another one under **Profile → Account security**. Test quick check-in from the devices you intend to use during setup.
 
 Owner reminder templates normally use `{quickcheckin}`, which expands to the localized quick-check-in Markdown link when enabled and to nothing when disabled. `{quickurl}` remains available for custom link wording and falls back to the normal `{url}` login URL when quick check-in is disabled.
 

@@ -105,7 +105,10 @@ ob_start();
 			</div>
 		<?php endif; ?>
 
-		<form class="stack passkey-registration-form" data-passkey-register-form data-passkey-options-url="<?= e($base_url) ?>/security/passkeys/register/options" data-passkey-verify-url="<?= e($base_url) ?>/security/passkeys/register/verify" data-passkey-unavailable="<?= e__('security.passkeys.browser_unavailable') ?>" data-passkey-cancelled="<?= e__('security.passkeys.cancelled') ?>">
+		<?php $existingPasskeyMessage = count($passkeys) === 1
+			? __('security.passkeys.already_available_named', ['name' => (string)$passkeys[0]['label']])
+			: __('security.passkeys.already_available'); ?>
+		<form class="stack passkey-registration-form" data-passkey-register-form data-passkey-options-url="<?= e($base_url) ?>/security/passkeys/register/options" data-passkey-verify-url="<?= e($base_url) ?>/security/passkeys/register/verify" data-passkey-unavailable="<?= e__('security.passkeys.browser_unavailable') ?>" data-passkey-cancelled="<?= e__('security.passkeys.cancelled') ?>" data-passkey-already-available="<?= e($existingPasskeyMessage) ?>">
 			<?= csrf_field() ?>
 			<div class="field-grid field-grid-two">
 				<label><?= e__('security.passkeys.name') ?><input type="text" name="label" maxlength="255" placeholder="<?= e__('security.passkeys.name_placeholder') ?>" required></label>

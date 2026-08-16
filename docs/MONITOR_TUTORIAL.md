@@ -217,7 +217,7 @@ If a contact says **Cannot confirm**, the existing escalation timetable remains 
 
 If **Administration → Security → Enable passkey quick check-in** is enabled, the quickest normal workflow is to use the quick-check-in link in the owner reminder mail. It still requires authentication, but on a prepared phone or computer that usually means opening the link and approving the available passkey. The successful action checks in all active monitors at once.
 
-Before relying on that workflow, register a Pulse passkey on every device you expect to use for reminders, or verify that the passkey is actually available there. Keep password login available as the fallback and test the complete path from the reminder mail on each important device.
+Before relying on that workflow, verify that a Pulse passkey is available on every device you expect to use for reminders. A synchronized passkey may already work across several devices, so create another credential only when needed. Keep password login available as the fallback and test the complete path from the reminder mail on each important device.
 
 ## Rehearse before relying on it
 

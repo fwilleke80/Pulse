@@ -132,7 +132,7 @@ final class PasskeyQuickCheckInSourceTest extends TestCase
 		self::assertStringContainsString('window.location.reload()', $script);
 	}
 
-	/** @brief Ensures quick-check-in documentation recommends preparing all intended devices. */
+	/** @brief Ensures quick-check-in documentation explains passkey availability and synchronization. */
 	public function testQuickCheckInDocumentationCoversDevicePreparation(): void
 	{
 		$root = dirname(__DIR__, 2);
@@ -141,8 +141,20 @@ final class PasskeyQuickCheckInSourceTest extends TestCase
 		$profile = (string)file_get_contents($root . '/app/Views/profile/index.php');
 
 		self::assertStringContainsString('lowest-effort way to perform routine check-ins', $readme);
-		self::assertStringContainsString('every device you may use to respond to a reminder', $userGuide);
+		self::assertStringContainsString('may be synchronized automatically', $userGuide);
 		self::assertStringContainsString("security.passkeys.device_hint", $profile);
+	}
+
+	/** @brief Ensures duplicate passkey registration gets a friendly InvalidStateError message. */
+	public function testDuplicatePasskeyRegistrationUsesFriendlyMessage(): void
+	{
+		$root = dirname(__DIR__, 2);
+		$profile = (string)file_get_contents($root . '/app/Views/profile/index.php');
+		$script = (string)file_get_contents($root . '/public/assets/app.js');
+
+		self::assertStringContainsString('data-passkey-already-available', $profile);
+		self::assertStringContainsString("error.name === 'InvalidStateError'", $script);
+		self::assertStringContainsString('form.dataset.passkeyAlreadyAvailable', $script);
 	}
 
 }

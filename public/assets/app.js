@@ -973,7 +973,16 @@ document.addEventListener('DOMContentLoaded', function ()
 			catch (error)
 			{
 				const cancelled = error instanceof DOMException && ['NotAllowedError', 'AbortError'].includes(error.name);
-				setStatus(form, cancelled ? (form.dataset.passkeyCancelled || error.message) : error.message, true);
+				const alreadyAvailable = error instanceof DOMException && error.name === 'InvalidStateError';
+
+				if (alreadyAvailable)
+				{
+					setStatus(form, form.dataset.passkeyAlreadyAvailable || 'A Pulse passkey is already available on this device.', true);
+				}
+				else
+				{
+					setStatus(form, cancelled ? (form.dataset.passkeyCancelled || error.message) : error.message, true);
+				}
 			}
 			finally
 			{

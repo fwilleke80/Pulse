@@ -1,3 +1,10 @@
+## 1.1.4 - 2026-08-16
+
+### Passkey registration UX
+- Replaced the browser's raw WebAuthn `InvalidStateError` during passkey registration with a friendly explanation that an existing Pulse passkey is already available on the device.
+- When the account has exactly one registered passkey, the message identifies it by its Pulse label; with multiple registered passkeys the message remains generic because WebAuthn does not reveal which excluded credential matched.
+- Updated passkey guidance to explain that password managers such as iCloud Keychain may synchronize one passkey across multiple devices, so users should verify availability rather than create a duplicate credential on every device.
+
 ## 1.1.3 - 2026-08-16
 
 ### Authentication UI

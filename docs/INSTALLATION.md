@@ -39,7 +39,7 @@ python3 tools/write_version.py
 To set a release explicitly:
 
 ```bash
-PULSE_VERSION=1.1.3 python3 tools/write_version.py
+PULSE_VERSION=1.1.4 python3 tools/write_version.py
 ```
 
 Pulse still starts if the generated version file is missing, but displays **version unavailable**.
@@ -152,7 +152,7 @@ Pulse generates the remaining safe defaults automatically, including trusted-hos
 
 An HTTPS public URL configures Pulse for production defaults. An HTTP URL configures a development installation.
 
-Passkeys and passkey quick check-in depend on the production hostname and HTTPS. After installation, register passkeys under **Profile → Account security** on every device you intend to use for routine quick check-ins, or otherwise verify that the registered passkey is available there. Rehearse quick check-in from those devices before relying on the feature.
+Passkeys and passkey quick check-in depend on the production hostname and HTTPS. After installation, register a passkey under **Profile → Account security**, then verify that a Pulse passkey is available on every device you intend to use for routine quick check-ins. Password managers such as iCloud Keychain may synchronize the same passkey automatically; create additional credentials only where necessary. Rehearse quick check-in from those devices before relying on the feature.
 
 The installer then applies the current Pulse database schema.
 

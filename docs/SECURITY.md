@@ -200,13 +200,13 @@ Configure SPF, DKIM, and DMARC where applicable. Add the Pulse sender address/do
 
 ## Passkeys and the extensible account-security layer
 
-Pulse 1.1.3 stores additional account authentication methods separately from monitor configuration. Passkeys are the first implemented method; the storage model deliberately leaves room for later second-factor methods and recovery mechanisms.
+Pulse 1.1.4 stores additional account authentication methods separately from monitor configuration. Passkeys are the first implemented method; the storage model deliberately leaves room for later second-factor methods and recovery mechanisms.
 
 Passkey registration requires the current Pulse password and WebAuthn user verification. Pulse stores a stable opaque user handle, the credential ID, public verification key, algorithm, transports, and signature-counter metadata. The credential private key and any biometric data stay with the authenticator/platform and are never stored by Pulse.
 
 Each WebAuthn ceremony uses a fresh, short-lived, single-use challenge. Pulse verifies the ceremony type, challenge, configured origin, RP ID hash, user-presence/user-verification flags, credential/account binding, and assertion signature. Passkeys are therefore tied to the configured Pulse hostname; changing the production hostname can make existing credentials unusable. Production passkey use requires HTTPS.
 
-Normal password authentication remains available as recovery/fallback in 1.1.3. For operational reliability, register or otherwise verify an available Pulse passkey on every device you expect to use for quick check-in. A strong cryptographic design does not help if the only enrolled authenticator is on a device you do not have with you when a reminder arrives.
+Normal password authentication remains available as recovery/fallback. For operational reliability, verify that a Pulse passkey is available on every device you expect to use for quick check-in. Synced passkeys may cover several devices automatically; independently register another credential only where necessary. A strong cryptographic design does not help if no usable authenticator is available when a reminder arrives.
 
 ## Quick check-in threat model
 
