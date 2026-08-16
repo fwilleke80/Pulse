@@ -83,7 +83,7 @@ A contact can contain:
 - an optional cell-phone number
 - optional notes
 
-The cell-phone field is currently reference information only; Pulse 1.1 sends notifications by email.
+The cell-phone field is currently reference information only; Pulse 1.2 sends notifications by email.
 
 ### Checking an email address
 
@@ -443,7 +443,7 @@ A passkey may be backed by Face ID, Touch ID, Windows Hello, a hardware security
 
 For the most reliable quick-check-in setup, make sure a Pulse passkey is **available** on every device you may use to respond to a reminder. Passkeys may be synchronized automatically by a password manager such as iCloud Keychain, so one registered passkey can already work on several devices. Only add a separate passkey when a device or password manager cannot access an existing one. Give independently registered credentials recognizable names such as **iCloud Keychain**, **Work password manager**, or **YubiKey**, and test each intended device before relying on quick check-in during a real reminder.
 
-The normal password remains available as recovery/fallback authentication in Pulse 1.1. The account-security storage separates authentication methods from monitor logic so later releases can add additional methods and second-factor policies.
+The normal password remains available as recovery/fallback authentication in Pulse 1.2. The account-security storage separates authentication methods from monitor logic so later releases can add additional methods and second-factor policies.
 
 ### Quick check-in from reminder mail
 
@@ -521,6 +521,6 @@ See [Choosing a monitor setup](MONITOR_TUTORIAL.md#rehearse-before-relying-on-it
 
 ## Current limitation: no encryption at rest
 
-Pulse 1.1 does not encrypt stored messages or documents at the application level. A compromise of the hosting account, database, filesystem, or an unencrypted backup can therefore expose those contents.
+Pulse 1.2 does not encrypt stored messages or documents at the application level. A compromise of the hosting account, database, filesystem, or an unencrypted backup can therefore expose those contents.
 
 Do not use the current release as the only storage location for passwords, cryptographic recovery keys, or similarly high-value secrets. See the [Security model](SECURITY.md) for details.

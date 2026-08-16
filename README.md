@@ -1,6 +1,6 @@
 # Pulse
 
-**Current stable release: 1.1.10**
+**Current stable release: 1.2.0**
 
 Pulse is a private, self-hosted check-in and notification system for situations in which something could happen to you and the people who need to know might otherwise not be informed for some time. You might use it to make sure family, friends, or other trusted people are contacted if you die or become seriously ill, or as an additional safety measure while travelling alone, going on an expedition, or spending time somewhere where help may be difficult to reach.
 
@@ -17,7 +17,7 @@ Pulse is not an emergency-response service. Its timing depends on your cron sche
 - the ability to run a scheduled job by URL or command line
 - HTTPS for production use
 
-The web server must expose only `public/`. For the built-in routing used by Pulse 1.1, deploy it at the root of its host or virtual host, for example `https://pulse.example.com/`, rather than below a URL prefix such as `/pulse/`.
+The web server must expose only `public/`. For the built-in routing used by Pulse 1.2, deploy it at the root of its host or virtual host, for example `https://pulse.example.com/`, rather than below a URL prefix such as `/pulse/`.
 
 ## Quick installation
 
@@ -61,7 +61,7 @@ Users with the `administrator` role have access to **Administration**, organized
 
 ## Account security and quick check-in
 
-Pulse 1.1 includes passkeys as a general account authentication method. Register passkeys under **Profile → Account security** and use them on the normal login page. The security-method storage is deliberately generic so later releases can add additional methods or second-factor policies without tying account authentication to passkeys alone.
+Pulse 1.2 includes passkeys as a general account authentication method. Register passkeys under **Profile → Account security** and use them on the normal login page. The security-method storage is deliberately generic so later releases can add additional methods or second-factor policies without tying account authentication to passkeys alone.
 
 Administrators can enable **Passkey quick check-in** under **Administration → Security**. This is the lowest-effort way to perform routine check-ins: open the link in an owner reminder, authenticate with the passkey available on that device, and Pulse immediately performs the same global action as **Check in now** for all active monitors. The email link itself is not authentication, and normal password login remains available as fallback.
 

@@ -37,7 +37,7 @@ Only `public/` is intended to be web-accessible.
 
 Location-aware check-ins use `check_in_locations` as a one-to-one extension of the corresponding `monitor.checked_in` audit event and closed check cycle. Recording remains a per-monitor opt-in. When portal sharing is also enabled, escalation copies the configured bounded history into `recipient_release_locations`; authenticated deliveries read that release-level snapshot rather than live check-in data. Browser code performs one-shot geolocation and optional reverse geocoding. Recipient portals render the map shell inside the authenticated page but create no tile images until **Show locations on map** is selected. The browser then fetches only visible OpenStreetMap tiles and renders Pulse points, accuracy areas, and the chronological overlay locally without a third-party JavaScript dependency.
 
-With Apache, `public/.htaccess` rewrites application URLs to `public/index.php` while leaving actual public files alone. Pulse 1.1's built-in exact-path router expects this public directory at the root of its host/virtual host rather than below a URL prefix.
+With Apache, `public/.htaccess` rewrites application URLs to `public/index.php` while leaving actual public files alone. Pulse 1.2's built-in exact-path router expects this public directory at the root of its host/virtual host rather than below a URL prefix.
 
 Pulse retains a small PSR-4 fallback autoloader so the deployed application does not require a Composer `vendor/` directory.
 
@@ -290,7 +290,7 @@ Existing SMTP passwords and web-cron tokens are not rendered back into HTML.
 
 The public base URL and database connection settings are installation-level values created by `public/install.php` and kept read-only in normal Administration.
 
-Pulse 1.1 expects the configured base URL to be a site origin without a URL path, matching the site-root routing model.
+Pulse 1.2 expects the configured base URL to be a site origin without a URL path, matching the site-root routing model.
 
 ## Database migrations
 

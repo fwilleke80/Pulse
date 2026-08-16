@@ -106,6 +106,15 @@ Check warning indicators and responsive behavior.
 
 Create an archived monitor and verify its configuration is read-only with no Save bar. **Reset and reactivate** must restore editability.
 
+Open a recipient editor and verify the owner-only portal preview:
+
+- **Preview recipient portal** opens the saved portal presentation in a new browser tab;
+- **Close preview** closes that tab rather than opening another recipient-editor tab;
+- a signed-out browser and a different Pulse account cannot use the preview URL;
+- the preview does not create a release, portal token, access code, recipient session, email, or audit event;
+- document View/Download and permanent portal closure remain disabled;
+- the preview uses the saved recipient language, portal text, document assignments, and location-sharing settings.
+
 ## 8. Check-in and owner-notice lifecycle
 
 Create an active test monitor.
@@ -210,6 +219,22 @@ Verify:
 - View works for supported passive formats;
 - individual Download works;
 - Download all works and produces the expected ZIP contents.
+
+For a release containing shared check-in locations, also verify:
+
+- **Last known check-in locations** appears after the documents as a compact Location/Accuracy/Timestamp table;
+- loading the authenticated portal and reading the table produces no OpenStreetMap tile request in the browser network inspector;
+- **Show locations on map** expands the map below the table without opening another browser tab;
+- the first tile requests occur only after that deliberate click and include no token-bearing portal path in the referrer;
+- visible OpenStreetMap attribution remains present;
+- numbered points are chronological, the latest point is distinguished, and selecting a point shows its label, time, and reported accuracy;
+- mouse, touch, wheel, button, keyboard, and **Fit** navigation work;
+- the accuracy areas and straight connecting line remain aligned while panning and zooming;
+- **Hide map** collapses it, and revealing it again restores a usable map;
+- the inline map remains usable on a narrow mobile viewport;
+- the owner-only preview provides the same table and inline-map behavior without creating a separate map tab.
+
+Confirm that the interface explains that the connecting line is not continuous tracking or proof of the route travelled.
 
 ## 17. Owner revocation while recipient is authenticated
 
@@ -411,6 +436,7 @@ Before shipping:
 - [ ] Access-code security passes
 - [ ] Session isolation passes
 - [ ] View/Download/Download all pass
+- [ ] Owner-only portal preview and inline location map pass
 - [ ] Owner revocation passes
 - [ ] Recipient permanent closure passes
 - [ ] Delivery snapshot integrity passes

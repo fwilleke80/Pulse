@@ -18,7 +18,7 @@ Composer is not required to install or run Pulse.
 
 ### URL layout
 
-Pulse 1.1 expects to run at the root of its host or virtual host, for example:
+Pulse 1.2 expects to run at the root of its host or virtual host, for example:
 
 ```text
 https://pulse.example.com/
@@ -39,7 +39,7 @@ python3 tools/write_version.py
 To set a release explicitly:
 
 ```bash
-PULSE_VERSION=1.1.10 python3 tools/write_version.py
+PULSE_VERSION=1.2.0 python3 tools/write_version.py
 ```
 
 Pulse still starts if the generated version file is missing, but displays **version unavailable**.

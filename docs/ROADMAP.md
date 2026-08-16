@@ -1,21 +1,25 @@
-# Pulse roadmap after 1.1.5
+# Pulse roadmap after 1.2.0
 
-This roadmap breaks the agreed security and check-in work into independently releasable steps. It is directional rather than a promise of dates; privacy, migration safety, recovery behavior, and test coverage remain release gates.
+This roadmap starts from the stable Pulse 1.2.0 baseline. It is directional rather than a promise of dates; privacy, migration safety, recovery behavior, and test coverage remain release gates.
 
-## Step 1 — Pulse 1.1.6: location-aware check-ins and Profile tabs
+## Current baseline — Pulse 1.2.0
 
-Status: implemented in 1.1.6.
+Pulse 1.2.0 completes the location-aware check-in and portal-preview roadmap:
 
-- Optional per-monitor one-shot geolocation during manual, password quick, and passkey quick check-ins.
-- Permission requested when location recording is enabled, with a safe retry during the next check-in when the browser requires it.
-- Approximate address and OpenStreetMap link in owner history.
-- Separately enabled immutable recipient-portal snapshot of the last 1–20 recorded points.
-- Recipient location history refined in 1.1.8 to a compact post-documents table, in 1.1.9 with an authenticated interactive map, and in 1.1.10 with that map expanding on demand directly below the table.
-- Profile organized into Profile data, Account security, and Change password tabs.
+- optional per-monitor one-shot geolocation during normal and quick check-ins;
+- browser permission requested when location recording is enabled, with safe retries during later check-ins;
+- approximate address and OpenStreetMap link in owner activity history;
+- separately enabled immutable recipient snapshots of the most recent 1–20 recorded points;
+- a compact post-documents location table and deliberately revealed inline map with numbered points, reported accuracy areas, and a chronological connecting line;
+- an owner-only authenticated preview of the future recipient portal;
+- Profile organized into **Profile data**, **Account security**, and **Change password** tabs;
+- passkey registration, login, and quick-check-in reliability improvements.
 
-## Step 2 — Optional TOTP two-factor authentication
+Location recording and recipient sharing remain independent opt-ins. The map is neither live tracking nor proof of the route travelled.
 
-Planned.
+## Next candidate — Optional TOTP two-factor authentication
+
+This is the next substantial security feature under consideration, not a missing part of Pulse 1.2.
 
 - Enrol authenticator apps using a standard TOTP secret, QR code, and manual setup key.
 - Require a successful six-digit-code verification before enabling the method.
@@ -25,9 +29,9 @@ Planned.
 - Keep passkey login as a phishing-resistant complete authentication by default. Requiring TOTP after a passkey would be a separate explicit strict-policy option, not an automatic consequence of enabling TOTP.
 - Add rate limiting, replay resistance for the current time step, clock-skew bounds, audit events, localized UI, and recovery tests.
 
-## Step 3 — Security-policy and recovery hardening
+## Later security-policy and recovery hardening
 
-Planned after TOTP has been exercised in real deployments.
+These changes should follow only after optional TOTP has been exercised in real deployments.
 
 - Optional administrator policy for required second-factor enrolment.
 - Clear account recovery and credential-loss workflows that do not weaken the normal authentication boundary.
@@ -36,8 +40,12 @@ Planned after TOTP has been exercised in real deployments.
 
 ## Later location refinements
 
-Candidates, not yet scheduled.
+Candidates, not yet scheduled:
 
-- Configurable retention and deletion controls for owner check-in locations.
-- Optional self-hosted or administrator-selected reverse-geocoding/tile endpoints.
-- Additional export or incident-sharing tools only with explicit owner authorization and a narrowly defined privacy model.
+- configurable retention and deletion controls for owner check-in locations;
+- optional self-hosted or administrator-selected reverse-geocoding and tile endpoints;
+- additional export or incident-sharing tools only with explicit owner authorization and a narrowly defined privacy model.
+
+## Much later
+
+Alternative delivery channels such as SMS may be reconsidered when their operating costs, provider dependencies, privacy implications, and failure modes can be justified. Email remains the primary notification mechanism for the foreseeable future.

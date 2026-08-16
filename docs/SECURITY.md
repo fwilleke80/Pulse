@@ -1,6 +1,6 @@
 # Pulse security model
 
-Pulse is designed to keep private application data outside the public web directory, require deliberate state changes, and preserve auditable notification history. This document describes the main protections and the important limitations of Pulse 1.1.
+Pulse is designed to keep private application data outside the public web directory, require deliberate state changes, and preserve auditable notification history. This document describes the main protections and the important limitations of Pulse 1.2.
 
 Pulse is not an emergency-response service. Security controls do not remove the operational dependencies on the server, cron, SMTP provider, recipient mail systems, and the people involved in the monitor.
 
@@ -19,7 +19,7 @@ The following must remain private:
 
 The web server's document root must point to `Pulse/public/`, not to the Pulse project root.
 
-Pulse 1.1 expects `public/` to be mounted at the root of the chosen host or virtual host. The built-in router does not support a URL-prefix deployment such as `https://example.com/pulse/`.
+Pulse 1.2 expects `public/` to be mounted at the root of the chosen host or virtual host. The built-in router does not support a URL-prefix deployment such as `https://example.com/pulse/`.
 
 Uploaded documents are stored outside the public web directory. Owner downloads require authentication and monitor ownership. Recipient views/downloads require a valid released delivery and a matching authenticated recipient session.
 
@@ -200,7 +200,7 @@ Configure SPF, DKIM, and DMARC where applicable. Add the Pulse sender address/do
 
 ## Passkeys and the extensible account-security layer
 
-Pulse 1.1 stores additional account authentication methods separately from monitor configuration. Passkeys are the first implemented method; the storage model deliberately leaves room for later second-factor methods and recovery mechanisms.
+Pulse 1.2 stores additional account authentication methods separately from monitor configuration. Passkeys are the first implemented method; the storage model deliberately leaves room for later second-factor methods and recovery mechanisms.
 
 Passkey registration requires the current Pulse password and WebAuthn user verification. Pulse stores a stable opaque user handle, the credential ID, public verification key, algorithm, transports, and signature-counter metadata. The credential private key and any biometric data stay with the authenticator/platform and are never stored by Pulse.
 
@@ -230,7 +230,7 @@ The chronological points and locally drawn straight line are not proof of the ro
 
 ## Current limitation: no application-level encryption at rest
 
-Pulse 1.1 does **not** encrypt stored messages or documents at the application level.
+Pulse 1.2 does **not** encrypt stored messages or documents at the application level.
 
 A compromise of the hosting account, database, filesystem, or an unencrypted backup can therefore expose:
 
@@ -241,7 +241,7 @@ A compromise of the hosting account, database, filesystem, or an unencrypted bac
 
 Application-level encryption can reduce risk from database dumps, filesystem copies, and backups, but it cannot completely protect against an attacker who controls the running PHP account and can read both application memory and encryption keys. Server/hosting security remains part of the threat model.
 
-Do not use Pulse 1.1 as the only storage location for passwords, recovery keys, or similarly high-value secrets.
+Do not use Pulse 1.2 as the only storage location for passwords, recovery keys, or similarly high-value secrets.
 
 ## Production checklist
 

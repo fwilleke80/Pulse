@@ -101,7 +101,7 @@ Possible material includes:
 - an explanation of where original legal documents are kept;
 - selected photographs or other personal files.
 
-Pulse should not be the only home of important material. Keep authoritative legal documents in the legally appropriate form and location. Avoid storing account passwords, recovery keys, or unprotected copies of extremely sensitive identity documents unless you have deliberately accepted the risk: Pulse 1.1 does not encrypt stored application data at rest.
+Pulse should not be the only home of important material. Keep authoritative legal documents in the legally appropriate form and location. Avoid storing account passwords, recovery keys, or unprotected copies of extremely sensitive identity documents unless you have deliberately accepted the risk: Pulse 1.2 does not encrypt stored application data at rest.
 
 ### Write the recipient message
 

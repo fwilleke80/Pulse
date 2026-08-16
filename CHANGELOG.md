@@ -1,3 +1,15 @@
+## 1.2.0 - 2026-08-16
+
+### Official Pulse 1.2 release
+- Promoted the stabilized 1.1.6–1.1.10 work into the official 1.2 line: optional location-aware check-ins, immutable recipient location snapshots, the compact location table and on-demand inline map, tabbed Profile navigation, passkey reliability improvements, and the owner-only recipient portal preview.
+- Kept location recording and recipient sharing as separate per-monitor opt-ins. Portal maps still make no OpenStreetMap tile request until deliberately revealed, while exact Pulse points and overlays remain browser-local.
+- Retained the complete upload-overwrite update workflow and existing ordered migrations; no additional database migration is required for 1.2.0.
+
+### Release documentation and audit
+- Normalized current-release documentation from Pulse 1.1 to Pulse 1.2 while preserving historical changelog and migration references.
+- Reframed the roadmap from the completed 1.2.0 baseline, leaving optional TOTP and recovery-policy work as later milestones rather than hidden release requirements.
+- Expanded the release audit guide with owner-only portal-preview checks and explicit network, interaction, privacy, and responsive-layout checks for the inline location map.
+
 ## 1.1.10 - 2026-08-16
 
 ### Inline on-demand location map
