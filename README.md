@@ -1,6 +1,6 @@
 # Pulse
 
-**Current stable release: 1.2.5**
+**Current stable release: 1.2.6**
 
 Pulse is a private, self-hosted check-in and notification system for situations in which something could happen to you and the people who need to know might otherwise not be informed for some time. You might use it to make sure family, friends, or other trusted people are contacted if you die or become seriously ill, or as an additional safety measure while travelling alone, going on an expedition, or spending time somewhere where help may be difficult to reach.
 
@@ -78,6 +78,12 @@ Passkeys require HTTPS and a stable Pulse hostname in normal deployment.
 Each monitor can independently request a one-time browser location during check-in. Enabling the setting asks the current device for permission; the browser decides whether that grant is retained. Pulse never tracks continuously, and check-in always continues if location is denied or unavailable.
 
 Recorded owner-history locations link to OpenStreetMap. A second, separate monitor option can publish a bounded last-known history of 1–20 points in the authenticated recipient portal after escalation. That history is frozen with the release and cannot gain later check-ins. The portal presents a compact chronological table after the documents and makes no map request until the recipient deliberately selects **Show locations on map**. The map then expands below the table with numbered points, accuracy areas, and a straight chronological path plus pan, zoom, and point details. Positions are approximate and do not replace rescue or emergency services.
+
+## Inline recipient documents and media
+
+The authenticated recipient portal presents documents inline whenever the format has a safe browser or Pulse-rendered view. Recipients can read PDF, Markdown, plain text, CSV, and JSON; view common raster images; and play supported audio or video with the browser's standard controls. Larger framed readers open on demand, private media supports seeking through authenticated byte-range requests, and every available document retains an explicit **Download** action.
+
+Pulse does not send private files to Google, Microsoft, or another external preview service. Word, OpenDocument, RTF, HTML, SVG, unknown, and potentially active formats remain download-only. Actual audio/video playback depends on the codecs supported by the recipient's browser; MP3 and H.264/AAC in MP4 are the recommended compatibility choices.
 
 ## Documentation
 

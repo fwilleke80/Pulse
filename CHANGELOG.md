@@ -1,3 +1,18 @@
+## 1.2.6 - 2026-08-16
+
+### Inline-first recipient documents and media
+- Redesigned authenticated recipient document cards so safely previewable material can be read, viewed, played, or expanded directly inside Pulse while every available file retains an explicit **Download** action.
+- Added on-demand same-origin readers for PDF, Markdown, plain text, formatted CSV, and formatted JSON; native previews for GIF, JPEG, PNG, WebP, and AVIF; and standard browser controls for supported audio and video without autoplay or an external player/preview service.
+- Added authenticated, no-store, chunked private-file streaming with validated single HTTP byte ranges so media and PDF readers can seek without exposing storage paths. MP3 and H.264/AAC in MP4 are the recommended browser-compatibility targets.
+- Applied the same inline presentation to the owner-only recipient portal preview while keeping its downloads and destructive portal actions disabled.
+
+### Upload policy and monitor-editor clarity
+- Expanded the stock upload MIME policy with common browser-compatible image, audio, video, Markdown, CSV, and JSON formats. Upgrades expand only the exact legacy stock allowlist; deliberately customized administrator policies remain unchanged.
+- Added a visible maximum-size and preview-capability hint beside the monitor upload field. Word, OpenDocument, RTF, HTML, SVG, unknown, and potentially active formats remain download-only.
+- Mark document cards with a textual **Unsaved changes** badge, warning border, emphasized per-document save button, and persistent **Documents** tab warning as soon as their title, description, or text changes. Reverting all fields clears the warning.
+- Returned the monitor-wide **Save changes** bar to normal page flow at the bottom of the editor instead of keeping it sticky while scrolling.
+- Updated localized interface text, documentation, CSP directives, source/unit regression coverage, and release metadata. No database migration is required.
+
 ## 1.2.5 - 2026-08-16
 
 ### TOTP authentication database hotfix

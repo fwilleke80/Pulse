@@ -59,6 +59,8 @@ $documentRepository = $container['documentRepository'];
 $messageRepository = $container['messageRepository'];
 $monitorExecutionService = $container['monitorExecutionService'];
 $documentService = $container['documentService'];
+$documentPreviewService = $container['documentPreviewService'];
+$privateFileStreamer = $container['privateFileStreamer'];
 $userRepository = $container['userRepository'];
 $loginThrottle = $container['loginThrottle'];
 $mailQueueRepository = $container['mailQueueRepository'];
@@ -216,6 +218,8 @@ $recipientController = new RecipientController(
 	$monitorRepository,
 	$documentRepository,
 	$documentService,
+	$documentPreviewService,
+	$privateFileStreamer,
 	$notificationComposer,
 	$recipientPortalService,
 	$notificationLanguage,
@@ -241,6 +245,8 @@ $recipientPortalController = new RecipientPortalController(
 	$mailQueueWorker,
 	$notificationLanguage,
 	$documentService,
+	$documentPreviewService,
+	$privateFileStreamer,
 	$recipientPortalArchiveBuilder,
 	dirname(__DIR__) . '/app/Lang'
 );

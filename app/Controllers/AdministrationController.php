@@ -17,6 +17,7 @@ use Pulse\Core\EnvironmentFile;
 use Pulse\Core\Logger;
 use Pulse\Core\Request;
 use Pulse\Core\Session;
+use Pulse\Core\UploadMimeTypePolicy;
 use Pulse\Core\View;
 use Pulse\Repositories\MailQueueRepository;
 use Pulse\Repositories\SystemStatusRepository;
@@ -300,7 +301,9 @@ final class AdministrationController extends BaseController
 			'PULSE_PASSWORD_MINIMUM_LENGTH' => Environment::Get('PULSE_PASSWORD_MINIMUM_LENGTH', '12'),
 			'PULSE_PASSKEY_QUICK_CHECKIN_ENABLED' => Environment::GetBool('PULSE_PASSKEY_QUICK_CHECKIN_ENABLED', false) ? 'true' : 'false',
 			'PULSE_UPLOAD_MAXIMUM_BYTES' => Environment::Get('PULSE_UPLOAD_MAXIMUM_BYTES', '26214400'),
-			'PULSE_UPLOAD_ALLOWED_MIME_TYPES' => Environment::Get('PULSE_UPLOAD_ALLOWED_MIME_TYPES', 'application/pdf,application/rtf,application/vnd.oasis.opendocument.text,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png,text/plain'),
+			'PULSE_UPLOAD_ALLOWED_MIME_TYPES' => implode(',', UploadMimeTypePolicy::Resolve(
+				Environment::GetList('PULSE_UPLOAD_ALLOWED_MIME_TYPES', UploadMimeTypePolicy::Defaults())
+			)),
 			'PULSE_MAIL_ENABLED' => Environment::GetBool('PULSE_MAIL_ENABLED', false) ? 'true' : 'false',
 			'PULSE_SMTP_HOST' => Environment::Get('PULSE_SMTP_HOST'),
 			'PULSE_SMTP_PORT' => Environment::Get('PULSE_SMTP_PORT', '587'),

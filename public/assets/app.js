@@ -636,6 +636,70 @@ document.addEventListener('DOMContentLoaded', function ()
 		textarea.addEventListener('invalid', showEdit);
 	}
 
+	const documentTabUnsaved = document.querySelector('[data-document-tab-unsaved]');
+
+	/** @brief Keeps the Documents tab warning visible when a changed card is in a hidden panel. */
+	const updateDocumentTabDirtyState = function ()
+	{
+		if (documentTabUnsaved)
+		{
+			documentTabUnsaved.hidden = document.querySelector('[data-document-editor].is-dirty') === null;
+		}
+	};
+
+	/** @brief Marks edited monitor documents until their individual form is saved. */
+	for (const card of document.querySelectorAll('[data-document-editor]'))
+	{
+		const form = card.querySelector('[data-document-edit-form]');
+		const indicator = card.querySelector('[data-document-unsaved-indicator]');
+		const saveButton = card.querySelector('[data-document-save-button]');
+
+		if (!form || !indicator || !saveButton)
+		{
+			continue;
+		}
+
+		/** @brief Captures editable values so reverting an edit also clears the warning. */
+		const formSignature = function ()
+		{
+			return JSON.stringify(Array.from(form.elements)
+				.filter(function (control)
+				{
+					return control instanceof HTMLInputElement
+						|| control instanceof HTMLTextAreaElement
+						|| control instanceof HTMLSelectElement;
+				})
+				.filter(function (control)
+				{
+					return control.name !== '' && !(control instanceof HTMLInputElement && control.type === 'hidden');
+				})
+				.map(function (control)
+				{
+					const checked = control instanceof HTMLInputElement
+						&& (control.type === 'checkbox' || control.type === 'radio')
+						? control.checked
+						: null;
+
+					return [control.name, control.value, checked];
+				}));
+		};
+
+		const initialSignature = formSignature();
+
+		/** @brief Synchronizes the card, badge, and save-button dirty state. */
+		const updateDirtyState = function ()
+		{
+			const isDirty = formSignature() !== initialSignature;
+			card.classList.toggle('is-dirty', isDirty);
+			saveButton.classList.toggle('is-pending-save', isDirty);
+			indicator.hidden = !isDirty;
+			updateDocumentTabDirtyState();
+		};
+
+		form.addEventListener('input', updateDirtyState);
+		form.addEventListener('change', updateDirtyState);
+	}
+
 
 	const monitorSettingsForm = document.querySelector('[data-monitor-settings-form]');
 	const monitorMessagesForm = document.querySelector('[data-monitor-messages-form]');
@@ -1076,6 +1140,61 @@ document.addEventListener('DOMContentLoaded', function ()
 	{
 		window.close();
 	});
+});
+
+/** @brief Expands private document previews in place and loads framed content only on demand. */
+document.addEventListener('DOMContentLoaded', function ()
+{
+	for (const toggle of document.querySelectorAll('[data-document-preview-toggle]'))
+	{
+		const card = toggle.closest('[data-document-card]');
+		const mode = toggle.dataset.previewMode || 'visual';
+		const panel = card ? card.querySelector('[data-document-preview-panel]') : null;
+		const frame = panel ? panel.querySelector('[data-document-preview-frame]') : null;
+		const loading = panel ? panel.querySelector('[data-document-preview-loading]') : null;
+		let expanded = false;
+
+		if (!card || (mode === 'frame' && (!panel || !frame)))
+		{
+			continue;
+		}
+
+		if (frame)
+		{
+			frame.addEventListener('load', function ()
+			{
+				panel.classList.add('is-loaded');
+
+				if (loading)
+				{
+					loading.hidden = true;
+				}
+			});
+		}
+
+		toggle.addEventListener('click', function ()
+		{
+			expanded = !expanded;
+			card.classList.toggle('is-expanded', expanded);
+			toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+			toggle.textContent = expanded
+				? (toggle.dataset.hideLabel || 'Hide preview')
+				: (toggle.dataset.showLabel || 'Show preview');
+
+			if (mode !== 'frame' || !panel || !frame)
+			{
+				return;
+			}
+
+			panel.hidden = !expanded;
+
+			if (expanded && frame.dataset.loaded !== 'true')
+			{
+				frame.dataset.loaded = 'true';
+				frame.src = frame.dataset.previewSrc || '';
+			}
+		});
+	}
 });
 
 /** @brief Reveals and renders an on-demand OpenStreetMap tile view with local Pulse overlays. */

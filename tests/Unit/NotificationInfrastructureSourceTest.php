@@ -212,9 +212,15 @@ class NotificationInfrastructureSourceTest extends TestCase
 		$controller = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Controllers/RecipientPortalController.php');
 		$view = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Views/portal/access.php');
 		$archive = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Services/RecipientPortalArchiveBuilder.php');
+		$previewService = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Services/DocumentPreviewService.php');
+		$streamer = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Core/PrivateFileStreamer.php');
 
 		self::assertStringContainsString("Get('/portal/document/view'", $routes);
-		self::assertStringContainsString('InlineContentType', $controller);
+		self::assertStringContainsString('DocumentPreviewService', $controller);
+		self::assertStringContainsString('PrivateFileStreamer', $controller);
+		self::assertStringContainsString('KIND_AUDIO', $previewService);
+		self::assertStringContainsString('KIND_VIDEO', $previewService);
+		self::assertStringContainsString('Content-Range: bytes ', $streamer);
 		self::assertStringNotContainsString("'image/svg+xml'", $controller);
 		self::assertStringContainsString('portal-document-grid', $view);
 		self::assertStringContainsString('portal-document-preview-image', $view);

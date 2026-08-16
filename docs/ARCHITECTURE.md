@@ -106,11 +106,15 @@ The main service responsibilities include:
 - mail queue processing/retry;
 - safety-contact and final-recipient escalation;
 - document creation/upload/private file operations;
+- safe document-preview classification and bounded text/CSV/JSON preparation;
+- authenticated chunked private-file and single-range streaming;
 - recipient portal authentication/delivery;
 - bulk ZIP streaming;
 - test notifications.
 
 Lifecycle rules are kept in service/state-machine code rather than being implemented independently in page controllers.
+
+`DocumentPreviewService` classifies only explicitly passive inline formats and prepares bounded Markdown, text, CSV, or JSON view models. `PrivateFileStreamer` serves authorized private PDF, image, audio, video, and download responses without revealing storage names, with no-store headers and validated single-range support. Recipient portal controllers first repeat token/session/delivery authorization; the owner preview instead repeats the normal owner session and scoped recipient/document lookup. The shared portal view provides presentation parity without using an external conversion or preview service.
 
 ### Repositories
 

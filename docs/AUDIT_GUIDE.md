@@ -114,7 +114,7 @@ Open a recipient editor and verify the owner-only portal preview:
 - **Close preview** closes that tab rather than opening another recipient-editor tab;
 - a signed-out browser and a different Pulse account cannot use the preview URL;
 - the preview does not create a release, portal token, access code, recipient session, email, or audit event;
-- document View/Download and permanent portal closure remain disabled;
+- inline document readers and media work, while Download and permanent portal closure remain disabled;
 - the preview uses the saved recipient language, portal text, document assignments, and location-sharing settings.
 - the monitor-wide Portal page editor contains the language-specific Page introduction but no default personal message;
 - disabling the recipient's personal-message option preserves its saved draft after reload and removes the card from the preview; re-enabling it restores the draft without retyping;
@@ -221,10 +221,21 @@ Verify:
 
 - portal introduction/personal message are correct;
 - assigned document set is correct;
-- text previews are bounded and readable;
-- View works for supported passive formats;
+- PDF opens on demand inside the expanded document card;
+- Markdown and plain text are readable, and oversized views report that the preview was shortened;
+- CSV renders as a bounded table and JSON is formatted as readable text;
+- JPEG/PNG/GIF/WebP/AVIF image previews work without admitting SVG;
+- MP3 audio and H.264/AAC MP4 video play through standard browser controls without autoplay;
+- seeking in a sufficiently large audio/video file produces authenticated `206 Partial Content` responses with valid `Content-Range` headers;
+- framed readers load only after **View directly** is selected;
+- HTML, SVG, Word, OpenDocument, RTF, unknown, or unsupported content remains download-only;
+- browser network inspection shows no private document request to an external preview or player service;
 - individual Download works;
 - Download all works and produces the expected ZIP contents.
+
+Repeat the presentation through the owner-only recipient portal preview. Inline readers and media should work there, while **Download** remains disabled. Share or open the preview URL in a logged-out browser and confirm that neither the page nor an asset URL reveals content.
+
+In **Monitor Editor → Documents**, change a stored document title, description, and text. Confirm the card shows a textual **Unsaved changes** badge plus visible card/save-button emphasis; the **Documents** tab keeps a warning after switching sections; restoring all original values clears both warnings; and saving that document reloads it clean. Confirm the monitor-wide **Save changes** bar sits at the bottom of the editor in normal page flow instead of following the viewport.
 
 For a release containing shared check-in locations, also verify:
 

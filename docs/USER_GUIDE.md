@@ -165,7 +165,11 @@ Creating a document does **not** automatically release it to every recipient. As
 
 Pulse text documents support a safe Markdown subset: headings, bold and italic text, ordered and unordered lists, links, blockquotes, horizontal rules, inline code, and fenced code blocks. Raw HTML is displayed as text rather than executed. The editor has **Edit** and **Preview** tabs; Preview renders the current unsaved source through Pulse's server-side Markdown renderer. Recipient downloads and **Download all** preserve the original Markdown source as `.md` files.
 
-The default upload policy accepts PDF, RTF, OpenDocument Text, Word `.docx`, JPEG, PNG, and plain text files up to 25 MiB. Administrators can change Pulse's own limit and MIME allowlist under **Administration → Files**. PHP and web-server upload limits may impose lower limits.
+Each existing document has its own save button. Editing its title, description, or text marks that card with **Unsaved changes**, highlights the card and save button, and places a warning on the **Documents** tab so the state remains visible after switching sections. The warnings remain until the document is saved or every field is restored to its original value. The monitor-wide **Save changes** bar remains at the normal bottom of the editor and does not save these independent document forms.
+
+The default upload policy accepts PDF, RTF, OpenDocument Text, Word `.docx`, JSON, CSV, common raster images (JPEG, PNG, GIF, WebP, and AVIF), plain text and Markdown, and common browser audio/video formats including MP3, M4A/AAC, Ogg, WAV, FLAC, MP4, WebM, QuickTime, and Ogg video. The default Pulse limit is 25 MiB. Administrators can change Pulse's own limit and MIME allowlist under **Administration → Files**; PHP and web-server upload limits may impose lower limits. An untouched pre-1.2.6 stock MIME list is expanded automatically, while deliberately customized administrator lists are preserved.
+
+Acceptance does not guarantee playback in every browser. MP3 audio and H.264/AAC video in MP4 are the safest compatibility targets. Word, OpenDocument, and RTF files remain downloadable but are not converted or rendered by Pulse.
 
 Uploaded files are stored outside the public web directory under private storage and receive internal storage names. Pulse inspects file content using Fileinfo rather than trusting the browser-supplied filename or MIME type.
 
@@ -331,7 +335,7 @@ A simple unauthenticated page load is deliberately not treated as proof that the
 
 Open a recipient’s **Overview** tab and select **Preview recipient portal**. Pulse opens an owner-only preview in a new browser tab using the recipient’s currently saved language, portal text, document assignments, and the monitor’s portal-location-sharing settings.
 
-The preview URL is not a recipient invitation. It requires the monitor owner’s active Pulse login and checks ownership again on every request. Sharing the URL with somebody else does not let them view the preview. The preview also creates no release, email, access code, portal token, recipient session, or audit event; document actions and permanent access closure remain disabled.
+The preview URL is not a recipient invitation. It requires the monitor owner’s active Pulse login and checks ownership again on every request. Sharing the URL with somebody else does not let them view the preview. The preview also creates no release, email, access code, portal token, recipient session, or audit event. Inline document readers and media work for realistic presentation testing, while downloads and permanent access closure remain disabled.
 
 Select **Close preview** to close that new tab and return to the recipient editor tab that was already open.
 
@@ -366,7 +370,9 @@ After successful verification, the browser receives a session scoped to that spe
 
 Every View, Download, and **Download all** request rechecks whether the delivery is still available. If the owner revokes the portal or its automatic expiry is reached, an already-open browser session immediately loses access on the next server request.
 
-The authenticated portal shows the page introduction, rendered Markdown personal portal message, and a responsive document grid. Pulse-created Markdown text documents show a bounded rendered preview and can be opened as a full rendered document. Supported passive formats may also offer **View**; all authorized documents offer **Download**.
+The authenticated portal shows the page introduction, rendered Markdown personal portal message, and a responsive document grid. It uses the browser's standard controls for audio and video, native rendering for safe raster images, and on-demand framed readers for PDF, Markdown, plain text, formatted CSV, and formatted JSON. Selecting **View directly** expands the document card without leaving the portal; large text/table previews are bounded to protect browser performance. Images and videos can likewise expand within their cards.
+
+Every available document still offers **Download**, including formats that cannot be previewed. Word, OpenDocument, RTF, HTML, SVG, unknown, or potentially active content is never passed to an external viewer and remains download-only. Every inline asset request repeats the delivery/session authorization check, and media/PDF byte-range requests support seeking without exposing the private storage path. The owner-only recipient preview uses the same presentation and authorization model, but keeps download actions disabled.
 
 **Download all** streams a ZIP/ZIP64 archive directly from authorized private content without first creating a second full-size archive on disk.
 

@@ -1,8 +1,8 @@
-# Pulse roadmap after 1.2.5
+# Pulse roadmap after 1.2.6
 
-This roadmap starts from the stable Pulse 1.2.5 baseline. It is directional rather than a promise of dates; privacy, migration safety, recovery behavior, and test coverage remain release gates. The next releases remain in the 1.2.x line while smaller features accumulate; Pulse moves to 1.3 only when the combined scope justifies a larger release.
+This roadmap starts from the stable Pulse 1.2.6 baseline. It is directional rather than a promise of dates; privacy, migration safety, recovery behavior, and test coverage remain release gates. The next releases remain in the 1.2.x line while smaller features accumulate; Pulse moves to 1.3 only when the combined scope justifies a larger release.
 
-## Current baseline — Pulse 1.2.5
+## Current baseline — Pulse 1.2.6
 
 Pulse 1.2.0 completed the location-aware check-in and portal-preview roadmap:
 
@@ -45,6 +45,21 @@ Pulse 1.2.3 completes optional authenticator-app two-factor authentication:
 Pulse 1.2.4 corrects the first-login handoff so the setup-verification code is not mistaken for an already-used authentication code; no schema change is required.
 
 Pulse 1.2.5 fixes the remaining MySQL affected-row handling error that consumed valid login codes before reporting them as invalid. Counter consumption and usage metadata now update separately inside one transaction; no schema change or TOTP re-enrollment is required.
+
+Pulse 1.2.6 makes files and documents inline-first in the authenticated recipient portal:
+
+- let recipients read, view, watch, or listen to every safely previewable document directly inside the portal, while retaining an explicit Download action for every available file;
+- refine the portal document presentation so inline viewers, media, and remaining download-only files use layouts suited to their content;
+- add default upload support for common browser-compatible audio and video formats;
+- render private audio and video with the browser's standard controls, without autoplay or external player services;
+- provide on-demand inline PDF viewing, expanded reading for Markdown and plain text, formatted CSV and JSON views, and native previews for additional safe raster-image formats;
+- add authenticated HTTP byte-range streaming so recipients can seek through media without first downloading the complete file;
+- provide the same media presentation in the owner-only recipient portal preview;
+- retain explicit download actions, file metadata, immutable recipient-release authorization, and configurable upload limits.
+
+It also marks independently edited document cards as unsaved until their own save succeeds or their values are restored, and returns the monitor-wide save bar to ordinary page flow at the bottom of the editor.
+
+MP3 and H.264/AAC in MP4 are the primary interoperability targets. Additional accepted containers remain subject to the codecs supported by each recipient's browser.
 
 ## Later security-policy and recovery hardening
 

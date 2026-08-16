@@ -9,6 +9,7 @@
 declare(strict_types=1);
 
 use Pulse\Core\Environment;
+use Pulse\Core\UploadMimeTypePolicy;
 
 $environment = strtolower(Environment::Get('PULSE_ENV', 'production'));
 $isProduction = $environment === 'production';
@@ -45,15 +46,9 @@ return [
 	],
 	'uploads' => [
 		'maximum_bytes' => Environment::GetInt('PULSE_UPLOAD_MAXIMUM_BYTES', 26214400, 1024),
-		'allowed_mime_types' => Environment::GetList('PULSE_UPLOAD_ALLOWED_MIME_TYPES', [
-			'application/pdf',
-			'application/rtf',
-			'application/vnd.oasis.opendocument.text',
-			'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-			'image/jpeg',
-			'image/png',
-			'text/plain',
-		]),
+		'allowed_mime_types' => UploadMimeTypePolicy::Resolve(
+			Environment::GetList('PULSE_UPLOAD_ALLOWED_MIME_TYPES', UploadMimeTypePolicy::Defaults())
+		),
 	],
 	'location' => [
 		'reverse_geocode_url' => 'https://nominatim.openstreetmap.org/reverse',

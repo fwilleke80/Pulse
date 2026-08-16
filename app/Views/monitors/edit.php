@@ -27,6 +27,7 @@ declare(strict_types=1);
 /** @var string $activeTab */
 /** @var string $activeMessageSection */
 /** @var string $base_url */
+/** @var int $uploadMaximumBytes */
 
 $uncheckedContactCount = count(array_filter(
 	$monitorContacts,
@@ -55,6 +56,8 @@ foreach ($recipientConfigurationIssues as $configurationIssue)
 }
 
 $hasCompleteMessageCoverage = $recipientMessageWarningCount === 0;
+$uploadSizeMegabytes = max(0.1, $uploadMaximumBytes / 1048576);
+$uploadSizeLabel = number_format($uploadSizeMegabytes, $uploadSizeMegabytes >= 10 || floor($uploadSizeMegabytes) === $uploadSizeMegabytes ? 0 : 1) . ' MB';
 $tabDefinitions = [
 	'details' => 'monitors.tabs.details',
 	'schedule' => 'monitors.tabs.schedule',
@@ -118,6 +121,9 @@ ob_start();
 				<span class="tab-label"><?= e__($translationKey) ?></span>
 				<?php if ($tabHasWarning): ?>
 					<span class="tab-warning-indicator" title="<?= e__('monitors.tabs.configuration_warning') ?>" aria-label="<?= e__('monitors.tabs.configuration_warning') ?>">!</span>
+				<?php endif; ?>
+				<?php if ($tabName === 'documents'): ?>
+					<span class="tab-warning-indicator" title="<?= e__('monitors.documents.unsaved') ?>" aria-label="<?= e__('monitors.documents.unsaved') ?>" data-document-tab-unsaved hidden>!</span>
 				<?php endif; ?>
 			</a>
 		<?php endforeach; ?>
@@ -240,6 +246,7 @@ ob_start();
 					<p class="form-hint"><?= e__('monitors.documents.description_hint') ?></p>
 					<label for="document_file"><?= e__('monitors.documents.upload.file') ?></label>
 					<input type="file" id="document_file" name="document_file" required>
+					<p class="form-hint"><?= e__('monitors.documents.upload.preview_hint', ['size' => $uploadSizeLabel]) ?></p>
 					<button type="submit"><?= e__('monitors.documents.upload.submit') ?></button>
 				</form>
 			</div>
@@ -250,19 +257,22 @@ ob_start();
 		<?php else: ?>
 			<div class="monitor-document-list">
 				<?php foreach ($documents as $document): ?>
-					<article class="monitor-document-card">
+					<article class="monitor-document-card" data-document-editor>
 						<div class="document-card-heading">
 							<div>
 								<span class="document-type-badge"><?= e__('monitors.documents.type.' . (string)$document['storage_type']) ?></span>
 								<h3><?= e((string)$document['title']) ?></h3>
 							</div>
-							<?php if ((string)$document['storage_type'] === 'file'): ?>
-								<a href="<?= e($base_url) ?>/monitors/documents/download?monitor_id=<?= (int)$monitor['id'] ?>&amp;document_id=<?= (int)$document['id'] ?>" class="button-link"><?= e__('monitors.documents.download.submit') ?></a>
-							<?php endif; ?>
+							<div class="document-card-heading-actions">
+								<span class="document-unsaved-indicator" role="status" aria-live="polite" data-document-unsaved-indicator hidden><?= e__('monitors.documents.unsaved') ?></span>
+								<?php if ((string)$document['storage_type'] === 'file'): ?>
+									<a href="<?= e($base_url) ?>/monitors/documents/download?monitor_id=<?= (int)$monitor['id'] ?>&amp;document_id=<?= (int)$document['id'] ?>" class="button-link"><?= e__('monitors.documents.download.submit') ?></a>
+								<?php endif; ?>
+							</div>
 						</div>
 
 						<?php if ((string)$document['storage_type'] === 'text'): ?>
-							<form id="document-update-<?= (int)$document['id'] ?>" method="post" action="<?= e($base_url) ?>/monitors/documents/text/update">
+							<form id="document-update-<?= (int)$document['id'] ?>" method="post" action="<?= e($base_url) ?>/monitors/documents/text/update" data-document-edit-form>
 								<?= csrf_field() ?>
 								<input type="hidden" name="monitor_id" value="<?= (int)$monitor['id'] ?>">
 								<input type="hidden" name="document_id" value="<?= (int)$document['id'] ?>">
@@ -277,7 +287,7 @@ ob_start();
 								<span><?= e((string)($document['mime_type'] ?? '')) ?></span>
 								<span><?= number_format((int)($document['file_size_bytes'] ?? 0)) ?> bytes</span>
 							</div>
-							<form id="document-update-<?= (int)$document['id'] ?>" method="post" action="<?= e($base_url) ?>/monitors/documents/file/update">
+							<form id="document-update-<?= (int)$document['id'] ?>" method="post" action="<?= e($base_url) ?>/monitors/documents/file/update" data-document-edit-form>
 								<?= csrf_field() ?>
 								<input type="hidden" name="monitor_id" value="<?= (int)$monitor['id'] ?>">
 								<input type="hidden" name="document_id" value="<?= (int)$document['id'] ?>">
@@ -290,7 +300,7 @@ ob_start();
 						<?php endif; ?>
 
 						<div class="document-card-actions">
-							<button type="submit" form="document-update-<?= (int)$document['id'] ?>"><?= e__('monitors.documents.' . ((string)$document['storage_type'] === 'text' ? 'text' : 'file') . '.update.submit') ?></button>
+							<button type="submit" form="document-update-<?= (int)$document['id'] ?>" data-document-save-button><?= e__('monitors.documents.' . ((string)$document['storage_type'] === 'text' ? 'text' : 'file') . '.update.submit') ?></button>
 							<form method="post" action="<?= e($base_url) ?>/monitors/documents/delete" data-confirm="<?= e__('monitors.documents.flash.delete_confirm') ?>" class="document-delete-form">
 								<?= csrf_field() ?>
 								<input type="hidden" name="monitor_id" value="<?= (int)$monitor['id'] ?>">

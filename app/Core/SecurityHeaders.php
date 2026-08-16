@@ -29,7 +29,7 @@ final class SecurityHeaders
 		$connectSources = trim("'self' " . $geocodeOrigin);
 		$imageSources = trim("'self' data: " . $tileOrigin);
 
-		header("Content-Security-Policy: default-src 'self'; base-uri 'self'; connect-src " . $connectSources . "; font-src 'self'; form-action 'self'; frame-ancestors 'none'; img-src " . $imageSources . "; object-src 'none'; script-src 'self'; style-src 'self'");
+		header("Content-Security-Policy: default-src 'self'; base-uri 'self'; connect-src " . $connectSources . "; font-src 'self'; form-action 'self'; frame-ancestors 'none'; frame-src 'self'; img-src " . $imageSources . "; media-src 'self'; object-src 'none'; script-src 'self'; style-src 'self'");
 		header('Cross-Origin-Opener-Policy: same-origin');
 		header('Cross-Origin-Resource-Policy: same-origin');
 		header('Permissions-Policy: camera=(), geolocation=(self), microphone=(), payment=(), usb=()');

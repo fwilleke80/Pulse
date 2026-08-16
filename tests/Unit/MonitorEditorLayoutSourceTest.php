@@ -15,14 +15,22 @@ use PHPUnit\Framework\TestCase;
 final class MonitorEditorLayoutSourceTest extends TestCase
 {
 	/** @brief Ensures archived monitor editors do not render save controls. */
-	public function testArchivedMonitorDoesNotRenderStickySaveBar(): void
+	public function testArchivedMonitorDoesNotRenderSaveBar(): void
 	{
 		$root = dirname(__DIR__, 2);
 		$view = (string)file_get_contents($root . '/app/Views/monitors/edit.php');
+		$styles = (string)file_get_contents($root . '/public/assets/style.css');
+		$saveBarStart = strpos($styles, '.editor-save-bar');
+		self::assertIsInt($saveBarStart);
+		$saveBarEnd = strpos($styles, "\n}", $saveBarStart);
+		self::assertIsInt($saveBarEnd);
+		$saveBarStyles = substr($styles, $saveBarStart, $saveBarEnd - $saveBarStart);
 
 		self::assertStringContainsString('<?php if (!$isArchived): ?>', $view);
 		self::assertStringContainsString('class="editor-save-bar"', $view);
 		self::assertStringContainsString('data-settings-tabs="details,schedule,escalation,messages,review"', $view);
+		self::assertStringNotContainsString('position: sticky', $saveBarStyles);
+		self::assertStringNotContainsString('bottom:', $saveBarStyles);
 	}
 
 	/** @brief Ensures recipient overview metadata participates directly in the full-width card grid. */

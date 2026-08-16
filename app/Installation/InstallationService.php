@@ -17,6 +17,7 @@ use Pulse\Core\Database;
 use Pulse\Core\Environment;
 use Pulse\Core\EnvironmentFile;
 use Pulse\Core\MigrationRunner;
+use Pulse\Core\UploadMimeTypePolicy;
 use RuntimeException;
 use Throwable;
 
@@ -383,7 +384,7 @@ final class InstallationService
 			'PULSE_TOTP_WINDOW_SECONDS' => '300',
 			'PULSE_TOTP_BLOCK_SECONDS' => '300',
 			'PULSE_UPLOAD_MAXIMUM_BYTES' => '26214400',
-			'PULSE_UPLOAD_ALLOWED_MIME_TYPES' => 'application/pdf,application/rtf,application/vnd.oasis.opendocument.text,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png,text/plain',
+			'PULSE_UPLOAD_ALLOWED_MIME_TYPES' => UploadMimeTypePolicy::DefaultsCsv(),
 			'PULSE_MAIL_ENABLED' => 'false',
 			'PULSE_SMTP_HOST' => '',
 			'PULSE_SMTP_PORT' => '587',

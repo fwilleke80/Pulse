@@ -113,31 +113,33 @@ ob_start();
 				<?php
 				$viewUrl = $previewMode ? '' : $base_url . '/portal/document/view?token=' . rawurlencode($token) . '&document=' . (int)$document['id'];
 				$downloadUrl = $previewMode ? '' : $base_url . '/portal/document/download?token=' . rawurlencode($token) . '&document=' . (int)$document['id'];
-				$previewImageUrl = $previewMode && !empty($document['preview_image_url'])
-					? $base_url . (string)$document['preview_image_url']
-					: '';
+				$previewUrl = $previewMode && !empty($document['preview_asset_url'])
+					? $base_url . (string)$document['preview_asset_url']
+					: $viewUrl;
+				$previewKind = (string)($document['preview_kind'] ?? 'download');
+				$previewId = 'portal-document-preview-' . (int)$document['id'];
+				$isFramedPreview = in_array($previewKind, ['pdf', 'markdown', 'text', 'csv', 'json'], true);
+				$isExpandableVisual = in_array($previewKind, ['image', 'video'], true);
+				$showPreviewToggle = !empty($document['view_available']) && ($isFramedPreview || $isExpandableVisual);
 				?>
-				<article class="portal-document-card">
+				<article class="portal-document-card" data-document-card data-preview-kind="<?= e($previewKind) ?>">
 					<?php if ((string)($document['storage_type'] ?? '') === 'text'): ?>
-						<?php if ($previewMode): ?>
-							<div class="portal-document-preview portal-document-preview-text markdown-content" aria-label="<?= e__('portal.documents.view_named', ['name' => (string)$document['title']]) ?>">
-								<div><?= markdown_html((string)($document['text_content'] ?? '')) ?></div>
-							</div>
-						<?php else: ?>
-							<a class="portal-document-preview portal-document-preview-text markdown-content" href="<?= e($viewUrl) ?>" target="_blank" rel="noopener noreferrer" aria-label="<?= e__('portal.documents.view_named', ['name' => (string)$document['title']]) ?>">
-								<div><?= markdown_html((string)($document['text_content'] ?? '')) ?></div>
-							</a>
-						<?php endif; ?>
-					<?php elseif (!empty($document['image_preview'])): ?>
-						<?php if ($previewMode): ?>
-							<div class="portal-document-preview portal-document-preview-image">
-								<img src="<?= e($previewImageUrl) ?>" alt="<?= e((string)$document['title']) ?>" loading="lazy" decoding="async">
-							</div>
-						<?php else: ?>
-							<a class="portal-document-preview portal-document-preview-image" href="<?= e($viewUrl) ?>" target="_blank" rel="noopener noreferrer" aria-label="<?= e__('portal.documents.view_named', ['name' => (string)$document['title']]) ?>">
-								<img src="<?= e($viewUrl) ?>" alt="<?= e((string)$document['title']) ?>" loading="lazy" decoding="async">
-							</a>
-						<?php endif; ?>
+						<div class="portal-document-preview portal-document-preview-text markdown-content" aria-label="<?= e__('portal.documents.preview_named', ['name' => (string)$document['title']]) ?>">
+							<div><?= markdown_html((string)($document['text_content'] ?? '')) ?></div>
+						</div>
+					<?php elseif ($previewKind === 'image' && !empty($document['view_available'])): ?>
+						<div id="<?= e($previewId) ?>" class="portal-document-preview portal-document-preview-image">
+							<img src="<?= e($previewUrl) ?>" alt="<?= e((string)$document['title']) ?>" loading="lazy" decoding="async">
+						</div>
+					<?php elseif ($previewKind === 'audio' && !empty($document['view_available'])): ?>
+						<div class="portal-document-preview portal-document-preview-audio">
+							<span class="portal-media-type" aria-hidden="true"><?= e((string)$document['type_label']) ?></span>
+							<audio controls preload="metadata" src="<?= e($previewUrl) ?>"><?= e__('portal.documents.media_unsupported') ?></audio>
+						</div>
+					<?php elseif ($previewKind === 'video' && !empty($document['view_available'])): ?>
+						<div id="<?= e($previewId) ?>" class="portal-document-preview portal-document-preview-video">
+							<video controls preload="metadata" playsinline src="<?= e($previewUrl) ?>"><?= e__('portal.documents.media_unsupported') ?></video>
+						</div>
 					<?php else: ?>
 						<div class="portal-document-preview portal-document-preview-type" aria-hidden="true">
 							<span><?= e((string)$document['type_label']) ?></span>
@@ -157,10 +159,20 @@ ob_start();
 					</div>
 
 					<div class="portal-document-actions">
-						<?php if ($previewMode && !empty($document['view_available'])): ?>
-							<span class="button-link is-disabled" aria-disabled="true"><?= e__('portal.documents.view') ?></span>
-						<?php elseif (!empty($document['view_available'])): ?>
-							<a class="button-link" href="<?= e($viewUrl) ?>" target="_blank" rel="noopener noreferrer"><?= e__('portal.documents.view') ?></a>
+						<?php if ($showPreviewToggle): ?>
+							<button
+								type="button"
+								class="button-link"
+								data-document-preview-toggle
+								data-preview-mode="<?= e($isFramedPreview ? 'frame' : 'visual') ?>"
+								data-show-label="<?= e__($isFramedPreview ? 'portal.documents.show_preview' : 'portal.documents.enlarge') ?>"
+								data-hide-label="<?= e__($isFramedPreview ? 'portal.documents.hide_preview' : 'portal.documents.reduce') ?>"
+								aria-expanded="false"
+								aria-controls="<?= e($previewId) ?>"
+							><?= e__($isFramedPreview ? 'portal.documents.show_preview' : 'portal.documents.enlarge') ?></button>
+							<?php if ($isFramedPreview): ?>
+								<noscript><a class="button-link" href="<?= e($previewUrl) ?>" target="_blank" rel="noopener noreferrer"><?= e__('portal.documents.view') ?></a></noscript>
+							<?php endif; ?>
 						<?php endif; ?>
 						<?php if ($previewMode && !empty($document['download_available'])): ?>
 							<span class="button-link is-disabled" aria-disabled="true"><?= e__('portal.documents.download') ?></span>
@@ -170,6 +182,20 @@ ob_start();
 							<span class="table-warning table-warning-critical"><?= e__('portal.documents.unavailable') ?></span>
 						<?php endif; ?>
 					</div>
+
+					<?php if ($isFramedPreview && !empty($document['view_available'])): ?>
+						<div id="<?= e($previewId) ?>" class="portal-document-inline-panel" data-document-preview-panel hidden>
+							<p class="portal-document-preview-loading" data-document-preview-loading><?= e__('portal.documents.preview_loading') ?></p>
+							<iframe
+								class="portal-document-frame"
+								data-document-preview-frame
+								data-preview-src="<?= e($previewUrl) ?>"
+								title="<?= e__('portal.documents.preview_named', ['name' => (string)$document['title']]) ?>"
+								loading="lazy"
+								referrerpolicy="no-referrer"<?= $previewKind === 'pdf' ? '' : ' sandbox="allow-same-origin"' ?>
+							></iframe>
+						</div>
+					<?php endif; ?>
 				</article>
 			<?php endforeach; ?>
 		</div>

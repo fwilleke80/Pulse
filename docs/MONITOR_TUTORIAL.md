@@ -99,7 +99,10 @@ Possible material includes:
 - a list of people who should be contacted;
 - funeral or memorial wishes;
 - an explanation of where original legal documents are kept;
-- selected photographs or other personal files.
+- selected photographs or other personal files;
+- an optional audio or video message in a broadly compatible format.
+
+The authenticated portal can display safe images, PDF, Markdown, plain text, CSV, and JSON directly and can play browser-compatible audio/video with standard controls. Every file remains downloadable. If a recording matters, prefer MP3 audio or H.264/AAC in MP4 and test it through the owner-only portal preview on more than one browser.
 
 Pulse should not be the only home of important material. Keep authoritative legal documents in the legally appropriate form and location. Avoid storing account passwords, recovery keys, or unprotected copies of extremely sensitive identity documents unless you have deliberately accepted the risk: Pulse 1.2 does not encrypt stored application data at rest.
 
@@ -216,6 +219,7 @@ For a travel monitor, consider assigning:
 - planned dates and route alternatives;
 - contact details for travel companions or local hosts;
 - bicycle, vehicle, clothing, or equipment descriptions;
+- recent reference photos or a short compatible audio/video description;
 - insurance and assistance contact information;
 - instructions about whom to contact and in what order.
 

@@ -155,9 +155,11 @@ Pulse checks uploaded content with Fileinfo rather than trusting the browser-sup
 
 Allowed file types and maximum size are configured under **Administration → Files**.
 
-Owner downloads require normal authentication/ownership checks. Recipient document listing, previews, views, and downloads additionally require an active delivery token and the matching authenticated recipient session.
+Owner downloads require normal authentication/ownership checks. Recipient document listing, previews, views, byte ranges, and downloads additionally require an active delivery token and the matching authenticated recipient session. Owner-only portal-preview assets repeat the authenticated owner and monitor-recipient ownership lookup on every request.
 
-Inline rendering is restricted to passive formats such as PDF, plain text, and common raster images. Potentially active or unknown formats remain attachment-only.
+Inline rendering is restricted to passive formats. Pulse renders Markdown, plain text, CSV, and JSON into bounded same-origin frames; serves PDF in an on-demand same-origin frame; uses native elements for GIF/JPEG/PNG/WebP/AVIF and configured browser audio/video; and applies no-store, nosniff, same-origin framing, and explicit media/frame content-security policy. Private raw files are streamed in bounded chunks, and a single validated HTTP byte range may be served for media seeking or PDF readers.
+
+Potentially active or unknown formats—including HTML and SVG—remain attachment-only. Word, OpenDocument, and RTF remain download-only because Pulse does not run a document converter. No private document is sent to Google, Microsoft, or another external preview service. Browser codec support still determines whether an accepted audio/video file can actually play.
 
 ## Delivery snapshots and history
 

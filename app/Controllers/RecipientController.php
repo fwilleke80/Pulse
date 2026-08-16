@@ -13,6 +13,7 @@ namespace Pulse\Controllers;
 use Pulse\Core\DocumentException;
 use Pulse\Core\Logger;
 use Pulse\Core\NotificationLanguage;
+use Pulse\Core\PrivateFileStreamer;
 use Pulse\Core\Request;
 use Pulse\Core\Session;
 use Pulse\Core\Translator;
@@ -22,6 +23,7 @@ use Pulse\Repositories\MonitorRepository;
 use Pulse\Repositories\RecipientRepository;
 use Pulse\Services\AuthService;
 use Pulse\Services\DocumentService;
+use Pulse\Services\DocumentPreviewService;
 use Pulse\Services\NotificationComposer;
 use Pulse\Services\RecipientPortalService;
 use Pulse\Services\RecipientMessageValidator;
@@ -36,6 +38,8 @@ final class RecipientController extends BaseController
 	private MonitorRepository $_monitorRepository;
 	private DocumentRepository $_documentRepository;
 	private DocumentService $_documentService;
+	private DocumentPreviewService $_documentPreviewService;
+	private PrivateFileStreamer $_privateFileStreamer;
 	private NotificationComposer $_composer;
 	private RecipientPortalService $_portalService;
 	private NotificationLanguage $_languages;
@@ -52,6 +56,8 @@ final class RecipientController extends BaseController
 		MonitorRepository $monitorRepository,
 		DocumentRepository $documentRepository,
 		DocumentService $documentService,
+		DocumentPreviewService $documentPreviewService,
+		PrivateFileStreamer $privateFileStreamer,
 		NotificationComposer $composer,
 		RecipientPortalService $portalService,
 		NotificationLanguage $languages,
@@ -63,6 +69,8 @@ final class RecipientController extends BaseController
 		$this->_monitorRepository = $monitorRepository;
 		$this->_documentRepository = $documentRepository;
 		$this->_documentService = $documentService;
+		$this->_documentPreviewService = $documentPreviewService;
+		$this->_privateFileStreamer = $privateFileStreamer;
 		$this->_composer = $composer;
 		$this->_portalService = $portalService;
 		$this->_languages = $languages;
@@ -166,7 +174,8 @@ final class RecipientController extends BaseController
 		]);
 		[$documents, $availableDocumentCount, $totalDownloadBytes] = $this->PreparePreviewDocuments(
 			$this->_recipientRepository->FindAssignedDocumentsForUser($monitorContactId, $userId),
-			$monitorContactId
+			$monitorContactId,
+			$userId
 		);
 
 		return $this->_view->Render('portal.access', [
@@ -189,7 +198,7 @@ final class RecipientController extends BaseController
 		]);
 	}
 
-	/** @brief Streams an owner-authenticated image used only inside a portal preview. */
+	/** @brief Serves one owner-authenticated inline document used only inside a portal preview. */
 	public function PortalPreviewAsset(): void
 	{
 		$user = $this->RequireUser();
@@ -198,47 +207,67 @@ final class RecipientController extends BaseController
 		$documentId = $this->_request->QueryInt('document');
 		$document = $this->_recipientRepository->FindAssignedDocumentForUser($monitorContactId, $documentId, $userId);
 
-		if (!is_array($document) || !$this->IsPreviewImageType((string)($document['mime_type'] ?? '')))
+		if (!is_array($document) || !$this->_documentPreviewService->IsViewable($document))
 		{
 			$this->PreviewAssetNotFound();
 		}
 
-		try
+		$path = null;
+
+		if ((string)($document['storage_type'] ?? '') === 'file')
 		{
-			$download = $this->_documentService->PrepareDownloadForUser(
-				$userId,
-				(int)$document['monitor_id'],
-				$documentId
-			);
-		}
-		catch (DocumentException)
-		{
-			$this->PreviewAssetNotFound();
+			try
+			{
+				$download = $this->_documentService->PrepareDownloadForUser(
+					$userId,
+					(int)$document['monitor_id'],
+					$documentId
+				);
+				$path = (string)$download['path'];
+			}
+			catch (DocumentException)
+			{
+				$this->PreviewAssetNotFound();
+			}
 		}
 
-		$path = (string)$download['path'];
 		$filename = (string)($document['original_filename'] ?? $document['title'] ?? 'preview');
-		$asciiFilename = preg_replace('/[^A-Za-z0-9._ -]/', '_', $filename) ?: 'preview';
-		$fileSize = filesize($path);
 
-		if (session_status() === PHP_SESSION_ACTIVE)
+		if ($this->_documentPreviewService->IsTextFrame($document))
 		{
-			session_write_close();
+			$preview = $this->_documentPreviewService->BuildTextFrame($document, $path);
+
+			if (!is_array($preview))
+			{
+				$this->PreviewAssetNotFound();
+			}
+
+			$this->_privateFileStreamer->AllowSameOriginFrame();
+			header('Content-Type: text/html; charset=utf-8');
+			header('Cache-Control: no-store, private');
+			header('Pragma: no-cache');
+			echo $this->_view->Render('portal.document-preview', [
+				'document' => $document,
+				'preview' => $preview,
+			]);
+			exit;
 		}
 
-		header('Content-Type: ' . (string)$document['mime_type']);
-		header('Content-Disposition: inline; filename="' . str_replace('"', '', $asciiFilename) . '"; filename*=UTF-8\'\'' . rawurlencode($filename));
+		$contentType = $this->_documentPreviewService->RawContentType($document);
 
-		if (is_int($fileSize))
+		if ($path === null || $contentType === null)
 		{
-			header('Content-Length: ' . $fileSize);
+			$this->PreviewAssetNotFound();
 		}
 
-		header('Cache-Control: no-store, private');
-		header('Pragma: no-cache');
-		header('X-Content-Type-Options: nosniff');
-		readfile($path);
-		exit;
+		$this->_privateFileStreamer->Stream(
+			$path,
+			$filename,
+			$contentType,
+			'inline',
+			true,
+			$this->_documentPreviewService->Kind($document) === DocumentPreviewService::KIND_PDF
+		);
 	}
 
 	/** @brief Adds an existing contact to a monitor and opens its dedicated page. */
@@ -451,11 +480,14 @@ final class RecipientController extends BaseController
 	/**
 	 * @brief Adds recipient-portal presentation metadata to current assigned documents.
 	 * @param array<int, array<string, mixed>> $documents Current assigned documents.
+	 * @param int $monitorContactId Owned monitor-contact ID.
+	 * @param int $userId Owner user ID.
 	 * @return array{0: array<int, array<string, mixed>>, 1: int, 2: int}
 	 */
-	private function PreparePreviewDocuments(array $documents, int $monitorContactId): array
+	private function PreparePreviewDocuments(array $documents, int $monitorContactId, int $userId): array
 	{
 		$totalDownloadBytes = 0;
+		$availableDocumentCount = 0;
 
 		foreach ($documents as &$document)
 		{
@@ -463,20 +495,38 @@ final class RecipientController extends BaseController
 			$sizeBytes = $isText
 				? strlen((string)($document['text_content'] ?? ''))
 				: max(0, (int)($document['file_size_bytes'] ?? 0));
-			$mimeType = strtolower(trim((string)($document['mime_type'] ?? '')));
+			$available = $isText;
 
-			$document['download_available'] = true;
-			$document['view_available'] = $isText || $this->IsPreviewInlineType($mimeType);
-			$document['image_preview'] = !$isText && $this->IsPreviewImageType($mimeType);
+			if (!$isText)
+			{
+				try
+				{
+					$this->_documentService->PrepareDownloadForUser($userId, (int)$document['monitor_id'], (int)$document['id']);
+					$available = true;
+				}
+				catch (DocumentException)
+				{
+					$available = false;
+				}
+			}
+
+			$document['download_available'] = $available;
+			$document['view_available'] = $available && $this->_documentPreviewService->IsViewable($document);
+			$document['preview_kind'] = $this->_documentPreviewService->Kind($document);
 			$document['size_bytes'] = $sizeBytes;
 			$document['type_label'] = $this->DocumentTypeLabel($document);
-			$document['preview_image_url'] = '/monitors/recipients/portal-preview/asset?recipient='
+			$document['preview_asset_url'] = '/monitors/recipients/portal-preview/asset?recipient='
 				. $monitorContactId . '&document=' . (int)$document['id'];
-			$totalDownloadBytes += $sizeBytes;
+
+			if ($available)
+			{
+				$availableDocumentCount++;
+				$totalDownloadBytes += $sizeBytes;
+			}
 		}
 		unset($document);
 
-		return [$documents, count($documents), $totalDownloadBytes];
+		return [$documents, $availableDocumentCount, $totalDownloadBytes];
 	}
 
 	/** @brief Selects the recipient's language while retaining the owner's authenticated authorization. */
@@ -490,24 +540,6 @@ final class RecipientController extends BaseController
 			'isAuthenticated' => false,
 			'currentUser' => null,
 			'portalPreview' => true,
-		], true);
-	}
-
-	/** @brief Returns whether a current file can be represented by the portal's passive View action. */
-	private function IsPreviewInlineType(string $mimeType): bool
-	{
-		return $mimeType === 'application/pdf' || $this->IsPreviewImageType($mimeType);
-	}
-
-	/** @brief Returns whether a current uploaded file is a safe raster image preview. */
-	private function IsPreviewImageType(string $mimeType): bool
-	{
-		return in_array(strtolower(trim($mimeType)), [
-			'image/gif',
-			'image/jpeg',
-			'image/png',
-			'image/webp',
-			'image/avif',
 		], true);
 	}
 

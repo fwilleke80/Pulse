@@ -12,6 +12,7 @@ namespace Pulse\Controllers;
 
 use Pulse\Core\Logger;
 use Pulse\Core\NotificationLanguage;
+use Pulse\Core\PrivateFileStreamer;
 use Pulse\Core\RecipientPortalLanguagePreference;
 use Pulse\Core\Request;
 use Pulse\Core\Session;
@@ -19,6 +20,7 @@ use Pulse\Core\Translator;
 use Pulse\Core\View;
 use Pulse\Services\AuthService;
 use Pulse\Services\DocumentService;
+use Pulse\Services\DocumentPreviewService;
 use Pulse\Services\MailQueueWorker;
 use Pulse\Services\RecipientPortalArchiveBuilder;
 use Pulse\Services\RecipientPortalService;
@@ -33,6 +35,8 @@ final class RecipientPortalController extends BaseController
 	private MailQueueWorker $_mailQueueWorker;
 	private NotificationLanguage $_languages;
 	private DocumentService $_documentService;
+	private DocumentPreviewService $_documentPreviewService;
+	private PrivateFileStreamer $_privateFileStreamer;
 	private RecipientPortalArchiveBuilder $_archiveBuilder;
 	private string $_languagePath;
 
@@ -47,6 +51,8 @@ final class RecipientPortalController extends BaseController
 		MailQueueWorker $mailQueueWorker,
 		NotificationLanguage $languages,
 		DocumentService $documentService,
+		DocumentPreviewService $documentPreviewService,
+		PrivateFileStreamer $privateFileStreamer,
 		RecipientPortalArchiveBuilder $archiveBuilder,
 		string $languagePath
 	)
@@ -56,6 +62,8 @@ final class RecipientPortalController extends BaseController
 		$this->_mailQueueWorker = $mailQueueWorker;
 		$this->_languages = $languages;
 		$this->_documentService = $documentService;
+		$this->_documentPreviewService = $documentPreviewService;
+		$this->_privateFileStreamer = $privateFileStreamer;
 		$this->_archiveBuilder = $archiveBuilder;
 		$this->_languagePath = $languagePath;
 	}
@@ -175,11 +183,11 @@ final class RecipientPortalController extends BaseController
 			$sizeBytes = $isText
 				? strlen((string)($document['text_content'] ?? ''))
 				: max(0, (int)($document['file_size_bytes'] ?? 0));
-			$inlineType = $downloadAvailable ? $this->InlineContentType($document) : null;
+			$previewKind = $this->_documentPreviewService->Kind($document);
 
 			$document['download_available'] = $downloadAvailable;
-			$document['view_available'] = $inlineType !== null;
-			$document['image_preview'] = $inlineType !== null && str_starts_with($inlineType, 'image/');
+			$document['view_available'] = $downloadAvailable && $this->_documentPreviewService->IsViewable($document);
+			$document['preview_kind'] = $previewKind;
 			$document['size_bytes'] = $sizeBytes;
 			$document['type_label'] = $this->DocumentTypeLabel($document);
 
@@ -336,10 +344,10 @@ final class RecipientPortalController extends BaseController
 		}
 
 		$filename = $this->DocumentDownloadFilename($document);
-		$this->PrepareForStreaming();
 
 		if ((string)$document['storage_type'] === 'text')
 		{
+			$this->PrepareForStreaming();
 			$content = (string)($document['text_content'] ?? '');
 			$this->SendDownloadHeaders($filename, 'text/markdown; charset=utf-8');
 			header('Content-Length: ' . strlen($content));
@@ -355,17 +363,14 @@ final class RecipientPortalController extends BaseController
 			$this->DocumentNotFound($token);
 		}
 
-		$this->SendDownloadHeaders($filename, (string)($document['mime_type'] ?? 'application/octet-stream'));
-		$fileSize = filesize($path);
-
-		if (is_int($fileSize))
-		{
-			header('Content-Length: ' . $fileSize);
-		}
-
 		$this->_portalService->RecordDocumentDownload((int)$delivery['delivery_id'], (int)$document['id']);
-		readfile($path);
-		exit;
+		$this->_privateFileStreamer->Stream(
+			$path,
+			$filename,
+			(string)($document['mime_type'] ?? 'application/octet-stream'),
+			'attachment',
+			true
+		);
 	}
 
 	/** @brief Serves a safely inline-viewable document snapshot after checking recipient authorization. */
@@ -382,43 +387,56 @@ final class RecipientPortalController extends BaseController
 			$this->DocumentNotFound($token);
 		}
 
-		$contentType = $this->InlineContentType($document);
-
-		if ($contentType === null)
+		if (!$this->_documentPreviewService->IsViewable($document))
 		{
 			$this->DocumentNotFound($token);
 		}
 
 		$filename = $this->DocumentDownloadFilename($document);
-		$this->PrepareForStreaming();
+		$path = (string)($document['storage_type'] ?? '') === 'text'
+			? null
+			: $this->_documentService->ResolvePortalSnapshotFile($document);
 
-		if ((string)$document['storage_type'] === 'text')
+		if ($this->_documentPreviewService->IsTextFrame($document))
 		{
+			$preview = $this->_documentPreviewService->BuildTextFrame($document, $path);
+
+			if (!is_array($preview))
+			{
+				$this->DocumentNotFound($token);
+			}
+
+			$this->_privateFileStreamer->AllowSameOriginFrame();
 			header('Content-Type: text/html; charset=utf-8');
-			echo $this->_view->Render('portal.text-document', [
+			header('Cache-Control: no-store, private');
+			header('Pragma: no-cache');
+			echo $this->_view->Render('portal.document-preview', [
 				'document' => $document,
-				'token' => $token,
+				'preview' => $preview,
 			]);
 			exit;
 		}
-
-		$path = $this->_documentService->ResolvePortalSnapshotFile($document);
 
 		if ($path === null)
 		{
 			$this->DocumentNotFound($token);
 		}
 
-		$this->SendInlineHeaders($filename, $contentType);
-		$fileSize = filesize($path);
+		$contentType = $this->_documentPreviewService->RawContentType($document);
 
-		if (is_int($fileSize))
+		if ($contentType === null)
 		{
-			header('Content-Length: ' . $fileSize);
+			$this->DocumentNotFound($token);
 		}
 
-		readfile($path);
-		exit;
+		$this->_privateFileStreamer->Stream(
+			$path,
+			$filename,
+			$contentType,
+			'inline',
+			true,
+			$this->_documentPreviewService->Kind($document) === DocumentPreviewService::KIND_PDF
+		);
 	}
 
 	/** @brief Streams every available delivery document as one portable ZIP/ZIP64 archive. */
@@ -572,28 +590,6 @@ final class RecipientPortalController extends BaseController
 		}
 	}
 
-	/** @brief Returns a safe inline content type, or null for download-only formats. */
-	private function InlineContentType(array $document): ?string
-	{
-		if ((string)($document['storage_type'] ?? '') === 'text')
-		{
-			return 'text/markdown; charset=utf-8';
-		}
-
-		$mimeType = strtolower(trim((string)($document['mime_type'] ?? '')));
-		$allowed = [
-			'application/pdf',
-			'image/gif',
-			'image/jpeg',
-			'image/png',
-			'image/webp',
-			'image/avif',
-			'text/plain',
-		];
-
-		return in_array($mimeType, $allowed, true) ? $mimeType : null;
-	}
-
 	/** @brief Returns a compact recipient-facing file-type label. */
 	private function DocumentTypeLabel(array $document): string
 	{
@@ -617,17 +613,6 @@ final class RecipientPortalController extends BaseController
 			'image/png' => 'PNG',
 			default => __('portal.documents.type.file'),
 		};
-	}
-
-	/** @brief Emits non-cacheable inline-view headers for passive content types only. */
-	private function SendInlineHeaders(string $filename, string $contentType): void
-	{
-		$asciiFilename = preg_replace('/[^A-Za-z0-9._ -]/', '_', $filename) ?: 'document';
-		header('Content-Type: ' . $contentType);
-		header('Content-Disposition: inline; filename="' . str_replace('"', '', $asciiFilename) . '"; filename*=UTF-8\'\'' . rawurlencode($filename));
-		header('Cache-Control: no-store, private');
-		header('Pragma: no-cache');
-		header('X-Content-Type-Options: nosniff');
 	}
 
 	/** @brief Emits non-cacheable attachment headers. */

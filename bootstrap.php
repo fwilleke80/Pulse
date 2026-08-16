@@ -20,6 +20,7 @@ use Pulse\Core\LanguageCatalog;
 use Pulse\Core\WebsiteLanguagePreference;
 use Pulse\Core\MigrationRunner;
 use Pulse\Core\NotificationLanguage;
+use Pulse\Core\PrivateFileStreamer;
 use Pulse\Core\Request;
 use Pulse\Core\Router;
 use Pulse\Core\Session;
@@ -41,6 +42,7 @@ use Pulse\Repositories\SecurityCredentialRepository;
 use Pulse\Repositories\UserRepository;
 use Pulse\Services\AuthService;
 use Pulse\Services\DocumentService;
+use Pulse\Services\DocumentPreviewService;
 use Pulse\Services\EscalationService;
 use Pulse\Services\LoginThrottleService;
 use Pulse\Services\MailQueueWorker;
@@ -163,6 +165,8 @@ $documentService = new DocumentService(
 	__DIR__ . '/storage/uploads/monitor-documents',
 	(array)$appConfig['uploads']
 );
+$documentPreviewService = new DocumentPreviewService();
+$privateFileStreamer = new PrivateFileStreamer();
 
 $defaultLocale = (string)$appConfig['locale'];
 $availableLocales = $languageCatalog->Locales();
@@ -246,6 +250,7 @@ $view->SetGlobals([
 	'locationReverseGeocodeUrl' => (string)$appConfig['location']['reverse_geocode_url'],
 	'locationMapTileUrl' => (string)$appConfig['location']['map_tile_url'],
 	'openStreetMapUrl' => (string)$appConfig['location']['openstreetmap_url'],
+	'uploadMaximumBytes' => (int)$appConfig['uploads']['maximum_bytes'],
 ]);
 
 return [
@@ -279,6 +284,8 @@ return [
 	'systemStatusRepository' => $systemStatusRepository,
 	'monitorExecutionService' => $monitorExecutionService,
 	'documentService' => $documentService,
+	'documentPreviewService' => $documentPreviewService,
+	'privateFileStreamer' => $privateFileStreamer,
 	'loginThrottle' => $loginThrottle,
 	'securityCredentialRepository' => $securityCredentialRepository,
 	'totpCredentialRepository' => $totpCredentialRepository,
