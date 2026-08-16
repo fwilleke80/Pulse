@@ -240,6 +240,114 @@ class NotificationComposerTest extends TestCase
 		self::assertNotSame($english['body_text'], $german['body_text']);
 	}
 
+
+	/** @brief Ensures a custom owner template is one literal override rather than a localized variant. */
+	public function testCustomOwnerDueTemplateIsUsedExactlyAsWritten(): void
+	{
+		$composer = $this->Composer();
+		$message = $composer->ComposeOwnerDueNotice([
+			'display_name' => 'Owner',
+			'monitor_name' => 'Weekly check',
+			'due_at' => '2026-08-11 10:00:00',
+			'response_deadline_at' => '2026-08-13 10:00:00',
+			'response_window_days' => 2,
+			'max_reminders' => 3,
+			'notification_locale' => 'de',
+			'quick_checkin_url' => 'https://pulse.example.com/quick-check-in?token=abc',
+			'mail_templates' => [
+				'owner_due_notice' => [
+					'owner' => [
+						'subject' => 'Custom {monitor}',
+						'body_text' => 'Use **this**: {quickurl}',
+					],
+				],
+			],
+		]);
+
+		self::assertSame('Custom Weekly check', $message['subject']);
+		self::assertSame('Use **this**: https://pulse.example.com/quick-check-in?token=abc', $message['body_text']);
+		self::assertStringNotContainsString('Hallo', $message['body_text']);
+	}
+
+	/** @brief Ensures owner built-in defaults remain localized and expose the quick-check-in placeholder when enabled. */
+	public function testOwnerBuiltInDefaultRemainsLocalizedWithQuickPlaceholder(): void
+	{
+		$composer = new NotificationComposer(
+			new NotificationLanguage(['en', 'de'], 'en'),
+			dirname(__DIR__, 2) . '/app/Lang',
+			[
+				'name' => 'Pulse',
+				'base_url' => 'https://pulse.example.com',
+				'display_timezone' => 'Europe/Berlin',
+				'security' => ['passkey_quick_checkin_enabled' => true],
+			]
+		);
+		$english = $composer->BuiltInTemplate('owner_due_notice', 'en', ['max_reminders' => 0]);
+		$german = $composer->BuiltInTemplate('owner_due_notice', 'de', ['max_reminders' => 0]);
+
+		self::assertStringContainsString('{quickcheckin}', $english['body_text']);
+		self::assertStringContainsString('{quickcheckin}', $german['body_text']);
+		self::assertNotSame($english['body_text'], $german['body_text']);
+		self::assertStringNotContainsString('{max_followup_reminders}', $english['body_text']);
+	}
+
+
+	/** @brief Ensures built-in owner mail exposes quick check-in only through the explicit optional placeholder. */
+	public function testBuiltInOwnerQuickCheckInIsExplicitlyExpanded(): void
+	{
+		$composer = $this->Composer();
+		$withQuick = $composer->ComposeOwnerDueNotice([
+			'display_name' => 'Owner',
+			'monitor_name' => 'Weekly check',
+			'due_at' => '2026-08-11 10:00:00',
+			'response_deadline_at' => '2026-08-13 10:00:00',
+			'response_window_days' => 2,
+			'max_reminders' => 3,
+			'notification_locale' => 'en',
+			'quick_checkin_url' => 'https://pulse.example.com/quick-check-in?token=abc',
+		]);
+		$withoutQuick = $composer->ComposeOwnerDueNotice([
+			'display_name' => 'Owner',
+			'monitor_name' => 'Weekly check',
+			'due_at' => '2026-08-11 10:00:00',
+			'response_deadline_at' => '2026-08-13 10:00:00',
+			'response_window_days' => 2,
+			'max_reminders' => 3,
+			'notification_locale' => 'en',
+		]);
+
+		self::assertStringContainsString('[authenticate with your passkey to check in all active monitors](https://pulse.example.com/quick-check-in?token=abc)', $withQuick['body_text']);
+		self::assertStringNotContainsString('{quickcheckin}', $withQuick['body_text']);
+		self::assertStringNotContainsString('Quick check-in:', $withoutQuick['body_text']);
+		self::assertStringNotContainsString('{quickcheckin}', $withoutQuick['body_text']);
+	}
+
+	/** @brief Ensures custom owner mail receives no hidden quick-check-in content. */
+	public function testCustomOwnerTemplateWithoutQuickPlaceholderGetsNoInjectedLink(): void
+	{
+		$composer = $this->Composer();
+		$message = $composer->ComposeOwnerReminder([
+			'display_name' => 'Owner',
+			'monitor_name' => 'Weekly check',
+			'due_at' => '2026-08-11 10:00:00',
+			'max_reminders' => 3,
+			'notification_locale' => 'en',
+			'quick_checkin_url' => 'https://pulse.example.com/quick-check-in?token=abc',
+			'mail_templates' => [
+				'owner_reminder' => [
+					'owner' => [
+						'subject' => 'Reminder {number}',
+						'body_text' => 'Normal sign-in: {url}',
+					],
+				],
+			],
+		], 1);
+
+		self::assertSame('Reminder 1', $message['subject']);
+		self::assertSame('Normal sign-in: https://pulse.example.com/login', $message['body_text']);
+		self::assertStringNotContainsString('quick-check-in', $message['body_text']);
+	}
+
 	private function Composer(): NotificationComposer
 	{
 		return new NotificationComposer(

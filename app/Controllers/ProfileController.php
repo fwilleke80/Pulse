@@ -16,6 +16,7 @@ use Pulse\Core\Request;
 use Pulse\Core\Session;
 use Pulse\Core\View;
 use Pulse\Core\WebsiteLanguagePreference;
+use Pulse\Repositories\SecurityCredentialRepository;
 use Pulse\Repositories\UserRepository;
 use Pulse\Services\AuthService;
 
@@ -25,6 +26,7 @@ use Pulse\Services\AuthService;
 class ProfileController extends BaseController
 {
 	private UserRepository $_userRepository;
+	private SecurityCredentialRepository $_securityCredentials;
 	private int $_passwordMinimumLength;
 	private NotificationLanguage $_notificationLanguage;
 
@@ -36,6 +38,7 @@ class ProfileController extends BaseController
 	 * @param Logger $logger Application logger.
 	 * @param Request $request Current request.
 	 * @param UserRepository $userRepository User repository.
+	 * @param SecurityCredentialRepository $securityCredentials Security-method credential repository.
 	 * @param int $passwordMinimumLength Minimum accepted password length.
 	 * @param NotificationLanguage $notificationLanguage Recipient-language resolver.
 	 */
@@ -46,12 +49,14 @@ class ProfileController extends BaseController
 		Logger $logger,
 		Request $request,
 		UserRepository $userRepository,
+		SecurityCredentialRepository $securityCredentials,
 		int $passwordMinimumLength,
 		NotificationLanguage $notificationLanguage
 	)
 	{
 		parent::__construct($view, $session, $auth, $logger, $request);
 		$this->_userRepository = $userRepository;
+		$this->_securityCredentials = $securityCredentials;
 		$this->_passwordMinimumLength = $passwordMinimumLength;
 		$this->_notificationLanguage = $notificationLanguage;
 	}
@@ -73,6 +78,7 @@ class ProfileController extends BaseController
 			'websiteLocale' => $this->_notificationLanguage->Resolve(
 				isset($user['website_locale']) ? (string)$user['website_locale'] : null
 			),
+			'passkeys' => $this->_securityCredentials->FindPasskeysForUser((int)$user['id']),
 		]);
 	}
 

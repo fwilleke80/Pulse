@@ -2,7 +2,7 @@
 
 /**
  * @file MailTransportInterface.php
- * @brief Transport boundary for delivering queued plain-text messages.
+ * @brief Transport boundary for delivering queued Markdown-capable messages.
  * @author Frank Willeke
  */
 
@@ -16,10 +16,10 @@ namespace Pulse\Mail;
 interface MailTransportInterface
 {
 	/**
-	 * @brief Delivers a plain-text email message.
+	 * @brief Delivers a Markdown-capable email message with a plain-text fallback.
 	 * @param string $recipientEmail Recipient address.
 	 * @param string $subject Message subject.
-	 * @param string $bodyText UTF-8 plain-text body.
+	 * @param string $bodyText UTF-8 Markdown-capable source body.
 	 * @throws MailTransportException When delivery fails.
 	 */
 	public function Send(string $recipientEmail, string $subject, string $bodyText): void;

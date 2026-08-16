@@ -14,21 +14,27 @@ use PHPUnit\Framework\TestCase;
 
 final class BaselineIntegritySourceTest extends TestCase
 {
-	/** @brief Ensures the stable baseline is a single current-schema migration. */
-	public function testStableSchemaUsesSingleInitialMigration(): void
+	/** @brief Ensures the immutable 1.0 baseline is retained and later schema changes use a follow-up migration. */
+	public function testStableSchemaRetainsInitialMigrationAndAddsSecurityMigration(): void
 	{
 		$root = dirname(__DIR__, 2);
 		$migrations = glob($root . '/database/migrations/*.sql');
 		$schema = (string)file_get_contents($root . '/database/migrations/001_initial_schema.sql');
+		$securityMigration = (string)file_get_contents($root . '/database/migrations/002_security_methods_and_owner_mail.sql');
 
 		self::assertIsArray($migrations);
-		self::assertCount(1, $migrations);
+		sort($migrations);
+		self::assertCount(2, $migrations);
 		self::assertStringEndsWith('/001_initial_schema.sql', str_replace('\\', '/', $migrations[0]));
+		self::assertStringEndsWith('/002_security_methods_and_owner_mail.sql', str_replace('\\', '/', $migrations[1]));
 		self::assertStringContainsString('CREATE TABLE recipient_release_deliveries', $schema);
 		self::assertStringContainsString('is_archived TINYINT(1) NOT NULL DEFAULT 0', $schema);
 		self::assertStringContainsString('CREATE TABLE system_status', $schema);
 		self::assertStringNotContainsString('CREATE TABLE access_tokens', $schema);
 		self::assertStringNotContainsString('CREATE TABLE app_settings', $schema);
+		self::assertStringContainsString('CREATE TABLE user_security_methods', $securityMigration);
+		self::assertStringContainsString('CREATE TABLE user_passkey_credentials', $securityMigration);
+		self::assertStringContainsString('CREATE TABLE quick_checkin_tokens', $securityMigration);
 	}
 
 	/** @brief Ensures contact deletion cannot silently mutate monitor assignments. */

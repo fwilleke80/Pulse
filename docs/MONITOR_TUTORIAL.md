@@ -186,7 +186,7 @@ A recipient should be able to understand the email without hidden context. Consi
 - what they should verify independently before taking consequential action;
 - another way to verify the situation when appropriate.
 
-Avoid passwords, recovery keys, and highly sensitive secrets. The message is stored unencrypted in Pulse 1.0 and, once sent, is also copied to the sender's and recipient's mail systems.
+Avoid passwords, recovery keys, and highly sensitive secrets. The message is stored unencrypted in Pulse 1.1 and, once sent, is also copied to the sender's and recipient's mail systems.
 
 ## Decide what belongs in email and what belongs in the portal
 
@@ -212,6 +212,12 @@ Good safety contacts should:
 - avoid confirming merely because they assume you are probably fine.
 
 If a contact says **Cannot confirm**, the existing escalation timetable remains unchanged. It is intentionally not an emergency trigger.
+
+## Make routine check-in effortless
+
+If **Administration → Security → Enable passkey quick check-in** is enabled, the quickest normal workflow is to use the quick-check-in link in the owner reminder mail. It still requires authentication, but on a prepared phone or computer that usually means opening the link and approving the available passkey. The successful action checks in all active monitors at once.
+
+Before relying on that workflow, register a Pulse passkey on every device you expect to use for reminders, or verify that the passkey is actually available there. Keep password login available as the fallback and test the complete path from the reminder mail on each important device.
 
 ## Rehearse before relying on it
 

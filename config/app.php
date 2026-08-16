@@ -37,6 +37,7 @@ return [
 		'login_window_seconds' => Environment::GetInt('PULSE_LOGIN_WINDOW_SECONDS', 900, 60),
 		'login_block_seconds' => Environment::GetInt('PULSE_LOGIN_BLOCK_SECONDS', 900, 60),
 		'password_minimum_length' => Environment::GetInt('PULSE_PASSWORD_MINIMUM_LENGTH', 12, 8, 128),
+		'passkey_quick_checkin_enabled' => Environment::GetBool('PULSE_PASSKEY_QUICK_CHECKIN_ENABLED', false),
 	],
 	'uploads' => [
 		'maximum_bytes' => Environment::GetInt('PULSE_UPLOAD_MAXIMUM_BYTES', 26214400, 1024),

@@ -133,9 +133,10 @@ final class MonitorExecutionService
 	/**
 	 * @brief Confirms all active monitors and starts each monitor's next interval from one UTC instant.
 	 * @param int $userId Owner user ID.
+	 * @param string $source Authentication/action source recorded in audit context.
 	 * @return array{updated: int}
 	 */
-	public function CheckInAllActiveForUser(int $userId): array
+	public function CheckInAllActiveForUser(int $userId, string $source = 'manual'): array
 	{
 		$connection = $this->_database->GetConnection();
 		$connection->beginTransaction();
@@ -204,13 +205,14 @@ final class MonitorExecutionService
 						'cycle_id' => (int)$cycle['id'],
 						'previous_status' => $previousStatus,
 						'next_due_at' => $nextDueValue,
+						'source' => $source,
 					]
 				);
 				$updated++;
 			}
 
 			$connection->commit();
-			$this->_logger->Info('Global manual check-in completed', ['user_id' => $userId, 'monitor_count' => $updated]);
+			$this->_logger->Info('Global check-in completed', ['user_id' => $userId, 'monitor_count' => $updated, 'source' => $source]);
 
 			return ['updated' => $updated];
 		}

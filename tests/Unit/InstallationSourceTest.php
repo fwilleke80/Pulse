@@ -23,7 +23,7 @@ final class InstallationSourceTest extends TestCase
 		$cli = (string)file_get_contents($root . '/tools/pulse.php');
 
 		self::assertStringContainsString("is_file(\$installerPath)", $index);
-		self::assertStringContainsString("header('Location: /install.php')", $index);
+		self::assertStringContainsString("header('Location: ' . \$installerUrl)", $index);
 		self::assertStringContainsString("is_file(dirname(__DIR__) . '/install.php')", $cron);
 		self::assertStringContainsString('Pulse installation is not finalized.', $cron);
 		self::assertStringContainsString("'/public/install.php'", $cli);
@@ -72,6 +72,7 @@ final class InstallationSourceTest extends TestCase
 		self::assertStringContainsString('bin2hex(random_bytes(32))', $service);
 		self::assertGreaterThanOrEqual(6, substr_count($service, 'RequireStage('));
 		self::assertStringContainsString("PULSE_MAIL_ENABLED' => 'false'", $service);
+		self::assertStringContainsString("PULSE_PASSKEY_QUICK_CHECKIN_ENABLED' => 'false'", $service);
 	}
 
 	/** @brief Ensures completion reuses runtime validation and removes the browser installer only afterward. */

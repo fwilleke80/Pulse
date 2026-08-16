@@ -6,6 +6,7 @@ declare(strict_types=1);
 /** @var array<int, string> $notificationLocales */
 /** @var string $notificationLocale */
 /** @var string $websiteLocale */
+/** @var array<int, array<string, mixed>> $passkeys */
 /** @var string $base_url */
 
 ob_start();
@@ -65,6 +66,55 @@ ob_start();
 			<button type="submit"><?= e__('profile.data.submit') ?></button>
 		</div>
 	</form>
+</section>
+
+
+<hr>
+
+<section class="stack" id="security">
+	<h2><?= e__('security.heading') ?></h2>
+	<p><?= e__('security.hint') ?></p>
+
+	<div class="configuration-block">
+		<h3><?= e__('security.passkeys.heading') ?></h3>
+		<p><?= e__('security.passkeys.hint') ?></p>
+		<p class="form-hint"><?= e__('security.passkeys.device_hint') ?></p>
+
+		<?php if ($passkeys === []): ?>
+			<p class="muted"><?= e__('security.passkeys.empty') ?></p>
+		<?php else: ?>
+			<div class="security-credential-list">
+				<?php foreach ($passkeys as $passkey): ?>
+					<div class="security-credential-item">
+						<div>
+							<strong><?= e((string)$passkey['label']) ?></strong>
+							<small><?= e__('security.passkeys.created', ['date' => format_datetime((string)$passkey['created_at'])]) ?></small>
+							<?php if (!empty($passkey['last_used_at'])): ?><small><?= e__('security.passkeys.last_used', ['date' => format_datetime((string)$passkey['last_used_at'])]) ?></small><?php endif; ?>
+						</div>
+						<details class="security-credential-remove">
+							<summary><?= e__('security.passkeys.remove') ?></summary>
+							<form method="post" action="<?= e($base_url) ?>/security/passkeys/delete" class="stack compact-form" data-confirm="<?= e__('security.passkeys.remove_confirm') ?>">
+								<?= csrf_field() ?>
+								<input type="hidden" name="credential_id" value="<?= (int)$passkey['id'] ?>">
+								<label><?= e__('security.passkeys.current_password') ?><input type="password" name="current_password" autocomplete="current-password" required></label>
+								<button type="submit" class="btn-danger"><?= e__('security.passkeys.remove') ?></button>
+							</form>
+						</details>
+					</div>
+				<?php endforeach; ?>
+			</div>
+		<?php endif; ?>
+
+		<form class="stack passkey-registration-form" data-passkey-register-form data-passkey-options-url="<?= e($base_url) ?>/security/passkeys/register/options" data-passkey-verify-url="<?= e($base_url) ?>/security/passkeys/register/verify" data-passkey-unavailable="<?= e__('security.passkeys.browser_unavailable') ?>" data-passkey-cancelled="<?= e__('security.passkeys.cancelled') ?>">
+			<?= csrf_field() ?>
+			<div class="field-grid field-grid-two">
+				<label><?= e__('security.passkeys.name') ?><input type="text" name="label" maxlength="255" placeholder="<?= e__('security.passkeys.name_placeholder') ?>" required></label>
+				<label><?= e__('security.passkeys.current_password') ?><input type="password" name="current_password" autocomplete="current-password" required></label>
+			</div>
+			<div><button type="button" data-passkey-register><?= e__('security.passkeys.add') ?></button></div>
+			<div class="security-method-status" data-passkey-status hidden></div>
+		</form>
+	</div>
 </section>
 
 <hr>

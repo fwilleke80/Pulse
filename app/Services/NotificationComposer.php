@@ -44,6 +44,12 @@ final class NotificationComposer
 		$this->_displayTimezone = new DateTimeZone((string)$config['display_timezone']);
 	}
 
+	/** @brief Resolves an owner/recipient notification locale through the configured language resolver. */
+	public function ResolveLocale(?string $locale): string
+	{
+		return $this->_languages->Resolve($locale);
+	}
+
 	/**
 	 * @brief Composes the initial notification sent when a monitor becomes due.
 	 * @param array<string, mixed> $cycle Awaiting cycle and owner data.
@@ -53,6 +59,8 @@ final class NotificationComposer
 	{
 		$locale = $this->_languages->Resolve(isset($cycle['notification_locale']) ? (string)$cycle['notification_locale'] : null);
 		$responseWindowDays = $this->ResponseWindowDays($cycle);
+		$normalUrl = $this->_baseUrl . '/login';
+		$quickUrl = trim((string)($cycle['quick_checkin_url'] ?? ''));
 		$params = [
 			'app' => $this->_appName,
 			'name' => (string)$cycle['display_name'],
@@ -65,16 +73,32 @@ final class NotificationComposer
 				['count' => $responseWindowDays]
 			),
 			'max_followup_reminders' => (int)$cycle['max_reminders'],
-			'url' => $this->_baseUrl . '/login',
+			'url' => $normalUrl,
+			'quickurl' => $quickUrl !== '' ? $quickUrl : $normalUrl,
 		];
+		$params['quickcheckin'] = $quickUrl !== ''
+			? $this->Translate($locale, 'mail.owner.quick_checkin', $params)
+			: '';
+
+		$custom = $this->CustomTemplate($cycle, 'owner_due_notice', $locale);
+
+		if ($custom !== null)
+		{
+			return [
+				'subject' => $this->ReplaceParams($custom['subject'], $params),
+				'body_text' => $this->ReplaceParams($custom['body_text'], $params),
+			];
+		}
 
 		$bodyKey = (int)$cycle['max_reminders'] > 0
 			? 'mail.owner_due_notice.body'
 			: 'mail.owner_due_notice.body_no_reminders';
 
+		$body = $this->Translate($locale, $bodyKey, $params);
+
 		return [
 			'subject' => $this->Translate($locale, 'mail.owner_due_notice.subject', $params),
-			'body_text' => $this->Translate($locale, $bodyKey, $params),
+			'body_text' => $body,
 		];
 	}
 
@@ -108,6 +132,8 @@ final class NotificationComposer
 	public function ComposeOwnerReminder(array $cycle, int $reminderNumber): array
 	{
 		$locale = $this->_languages->Resolve(isset($cycle['notification_locale']) ? (string)$cycle['notification_locale'] : null);
+		$normalUrl = $this->_baseUrl . '/login';
+		$quickUrl = trim((string)($cycle['quick_checkin_url'] ?? ''));
 		$params = [
 			'app' => $this->_appName,
 			'name' => (string)$cycle['display_name'],
@@ -115,12 +141,28 @@ final class NotificationComposer
 			'due' => $this->FormatUtc((string)$cycle['due_at']),
 			'number' => $reminderNumber,
 			'total' => (int)$cycle['max_reminders'],
-			'url' => $this->_baseUrl . '/login',
+			'url' => $normalUrl,
+			'quickurl' => $quickUrl !== '' ? $quickUrl : $normalUrl,
 		];
+		$params['quickcheckin'] = $quickUrl !== ''
+			? $this->Translate($locale, 'mail.owner.quick_checkin', $params)
+			: '';
+
+		$custom = $this->CustomTemplate($cycle, 'owner_reminder', $locale);
+
+		if ($custom !== null)
+		{
+			return [
+				'subject' => $this->ReplaceParams($custom['subject'], $params),
+				'body_text' => $this->ReplaceParams($custom['body_text'], $params),
+			];
+		}
+
+		$body = $this->Translate($locale, 'mail.owner_reminder.body', $params);
 
 		return [
 			'subject' => $this->Translate($locale, 'mail.owner_reminder.subject', $params),
-			'body_text' => $this->Translate($locale, 'mail.owner_reminder.body', $params),
+			'body_text' => $body,
 		];
 	}
 
@@ -317,12 +359,15 @@ final class NotificationComposer
 	 * @brief Returns one built-in mail template without expanding its placeholders.
 	 * @param string $templateKey Supported template identifier.
 	 * @param string $locale Requested locale.
+	 * @param array<string, mixed> $context Optional monitor context used to select the exact built-in variant.
 	 * @return array{subject: string, body_text: string}
 	 */
-	public function BuiltInTemplate(string $templateKey, string $locale): array
+	public function BuiltInTemplate(string $templateKey, string $locale, array $context = []): array
 	{
 		$locale = $this->_languages->Resolve($locale);
 		$keys = [
+			'owner_due_notice' => ['mail.owner_due_notice.subject', 'mail.owner_due_notice.body'],
+			'owner_reminder' => ['mail.owner_reminder.subject', 'mail.owner_reminder.body'],
 			'recipient_default' => ['mail.recipient_notification.subject', 'mail.recipient_notification.body'],
 			'safety_invitation' => ['mail.safety_invitation.subject', 'mail.safety_invitation.body'],
 			'safety_reminder' => ['mail.safety_reminder.subject', 'mail.safety_reminder.body'],
@@ -333,10 +378,37 @@ final class NotificationComposer
 			throw new \InvalidArgumentException('Unsupported built-in mail template key.');
 		}
 
+		$bodyKey = $keys[$templateKey][1];
+
+		if ($templateKey === 'owner_due_notice' && array_key_exists('max_reminders', $context) && (int)$context['max_reminders'] === 0)
+		{
+			$bodyKey = 'mail.owner_due_notice.body_no_reminders';
+		}
+
+		$body = $this->Translate($locale, $bodyKey, []);
+
 		return [
 			'subject' => $this->Translate($locale, $keys[$templateKey][0], []),
-			'body_text' => $this->Translate($locale, $keys[$templateKey][1], []),
+			'body_text' => $body,
 		];
+	}
+
+	/** @return array{subject: string, body_text: string}|null @brief Returns one complete monitor override for the requested mail template. */
+	private function CustomTemplate(array $cycle, string $templateKey, string $locale): ?array
+	{
+		$templates = $cycle['mail_templates'] ?? [];
+		$scope = in_array($templateKey, ['owner_due_notice', 'owner_reminder'], true) ? 'owner' : $locale;
+		$template = is_array($templates) ? ($templates[$templateKey][$scope] ?? null) : null;
+
+		if (!is_array($template))
+		{
+			return null;
+		}
+
+		$subject = trim((string)($template['subject'] ?? ''));
+		$body = trim((string)($template['body_text'] ?? ''));
+
+		return $subject !== '' && $body !== '' ? ['subject' => $subject, 'body_text' => $body] : null;
 	}
 
 	/** @return array{subject: string, body_text: string} @brief Composes a delivery-system test. */

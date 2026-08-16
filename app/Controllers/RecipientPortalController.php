@@ -340,7 +340,7 @@ final class RecipientPortalController extends BaseController
 		if ((string)$document['storage_type'] === 'text')
 		{
 			$content = (string)($document['text_content'] ?? '');
-			$this->SendDownloadHeaders($filename, 'text/plain; charset=utf-8');
+			$this->SendDownloadHeaders($filename, 'text/markdown; charset=utf-8');
 			header('Content-Length: ' . strlen($content));
 			$this->_portalService->RecordDocumentDownload((int)$delivery['delivery_id'], (int)$document['id']);
 			echo $content;
@@ -393,10 +393,11 @@ final class RecipientPortalController extends BaseController
 
 		if ((string)$document['storage_type'] === 'text')
 		{
-			$content = (string)($document['text_content'] ?? '');
-			$this->SendInlineHeaders($filename, $contentType);
-			header('Content-Length: ' . strlen($content));
-			echo $content;
+			header('Content-Type: text/html; charset=utf-8');
+			echo $this->_view->Render('portal.text-document', [
+				'document' => $document,
+				'token' => $token,
+			]);
 			exit;
 		}
 
@@ -531,7 +532,9 @@ final class RecipientPortalController extends BaseController
 
 		if ((string)($document['storage_type'] ?? '') === 'text')
 		{
-			return str_ends_with(strtolower($title), '.txt') ? $title : $title . '.txt';
+			return str_ends_with(strtolower($title), '.md')
+				? $title
+				: (str_ends_with(strtolower($title), '.txt') ? substr($title, 0, -4) . '.md' : $title . '.md');
 		}
 
 		$extension = pathinfo((string)($document['original_filename'] ?? ''), PATHINFO_EXTENSION);
@@ -573,7 +576,7 @@ final class RecipientPortalController extends BaseController
 	{
 		if ((string)($document['storage_type'] ?? '') === 'text')
 		{
-			return 'text/plain; charset=utf-8';
+			return 'text/markdown; charset=utf-8';
 		}
 
 		$mimeType = strtolower(trim((string)($document['mime_type'] ?? '')));
@@ -595,7 +598,7 @@ final class RecipientPortalController extends BaseController
 	{
 		if ((string)($document['storage_type'] ?? '') === 'text')
 		{
-			return 'TXT';
+			return 'MD';
 		}
 
 		$extension = strtoupper(pathinfo((string)($document['original_filename'] ?? ''), PATHINFO_EXTENSION));

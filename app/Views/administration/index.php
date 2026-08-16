@@ -177,6 +177,14 @@ ob_start();
 			<label><?= e__('administration.field.session_regeneration') ?><input type="number" min="60" name="PULSE_SESSION_REGENERATION_INTERVAL" form="administration-settings-form" value="<?= e($settings['PULSE_SESSION_REGENERATION_INTERVAL']) ?>" required><small><?= e__('administration.field.session_regeneration_hint') ?></small></label>
 		</div>
 
+		<div class="configuration-block">
+			<h3><?= e__('administration.security.passkeys.heading') ?></h3>
+			<div class="checkbox-row">
+				<label><input type="checkbox" name="PULSE_PASSKEY_QUICK_CHECKIN_ENABLED" form="administration-settings-form" value="1"<?= $settings['PULSE_PASSKEY_QUICK_CHECKIN_ENABLED'] === 'true' ? ' checked' : '' ?>><?= e__('administration.field.passkey_quick_checkin') ?></label>
+				<small><?= e__('administration.field.passkey_quick_checkin_hint') ?></small>
+			</div>
+		</div>
+
 		<div class="field-grid field-grid-two">
 			<div class="checkbox-row">
 				<label><input type="checkbox" name="PULSE_COOKIE_SECURE" form="administration-settings-form" value="1"<?= $settings['PULSE_COOKIE_SECURE'] === 'true' ? ' checked' : '' ?>><?= e__('administration.field.cookie_secure') ?></label>

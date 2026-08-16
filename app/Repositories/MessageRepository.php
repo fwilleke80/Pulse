@@ -197,6 +197,30 @@ class MessageRepository
 	}
 
 	/**
+	 * @brief Replaces one owner-facing monitor mail template without language variants.
+	 * @param int $monitorId Monitor ID.
+	 * @param int $userId Owner user ID.
+	 * @param string $templateKey Owner template identifier.
+	 * @param array{subject: string, body_text: string} $template Single owner template; an empty pair removes the override.
+	 */
+	public function ReplaceOwnerTemplateForMonitor(
+		int $monitorId,
+		int $userId,
+		string $templateKey,
+		array $template
+	): void
+	{
+		if (!in_array($templateKey, ['owner_due_notice', 'owner_reminder'], true))
+		{
+			throw new RuntimeException('Unsupported owner mail template key.');
+		}
+
+		$this->ReplaceLocalizedTemplatesForMonitor($monitorId, $userId, $templateKey, [
+			'owner' => $template,
+		]);
+	}
+
+	/**
 	 * @brief Replaces all localized variants of one monitor-wide mail template.
 	 * @param int $monitorId Monitor ID.
 	 * @param int $userId Owner user ID.
@@ -210,7 +234,7 @@ class MessageRepository
 		array $templates
 	): void
 	{
-		if (!in_array($templateKey, ['recipient_default', 'safety_invitation', 'safety_reminder'], true))
+		if (!in_array($templateKey, ['owner_due_notice', 'owner_reminder', 'recipient_default', 'safety_invitation', 'safety_reminder'], true))
 		{
 			throw new RuntimeException('Unsupported monitor mail template key.');
 		}

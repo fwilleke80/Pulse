@@ -79,6 +79,6 @@ final class EscalatedMonitorLifecycleSourceTest extends TestCase
 		self::assertStringContainsString('⋮', $actions);
 		self::assertStringContainsString('monitors/reset-reactivate', $actions);
 		self::assertStringContainsString('monitors/archive', $actions);
-		self::assertStringContainsString('monitors/index.table.buttons.delete', $actions);
+		self::assertStringContainsString('monitors.index.table.buttons.delete', $actions);
 	}
 }

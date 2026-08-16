@@ -1,6 +1,6 @@
 # Pulse
 
-**Current stable release: 1.0.0**
+**Current stable release: 1.1.3**
 
 Pulse is a private, self-hosted check-in and notification system for situations in which something could happen to you and the people who need to know might otherwise not be informed for some time. You might use it to make sure family, friends, or other trusted people are contacted if you die or become seriously ill, or as an additional safety measure while travelling alone, going on an expedition, or spending time somewhere where help may be difficult to reach.
 
@@ -17,7 +17,7 @@ Pulse is not an emergency-response service. Its timing depends on your cron sche
 - the ability to run a scheduled job by URL or command line
 - HTTPS for production use
 
-The web server must expose only `public/`. For the built-in routing used by Pulse 1.0, deploy it at the root of its host or virtual host, for example `https://pulse.example.com/`, rather than below a URL prefix such as `/pulse/`.
+The web server must expose only `public/`. For the built-in routing used by Pulse 1.1, deploy it at the root of its host or virtual host, for example `https://pulse.example.com/`, rather than below a URL prefix such as `/pulse/`.
 
 ## Quick installation
 
@@ -34,6 +34,12 @@ The installer creates `.env`; a normal installation does not require manual dote
 For reliable notifications, configure normal sender authentication such as SPF, DKIM, and DMARC where applicable. Also add the configured Pulse sender address or domain to safe-sender/allowlist rules on mailboxes and mail servers you control.
 
 See [docs/INSTALLATION.md](docs/INSTALLATION.md) for the complete installation, permissions, SMTP, cron, verification, and update procedure.
+
+When preparing source for deployment, generate `config/version.php` before uploading:
+
+```bash
+python3 tools/write_version.py
+```
 
 ## First steps after installation
 
@@ -52,6 +58,18 @@ The [User guide](docs/USER_GUIDE.md) explains the interface and lifecycle. The [
 ## Administration
 
 Users with the `administrator` role have access to **Administration**, organized into responsive **General**, **Security**, **Files**, **Mail**, **Cron**, and **Installation** tabs. Runtime settings are written directly to the root `.env` file. Configuration problems are highlighted in the affected tabs.
+
+## Account security and quick check-in
+
+Pulse 1.1.3 includes passkeys as a general account authentication method. Register passkeys under **Profile → Account security** and use them on the normal login page. The security-method storage is deliberately generic so later releases can add additional methods or second-factor policies without tying account authentication to passkeys alone.
+
+Administrators can enable **Passkey quick check-in** under **Administration → Security**. This is the lowest-effort way to perform routine check-ins: open the link in an owner reminder, authenticate with the passkey available on that device, and Pulse immediately performs the same global action as **Check in now** for all active monitors. The email link itself is not authentication, and normal password login remains available as fallback.
+
+For quick check-in to stay genuinely convenient, make sure every phone, tablet, or computer you expect to use has access to a registered Pulse passkey. If your passkey is not available across devices, register a separate passkey for each device under **Profile → Account security** before you need it. Test quick check-in from those devices during setup.
+
+Owner reminder templates normally use `{quickcheckin}`, which expands to the localized quick-check-in Markdown link when enabled and to nothing when disabled. `{quickurl}` remains available for custom link wording and falls back to the normal `{url}` login URL when quick check-in is disabled.
+
+Passkeys require HTTPS and a stable Pulse hostname in normal deployment.
 
 ## Documentation
 

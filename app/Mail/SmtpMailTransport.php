@@ -10,21 +10,26 @@ declare(strict_types=1);
 
 namespace Pulse\Mail;
 
+use Pulse\Core\MarkdownRenderer;
+
 /**
- * @brief Sends UTF-8 plain-text messages through a configured SMTP server.
+ * @brief Sends UTF-8 multipart messages with plain-text and Markdown-rendered HTML alternatives.
  */
 final class SmtpMailTransport implements MailTransportInterface
 {
 	/** @var array<string, mixed> */
 	private array $_config;
+	private MarkdownRenderer $_markdownRenderer;
 
 	/**
 	 * @brief Constructs the SMTP transport.
 	 * @param array<string, mixed> $config Validated mail configuration.
+	 * @param MarkdownRenderer|null $markdownRenderer Shared Markdown renderer.
 	 */
-	public function __construct(array $config)
+	public function __construct(array $config, ?MarkdownRenderer $markdownRenderer = null)
 	{
 		$this->_config = $config;
+		$this->_markdownRenderer = $markdownRenderer ?? new MarkdownRenderer();
 	}
 
 	/** @inheritDoc */
@@ -179,28 +184,48 @@ final class SmtpMailTransport implements MailTransportInterface
 	}
 
 	/**
-	 * @brief Builds an RFC-compatible UTF-8 plain-text message with dot stuffing.
+	 * @brief Builds an RFC-compatible UTF-8 multipart/alternative message.
+	 *
+	 * The queue stores immutable Markdown source. Delivery derives both a readable
+	 * plain-text alternative and conservative inline-styled HTML from that source.
 	 */
 	private function BuildMessage(string $recipientEmail, string $subject, string $bodyText): string
 	{
 		$fromAddress = (string)$this->_config['from_address'];
 		$fromName = $this->EncodeHeader((string)$this->_config['from_name']);
-		$normalizedBody = str_replace(["\r\n", "\r"], "\n", $bodyText);
-		$normalizedBody = str_replace("\n", "\r\n", $normalizedBody);
-		$normalizedBody = preg_replace('/(?m)^\./', '..', $normalizedBody) ?? $normalizedBody;
-
-		return implode("\r\n", [
+		$boundary = 'pulse-alt-' . bin2hex(random_bytes(18));
+		$plainBody = $this->NormalizeBody($this->_markdownRenderer->ToPlainText($bodyText));
+		$htmlBody = $this->NormalizeBody($this->_markdownRenderer->ToEmailHtml($bodyText));
+		$message = implode("\r\n", [
 			'Date: ' . gmdate('D, d M Y H:i:s O'),
 			'From: ' . $fromName . ' <' . $fromAddress . '>',
 			'To: <' . $recipientEmail . '>',
 			'Subject: ' . $this->EncodeHeader($subject),
 			'MIME-Version: 1.0',
-			'Content-Type: text/plain; charset=UTF-8',
-			'Content-Transfer-Encoding: quoted-printable',
+			'Content-Type: multipart/alternative; boundary="' . $boundary . '"',
 			'Message-ID: <' . bin2hex(random_bytes(16)) . '@' . $this->MessageIdHost() . '>',
 			'',
-			quoted_printable_encode($normalizedBody),
+			'--' . $boundary,
+			'Content-Type: text/plain; charset=UTF-8',
+			'Content-Transfer-Encoding: quoted-printable',
+			'',
+			quoted_printable_encode($plainBody),
+			'--' . $boundary,
+			'Content-Type: text/html; charset=UTF-8',
+			'Content-Transfer-Encoding: quoted-printable',
+			'',
+			quoted_printable_encode($htmlBody),
+			'--' . $boundary . '--',
 		]);
+
+		return preg_replace('/(?m)^\./', '..', $message) ?? $message;
+	}
+
+	/** @brief Normalizes MIME body line endings to CRLF before transfer encoding. */
+	private function NormalizeBody(string $body): string
+	{
+		$body = str_replace(["\r\n", "\r"], "\n", $body);
+		return str_replace("\n", "\r\n", $body);
 	}
 
 	/** @brief Encodes a non-ASCII header value. */

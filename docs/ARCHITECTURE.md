@@ -35,7 +35,7 @@ Pulse/
 
 Only `public/` is intended to be web-accessible.
 
-With Apache, `public/.htaccess` rewrites application URLs to `public/index.php` while leaving actual public files alone. Pulse 1.0's built-in exact-path router expects this public directory at the root of its host/virtual host rather than below a URL prefix.
+With Apache, `public/.htaccess` rewrites application URLs to `public/index.php` while leaving actual public files alone. Pulse 1.1's built-in exact-path router expects this public directory at the root of its host/virtual host rather than below a URL prefix.
 
 Pulse retains a small PSR-4 fallback autoloader so the deployed application does not require a Composer `vendor/` directory.
 
@@ -288,7 +288,7 @@ Existing SMTP passwords and web-cron tokens are not rendered back into HTML.
 
 The public base URL and database connection settings are installation-level values created by `public/install.php` and kept read-only in normal Administration.
 
-Pulse 1.0 expects the configured base URL to be a site origin without a URL path, matching the site-root routing model.
+Pulse 1.1 expects the configured base URL to be a site origin without a URL path, matching the site-root routing model.
 
 ## Database migrations
 
@@ -300,13 +300,21 @@ The stable line begins with:
 001_initial_schema.sql
 ```
 
-which contains the complete 1.0 baseline.
+which contains the complete 1.0 baseline. Stable post-1.0 releases add new numbered migrations; 1.1.2 adds `002_security_methods_and_owner_mail.sql`.
 
 At startup, Pulse acquires a database advisory lock, verifies previously applied migration checksums, and applies pending migrations in order.
 
 Once a migration has shipped in a stable release, do not edit it. Future schema changes must be added as new numbered migration files.
 
 `database/schema.sql` is the current reference schema and is not an upgrade mechanism.
+
+## Account security methods
+
+Account authentication beyond the password is represented by generic `user_security_methods` records. Method-specific credential data is stored separately; 1.1.2 implements `passkey` credentials in `user_passkey_credentials`. `user_security_profiles` provides the stable opaque WebAuthn user handle.
+
+`SecurityChallengeService` is method-neutral challenge storage in the browser session. `PasskeyService` implements WebAuthn registration/assertion verification on top of that layer. This separation is intentional so a later TOTP/recovery-code implementation can add another method or second-factor policy without placing authentication rules in monitor controllers.
+
+Quick check-in is also separated from authentication. `QuickCheckInService` creates hashed, expiring, cycle-bound email pointers. After the pointer is resolved, either passkey or password authentication must succeed before `MonitorExecutionService::CheckInAllActiveForUser()` is invoked.
 
 ## Document storage
 
@@ -317,7 +325,7 @@ Uploaded document payloads are:
 - stored under private `storage/uploads/` outside `public/`;
 - streamed only through authorization-checked endpoints.
 
-Editable text documents and message/portal text are stored in the database.
+Editable Markdown text documents and message/portal source text are stored in the database. Pulse stores the source rather than generated HTML. `MarkdownRenderer` produces sanitized web HTML, email HTML with inline CSS, and readable plain-text mail alternatives without a runtime Composer dependency. Raw HTML is never trusted as Markdown output.
 
 This is private authenticated storage, not encryption at rest.
 
@@ -333,7 +341,7 @@ This is private authenticated storage, not encryption at rest.
 
 `monitor_portal_templates` stores language-specific portal message/introduction defaults.
 
-Recipient-specific overrides are attached to the monitor-contact assignment. At release time, Pulse resolves the effective content for that recipient and snapshots it into the delivery.
+Recipient-specific overrides are attached to the monitor-contact assignment. At release time, Pulse resolves the effective content for that recipient and snapshots the Markdown source into the delivery. Portal rendering happens from that immutable source snapshot. Mail queue rows likewise retain the composed Markdown-capable body source; SMTP delivery derives `text/plain` and `text/html` MIME alternatives from it.
 
 `Translator` falls back to English for missing keys in an additional language so a partial translation remains usable during development.
 

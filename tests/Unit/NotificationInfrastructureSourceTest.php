@@ -91,7 +91,7 @@ class NotificationInfrastructureSourceTest extends TestCase
 		self::assertStringContainsString("invitation.locale = c.notification_locale", $escalation);
 		self::assertStringContainsString("'invitation_subject' => \$contact['safety_invitation_subject'] ?? null", $escalation);
 		self::assertStringContainsString("'message_body' => (string)(\$current['reminder_body'] ?? '')", $escalation);
-		self::assertStringContainsString('name="safety_invitation_subject_<?= e(\$templateFieldLocale) ?>"', $view);
+		self::assertStringContainsString('name="safety_invitation_subject_<?= e($templateFieldLocale) ?>"', $view);
 		self::assertStringContainsString('data-language-tabs', $view);
 	}
 
@@ -134,15 +134,16 @@ class NotificationInfrastructureSourceTest extends TestCase
 		$routes = (string)file_get_contents(dirname(__DIR__, 2) . '/public/index.php');
 		$controller = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Controllers/MonitorController.php');
 		$view = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Views/monitors/index.php');
+		$actions = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Views/monitors/partials/actions.php');
 
 		self::assertStringNotContainsString('PULSE_ALLOW_FORCE_DUE', $config);
 		self::assertStringContainsString('(bool)$config[\'debug\']', $routes);
 		self::assertStringContainsString("Post('/monitors/send-due-notice'", $routes);
 		self::assertStringContainsString('QueueDueNoticeForMonitorForUser', $controller);
 		self::assertStringContainsString('$debugEnabled', $view);
-		self::assertStringContainsString('/monitors/send-due-notice', $view);
-		self::assertStringContainsString('/monitors/send-safety-contact-notifications', $view);
-		self::assertStringContainsString('/monitors/send-recipient-notifications', $view);
+		self::assertStringContainsString('/monitors/send-due-notice', $actions);
+		self::assertStringContainsString('/monitors/send-safety-contact-notifications', $actions);
+		self::assertStringContainsString('/monitors/send-recipient-notifications', $actions);
 		self::assertStringContainsString('FindDebugSafetyGateCycleForUser', $controller);
 		self::assertStringContainsString('FindPendingQueueIdsForSafetyInvitations', $controller);
 	}
@@ -155,8 +156,8 @@ class NotificationInfrastructureSourceTest extends TestCase
 		self::assertStringContainsString('failed_notification_count', $repository);
 		self::assertStringContainsString('owner_due_notice', $repository);
 		self::assertStringContainsString('failed_mq.status', $repository);
-		self::assertStringContainsString('dashboard-delivery-warning', $dashboard);
-		self::assertStringContainsString('monitors.notifications.delivery_failed_message', $dashboard);
+		self::assertStringContainsString('table-warning-critical', $dashboard);
+		self::assertStringContainsString('monitors.notifications.delivery_failed_short', $dashboard);
 	}
 
 	public function testDashboardActivityIsBoundedAndLinksToCompleteHistory(): void

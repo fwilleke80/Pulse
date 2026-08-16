@@ -1402,6 +1402,111 @@ small
 	margin-top: 0;
 }
 
+.security-credential-list
+{
+	display: grid;
+	gap: 0.7rem;
+	margin: 1rem 0;
+}
+
+.security-credential-item
+{
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 1rem;
+	padding: 0.85rem 1rem;
+	border: 1px solid var(--border);
+	border-radius: 9px;
+	background: var(--surface);
+}
+
+.security-credential-item > div
+{
+	display: grid;
+	gap: 0.2rem;
+}
+
+.security-credential-item small
+{
+	color: var(--muted);
+}
+
+.security-credential-remove
+{
+	min-width: 9rem;
+}
+
+.security-credential-remove > summary
+{
+	cursor: pointer;
+	color: var(--muted);
+	font-size: 0.9rem;
+	font-weight: 650;
+}
+
+.passkey-registration-form
+{
+	margin-top: 1rem;
+}
+
+.passkey-primary-action
+{
+	display: grid;
+	gap: 0.35rem;
+}
+
+.passkey-primary-action small
+{
+	color: var(--muted);
+}
+
+.auth-separator
+{
+	display: flex;
+	align-items: center;
+	gap: 0.8rem;
+	margin: 0.3rem 0;
+	color: var(--muted);
+	font-size: 0.85rem;
+}
+
+.auth-separator::before,
+.auth-separator::after
+{
+	content: '';
+	flex: 1;
+	height: 1px;
+	background: var(--border);
+}
+
+.security-method-status
+{
+	padding: 0.65rem 0.8rem;
+	border: 1px solid color-mix(in srgb, var(--success) 35%, var(--border));
+	border-radius: 8px;
+	background: color-mix(in srgb, var(--success) 8%, var(--surface));
+}
+
+.security-method-status.is-error
+{
+	border-color: color-mix(in srgb, var(--danger) 35%, var(--border));
+	background: color-mix(in srgb, var(--danger) 8%, var(--surface));
+	color: var(--danger);
+}
+
+.notification-status-card
+{
+	display: flex;
+	flex-direction: column;
+	gap: 0.2rem;
+	margin-bottom: 1rem;
+	padding: 0.8rem 1rem;
+	border: 1px solid color-mix(in srgb, var(--info) 35%, var(--border));
+	border-radius: 8px;
+	background: color-mix(in srgb, var(--info) 8%, var(--surface));
+}
+
 .subsection-heading
 {
 	margin-top: 2rem;
@@ -2302,22 +2407,6 @@ footer
 	background: var(--surface-subtle);
 }
 
-.portal-document-preview-text pre
-{
-	width: 100%;
-	min-width: 0;
-	margin: 0;
-	padding: 0.9rem 1rem;
-	overflow: auto;
-	background: transparent;
-	color: var(--text);
-	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-	font-size: 0.8rem;
-	line-height: 1.5;
-	overflow-wrap: anywhere;
-	white-space: pre-wrap;
-}
-
 .portal-document-preview-type span
 {
 	display: inline-flex;
@@ -2432,6 +2521,20 @@ footer
 	font-size: 0.75rem;
 	font-weight: 800;
 	line-height: 1;
+}
+
+@media (max-width: 680px)
+{
+	.security-credential-item
+	{
+		align-items: stretch;
+		flex-direction: column;
+	}
+
+	.security-credential-remove
+	{
+		min-width: 0;
+	}
 }
 
 /* Editor and navigation refinements */
@@ -3436,4 +3539,229 @@ button.row-action-menu-danger
 	{
 		grid-template-columns: 1fr;
 	}
+}
+
+/* Markdown editing and rendering */
+.markdown-editor
+{
+	margin-top: 0.35rem;
+	border: 1px solid var(--border);
+	border-radius: 9px;
+	background: var(--surface);
+	overflow: hidden;
+}
+
+.markdown-editor-tabs
+{
+	display: flex;
+	gap: 0;
+	padding: 0.3rem 0.35rem 0;
+	border-bottom: 1px solid var(--border);
+	background: var(--surface-subtle);
+}
+
+button.markdown-editor-tab
+{
+	margin: 0 0 -1px;
+	padding: 0.45rem 0.8rem;
+	border: 1px solid transparent;
+	border-bottom: 1px solid var(--border);
+	border-radius: 7px 7px 0 0;
+	background: transparent;
+	color: var(--muted);
+	font-size: 0.9rem;
+}
+
+button.markdown-editor-tab:hover
+{
+	border-color: transparent;
+	color: var(--text);
+}
+
+button.markdown-editor-tab.is-active
+{
+	border-color: var(--border);
+	border-bottom-color: var(--surface);
+	background: var(--surface);
+	color: var(--text);
+}
+
+.markdown-editor textarea
+{
+	margin: 0;
+	border: 0;
+	border-radius: 0;
+	resize: vertical;
+}
+
+.markdown-editor textarea:focus
+{
+	border: 0;
+	outline: 3px solid color-mix(in srgb, var(--primary) 20%, transparent);
+	outline-offset: -3px;
+}
+
+.markdown-preview-panel
+{
+	min-height: 10rem;
+	padding: 1rem;
+	background: var(--surface);
+}
+
+.markdown-preview-output.is-loading
+{
+	color: var(--muted);
+}
+
+.markdown-preview-email
+{
+	padding: 1rem 1.1rem;
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	background: var(--surface);
+	box-shadow: 0 1px 3px color-mix(in srgb, var(--text) 8%, transparent);
+}
+
+.markdown-editor-hint
+{
+	margin-top: 0.4rem;
+}
+
+.markdown-content
+{
+	line-height: 1.65;
+	overflow-wrap: anywhere;
+}
+
+.markdown-content > :first-child
+{
+	margin-top: 0;
+}
+
+.markdown-content > :last-child
+{
+	margin-bottom: 0;
+}
+
+.markdown-content p,
+.markdown-content ul,
+.markdown-content ol,
+.markdown-content blockquote,
+.markdown-content pre
+{
+	margin: 0 0 1rem;
+}
+
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3,
+.markdown-content h4,
+.markdown-content h5,
+.markdown-content h6
+{
+	margin: 1.25rem 0 0.65rem;
+	line-height: 1.3;
+}
+
+.markdown-content ul,
+.markdown-content ol
+{
+	padding-left: 1.6rem;
+}
+
+.markdown-content blockquote
+{
+	padding: 0.15rem 0 0.15rem 1rem;
+	border-left: 4px solid var(--border);
+	color: var(--muted);
+}
+
+.markdown-content code
+{
+	padding: 0.08rem 0.28rem;
+	border-radius: 4px;
+	background: var(--surface-subtle);
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+	font-size: 0.92em;
+}
+
+.markdown-content pre
+{
+	padding: 0.85rem 1rem;
+	overflow: auto;
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	background: var(--surface-subtle);
+	white-space: pre-wrap;
+}
+
+.markdown-content pre code
+{
+	padding: 0;
+	background: transparent;
+}
+
+.markdown-content hr
+{
+	margin: 1.35rem 0;
+	border: 0;
+	border-top: 1px solid var(--border);
+}
+
+.portal-document-preview-text
+{
+	display: block;
+	padding: 0.9rem 1rem;
+	overflow: auto;
+	color: var(--text);
+	text-decoration: none;
+}
+
+.portal-document-preview-text > div
+{
+	max-height: 12rem;
+	overflow: hidden;
+	font-size: 0.84rem;
+	line-height: 1.5;
+}
+
+.portal-document-preview-text:hover
+{
+	color: var(--text);
+}
+
+.portal-text-document
+{
+	max-width: 850px;
+	margin: 0 auto;
+	padding: 1.25rem 1.4rem;
+	border: 1px solid var(--border);
+	border-radius: 12px;
+	background: var(--surface);
+	box-shadow: var(--shadow);
+}
+
+.portal-text-document-header
+{
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 1rem;
+	padding-bottom: 1rem;
+	border-bottom: 1px solid var(--border);
+}
+
+.portal-text-document-header h1
+{
+	margin: 0;
+}
+
+.portal-text-document-header .button-link
+{
+	flex: 0 0 auto;
+}
+
+.portal-text-document-body
+{
+	margin-top: 1.25rem;
 }

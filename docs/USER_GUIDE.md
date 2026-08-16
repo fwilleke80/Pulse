@@ -67,7 +67,7 @@ A contact can contain:
 - an optional cell-phone number
 - optional notes
 
-The cell-phone field is currently reference information only; Pulse 1.0 sends notifications by email.
+The cell-phone field is currently reference information only; Pulse 1.1 sends notifications by email.
 
 ### Checking an email address
 
@@ -138,12 +138,14 @@ With those settings, the owner reminder phase ends four days after the monitor f
 
 Documents belong to the monitor's library. You can:
 
-- create editable text documents directly in Pulse;
+- create editable Markdown text documents directly in Pulse;
 - upload supported files;
 - edit recipient-facing titles and descriptions;
 - download or delete source documents.
 
 Creating a document does **not** automatically release it to every recipient. Assignment is done for each recipient separately under that recipient's **Documents** tab.
+
+Pulse text documents support a safe Markdown subset: headings, bold and italic text, ordered and unordered lists, links, blockquotes, horizontal rules, inline code, and fenced code blocks. Raw HTML is displayed as text rather than executed. The editor has **Edit** and **Preview** tabs; Preview renders the current unsaved source through Pulse's server-side Markdown renderer. Recipient downloads and **Download all** preserve the original Markdown source as `.md` files.
 
 The default upload policy accepts PDF, RTF, OpenDocument Text, Word `.docx`, JPEG, PNG, and plain text files up to 25 MiB. Administrators can change Pulse's own limit and MIME allowlist under **Administration → Files**. PHP and web-server upload limits may impose lower limits.
 
@@ -185,17 +187,30 @@ Simply opening a safety-contact link does nothing. The contact must deliberately
 
 ### 6. Messages & content
 
-This tab contains three secondary sections:
+This tab contains four secondary sections:
 
+- **Owner check-in email**
 - **Recipient email**
 - **Safety-contact email**
 - **Portal page**
 
 Each installed language has its own monitor-wide defaults where appropriate. Pulse selects the language using the recipient or safety contact's **Pulse interface language**.
 
+The monitor editor has one shared **Save changes** action for ordinary monitor settings and **Messages & content**. If you edited more than one message subsection, Pulse saves every dirty subsection before saving the monitor itself. If you try to leave the page with unsaved message changes, the browser warns before discarding them.
+
+#### Owner check-in email
+
+The initial due notice and the later owner follow-up reminder each have one optional custom template per monitor. Custom owner templates are not language variants: Pulse uses them exactly as written. If both subject and body are left empty, Pulse uses the built-in fallback in your configured notification language. **Show current default template** expands that localized fallback without replacing your editor.
+
+Owner mail bodies support optional Markdown and the shared **Edit / Preview** editor. Available placeholders include `{app}`, `{name}`, `{monitor}`, `{due}`, and `{url}`. The initial due notice also supports `{deadline}`, `{response_window}`, and `{max_followup_reminders}`; follow-up reminders support `{number}` and `{total}`.
+
+`{quickcheckin}` is the recommended placeholder for the optional shortcut. It expands to Pulse's localized Markdown quick-check-in link when **Administration → Security → Enable passkey quick check-in** is enabled, and to nothing when the feature is disabled. This is also how the built-in owner templates expose the feature, so the default text now shows exactly where the quick-check-in link will appear.
+
+`{quickurl}` remains available when you want to write your own link text. It expands to the authenticated quick-check-in URL when enabled and safely falls back to the normal `{url}` login URL when disabled. Quick check-in still requires authentication and, once authenticated, checks in all active monitors.
+
 #### Recipient email
 
-Pulse provides localized built-in recipient email text. You may replace it with a monitor-wide subject/body for each installed language.
+Pulse provides localized built-in recipient email text. You may replace it with a monitor-wide subject/body for each installed language. Mail bodies are Markdown-capable and use the same **Edit / Preview** editor as other Markdown content.
 
 Supported placeholders are:
 
@@ -215,7 +230,7 @@ The initial safety-contact invitation and later safety reminders can be customiz
 
 They support `{app}`, `{name}`, `{owner}`, `{monitor}`, and `{url}`. Safety reminder text additionally supports `{number}` and `{total}`.
 
-Leave a language-specific subject/body pair empty to use Pulse's built-in localized text.
+Leave a language-specific subject/body pair empty to use Pulse's built-in localized text. Safety-contact mail bodies are also Markdown-capable.
 
 #### Portal page
 
@@ -225,7 +240,9 @@ The portal content is separate from the notification email. Configure:
 - **Page introduction** — generic explanatory text about the page;
 - **Portal expiry** — 30 days, 90 days, one year, a custom number of days, or no automatic expiry.
 
-Portal text supports `{app}`, `{name}`, `{owner}`, and `{monitor}`. It does not need `{url}` because the recipient is already on the portal.
+The **Personal portal message** supports Markdown and the shared **Edit / Preview** editor. The generic Page introduction remains plain text. Portal text supports `{app}`, `{name}`, `{owner}`, and `{monitor}`. It does not need `{url}` because the recipient is already on the portal.
+
+In Markdown-capable fields, ending a source line with **two spaces** forces a line break without starting a new paragraph.
 
 ### 7. Review & activation
 
@@ -321,7 +338,7 @@ After successful verification, the browser receives a session scoped to that spe
 
 Every View, Download, and **Download all** request rechecks whether the delivery is still available. If the owner revokes the portal or its automatic expiry is reached, an already-open browser session immediately loses access on the next server request.
 
-The authenticated portal shows the page introduction, personal portal message, and a responsive document grid. Pulse-created text documents can show a bounded text preview. Supported passive formats may also offer **View**; all authorized documents offer **Download**.
+The authenticated portal shows the page introduction, rendered Markdown personal portal message, and a responsive document grid. Pulse-created Markdown text documents show a bounded rendered preview and can be opened as a full rendered document. Supported passive formats may also offer **View**; all authorized documents offer **Download**.
 
 **Download all** streams a ZIP/ZIP64 archive directly from authorized private content without first creating a second full-size archive on disk.
 
@@ -374,7 +391,7 @@ Recipient-specific delivery and portal activity is shown in the recipient editor
 
 ## Mail queue and failed notifications
 
-Owner notices, safety-contact messages, access codes, and recipient messages all use Pulse's mail queue.
+Owner notices, safety-contact messages, access codes, and recipient messages all use Pulse's mail queue. Each queued body remains an immutable text/Markdown snapshot. At delivery time Pulse creates a `multipart/alternative` message with a readable plain-text part and a sanitized HTML part with conservative inline CSS.
 
 Administrators can open **Administration → Mail** to:
 
@@ -391,6 +408,24 @@ A failed email does not count as successfully delivered. Pulse does not advance 
 If SMTP settings are changed, send another successful test before relying on the system.
 
 For reliable delivery, add the configured Pulse sender address or domain to safe-sender/allowlist or whitelist rules where practical. This complements rather than replaces correct SMTP, SPF, DKIM, and DMARC configuration.
+
+## Account security and passkeys
+
+Open **Profile → Account security** to register and remove passkeys. Passkeys can be used for normal Pulse login and for quick check-in. Registration and removal require the current password, so possession of an already authenticated browser session alone is not enough to change passkey credentials.
+
+A passkey may be backed by Face ID, Touch ID, Windows Hello, a hardware security key, or another authenticator supported by the browser and operating system. Pulse stores the credential identifier and public verification material; it does not receive the authenticator's private key or biometric template.
+
+For the most reliable quick-check-in setup, make sure every device you may use to respond to a reminder has access to a registered Pulse passkey. If a passkey is not available on another device, add a separate passkey for that device and give it a recognizable name such as **iPhone**, **MacBook Touch ID**, or **YubiKey**. Test each intended device before relying on quick check-in during a real reminder.
+
+The normal password remains available as recovery/fallback authentication in 1.1.3. The account-security storage separates authentication methods from monitor logic so later releases can add additional methods and second-factor policies.
+
+### Quick check-in from reminder mail
+
+Quick check-in is the recommended low-friction way to acknowledge routine Pulse reminders. When an administrator enables **Enable passkey quick check-in**, the built-in owner reminder templates use `{quickcheckin}` to place the quick-check-in link explicitly in the template. Custom templates can use `{quickcheckin}` for the localized optional block or `{quickurl}` for a custom link. The URL contains a random, expiring, single-use pointer tied to the monitoring cycle that created the reminder. Opening the URL alone does not check anything in.
+
+The normal flow is simply: open the reminder on a device with a Pulse passkey, activate **Quick check-in**, approve Face ID, Touch ID, Windows Hello, or the available authenticator, and Pulse performs the same global check-in as **Check in now**, confirming all active monitors at once. If the passkey is unavailable or fails, choose the password fallback and complete the same global check-in after normal authentication.
+
+Because quick check-in is intended to remove friction, do not wait for an urgent reminder to discover that a particular device has no usable passkey. Enrol the devices you actually carry or use, then rehearse the flow.
 
 ## Administration
 
@@ -460,6 +495,6 @@ See [Choosing a monitor setup](MONITOR_TUTORIAL.md#rehearse-before-relying-on-it
 
 ## Current limitation: no encryption at rest
 
-Pulse 1.0 does not encrypt stored messages or documents at the application level. A compromise of the hosting account, database, filesystem, or an unencrypted backup can therefore expose those contents.
+Pulse 1.1 does not encrypt stored messages or documents at the application level. A compromise of the hosting account, database, filesystem, or an unencrypted backup can therefore expose those contents.
 
 Do not use the current release as the only storage location for passwords, cryptographic recovery keys, or similarly high-value secrets. See the [Security model](SECURITY.md) for details.

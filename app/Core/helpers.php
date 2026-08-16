@@ -10,12 +10,14 @@ declare(strict_types=1);
 
 use Pulse\Core\CsrfTokenManager;
 use Pulse\Core\LanguageCatalog;
+use Pulse\Core\MarkdownRenderer;
 use Pulse\Core\NotificationLanguage;
 use Pulse\Core\Translator;
 
 $__pulseTranslator = null;
 $__pulseCsrfTokenManager = null;
 $__pulseLanguageCatalog = null;
+$__pulseMarkdownRenderer = null;
 $__pulseNotificationLanguage = null;
 $__pulseDisplayTimezone = 'Europe/Berlin';
 
@@ -30,6 +32,101 @@ function setTranslator(Translator $translator): void
 {
 	global $__pulseTranslator;
 	$__pulseTranslator = $translator;
+}
+
+
+/** @brief Registers the Markdown renderer used by views and editor previews. @param MarkdownRenderer $renderer Renderer instance. */
+function setMarkdownRenderer(MarkdownRenderer $renderer): void
+{
+	global $__pulseMarkdownRenderer;
+	$__pulseMarkdownRenderer = $renderer;
+}
+
+/** @brief Renders trusted renderer output from untrusted Markdown source. @param string $markdown Markdown source. @return string Safe HTML. */
+function markdown_html(string $markdown): string
+{
+	global $__pulseMarkdownRenderer;
+
+	if (!$__pulseMarkdownRenderer instanceof MarkdownRenderer)
+	{
+		return '<p>' . nl2br(e($markdown)) . '</p>';
+	}
+
+	return $__pulseMarkdownRenderer->ToHtml($markdown);
+}
+
+/** @brief Renders email-styled trusted renderer output from untrusted Markdown source. @param string $markdown Markdown source. @return string Safe HTML. */
+function markdown_email_html(string $markdown): string
+{
+	global $__pulseMarkdownRenderer;
+
+	if (!$__pulseMarkdownRenderer instanceof MarkdownRenderer)
+	{
+		return '<p>' . nl2br(e($markdown)) . '</p>';
+	}
+
+	return $__pulseMarkdownRenderer->ToEmailHtml($markdown);
+}
+
+/**
+ * @brief Builds the shared Edit/Preview Markdown field used throughout Pulse.
+ * @param string $baseUrl Application base URL.
+ * @param string $id Textarea ID.
+ * @param string $name Textarea form field name.
+ * @param string $value Markdown source.
+ * @param int $rows Textarea row count.
+ * @param string $mode Preview mode: web or email.
+ * @param array<string, string|bool> $attributes Additional textarea attributes.
+ * @return string Editor HTML.
+ */
+function markdown_editor(
+	string $baseUrl,
+	string $id,
+	string $name,
+	string $value,
+	int $rows = 8,
+	string $mode = 'web',
+	array $attributes = []
+): string
+{
+	$mode = $mode === 'email' ? 'email' : 'web';
+	$attributeText = '';
+
+	foreach ($attributes as $attribute => $attributeValue)
+	{
+		if ($attributeValue === false)
+		{
+			continue;
+		}
+
+		$attributeText .= ' ' . e($attribute);
+
+		if ($attributeValue !== true)
+		{
+			$attributeText .= '="' . e((string)$attributeValue) . '"';
+		}
+	}
+
+	$editorId = $id . '_markdown_editor';
+	$editTabId = $editorId . '_edit_tab';
+	$previewTabId = $editorId . '_preview_tab';
+	$editPanelId = $editorId . '_edit_panel';
+	$previewPanelId = $editorId . '_preview_panel';
+	$previewClass = $mode === 'email' ? 'markdown-preview-output markdown-preview-email markdown-content' : 'markdown-preview-output markdown-content';
+
+	return '<div class="markdown-editor" data-markdown-editor data-preview-mode="' . e($mode) . '" data-preview-url="' . e(rtrim($baseUrl, '/') . '/markdown/preview') . '" data-preview-loading="' . e__('markdown.editor.loading') . '" data-preview-error="' . e__('markdown.editor.error') . '">'
+		. '<div class="markdown-editor-tabs" role="tablist" aria-label="' . e__('markdown.editor.tabs_label') . '">'
+		. '<button type="button" id="' . e($editTabId) . '" class="markdown-editor-tab is-active" role="tab" aria-selected="true" aria-controls="' . e($editPanelId) . '" data-markdown-edit-tab>' . e__('markdown.editor.edit') . '</button>'
+		. '<button type="button" id="' . e($previewTabId) . '" class="markdown-editor-tab" role="tab" aria-selected="false" aria-controls="' . e($previewPanelId) . '" data-markdown-preview-tab>' . e__('markdown.editor.preview') . '</button>'
+		. '</div>'
+		. '<div id="' . e($editPanelId) . '" role="tabpanel" aria-labelledby="' . e($editTabId) . '" data-markdown-edit-panel>'
+		. '<textarea id="' . e($id) . '" name="' . e($name) . '" rows="' . max(2, $rows) . '"' . $attributeText . '>' . e($value) . '</textarea>'
+		. '</div>'
+		. '<div id="' . e($previewPanelId) . '" class="markdown-preview-panel" role="tabpanel" aria-labelledby="' . e($previewTabId) . '" data-markdown-preview-panel hidden>'
+		. '<div class="' . $previewClass . '" data-markdown-preview-output></div>'
+		. '</div>'
+		. '</div>'
+		. '<p class="form-hint markdown-editor-hint">' . e__('markdown.editor.hint') . '</p>';
 }
 
 /** @brief Registers the global CSRF token manager. @param CsrfTokenManager $manager Token manager. */

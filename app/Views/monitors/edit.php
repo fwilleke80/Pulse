@@ -18,6 +18,7 @@ declare(strict_types=1);
 /** @var array<int, array<string, string>> $messageOverrides */
 /** @var array<string, array<string, array{subject: string, body_text: string}>> $mailTemplates */
 /** @var array<string, array<string, array{subject: string, body_text: string}>> $mailDefaults */
+/** @var string $ownerNotificationLocale */
 /** @var array<string, array{message_text: string, intro_text: string}> $portalTemplates */
 /** @var array<string, array{message_text: string, intro_text: string}> $portalDefaults */
 /** @var array<int, string> $availableLocales */
@@ -64,6 +65,7 @@ $tabDefinitions = [
 	'review' => 'monitors.tabs.review',
 ];
 $messageSections = [
+	'owner' => 'monitors.messages.sections.owner',
 	'recipient' => 'monitors.messages.sections.recipient',
 	'safety' => 'monitors.messages.sections.safety',
 	'portal' => 'monitors.messages.sections.portal',
@@ -86,7 +88,7 @@ ob_start();
 	</div>
 <?php endif; ?>
 
-<form id="monitor-settings-form" method="post" action="<?= e($base_url) ?>/monitors/update" class="form-carrier">
+<form id="monitor-settings-form" method="post" action="<?= e($base_url) ?>/monitors/update" class="form-carrier" data-monitor-settings-form>
 	<?= csrf_field() ?>
 	<input type="hidden" name="id" value="<?= (int)$monitor['id'] ?>">
 	<input type="hidden" name="active_tab" value="<?= e($activeTab) ?>" data-active-tab-input>
@@ -181,7 +183,7 @@ ob_start();
 					<label for="text_document_title"><?= e__('monitors.documents.upload.title') ?></label>
 					<input type="text" id="text_document_title" name="title" required>
 					<label for="text_document_content"><?= e__('monitors.documents.text.content') ?></label>
-					<textarea id="text_document_content" name="text_content" rows="7" required></textarea>
+					<?= markdown_editor($base_url, 'text_document_content', 'text_content', '', 7, 'web', ['required' => true]) ?>
 					<button type="submit"><?= e__('monitors.documents.text.create.submit') ?></button>
 				</form>
 			</div>
@@ -227,7 +229,7 @@ ob_start();
 								<label for="text_title_<?= (int)$document['id'] ?>"><?= e__('monitors.documents.upload.title') ?></label>
 								<input type="text" id="text_title_<?= (int)$document['id'] ?>" name="title" value="<?= e((string)$document['title']) ?>" required>
 								<label for="text_content_<?= (int)$document['id'] ?>"><?= e__('monitors.documents.text.content') ?></label>
-								<textarea id="text_content_<?= (int)$document['id'] ?>" name="text_content" rows="8" required><?= e((string)($document['text_content'] ?? '')) ?></textarea>
+								<?= markdown_editor($base_url, 'text_content_' . (int)$document['id'], 'text_content', (string)($document['text_content'] ?? ''), 8, 'web', ['required' => true]) ?>
 							</form>
 						<?php else: ?>
 							<div class="document-metadata">
@@ -414,7 +416,7 @@ ob_start();
 			<?= e__('monitors.storage.warning.message') ?>
 		</div>
 
-		<form method="post" action="<?= e($base_url) ?>/monitors/messages/update">
+		<form id="monitor-messages-form" method="post" action="<?= e($base_url) ?>/monitors/messages/update" data-monitor-messages-form data-save-error="<?= e__('monitors.messages.save_error') ?>">
 			<?= csrf_field() ?>
 			<input type="hidden" name="monitor_id" value="<?= (int)$monitor['id'] ?>">
 			<input type="hidden" name="message_section" value="<?= e($activeMessageSection) ?>" data-active-subtab-input>
@@ -425,6 +427,47 @@ ob_start();
 						<a href="<?= e($base_url) ?>/monitors/edit?id=<?= (int)$monitor['id'] ?>&amp;tab=messages&amp;section=<?= e($sectionName) ?>" class="monitor-tab-link editor-subtab-link<?= $activeMessageSection === $sectionName ? ' is-active' : '' ?>" role="tab" data-subtab-target="<?= e($sectionName) ?>" aria-selected="<?= $activeMessageSection === $sectionName ? 'true' : 'false' ?>"><?= e__($translationKey) ?></a>
 					<?php endforeach; ?>
 				</div>
+
+
+				<section class="editor-subtab-panel" data-subtab-panel="owner"<?= $activeMessageSection === 'owner' ? '' : ' hidden' ?>>
+					<h3><?= e__('monitors.messages.owner.heading') ?></h3>
+					<p class="form-hint"><?= e__('monitors.messages.owner.hint') ?></p>
+					<p class="form-hint"><?= e__('mail.templates.owner_language_hint') ?></p>
+					<?php
+					$ownerDueTemplate = $mailTemplates['owner_due_notice']['owner'] ?? ['subject' => '', 'body_text' => ''];
+					$ownerReminderTemplate = $mailTemplates['owner_reminder']['owner'] ?? ['subject' => '', 'body_text' => ''];
+					$ownerDueDefault = $mailDefaults['owner_due_notice']['owner'] ?? ['subject' => '', 'body_text' => ''];
+					$ownerReminderDefault = $mailDefaults['owner_reminder']['owner'] ?? ['subject' => '', 'body_text' => ''];
+					?>
+					<details class="mail-template-kind" open>
+						<summary><?= e__('monitors.messages.owner.due.heading') ?></summary>
+						<div class="mail-template-kind-body">
+							<p class="form-hint"><?= e__('monitors.messages.owner.due.hint') ?></p>
+							<label for="owner_due_notice_subject"><?= e__('monitors.messages.subject') ?></label>
+							<input type="text" id="owner_due_notice_subject" name="owner_due_notice_subject" value="<?= e((string)$ownerDueTemplate['subject']) ?>">
+							<label for="owner_due_notice_body"><?= e__('monitors.messages.body') ?></label>
+							<?= markdown_editor($base_url, 'owner_due_notice_body', 'owner_due_notice_body', (string)$ownerDueTemplate['body_text'], 9, 'email') ?>
+							<p class="form-hint placeholder-help"><?= e__('monitors.messages.placeholders') ?> <code>{app}</code> — <?= e__('mail.placeholders.app') ?>; <code>{name}</code> — <?= e__('mail.placeholders.name') ?>; <code>{monitor}</code> — <?= e__('mail.placeholders.monitor') ?>; <code>{due}</code> — <?= e__('mail.placeholders.due') ?>; <code>{deadline}</code> — <?= e__('mail.placeholders.deadline') ?>; <code>{response_window}</code> — <?= e__('mail.placeholders.response_window') ?>; <code>{max_followup_reminders}</code> — <?= e__('mail.placeholders.max_followup_reminders') ?>; <code>{url}</code> — <?= e__('mail.placeholders.owner_url') ?>; <code>{quickcheckin}</code> — <?= e__('mail.placeholders.quickcheckin') ?>; <code>{quickurl}</code> — <?= e__('mail.placeholders.quickurl') ?>.</p>
+							<p class="form-hint"><?= e__('mail.templates.owner_quickurl_fallback') ?></p>
+							<p class="form-hint"><?= e__('mail.templates.empty_uses_default') ?></p>
+							<details class="mail-default-disclosure"><summary><?= e__('mail.templates.show_default') ?></summary><div class="mail-default-template"><div><strong><?= e__('monitors.messages.subject') ?>:</strong> <?= e((string)$ownerDueDefault['subject']) ?></div><div class="markdown-preview-email markdown-content"><?= markdown_email_html((string)$ownerDueDefault['body_text']) ?></div></div></details>
+						</div>
+					</details>
+					<details class="mail-template-kind">
+						<summary><?= e__('monitors.messages.owner.reminder.heading') ?></summary>
+						<div class="mail-template-kind-body">
+							<p class="form-hint"><?= e__('monitors.messages.owner.reminder.hint') ?></p>
+							<label for="owner_reminder_subject"><?= e__('monitors.messages.subject') ?></label>
+							<input type="text" id="owner_reminder_subject" name="owner_reminder_subject" value="<?= e((string)$ownerReminderTemplate['subject']) ?>">
+							<label for="owner_reminder_body"><?= e__('monitors.messages.body') ?></label>
+							<?= markdown_editor($base_url, 'owner_reminder_body', 'owner_reminder_body', (string)$ownerReminderTemplate['body_text'], 9, 'email') ?>
+							<p class="form-hint placeholder-help"><?= e__('monitors.messages.placeholders') ?> <code>{app}</code> — <?= e__('mail.placeholders.app') ?>; <code>{name}</code> — <?= e__('mail.placeholders.name') ?>; <code>{monitor}</code> — <?= e__('mail.placeholders.monitor') ?>; <code>{due}</code> — <?= e__('mail.placeholders.due') ?>; <code>{number}</code> — <?= e__('mail.placeholders.number') ?>; <code>{total}</code> — <?= e__('mail.placeholders.total') ?>; <code>{url}</code> — <?= e__('mail.placeholders.owner_url') ?>; <code>{quickcheckin}</code> — <?= e__('mail.placeholders.quickcheckin') ?>; <code>{quickurl}</code> — <?= e__('mail.placeholders.quickurl') ?>.</p>
+							<p class="form-hint"><?= e__('mail.templates.owner_quickurl_fallback') ?></p>
+							<p class="form-hint"><?= e__('mail.templates.empty_uses_default') ?></p>
+							<details class="mail-default-disclosure"><summary><?= e__('mail.templates.show_default') ?></summary><div class="mail-default-template"><div><strong><?= e__('monitors.messages.subject') ?>:</strong> <?= e((string)$ownerReminderDefault['subject']) ?></div><div class="markdown-preview-email markdown-content"><?= markdown_email_html((string)$ownerReminderDefault['body_text']) ?></div></div></details>
+						</div>
+					</details>
+				</section>
 
 				<section class="editor-subtab-panel" data-subtab-panel="recipient"<?= $activeMessageSection === 'recipient' ? '' : ' hidden' ?>>
 					<h3><?= e__('monitors.messages.default.heading') ?></h3>
@@ -452,7 +495,7 @@ ob_start();
 								<label for="recipient_default_subject_<?= e($templateFieldLocale) ?>"><?= e__('monitors.messages.subject') ?></label>
 								<input type="text" id="recipient_default_subject_<?= e($templateFieldLocale) ?>" name="recipient_default_subject_<?= e($templateFieldLocale) ?>" value="<?= e((string)$recipientTemplate['subject']) ?>">
 								<label for="recipient_default_body_<?= e($templateFieldLocale) ?>"><?= e__('monitors.messages.body') ?></label>
-								<textarea id="recipient_default_body_<?= e($templateFieldLocale) ?>" name="recipient_default_body_<?= e($templateFieldLocale) ?>" rows="9" data-recipient-template-body><?= e((string)$recipientTemplate['body_text']) ?></textarea>
+								<?= markdown_editor($base_url, 'recipient_default_body_' . $templateFieldLocale, 'recipient_default_body_' . $templateFieldLocale, (string)$recipientTemplate['body_text'], 9, 'email', ['data-recipient-template-body' => true]) ?>
 								<div class="template-validation-warning" role="alert" data-recipient-url-warning<?= $recipientTemplateUrlMissing ? '' : ' hidden' ?>>
 									<strong><?= e__('mail.validation.portal_url_missing.heading') ?></strong>
 									<?= e__('monitors.messages.portal_url_missing_warning', ['language' => notification_language_name($templateLocale)]) ?>
@@ -460,7 +503,7 @@ ob_start();
 								</div>
 								<p class="form-hint placeholder-help"><?= e__('monitors.messages.placeholders') ?> <code>{app}</code> — <?= e__('mail.placeholders.app') ?>; <code>{name}</code> — <?= e__('mail.placeholders.name') ?>; <code>{owner}</code> — <?= e__('mail.placeholders.owner') ?>; <code>{monitor}</code> — <?= e__('mail.placeholders.monitor') ?>; <code>{url}</code> — <?= e__('mail.placeholders.recipient_url') ?>.</p>
 								<p class="form-hint"><?= e__('mail.templates.empty_uses_default') ?></p>
-								<details class="mail-default-disclosure"><summary><?= e__('mail.templates.show_default') ?></summary><div class="mail-default-template"><div><strong><?= e__('monitors.messages.subject') ?>:</strong> <?= e((string)$recipientDefault['subject']) ?></div><pre><?= e((string)$recipientDefault['body_text']) ?></pre></div></details>
+								<details class="mail-default-disclosure"><summary><?= e__('mail.templates.show_default') ?></summary><div class="mail-default-template"><div><strong><?= e__('monitors.messages.subject') ?>:</strong> <?= e((string)$recipientDefault['subject']) ?></div><div class="markdown-preview-email markdown-content"><?= markdown_html((string)$recipientDefault['body_text']) ?></div></div></details>
 							</div>
 						<?php endforeach; ?>
 					</div>
@@ -487,20 +530,20 @@ ob_start();
 									<summary><?= e__('monitors.escalation.messages.invitation.heading') ?></summary>
 									<div class="mail-template-kind-body">
 										<label for="safety_invitation_subject_<?= e($templateFieldLocale) ?>"><?= e__('monitors.messages.subject') ?></label><input type="text" id="safety_invitation_subject_<?= e($templateFieldLocale) ?>" name="safety_invitation_subject_<?= e($templateFieldLocale) ?>" value="<?= e((string)$invitationTemplate['subject']) ?>">
-										<label for="safety_invitation_body_<?= e($templateFieldLocale) ?>"><?= e__('monitors.messages.body') ?></label><textarea id="safety_invitation_body_<?= e($templateFieldLocale) ?>" name="safety_invitation_body_<?= e($templateFieldLocale) ?>" rows="7"><?= e((string)$invitationTemplate['body_text']) ?></textarea>
+										<label for="safety_invitation_body_<?= e($templateFieldLocale) ?>"><?= e__('monitors.messages.body') ?></label><?= markdown_editor($base_url, 'safety_invitation_body_' . $templateFieldLocale, 'safety_invitation_body_' . $templateFieldLocale, (string)$invitationTemplate['body_text'], 7, 'email') ?>
 										<p class="form-hint placeholder-help"><?= e__('monitors.messages.placeholders') ?> <code>{app}</code> — <?= e__('mail.placeholders.app') ?>; <code>{name}</code> — <?= e__('mail.placeholders.name') ?>; <code>{owner}</code> — <?= e__('mail.placeholders.owner') ?>; <code>{monitor}</code> — <?= e__('mail.placeholders.monitor') ?>; <code>{url}</code> — <?= e__('mail.placeholders.safety_url') ?>.</p>
 										<p class="form-hint"><?= e__('mail.templates.empty_uses_default') ?></p>
-										<details class="mail-default-disclosure"><summary><?= e__('mail.templates.show_default') ?></summary><div class="mail-default-template"><div><strong><?= e__('monitors.messages.subject') ?>:</strong> <?= e((string)$invitationDefault['subject']) ?></div><pre><?= e((string)$invitationDefault['body_text']) ?></pre></div></details>
+										<details class="mail-default-disclosure"><summary><?= e__('mail.templates.show_default') ?></summary><div class="mail-default-template"><div><strong><?= e__('monitors.messages.subject') ?>:</strong> <?= e((string)$invitationDefault['subject']) ?></div><div class="markdown-preview-email markdown-content"><?= markdown_html((string)$invitationDefault['body_text']) ?></div></div></details>
 									</div>
 								</details>
 								<details class="mail-template-kind">
 									<summary><?= e__('monitors.escalation.messages.reminder.heading') ?></summary>
 									<div class="mail-template-kind-body">
 										<label for="safety_reminder_subject_<?= e($templateFieldLocale) ?>"><?= e__('monitors.messages.subject') ?></label><input type="text" id="safety_reminder_subject_<?= e($templateFieldLocale) ?>" name="safety_reminder_subject_<?= e($templateFieldLocale) ?>" value="<?= e((string)$reminderTemplate['subject']) ?>">
-										<label for="safety_reminder_body_<?= e($templateFieldLocale) ?>"><?= e__('monitors.messages.body') ?></label><textarea id="safety_reminder_body_<?= e($templateFieldLocale) ?>" name="safety_reminder_body_<?= e($templateFieldLocale) ?>" rows="7"><?= e((string)$reminderTemplate['body_text']) ?></textarea>
+										<label for="safety_reminder_body_<?= e($templateFieldLocale) ?>"><?= e__('monitors.messages.body') ?></label><?= markdown_editor($base_url, 'safety_reminder_body_' . $templateFieldLocale, 'safety_reminder_body_' . $templateFieldLocale, (string)$reminderTemplate['body_text'], 7, 'email') ?>
 										<p class="form-hint placeholder-help"><?= e__('monitors.messages.placeholders') ?> <code>{app}</code> — <?= e__('mail.placeholders.app') ?>; <code>{name}</code> — <?= e__('mail.placeholders.name') ?>; <code>{owner}</code> — <?= e__('mail.placeholders.owner') ?>; <code>{monitor}</code> — <?= e__('mail.placeholders.monitor') ?>; <code>{url}</code> — <?= e__('mail.placeholders.safety_url') ?>. <?= e__('monitors.escalation.messages.reminder_placeholders') ?> <code>{number}</code> — <?= e__('mail.placeholders.reminder_number') ?>; <code>{total}</code> — <?= e__('mail.placeholders.reminder_total') ?>.</p>
 										<p class="form-hint"><?= e__('mail.templates.empty_uses_default') ?></p>
-										<details class="mail-default-disclosure"><summary><?= e__('mail.templates.show_default') ?></summary><div class="mail-default-template"><div><strong><?= e__('monitors.messages.subject') ?>:</strong> <?= e((string)$reminderDefault['subject']) ?></div><pre><?= e((string)$reminderDefault['body_text']) ?></pre></div></details>
+										<details class="mail-default-disclosure"><summary><?= e__('mail.templates.show_default') ?></summary><div class="mail-default-template"><div><strong><?= e__('monitors.messages.subject') ?>:</strong> <?= e((string)$reminderDefault['subject']) ?></div><div class="markdown-preview-email markdown-content"><?= markdown_html((string)$reminderDefault['body_text']) ?></div></div></details>
 									</div>
 								</details>
 							</div>
@@ -523,10 +566,10 @@ ob_start();
 							?>
 							<div class="language-template-panel" data-language-panel="<?= e($templateLocale) ?>">
 								<label for="portal_message_<?= e($templateFieldLocale) ?>"><?= e__('monitors.messages.portal_content.message') ?></label>
-								<textarea id="portal_message_<?= e($templateFieldLocale) ?>" name="portal_message_<?= e($templateFieldLocale) ?>" rows="7"><?= e((string)$portalTemplate['message_text']) ?></textarea>
+								<?= markdown_editor($base_url, 'portal_message_' . $templateFieldLocale, 'portal_message_' . $templateFieldLocale, (string)$portalTemplate['message_text'], 7, 'web') ?>
 								<p class="form-hint"><?= e__('monitors.messages.portal_content.message_hint') ?></p>
 								<p class="form-hint placeholder-help"><?= e__('monitors.messages.portal_content.placeholders') ?> <code>{app}</code> — <?= e__('mail.placeholders.app') ?>; <code>{name}</code> — <?= e__('mail.placeholders.name') ?>; <code>{owner}</code> — <?= e__('mail.placeholders.owner') ?>; <code>{monitor}</code> — <?= e__('mail.placeholders.monitor') ?>.</p>
-								<details class="mail-default-disclosure"><summary><?= e__('mail.templates.show_default') ?></summary><div class="mail-default-template"><pre><?= e((string)$portalDefault['message_text']) ?></pre></div></details>
+								<details class="mail-default-disclosure"><summary><?= e__('mail.templates.show_default') ?></summary><div class="mail-default-template markdown-content"><?= markdown_html((string)$portalDefault['message_text']) ?></div></details>
 
 								<label for="portal_intro_<?= e($templateFieldLocale) ?>"><?= e__('monitors.messages.portal_content.intro') ?></label>
 								<textarea id="portal_intro_<?= e($templateFieldLocale) ?>" name="portal_intro_<?= e($templateFieldLocale) ?>" rows="5"><?= e((string)$portalTemplate['intro_text']) ?></textarea>
@@ -555,7 +598,7 @@ ob_start();
 			</div>
 
 			<p class="form-hint"><?= e__('monitors.messages.recipient_pages_hint') ?></p>
-			<button type="submit" class="btn-primary"><?= e__('monitors.messages.submit') ?></button>
+			<noscript><button type="submit" class="btn-primary"><?= e__('monitors.messages.submit') ?></button></noscript>
 		</form>
 	</section>
 
@@ -620,7 +663,7 @@ ob_start();
 </div>
 
 <?php if (!$isArchived): ?>
-	<div class="editor-save-bar" data-settings-save-bar data-settings-tabs="details,schedule,escalation,review"<?= in_array($activeTab, ['details', 'schedule', 'escalation', 'review'], true) ? '' : ' hidden' ?>>
+	<div class="editor-save-bar" data-settings-save-bar data-settings-tabs="details,schedule,escalation,messages,review"<?= in_array($activeTab, ['details', 'schedule', 'escalation', 'messages', 'review'], true) ? '' : ' hidden' ?>>
 		<span><?= e__('monitors.edit.save_hint') ?></span>
 		<div class="editor-save-actions">
 			<a href="<?= e($base_url) ?>/monitors" class="button-link editor-cancel-button"><?= e__('monitors.edit.cancel') ?></a>

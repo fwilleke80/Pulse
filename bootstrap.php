@@ -15,6 +15,7 @@ use Pulse\Core\Environment;
 use Pulse\Core\EnvironmentFile;
 use Pulse\Core\ErrorHandler;
 use Pulse\Core\Logger;
+use Pulse\Core\MarkdownRenderer;
 use Pulse\Core\LanguageCatalog;
 use Pulse\Core\WebsiteLanguagePreference;
 use Pulse\Core\MigrationRunner;
@@ -34,6 +35,7 @@ use Pulse\Repositories\MessageRepository;
 use Pulse\Repositories\MonitorRepository;
 use Pulse\Repositories\RecipientRepository;
 use Pulse\Repositories\RecipientPortalRepository;
+use Pulse\Repositories\SecurityCredentialRepository;
 use Pulse\Repositories\UserRepository;
 use Pulse\Services\AuthService;
 use Pulse\Services\DocumentService;
@@ -46,6 +48,9 @@ use Pulse\Services\NotificationComposer;
 use Pulse\Services\NotificationScheduler;
 use Pulse\Services\RecipientPortalArchiveBuilder;
 use Pulse\Services\RecipientPortalService;
+use Pulse\Services\SecurityChallengeService;
+use Pulse\Services\PasskeyService;
+use Pulse\Services\QuickCheckInService;
 use Pulse\Services\TestNotificationService;
 
 $composerAutoloader = __DIR__ . '/vendor/autoload.php';
@@ -102,6 +107,7 @@ if (is_file($versionFile))
 }
 
 $request = Request::FromGlobals();
+$markdownRenderer = new MarkdownRenderer();
 $session = new Session((array)$appConfig['session']);
 $isCli = PHP_SAPI === 'cli';
 $isBackgroundRequest = defined('PULSE_BACKGROUND_REQUEST') && PULSE_BACKGROUND_REQUEST === true;
@@ -133,6 +139,10 @@ $messageRepository = new MessageRepository($database);
 $mailQueueRepository = new MailQueueRepository($database);
 $systemStatusRepository = new SystemStatusRepository($database);
 $loginThrottleRepository = new LoginThrottleRepository($database);
+$securityCredentialRepository = new SecurityCredentialRepository($database);
+$securityChallengeService = new SecurityChallengeService($session);
+$passkeyService = new PasskeyService($securityCredentialRepository, $securityChallengeService, $appConfig);
+$quickCheckInService = new QuickCheckInService($database, $appConfig);
 $loginThrottle = new LoginThrottleService($loginThrottleRepository, (array)$appConfig['security']);
 $monitorStateMachine = new MonitorStateMachine();
 $monitorExecutionService = new MonitorExecutionService($database, $monitorStateMachine, $logger);
@@ -182,7 +192,7 @@ $escalationService = new EscalationService(
 );
 $smtpConfig = (array)$appConfig['mail'];
 $smtpConfig['base_url'] = (string)$appConfig['base_url'];
-$mailTransport = new SmtpMailTransport($smtpConfig);
+$mailTransport = new SmtpMailTransport($smtpConfig, $markdownRenderer);
 $mailQueueWorker = new MailQueueWorker(
 	$mailQueueRepository,
 	$mailTransport,
@@ -195,6 +205,8 @@ $notificationScheduler = new NotificationScheduler(
 	$monitorExecutionService,
 	$mailQueueRepository,
 	$notificationComposer,
+	$messageRepository,
+	$quickCheckInService,
 	$escalationService,
 	$logger,
 	(int)$appConfig['mail']['max_attempts']
@@ -207,6 +219,7 @@ $testNotificationService = new TestNotificationService(
 	(int)$appConfig['mail']['max_attempts']
 );
 setTranslator($translator);
+setMarkdownRenderer($markdownRenderer);
 setLanguageCatalog($languageCatalog);
 setCsrfTokenManager($csrf);
 setNotificationLanguageResolver($notificationLanguage);
@@ -238,6 +251,7 @@ return [
 	'auth' => $auth,
 	'translator' => $translator,
 	'languageCatalog' => $languageCatalog,
+	'markdownRenderer' => $markdownRenderer,
 	'notificationLanguage' => $notificationLanguage,
 	'notificationComposer' => $notificationComposer,
 	'recipientPortalService' => $recipientPortalService,
@@ -254,6 +268,10 @@ return [
 	'monitorExecutionService' => $monitorExecutionService,
 	'documentService' => $documentService,
 	'loginThrottle' => $loginThrottle,
+	'securityCredentialRepository' => $securityCredentialRepository,
+	'securityChallengeService' => $securityChallengeService,
+	'passkeyService' => $passkeyService,
+	'quickCheckInService' => $quickCheckInService,
 	'mailQueueWorker' => $mailQueueWorker,
 	'notificationScheduler' => $notificationScheduler,
 	'escalationService' => $escalationService,

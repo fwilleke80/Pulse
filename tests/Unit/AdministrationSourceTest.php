@@ -117,4 +117,15 @@ final class AdministrationSourceTest extends TestCase
 		self::assertStringContainsString('format_datetime($lastSuccessfulCronRun)', $view);
 	}
 
+	/** @brief Ensures passkey quick check-in is a single global Administration setting. */
+	public function testPasskeyQuickCheckInIsConfiguredInAdministration(): void
+	{
+		$root = dirname(__DIR__, 2);
+		$controller = (string)file_get_contents($root . '/app/Controllers/AdministrationController.php');
+		$view = (string)file_get_contents($root . '/app/Views/administration/index.php');
+
+		self::assertStringContainsString('PULSE_PASSKEY_QUICK_CHECKIN_ENABLED', $controller);
+		self::assertStringContainsString('name="PULSE_PASSKEY_QUICK_CHECKIN_ENABLED"', $view);
+	}
+
 }

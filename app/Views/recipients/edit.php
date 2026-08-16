@@ -113,7 +113,7 @@ ob_start();
 					<label for="message_subject"><?= e__('monitors.messages.subject') ?></label>
 					<input type="text" id="message_subject" name="message_subject" value="<?= e((string)($recipient['override_subject'] ?? '')) ?>">
 					<label for="message_body"><?= e__('monitors.messages.body') ?></label>
-					<textarea id="message_body" name="message_body" rows="11" data-recipient-template-body><?= e((string)($recipient['override_body'] ?? '')) ?></textarea>
+					<?= markdown_editor($base_url, 'message_body', 'message_body', (string)($recipient['override_body'] ?? ''), 11, 'email', ['data-recipient-template-body' => true]) ?>
 					<div class="template-validation-warning" role="alert" data-recipient-url-warning<?= ($hasOverride && in_array('recipient_portal_url_missing', $messageIssues, true)) ? '' : ' hidden' ?>><strong><?= e__('mail.validation.portal_url_missing.heading') ?></strong> <?= e__('recipients.message.portal_url_missing_warning') ?></div>
 					<p class="form-hint placeholder-help"><?= e__('recipients.message.placeholders') ?> <code>{app}</code> — <?= e__('mail.placeholders.app') ?>; <code>{name}</code> — <?= e__('mail.placeholders.name') ?>; <code>{owner}</code> — <?= e__('mail.placeholders.owner') ?>; <code>{monitor}</code> — <?= e__('mail.placeholders.monitor') ?>; <code>{url}</code> — <?= e__('mail.placeholders.recipient_url') ?>.</p>
 					<p class="form-hint"><?= e__('recipients.message.custom_hint') ?></p>
@@ -122,7 +122,7 @@ ob_start();
 					<summary><?= e__('recipients.message.default_preview.heading') ?></summary>
 					<div class="mail-default-template">
 						<div><strong><?= e__('recipients.preview.subject') ?>:</strong> <?= e($defaultTemplate['subject']) ?></div>
-						<pre><?= e($defaultTemplate['body_text']) ?></pre>
+						<div class="markdown-preview-email markdown-content"><?= markdown_html((string)$defaultTemplate['body_text']) ?></div>
 					</div>
 				</details>
 				<?php if (in_array('recipient_portal_url_missing', $defaultMessageIssues, true)): ?>
@@ -136,7 +136,7 @@ ob_start();
 		<section class="configuration-block">
 			<h2><?= e__('recipients.preview.heading') ?></h2>
 			<p class="form-hint"><?= e__('recipients.preview.exact_hint') ?></p>
-			<div class="mail-preview"><strong><?= e__('recipients.preview.subject') ?>:</strong> <?= e($preview['subject']) ?><pre><?= e($preview['body_text']) ?></pre></div>
+			<div class="mail-preview"><strong><?= e__('recipients.preview.subject') ?>:</strong> <?= e($preview['subject']) ?><div class="markdown-preview-email markdown-content"><?= markdown_html((string)$preview['body_text']) ?></div></div>
 		</section>
 	</section>
 
@@ -152,10 +152,10 @@ ob_start();
 				<label class="compact-check"><input type="checkbox" name="use_portal_message_override" value="1" data-message-override-toggle <?= $hasPortalOverride ? 'checked' : '' ?>> <?= e__('recipients.portal_message.use_override') ?></label>
 				<div data-message-fields>
 					<label for="portal_message_body"><?= e__('recipients.portal_message.body') ?></label>
-					<textarea id="portal_message_body" name="portal_message_body" rows="8"><?= e((string)($recipient['portal_override_body'] ?? '')) ?></textarea>
+					<?= markdown_editor($base_url, 'portal_message_body', 'portal_message_body', (string)($recipient['portal_override_body'] ?? ''), 8, 'web') ?>
 					<p class="form-hint placeholder-help"><?= e__('recipients.portal_message.placeholders') ?> <code>{app}</code> — <?= e__('mail.placeholders.app') ?>; <code>{name}</code> — <?= e__('mail.placeholders.name') ?>; <code>{owner}</code> — <?= e__('mail.placeholders.owner') ?>; <code>{monitor}</code> — <?= e__('mail.placeholders.monitor') ?>.</p>
 				</div>
-				<div class="mail-default-template"><strong><?= e__('recipients.portal_message.default_preview.heading') ?></strong><pre><?= e((string)$defaultPortalPreview['message_text']) ?></pre></div>
+				<div class="mail-default-template"><strong><?= e__('recipients.portal_message.default_preview.heading') ?></strong><div class="markdown-content"><?= markdown_html((string)$defaultPortalPreview['message_text']) ?></div></div>
 			</section>
 			<button type="submit" class="btn-primary"><?= e__('recipients.edit.submit') ?></button>
 			</fieldset>
@@ -172,7 +172,7 @@ ob_start();
 					<label for="active_portal_intro"><?= e__('monitors.messages.portal_content.intro') ?></label>
 					<textarea id="active_portal_intro" name="portal_intro_text" rows="4"><?= e((string)($activeDelivery['portal_intro_text'] ?? '')) ?></textarea>
 					<label for="active_portal_message"><?= e__('monitors.messages.portal_content.message') ?></label>
-					<textarea id="active_portal_message" name="portal_message_text" rows="8"><?= e((string)($activeDelivery['portal_message_text'] ?? '')) ?></textarea>
+					<?= markdown_editor($base_url, 'active_portal_message', 'portal_message_text', (string)($activeDelivery['portal_message_text'] ?? ''), 8, 'web') ?>
 					<p class="form-hint"><?= e__('recipients.active_portal.expanded_hint') ?></p>
 					<button type="submit"><?= e__('recipients.active_portal.submit') ?></button>
 				</form>

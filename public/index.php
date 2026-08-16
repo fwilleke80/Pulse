@@ -28,11 +28,14 @@ use Pulse\Controllers\ContactController;
 use Pulse\Controllers\DocumentController;
 use Pulse\Controllers\HomeController;
 use Pulse\Controllers\LanguageController;
+use Pulse\Controllers\MarkdownController;
 use Pulse\Controllers\MonitorController;
 use Pulse\Controllers\ProfileController;
 use Pulse\Controllers\RecipientController;
 use Pulse\Controllers\RecipientPortalController;
 use Pulse\Controllers\SafetyController;
+use Pulse\Controllers\SecurityController;
+use Pulse\Controllers\QuickCheckInController;
 use Pulse\Core\NotFoundException;
 use Pulse\Core\SecurityHeaders;
 
@@ -67,6 +70,10 @@ $notificationComposer = $container['notificationComposer'];
 $escalationService = $container['escalationService'];
 $recipientPortalService = $container['recipientPortalService'];
 $recipientPortalArchiveBuilder = $container['recipientPortalArchiveBuilder'];
+$markdownRenderer = $container['markdownRenderer'];
+$securityCredentialRepository = $container['securityCredentialRepository'];
+$passkeyService = $container['passkeyService'];
+$quickCheckInService = $container['quickCheckInService'];
 
 (new SecurityHeaders())->Apply($request, (array)$config['security']);
 header('Cache-Control: no-store');
@@ -96,7 +103,30 @@ $homeController = new HomeController(
 	$monitorRepository,
 	$monitorExecutionService
 );
-$authController = new AuthController($view, $session, $auth, $logger, $request, $loginThrottle, $csrf);
+$authController = new AuthController($view, $session, $auth, $logger, $request, $loginThrottle, $csrf, $quickCheckInService, $monitorExecutionService);
+
+$securityController = new SecurityController(
+	$view,
+	$session,
+	$auth,
+	$logger,
+	$request,
+	$securityCredentialRepository,
+	$passkeyService,
+	$csrf,
+	$quickCheckInService,
+	$monitorExecutionService
+);
+$quickCheckInController = new QuickCheckInController(
+	$view,
+	$session,
+	$auth,
+	$logger,
+	$request,
+	$quickCheckInService,
+	$passkeyService,
+	$monitorExecutionService
+);
 $contactController = new ContactController($view, $session, $auth, $logger, $request, $contactRepository, $notificationLanguage);
 $languageController = new LanguageController($view, $session, $auth, $logger, $request, (array)$config['available_locales'], $userRepository);
 $profileController = new ProfileController(
@@ -106,6 +136,7 @@ $profileController = new ProfileController(
 	$logger,
 	$request,
 	$userRepository,
+	$securityCredentialRepository,
 	(int)$config['security']['password_minimum_length'],
 	$notificationLanguage
 );
@@ -145,6 +176,7 @@ $monitorController = new MonitorController(
 	(bool)$config['mail']['enabled']
 );
 $documentController = new DocumentController($view, $session, $auth, $logger, $request, $documentService);
+$markdownController = new MarkdownController($view, $session, $auth, $logger, $request, $markdownRenderer);
 $recipientController = new RecipientController(
 	$view,
 	$session,
@@ -205,6 +237,8 @@ $router->Post('/administration/mail/test', [$administrationController, 'SendTest
 $router->Post('/administration/mail/retry', [$administrationController, 'RetryFailedNotifications']);
 $router->Post('/administration/mail/clear', [$administrationController, 'ClearNotificationQueue']);
 
+$router->Post('/markdown/preview', [$markdownController, 'Preview']);
+
 $router->Get('/monitors', [$monitorController, 'Index']);
 $router->Get('/monitors/new', [$monitorController, 'New']);
 $router->Get('/monitors/edit', [$monitorController, 'Edit']);
@@ -237,6 +271,17 @@ $router->Post('/monitors/documents/file/update', [$documentController, 'UpdateFi
 $router->Post('/monitors/documents/recipients', [$documentController, 'UpdateRecipients']);
 $router->Post('/monitors/documents/delete', [$documentController, 'Delete']);
 $router->Get('/monitors/documents/download', [$documentController, 'Download']);
+
+
+$router->Post('/security/passkeys/register/options', [$securityController, 'RegisterOptions']);
+$router->Post('/security/passkeys/register/verify', [$securityController, 'RegisterVerify']);
+$router->Post('/security/passkeys/delete', [$securityController, 'DeletePasskey']);
+$router->Post('/login/passkey/options', [$securityController, 'LoginOptions']);
+$router->Post('/login/passkey/verify', [$securityController, 'LoginVerify']);
+$router->Get('/quick-check-in', [$quickCheckInController, 'Open']);
+$router->Post('/quick-check-in/passkey/options', [$quickCheckInController, 'PasskeyOptions']);
+$router->Post('/quick-check-in/passkey/verify', [$quickCheckInController, 'PasskeyVerify']);
+$router->Get('/quick-check-in/success', [$quickCheckInController, 'Success']);
 
 $router->Get('/login', [$authController, 'ShowLogin']);
 $router->Post('/login', [$authController, 'Login']);

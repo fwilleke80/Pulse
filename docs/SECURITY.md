@@ -1,6 +1,6 @@
 # Pulse security model
 
-Pulse is designed to keep private application data outside the public web directory, require deliberate state changes, and preserve auditable notification history. This document describes the main protections and the important limitations of Pulse 1.0.
+Pulse is designed to keep private application data outside the public web directory, require deliberate state changes, and preserve auditable notification history. This document describes the main protections and the important limitations of Pulse 1.1.
 
 Pulse is not an emergency-response service. Security controls do not remove the operational dependencies on the server, cron, SMTP provider, recipient mail systems, and the people involved in the monitor.
 
@@ -19,7 +19,7 @@ The following must remain private:
 
 The web server's document root must point to `Pulse/public/`, not to the Pulse project root.
 
-Pulse 1.0 expects `public/` to be mounted at the root of the chosen host or virtual host. The built-in router does not support a URL-prefix deployment such as `https://example.com/pulse/`.
+Pulse 1.1 expects `public/` to be mounted at the root of the chosen host or virtual host. The built-in router does not support a URL-prefix deployment such as `https://example.com/pulse/`.
 
 Uploaded documents are stored outside the public web directory. Owner downloads require authentication and monitor ownership. Recipient views/downloads require a valid released delivery and a matching authenticated recipient session.
 
@@ -192,13 +192,31 @@ SMTP passwords are not written to notification logs. Queue/attempt logs avoid re
 
 After an email is accepted by the mail server, Pulse cannot recall it. The message also exists in the sender's and recipient's mail infrastructure.
 
+Markdown does not permit raw HTML execution. Pulse escapes source HTML, restricts rendered links to safe schemes, and uses the same server-side renderer for recipient content and editor previews. Email HTML is generated from the stored Markdown-capable source with conservative inline CSS, while every message also carries a plain-text MIME alternative.
+
 Do not put passwords, cryptographic recovery keys, or other high-value secrets directly into recipient email text.
 
 Configure SPF, DKIM, and DMARC where applicable. Add the Pulse sender address/domain to safe-sender or allowlist/whitelist rules where practical, especially for the owner mailbox. Consider doing the same for safety contacts and final recipients.
 
+## Passkeys and the extensible account-security layer
+
+Pulse 1.1.3 stores additional account authentication methods separately from monitor configuration. Passkeys are the first implemented method; the storage model deliberately leaves room for later second-factor methods and recovery mechanisms.
+
+Passkey registration requires the current Pulse password and WebAuthn user verification. Pulse stores a stable opaque user handle, the credential ID, public verification key, algorithm, transports, and signature-counter metadata. The credential private key and any biometric data stay with the authenticator/platform and are never stored by Pulse.
+
+Each WebAuthn ceremony uses a fresh, short-lived, single-use challenge. Pulse verifies the ceremony type, challenge, configured origin, RP ID hash, user-presence/user-verification flags, credential/account binding, and assertion signature. Passkeys are therefore tied to the configured Pulse hostname; changing the production hostname can make existing credentials unusable. Production passkey use requires HTTPS.
+
+Normal password authentication remains available as recovery/fallback in 1.1.3. For operational reliability, register or otherwise verify an available Pulse passkey on every device you expect to use for quick check-in. A strong cryptographic design does not help if the only enrolled authenticator is on a device you do not have with you when a reminder arrives.
+
+## Quick check-in threat model
+
+The quick-check-in URL in owner reminder mail is intentionally **not** a magic login link. Its random token is stored only as a hash, expires, is single-use, and is tied to the check cycle that generated it. It merely selects the owner/cycle that may attempt quick check-in.
+
+The action completes only after passkey authentication or the normal password-login fallback. Successful authentication performs the existing global check-in operation for all active monitors. This is intentionally the preferred low-friction owner workflow: the reminder link removes navigation steps, while WebAuthn still supplies the authentication boundary. An old link stops being eligible once its source cycle is confirmed, escalated, cancelled, expired, or otherwise leaves the owner-reminder states.
+
 ## Current limitation: no application-level encryption at rest
 
-Pulse 1.0 does **not** encrypt stored messages or documents at the application level.
+Pulse 1.1 does **not** encrypt stored messages or documents at the application level.
 
 A compromise of the hosting account, database, filesystem, or an unencrypted backup can therefore expose:
 
@@ -209,7 +227,7 @@ A compromise of the hosting account, database, filesystem, or an unencrypted bac
 
 Application-level encryption can reduce risk from database dumps, filesystem copies, and backups, but it cannot completely protect against an attacker who controls the running PHP account and can read both application memory and encryption keys. Server/hosting security remains part of the threat model.
 
-Do not use Pulse 1.0 as the only storage location for passwords, recovery keys, or similarly high-value secrets.
+Do not use Pulse 1.1 as the only storage location for passwords, recovery keys, or similarly high-value secrets.
 
 ## Production checklist
 

@@ -372,7 +372,9 @@ final class RecipientPortalArchiveBuilder
 
 		if ((string)($document['storage_type'] ?? '') === 'text')
 		{
-			return str_ends_with(strtolower($title), '.txt') ? $title : $title . '.txt';
+			return str_ends_with(strtolower($title), '.md')
+				? $title
+				: (str_ends_with(strtolower($title), '.txt') ? substr($title, 0, -4) . '.md' : $title . '.md');
 		}
 
 		$original = basename((string)($document['original_filename'] ?? ''));

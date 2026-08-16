@@ -18,6 +18,8 @@ use Pulse\Core\View;
 use Pulse\Core\WebsiteLanguagePreference;
 use Pulse\Services\AuthService;
 use Pulse\Services\LoginThrottleService;
+use Pulse\Services\MonitorExecutionService;
+use Pulse\Services\QuickCheckInService;
 
 /**
  * @brief Handles login and logout without exposing account existence.
@@ -26,6 +28,8 @@ class AuthController extends BaseController
 {
 	private LoginThrottleService $_loginThrottle;
 	private CsrfTokenManager $_csrf;
+	private QuickCheckInService $_quickCheckIn;
+	private MonitorExecutionService $_monitorExecution;
 
 	/**
 	 * @brief Constructs the authentication controller.
@@ -36,6 +40,8 @@ class AuthController extends BaseController
 	 * @param Request $request Current request.
 	 * @param LoginThrottleService $loginThrottle Login throttle.
 	 * @param CsrfTokenManager $csrf CSRF token manager.
+	 * @param QuickCheckInService $quickCheckIn Quick-check-in token service.
+	 * @param MonitorExecutionService $monitorExecution Global monitor check-in service.
 	 */
 	public function __construct(
 		View $view,
@@ -44,23 +50,31 @@ class AuthController extends BaseController
 		Logger $logger,
 		Request $request,
 		LoginThrottleService $loginThrottle,
-		CsrfTokenManager $csrf
+		CsrfTokenManager $csrf,
+		QuickCheckInService $quickCheckIn,
+		MonitorExecutionService $monitorExecution
 	)
 	{
 		parent::__construct($view, $session, $auth, $logger, $request);
 		$this->_loginThrottle = $loginThrottle;
 		$this->_csrf = $csrf;
+		$this->_quickCheckIn = $quickCheckIn;
+		$this->_monitorExecution = $monitorExecution;
 	}
 
 	/** @brief Displays the login form. @return string */
 	public function ShowLogin(): string
 	{
-		if ($this->_auth->IsAuthenticated())
+		$quickCheckInPending = (string)$this->_session->Get('pulse_quick_checkin_token_hash', '') !== '';
+
+		if ($this->_auth->IsAuthenticated() && !$quickCheckInPending)
 		{
 			$this->Redirect('/');
 		}
 
-		return $this->_view->Render('auth.login');
+		return $this->_view->Render('auth.login', [
+			'quickCheckInPending' => $quickCheckInPending,
+		]);
 	}
 
 	/** @brief Processes a throttled login attempt. */
@@ -99,6 +113,27 @@ class AuthController extends BaseController
 		}
 
 		$this->_csrf->Rotate();
+
+		$quickTokenHash = (string)$this->_session->Get('pulse_quick_checkin_token_hash', '');
+
+		if ($quickTokenHash !== '' && is_array($currentUser))
+		{
+			$userId = (int)$currentUser['id'];
+			$context = $this->_quickCheckIn->ResolveHash($quickTokenHash);
+
+			if (is_array($context) && (int)$context['user_id'] === $userId && $this->_quickCheckIn->Claim($quickTokenHash, $userId))
+			{
+				$result = $this->_monitorExecution->CheckInAllActiveForUser($userId, 'quick_password');
+				$this->_session->Remove('pulse_quick_checkin_token_hash');
+				$this->_session->Set('pulse_quick_checkin_result', ['count' => (int)$result['updated']]);
+				$this->Redirect('/quick-check-in/success');
+			}
+
+			$this->_session->Remove('pulse_quick_checkin_token_hash');
+			$this->Flash('warning', __('quick_checkin.invalid'));
+			$this->Redirect('/');
+		}
+
 		$this->Flash('success', __('flash.login.successful'));
 		$this->Redirect('/');
 	}

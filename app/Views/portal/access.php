@@ -56,7 +56,7 @@ ob_start();
 <?php if (trim((string)($delivery['portal_message_text'] ?? '')) !== ''): ?>
 	<section class="portal-message-card" aria-labelledby="portal-message-heading">
 		<h2 id="portal-message-heading"><?= e__('portal.access.message.heading_owner', ['owner' => (string)$delivery['owner_name']]) ?></h2>
-		<div class="portal-message-body"><?= nl2br(e((string)$delivery['portal_message_text'])) ?></div>
+		<div class="portal-message-body markdown-content"><?= markdown_html((string)$delivery['portal_message_text']) ?></div>
 	</section>
 <?php endif; ?>
 
@@ -90,9 +90,9 @@ ob_start();
 				?>
 				<article class="portal-document-card">
 					<?php if ((string)($document['storage_type'] ?? '') === 'text'): ?>
-						<div class="portal-document-preview portal-document-preview-text" aria-label="<?= e__('portal.documents.text_preview_named', ['name' => (string)$document['title']]) ?>">
-							<pre><?= e((string)($document['text_content'] ?? '')) ?></pre>
-						</div>
+						<a class="portal-document-preview portal-document-preview-text markdown-content" href="<?= e($viewUrl) ?>" target="_blank" rel="noopener noreferrer" aria-label="<?= e__('portal.documents.view_named', ['name' => (string)$document['title']]) ?>">
+							<div><?= markdown_html((string)($document['text_content'] ?? '')) ?></div>
+						</a>
 					<?php elseif (!empty($document['image_preview'])): ?>
 						<a class="portal-document-preview portal-document-preview-image" href="<?= e($viewUrl) ?>" target="_blank" rel="noopener noreferrer" aria-label="<?= e__('portal.documents.view_named', ['name' => (string)$document['title']]) ?>">
 							<img src="<?= e($viewUrl) ?>" alt="<?= e((string)$document['title']) ?>" loading="lazy" decoding="async">

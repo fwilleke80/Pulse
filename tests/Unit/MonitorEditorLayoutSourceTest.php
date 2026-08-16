@@ -22,7 +22,7 @@ final class MonitorEditorLayoutSourceTest extends TestCase
 
 		self::assertStringContainsString('<?php if (!$isArchived): ?>', $view);
 		self::assertStringContainsString('class="editor-save-bar"', $view);
-		self::assertStringContainsString('data-settings-tabs="details,schedule,escalation,review"', $view);
+		self::assertStringContainsString('data-settings-tabs="details,schedule,escalation,messages,review"', $view);
 	}
 
 	/** @brief Ensures recipient overview metadata participates directly in the full-width card grid. */
@@ -35,4 +35,19 @@ final class MonitorEditorLayoutSourceTest extends TestCase
 		self::assertStringContainsString('.recipient-overview-documents', $style);
 		self::assertStringContainsString('grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) max-content;', $style);
 	}
+	/** @brief Ensures Messages & content participates in the shared Save changes flow. */
+	public function testMessagesUseSharedSaveChangesFlow(): void
+	{
+		$root = dirname(__DIR__, 2);
+		$view = (string)file_get_contents($root . '/app/Views/monitors/edit.php');
+		$script = (string)file_get_contents($root . '/public/assets/app.js');
+
+		self::assertStringContainsString('data-monitor-messages-form', $view);
+		self::assertStringContainsString('<noscript><button type="submit"', $view);
+		self::assertStringContainsString('dirtyMessageSections', $script);
+		self::assertStringContainsString("data.set('async_save', '1')", $script);
+		self::assertStringContainsString('monitorSettingsForm.submit()', $script);
+		self::assertStringContainsString('MessageSaveJson(false, false, $validationError)', (string)file_get_contents($root . '/app/Controllers/MonitorController.php'));
+	}
+
 }

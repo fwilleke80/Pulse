@@ -17,6 +17,7 @@ use PDO;
 use Pulse\Core\Database;
 use Pulse\Core\Logger;
 use Pulse\Repositories\MailQueueRepository;
+use Pulse\Repositories\MessageRepository;
 use Throwable;
 
 /**
@@ -28,6 +29,8 @@ final class NotificationScheduler
 	private MonitorExecutionService $_executionService;
 	private MailQueueRepository $_queue;
 	private NotificationComposer $_composer;
+	private MessageRepository $_messages;
+	private QuickCheckInService $_quickCheckIn;
 	private EscalationService $_escalation;
 	private Logger $_logger;
 	private int $_maxAttempts;
@@ -38,6 +41,8 @@ final class NotificationScheduler
 		MonitorExecutionService $executionService,
 		MailQueueRepository $queue,
 		NotificationComposer $composer,
+		MessageRepository $messages,
+		QuickCheckInService $quickCheckIn,
 		EscalationService $escalation,
 		Logger $logger,
 		int $maxAttempts
@@ -47,6 +52,8 @@ final class NotificationScheduler
 		$this->_executionService = $executionService;
 		$this->_queue = $queue;
 		$this->_composer = $composer;
+		$this->_messages = $messages;
+		$this->_quickCheckIn = $quickCheckIn;
 		$this->_escalation = $escalation;
 		$this->_logger = $logger;
 		$this->_maxAttempts = $maxAttempts;
@@ -92,6 +99,7 @@ final class NotificationScheduler
 
 				if ($scheduledAt <= $now)
 				{
+					$cycle = $this->PrepareOwnerMailCycle($cycle, 'owner_reminder');
 					$content = $this->_composer->ComposeOwnerReminder($cycle, $reminderNumber);
 					$this->_queue->Enqueue([
 						'user_id' => (int)$cycle['user_id'],
@@ -294,6 +302,7 @@ final class NotificationScheduler
 	/** @brief Freezes and idempotently queues an initial due notice. */
 	private function EnqueueDueNotice(array $cycle, DateTimeImmutable $availableAt): int
 	{
+		$cycle = $this->PrepareOwnerMailCycle($cycle, 'owner_due_notice');
 		$content = $this->_composer->ComposeOwnerDueNotice($cycle);
 
 		return $this->_queue->Enqueue([
@@ -310,6 +319,29 @@ final class NotificationScheduler
 			'max_attempts' => $this->_maxAttempts,
 			'available_at' => $availableAt->format('Y-m-d H:i:s'),
 		]);
+	}
+
+
+	/**
+	 * @brief Adds monitor-specific owner templates and an optional authenticated quick-check-in URL.
+	 * @param array<string, mixed> $cycle Owner check cycle.
+	 * @param string $templateKey Owner template being composed.
+	 * @return array<string, mixed> Enriched cycle.
+	 */
+	private function PrepareOwnerMailCycle(array $cycle, string $templateKey): array
+	{
+		$templates = $this->_messages->FindLocalizedTemplatesForMonitor((int)$cycle['monitor_id'], (int)$cycle['user_id']);
+		$cycle['mail_templates'] = $templates;
+		$ownerTemplate = $templates[$templateKey]['owner'] ?? null;
+		$usesQuickUrl = !is_array($ownerTemplate)
+			|| str_contains((string)($ownerTemplate['subject'] ?? ''), '{quickurl}')
+			|| str_contains((string)($ownerTemplate['body_text'] ?? ''), '{quickurl}')
+			|| str_contains((string)($ownerTemplate['subject'] ?? ''), '{quickcheckin}')
+			|| str_contains((string)($ownerTemplate['body_text'] ?? ''), '{quickcheckin}');
+		$cycle['quick_checkin_url'] = $usesQuickUrl
+			? $this->_quickCheckIn->CreateUrl((int)$cycle['user_id'], (int)$cycle['id'])
+			: null;
+		return $cycle;
 	}
 
 	/** @brief Calculates the scheduled time of a one-based reminder. */

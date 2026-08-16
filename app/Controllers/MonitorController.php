@@ -194,6 +194,18 @@ class MonitorController extends BaseController
 		$portalTemplates = $this->_messageRepository->FindLocalizedPortalTemplatesForMonitor($monitorId, (int)$user['id']);
 		$mailDefaults = [];
 		$portalDefaults = [];
+		$ownerNotificationLocale = $this->_notificationComposer->ResolveLocale(
+			isset($user['notification_locale']) ? (string)$user['notification_locale'] : null
+		);
+
+		foreach (['owner_due_notice', 'owner_reminder'] as $templateKey)
+		{
+			$mailDefaults[$templateKey]['owner'] = $this->_notificationComposer->BuiltInTemplate(
+				$templateKey,
+				$ownerNotificationLocale,
+				['max_reminders' => (int)($monitor['max_reminders'] ?? 0)]
+			);
+		}
 
 		foreach (['recipient_default', 'safety_invitation', 'safety_reminder'] as $templateKey)
 		{
@@ -232,6 +244,7 @@ class MonitorController extends BaseController
 			'mailDefaults' => $mailDefaults,
 			'portalTemplates' => $portalTemplates,
 			'portalDefaults' => $portalDefaults,
+			'ownerNotificationLocale' => $ownerNotificationLocale,
 			'availableLocales' => $this->_availableLocales,
 			'activeTab' => $this->ActiveEditorTab(),
 			'activeMessageSection' => $this->ActiveMessageSection(),
@@ -292,17 +305,27 @@ class MonitorController extends BaseController
 		$this->_monitorExecutionService->SynchronizeMonitorForUser($monitorId, (int)$user['id']);
 		$this->_monitorRepository->ReplaceSafetyContactsForMonitor($monitorId, (int)$user['id'], $safetyContactIds);
 		$this->_logger->Info('Monitor updated', ['user_id' => (int)$user['id'], 'monitor_id' => $monitorId]);
-		$this->Flash('success', __('monitors.edit.flash.updated', ['name' => $values['name']]));
+
+		if ($this->_request->PostBool('message_save_warning'))
+		{
+			$this->Flash('warning', __('monitors.messages.flash.saved_with_warnings'));
+		}
+		else
+		{
+			$this->Flash('success', __('monitors.edit.flash.updated', ['name' => $values['name']]));
+		}
+
 		$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=' . $returnTab);
 	}
 
 	/** @brief Updates the monitor's language-specific default recipient messages. */
-	public function UpdateMessages(): void
+	public function UpdateMessages(): ?string
 	{
 		$user = $this->RequireUser();
 		$userId = (int)$user['id'];
 		$monitorId = $this->_request->PostInt('monitor_id');
 		$returnSection = $this->PostedMessageSection();
+		$asyncSave = $this->_request->PostBool('async_save');
 
 		$monitor = $this->_monitorRepository->FindByIdForUser($monitorId, $userId);
 
@@ -320,7 +343,26 @@ class MonitorController extends BaseController
 
 		$hasDraftIssues = false;
 
-		if ($returnSection === 'recipient')
+		if ($returnSection === 'owner')
+		{
+			$dueTemplate = $this->TemplateInput('owner_due_notice');
+			$reminderTemplate = $this->TemplateInput('owner_reminder');
+			$redirect = '/monitors/edit?id=' . $monitorId . '&tab=messages&section=owner';
+
+			$validationError = $this->TemplatePairError($dueTemplate, 'monitors.messages.owner_due_incomplete')
+				?? $this->TemplatePairError($reminderTemplate, 'monitors.messages.owner_reminder_incomplete');
+
+			if ($asyncSave && $validationError !== null)
+			{
+				return $this->MessageSaveJson(false, false, $validationError);
+			}
+
+			$this->ValidateTemplatePair($dueTemplate, 'monitors.messages.owner_due_incomplete', $redirect);
+			$this->ValidateTemplatePair($reminderTemplate, 'monitors.messages.owner_reminder_incomplete', $redirect);
+			$this->_messageRepository->ReplaceOwnerTemplateForMonitor($monitorId, $userId, 'owner_due_notice', $dueTemplate);
+			$this->_messageRepository->ReplaceOwnerTemplateForMonitor($monitorId, $userId, 'owner_reminder', $reminderTemplate);
+		}
+		elseif ($returnSection === 'recipient')
 		{
 			$templates = $this->LocalizedTemplateInput('recipient_default');
 			$this->_messageRepository->ReplaceLocalizedTemplatesForMonitor(
@@ -342,10 +384,16 @@ class MonitorController extends BaseController
 		elseif ($returnSection === 'safety')
 		{
 			$safetyTemplates = $this->LocalizedSafetyTemplateInput();
+			$validationError = $this->LocalizedSafetyTemplateError($safetyTemplates);
+
+			if ($asyncSave && $validationError !== null)
+			{
+				return $this->MessageSaveJson(false, false, $validationError);
+			}
 
 			if (!$this->ValidateLocalizedSafetyTemplates($safetyTemplates, '/monitors/edit?id=' . $monitorId . '&tab=messages&section=safety'))
 			{
-				return;
+				return null;
 			}
 
 			$this->_messageRepository->ReplaceLocalizedTemplatesForMonitor($monitorId, $userId, 'safety_invitation', $safetyTemplates['safety_invitation']);
@@ -366,6 +414,11 @@ class MonitorController extends BaseController
 
 			if ($expiryDays !== null && ($expiryDays < 1 || $expiryDays > 3650))
 			{
+				if ($asyncSave)
+				{
+					return $this->MessageSaveJson(false, false, __('monitors.messages.portal_expiry.invalid'));
+				}
+
 				$this->Flash('error', __('monitors.messages.portal_expiry.invalid'));
 				$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=messages&section=portal');
 			}
@@ -379,11 +432,22 @@ class MonitorController extends BaseController
 			'monitor_id' => $monitorId,
 			'section' => $returnSection,
 		]);
+
+		if ($asyncSave)
+		{
+			return $this->MessageSaveJson(
+				true,
+				$hasDraftIssues,
+				__($hasDraftIssues ? 'monitors.messages.flash.saved_with_warnings' : 'monitors.messages.flash.updated')
+			);
+		}
+
 		$this->Flash(
 			$hasDraftIssues ? 'warning' : 'success',
 			__($hasDraftIssues ? 'monitors.messages.flash.saved_with_warnings' : 'monitors.messages.flash.updated')
 		);
 		$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=messages&section=' . $returnSection);
+		return null;
 	}
 
 	/** @brief Deletes an owned monitor and all of its physical document files. */
@@ -872,6 +936,44 @@ class MonitorController extends BaseController
 	}
 
 	/**
+	 * @brief Reads one owner-facing monitor mail template from POST data.
+	 * @param string $templateKey Template field prefix.
+	 * @return array{subject: string, body_text: string} Owner template.
+	 */
+	private function TemplateInput(string $templateKey): array
+	{
+		return [
+			'subject' => $this->_request->PostString($templateKey . '_subject', 255),
+			'body_text' => $this->_request->PostString($templateKey . '_body', 1000000, false),
+		];
+	}
+
+	/**
+	 * @brief Validates one optional owner subject/body override.
+	 * @param array{subject: string, body_text: string} $template Template values.
+	 * @param string $incompleteKey Translation key for an incomplete pair.
+	 * @param string $redirect Redirect target.
+	 */
+	private function ValidateTemplatePair(array $template, string $incompleteKey, string $redirect): void
+	{
+		$error = $this->TemplatePairError($template, $incompleteKey);
+
+		if ($error !== null)
+		{
+			$this->Flash('error', $error);
+			$this->Redirect($redirect);
+		}
+	}
+
+	/** @brief Returns the localized validation error for one optional subject/body pair. */
+	private function TemplatePairError(array $template, string $incompleteKey): ?string
+	{
+		$subject = trim((string)($template['subject'] ?? ''));
+		$body = trim((string)($template['body_text'] ?? ''));
+		return (($subject === '') !== ($body === '')) ? __($incompleteKey) : null;
+	}
+
+	/**
 	 * @brief Reads one language-specific monitor-wide template family from POST data.
 	 * @param string $templateKey Template field prefix.
 	 * @return array<string, array{subject: string, body_text: string}> Templates keyed by locale.
@@ -920,6 +1022,25 @@ class MonitorController extends BaseController
 		string $urlRequiredKey = 'monitors.escalation.messages.flash.url_required'
 	): bool
 	{
+		$error = $this->LocalizedTemplatePairsError($templates, $incompleteKey, $requireUrl, $urlRequiredKey);
+
+		if ($error !== null)
+		{
+			$this->Flash('error', $error);
+			$this->Redirect($redirect);
+		}
+
+		return true;
+	}
+
+	/** @brief Returns the first validation error for localized optional mail template pairs. */
+	private function LocalizedTemplatePairsError(
+		array $templates,
+		string $incompleteKey,
+		bool $requireUrl,
+		string $urlRequiredKey = 'monitors.escalation.messages.flash.url_required'
+	): ?string
+	{
 		foreach ($templates as $templateLocale => $template)
 		{
 			$subject = trim((string)($template['subject'] ?? ''));
@@ -927,24 +1048,21 @@ class MonitorController extends BaseController
 
 			if (($subject === '') !== ($body === ''))
 			{
-				$this->Flash('error', __($incompleteKey));
-				$this->Redirect($redirect);
+				return __($incompleteKey);
 			}
 
 			if ($requireUrl && $body !== '' && !str_contains($body, '{url}'))
 			{
-				$this->Flash('error', __($urlRequiredKey, ['language' => notification_language_name((string)$templateLocale)]));
-				$this->Redirect($redirect);
+				return __($urlRequiredKey, ['language' => notification_language_name((string)$templateLocale)]);
 			}
 
 			if ($requireUrl && str_contains($subject, '{url}'))
 			{
-				$this->Flash('error', __('mail.templates.flash.url_in_subject'));
-				$this->Redirect($redirect);
+				return __('mail.templates.flash.url_in_subject');
 			}
 		}
 
-		return true;
+		return null;
 	}
 
 	/** @brief Validates all localized safety-contact mail templates. */
@@ -963,6 +1081,31 @@ class MonitorController extends BaseController
 		);
 	}
 
+	/** @brief Returns the first validation error across both safety-contact mail template families. */
+	private function LocalizedSafetyTemplateError(array $templates): ?string
+	{
+		return $this->LocalizedTemplatePairsError(
+			(array)($templates['safety_invitation'] ?? []),
+			'monitors.escalation.messages.flash.invitation_incomplete',
+			true
+		) ?? $this->LocalizedTemplatePairsError(
+			(array)($templates['safety_reminder'] ?? []),
+			'monitors.escalation.messages.flash.reminder_incomplete',
+			true
+		);
+	}
+
+	/** @brief Encodes the response used by the Monitor Editor's asynchronous message-save step. */
+	private function MessageSaveJson(bool $ok, bool $warning, string $message): string
+	{
+		header('Content-Type: application/json; charset=utf-8');
+		return (string)json_encode([
+			'ok' => $ok,
+			'warning' => $warning,
+			'message' => $message,
+		], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+	}
+
 	/** @brief Returns a whitelisted editor tab from the shared settings form. */
 	private function PostedEditorTab(): string
 	{
@@ -974,14 +1117,14 @@ class MonitorController extends BaseController
 	private function PostedMessageSection(): string
 	{
 		$section = $this->_request->PostString('message_section', 20);
-		return in_array($section, ['recipient', 'safety', 'portal'], true) ? $section : 'recipient';
+		return in_array($section, ['owner', 'recipient', 'safety', 'portal'], true) ? $section : 'owner';
 	}
 
 	/** @brief Returns a supported Messages & content subsection from the query. */
 	private function ActiveMessageSection(): string
 	{
 		$section = $this->_request->QueryString('section', 20);
-		return in_array($section, ['recipient', 'safety', 'portal'], true) ? $section : 'recipient';
+		return in_array($section, ['owner', 'recipient', 'safety', 'portal'], true) ? $section : 'owner';
 	}
 
 	/**

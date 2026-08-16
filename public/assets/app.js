@@ -552,4 +552,509 @@ document.addEventListener('DOMContentLoaded', function ()
 	{
 		closeMenus(null);
 	}, true);
+
+	for (const editor of document.querySelectorAll('[data-markdown-editor]'))
+	{
+		const textarea = editor.querySelector('textarea');
+		const editTab = editor.querySelector('[data-markdown-edit-tab]');
+		const previewTab = editor.querySelector('[data-markdown-preview-tab]');
+		const editPanel = editor.querySelector('[data-markdown-edit-panel]');
+		const previewPanel = editor.querySelector('[data-markdown-preview-panel]');
+		const output = editor.querySelector('[data-markdown-preview-output]');
+
+		if (!textarea || !editTab || !previewTab || !editPanel || !previewPanel || !output)
+		{
+			continue;
+		}
+
+		/** @brief Switches the Markdown editor back to source editing. */
+		const showEdit = function ()
+		{
+			editTab.classList.add('is-active');
+			previewTab.classList.remove('is-active');
+			editTab.setAttribute('aria-selected', 'true');
+			previewTab.setAttribute('aria-selected', 'false');
+			editPanel.hidden = false;
+			previewPanel.hidden = true;
+		};
+
+		/** @brief Requests a server-rendered preview for the current unsaved Markdown source. */
+		const showPreview = async function ()
+		{
+			editTab.classList.remove('is-active');
+			previewTab.classList.add('is-active');
+			editTab.setAttribute('aria-selected', 'false');
+			previewTab.setAttribute('aria-selected', 'true');
+			editPanel.hidden = true;
+			previewPanel.hidden = false;
+			output.textContent = editor.dataset.previewLoading || 'Rendering preview…';
+			output.classList.add('is-loading');
+
+			const form = textarea.form;
+			const token = form ? form.querySelector('input[name="_csrf_token"]') : null;
+			const data = new FormData();
+			data.append('source', textarea.value);
+			data.append('mode', editor.dataset.previewMode || 'web');
+
+			if (token)
+			{
+				data.append('_csrf_token', token.value);
+			}
+
+			try
+			{
+				const response = await fetch(editor.dataset.previewUrl || '/markdown/preview', {
+					method: 'POST',
+					body: data,
+					credentials: 'same-origin',
+					headers: {
+						'Accept': 'application/json',
+					},
+				});
+
+				if (!response.ok)
+				{
+					throw new Error('Markdown preview request failed.');
+				}
+
+				const payload = await response.json();
+				output.innerHTML = typeof payload.html === 'string' ? payload.html : '';
+			}
+			catch (error)
+			{
+				output.textContent = editor.dataset.previewError || 'Preview could not be rendered.';
+			}
+			finally
+			{
+				output.classList.remove('is-loading');
+			}
+		};
+
+		editTab.addEventListener('click', showEdit);
+		previewTab.addEventListener('click', showPreview);
+		textarea.addEventListener('invalid', showEdit);
+	}
+
+
+	const monitorSettingsForm = document.querySelector('[data-monitor-settings-form]');
+	const monitorMessagesForm = document.querySelector('[data-monitor-messages-form]');
+
+	if (monitorSettingsForm && monitorMessagesForm)
+	{
+		const dirtyMessageSections = new Set();
+		const sectionOrder = ['owner', 'recipient', 'safety', 'portal'];
+		let combinedSaveInProgress = false;
+		let navigationAllowed = false;
+
+		/** @brief Marks the Messages & content subsection containing an edited control as dirty. */
+		const markMessageSectionDirty = function (event)
+		{
+			const control = event.target;
+
+			if (!(control instanceof Element))
+			{
+				return;
+			}
+
+			const panel = control.closest('[data-subtab-panel]');
+			const section = panel ? panel.dataset.subtabPanel : '';
+
+			if (sectionOrder.includes(section))
+			{
+				dirtyMessageSections.add(section);
+			}
+		};
+
+		for (const control of monitorMessagesForm.querySelectorAll('input:not([type="hidden"]), textarea, select'))
+		{
+			control.addEventListener('input', markMessageSectionDirty);
+			control.addEventListener('change', markMessageSectionDirty);
+		}
+
+		/** @brief Saves one dirty Messages & content subsection without leaving the editor page. */
+		const saveMessageSection = async function (section)
+		{
+			const data = new FormData(monitorMessagesForm);
+			data.set('message_section', section);
+			data.set('async_save', '1');
+			const response = await fetch(monitorMessagesForm.action, {
+				method: 'POST',
+				body: data,
+				credentials: 'same-origin',
+				headers: {'Accept': 'application/json'},
+			});
+
+			if (response.redirected)
+			{
+				navigationAllowed = true;
+				window.location.assign(response.url);
+				return null;
+			}
+
+			let payload = null;
+
+			try
+			{
+				payload = await response.json();
+			}
+			catch (error)
+			{
+				throw new Error(monitorMessagesForm.dataset.saveError || 'Message changes could not be saved.');
+			}
+
+			if (!response.ok || !payload || payload.ok !== true)
+			{
+				throw new Error((payload && payload.message) || monitorMessagesForm.dataset.saveError || 'Message changes could not be saved.');
+			}
+
+			if (payload.warning)
+			{
+				let warningField = monitorSettingsForm.querySelector('input[name="message_save_warning"]');
+
+				if (!warningField)
+				{
+					warningField = document.createElement('input');
+					warningField.type = 'hidden';
+					warningField.name = 'message_save_warning';
+					warningField.value = '1';
+					monitorSettingsForm.appendChild(warningField);
+				}
+			}
+
+			return payload;
+		};
+
+		/** @brief Saves dirty message subsections first, then submits the ordinary monitor settings form. */
+		monitorSettingsForm.addEventListener('submit', async function (event)
+		{
+			if (combinedSaveInProgress || dirtyMessageSections.size === 0)
+			{
+				return;
+			}
+
+			event.preventDefault();
+
+			if (!monitorSettingsForm.reportValidity() || !monitorMessagesForm.reportValidity())
+			{
+				return;
+			}
+
+			const submitter = event.submitter instanceof HTMLButtonElement ? event.submitter : null;
+
+			if (submitter)
+			{
+				submitter.disabled = true;
+			}
+
+			try
+			{
+				for (const section of sectionOrder)
+				{
+					if (!dirtyMessageSections.has(section))
+					{
+						continue;
+					}
+
+					const result = await saveMessageSection(section);
+
+					if (result === null)
+					{
+						return;
+					}
+				}
+
+				dirtyMessageSections.clear();
+				combinedSaveInProgress = true;
+				navigationAllowed = true;
+				monitorSettingsForm.submit();
+			}
+			catch (error)
+			{
+				window.alert(error instanceof Error ? error.message : (monitorMessagesForm.dataset.saveError || 'Message changes could not be saved.'));
+
+				if (submitter)
+				{
+					submitter.disabled = false;
+				}
+			}
+		});
+
+		/** @brief Routes Enter-key/manual message-form submission through the shared Save changes action. */
+		monitorMessagesForm.addEventListener('submit', function (event)
+		{
+			event.preventDefault();
+			monitorSettingsForm.requestSubmit();
+		});
+
+		/** @brief Warns before a real navigation would discard unsaved Messages & content edits. */
+		window.addEventListener('beforeunload', function (event)
+		{
+			if (dirtyMessageSections.size === 0 || navigationAllowed)
+			{
+				return;
+			}
+
+			event.preventDefault();
+			event.returnValue = '';
+		});
+	}
+
+});
+
+/** @brief Progressive enhancement for WebAuthn passkey registration, login, and quick check-in. */
+document.addEventListener('DOMContentLoaded', function ()
+{
+	/** @brief Decodes a base64url string into a browser BufferSource. */
+	const base64UrlToBytes = function (value)
+	{
+		const base64 = value.replace(/-/g, '+').replace(/_/g, '/');
+		const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+		const binary = window.atob(padded);
+		const bytes = new Uint8Array(binary.length);
+
+		for (let index = 0; index < binary.length; ++index)
+		{
+			bytes[index] = binary.charCodeAt(index);
+		}
+
+		return bytes;
+	};
+
+	/** @brief Encodes an ArrayBuffer as unpadded base64url. */
+	const bytesToBase64Url = function (value)
+	{
+		const bytes = new Uint8Array(value);
+		let binary = '';
+
+		for (const byte of bytes)
+		{
+			binary += String.fromCharCode(byte);
+		}
+
+		return window.btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+	};
+
+	/** @brief Converts JSON WebAuthn creation options to browser BufferSource values. */
+	const creationOptions = function (options)
+	{
+		options.challenge = base64UrlToBytes(options.challenge);
+		options.user.id = base64UrlToBytes(options.user.id);
+		options.excludeCredentials = (options.excludeCredentials || []).map(function (credential)
+		{
+			return Object.assign({}, credential, {id: base64UrlToBytes(credential.id)});
+		});
+		return options;
+	};
+
+	/** @brief Converts JSON WebAuthn request options to browser BufferSource values. */
+	const requestOptions = function (options)
+	{
+		options.challenge = base64UrlToBytes(options.challenge);
+
+		if (Array.isArray(options.allowCredentials))
+		{
+			options.allowCredentials = options.allowCredentials.map(function (credential)
+			{
+				return Object.assign({}, credential, {id: base64UrlToBytes(credential.id)});
+			});
+		}
+
+		return options;
+	};
+
+	/** @brief Copies the current CSRF token into an API form payload. */
+	const appendCsrf = function (form, data)
+	{
+		const token = form.querySelector('input[name="_csrf_token"]');
+
+		if (token)
+		{
+			data.append('_csrf_token', token.value);
+		}
+	};
+
+	/** @brief Sends form data and returns a decoded JSON response or throws its message. */
+	const postJson = async function (url, data)
+	{
+		const response = await fetch(url, {
+			method: 'POST',
+			body: data,
+			credentials: 'same-origin',
+			headers: {'Accept': 'application/json'},
+		});
+		const payload = await response.json().catch(function ()
+		{
+			return {};
+		});
+
+		if (!response.ok)
+		{
+			throw new Error(typeof payload.message === 'string' ? payload.message : 'Passkey request failed.');
+		}
+
+		return payload;
+	};
+
+	/** @brief Shows one passkey operation status beside its controls. */
+	const setStatus = function (form, message, isError)
+	{
+		const status = form.querySelector('[data-passkey-status]');
+
+		if (!status)
+		{
+			return;
+		}
+
+		status.hidden = message === '';
+		status.textContent = message;
+		status.classList.toggle('is-error', Boolean(isError));
+	};
+
+	/** @brief Returns whether this browser can perform WebAuthn ceremonies. */
+	const passkeysAvailable = function ()
+	{
+		return Boolean(window.PublicKeyCredential && navigator.credentials && navigator.credentials.create && navigator.credentials.get);
+	};
+
+	for (const form of document.querySelectorAll('[data-passkey-register-form]'))
+	{
+		const button = form.querySelector('[data-passkey-register]');
+
+		if (!button)
+		{
+			continue;
+		}
+
+		button.addEventListener('click', async function ()
+		{
+			setStatus(form, '', false);
+
+			if (!passkeysAvailable())
+			{
+				setStatus(form, form.dataset.passkeyUnavailable || 'Passkeys are unavailable in this browser.', true);
+				return;
+			}
+
+			if (!form.reportValidity())
+			{
+				return;
+			}
+
+			button.disabled = true;
+
+			try
+			{
+				const beginData = new FormData(form);
+				const begin = await postJson(form.dataset.passkeyOptionsUrl || '', beginData);
+				const credential = await navigator.credentials.create({publicKey: creationOptions(begin.publicKey)});
+
+				if (!(credential instanceof PublicKeyCredential))
+				{
+					throw new Error(form.dataset.passkeyCancelled || 'Passkey creation was cancelled.');
+				}
+
+				const verifyData = new FormData();
+				appendCsrf(form, verifyData);
+				verifyData.append('credential_id', bytesToBase64Url(credential.rawId));
+				verifyData.append('client_data_json', bytesToBase64Url(credential.response.clientDataJSON));
+				verifyData.append('attestation_object', bytesToBase64Url(credential.response.attestationObject));
+				verifyData.append('transports', typeof credential.response.getTransports === 'function' ? credential.response.getTransports().join(',') : '');
+				const verified = await postJson(form.dataset.passkeyVerifyUrl || '', verifyData);
+
+				if (verified.reload)
+				{
+					window.location.reload();
+				}
+				else if (verified.redirect)
+				{
+					window.location.assign(verified.redirect);
+				}
+			}
+			catch (error)
+			{
+				const cancelled = error instanceof DOMException && ['NotAllowedError', 'AbortError'].includes(error.name);
+				setStatus(form, cancelled ? (form.dataset.passkeyCancelled || error.message) : error.message, true);
+			}
+			finally
+			{
+				button.disabled = false;
+			}
+		});
+	}
+
+	/** @brief Runs a passkey assertion for a login/quick-check-in form. */
+	const authenticate = async function (form, button)
+	{
+		setStatus(form, '', false);
+
+		if (!passkeysAvailable())
+		{
+			setStatus(form, form.dataset.passkeyUnavailable || 'Passkeys are unavailable in this browser.', true);
+			return;
+		}
+
+		button.disabled = true;
+
+		try
+		{
+			const beginData = new FormData();
+			appendCsrf(form, beginData);
+			const begin = await postJson(form.dataset.passkeyOptionsUrl || '', beginData);
+			const credential = await navigator.credentials.get({publicKey: requestOptions(begin.publicKey)});
+
+			if (!(credential instanceof PublicKeyCredential))
+			{
+				throw new Error(form.dataset.passkeyCancelled || 'Passkey authentication was cancelled.');
+			}
+
+			const verifyData = new FormData();
+			appendCsrf(form, verifyData);
+			verifyData.append('credential_id', bytesToBase64Url(credential.rawId));
+			verifyData.append('client_data_json', bytesToBase64Url(credential.response.clientDataJSON));
+			verifyData.append('authenticator_data', bytesToBase64Url(credential.response.authenticatorData));
+			verifyData.append('signature', bytesToBase64Url(credential.response.signature));
+			verifyData.append('user_handle', credential.response.userHandle ? bytesToBase64Url(credential.response.userHandle) : '');
+			const verified = await postJson(form.dataset.passkeyVerifyUrl || '', verifyData);
+
+			if (verified.redirect)
+			{
+				window.location.assign(verified.redirect);
+			}
+		}
+		catch (error)
+		{
+			const cancelled = error instanceof DOMException && ['NotAllowedError', 'AbortError'].includes(error.name);
+			setStatus(form, cancelled ? (form.dataset.passkeyCancelled || error.message) : error.message, true);
+		}
+		finally
+		{
+			button.disabled = false;
+		}
+	};
+
+	for (const form of document.querySelectorAll('[data-passkey-login-form]'))
+	{
+		const button = form.querySelector('[data-passkey-login]');
+
+		if (button)
+		{
+			button.addEventListener('click', function ()
+			{
+				authenticate(form, button);
+			});
+		}
+	}
+
+	for (const form of document.querySelectorAll('[data-quick-checkin-form]'))
+	{
+		const button = form.querySelector('[data-quick-passkey]');
+
+		if (button)
+		{
+			button.addEventListener('click', function ()
+			{
+				authenticate(form, button);
+			});
+		}
+	}
 });

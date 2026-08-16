@@ -79,6 +79,28 @@ class AuthService
 			$this->_userRepository->UpdatePasswordHash($userId, password_hash($password, PASSWORD_DEFAULT));
 		}
 
+		return $this->LoginUser($userId, 'password');
+	}
+
+	/**
+	 * @brief Establishes an authenticated session after any verified authentication method.
+	 * @param int $userId Authenticated user ID.
+	 * @param string $method Security method that verified the user.
+	 * @return bool True when the active account was logged in.
+	 */
+	public function LoginUser(int $userId, string $method): bool
+	{
+		$user = $this->_userRepository->FindById($userId);
+
+		if (!is_array($user) || !(bool)($user['is_active'] ?? false))
+		{
+			$this->_logger->Warning('Authentication completed for an unavailable account', [
+				'user_id' => $userId,
+				'method' => $method,
+			]);
+			return false;
+		}
+
 		$this->_session->Regenerate();
 		$this->_session->LoginUser($userId);
 		$this->_currentUserResolved = false;
@@ -90,8 +112,7 @@ class AuthService
 		}
 
 		$this->_userRepository->UpdateLastLoginAt($userId);
-
-		$this->_logger->Info('Login successful', ['user_id' => $userId]);
+		$this->_logger->Info('Login successful', ['user_id' => $userId, 'method' => $method]);
 		return true;
 	}
 
