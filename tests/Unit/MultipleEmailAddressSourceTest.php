@@ -39,6 +39,7 @@ final class MultipleEmailAddressSourceTest extends TestCase
 		self::assertStringContainsString('EmailAddressCollection::MAX_ADDRESSES', $profile);
 		self::assertStringContainsString('data-email-address-card', $contact);
 		self::assertStringContainsString('repeat(auto-fit', $css);
+		self::assertStringContainsString('320px', $css);
 	}
 
 	/** @brief Every notification family fans out only through checked-address snapshots. */

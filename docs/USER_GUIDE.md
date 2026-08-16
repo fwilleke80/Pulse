@@ -220,7 +220,7 @@ The monitor editor has one shared **Save changes** action for ordinary monitor s
 
 The initial due notice and the later owner follow-up reminder each have one optional custom template per monitor. Custom owner templates are not language variants: Pulse uses them exactly as written. If both subject and body are left empty, Pulse uses the built-in fallback in your configured notification language. **Show current default template** expands that localized fallback without replacing your editor.
 
-Owner mail bodies support optional Markdown and the shared **Edit / Preview** editor. Available placeholders include `{app}`, `{name}`, `{monitor}`, `{due}`, and `{url}`. The initial due notice also supports `{deadline}`, `{response_window}`, and `{max_followup_reminders}`; follow-up reminders support `{number}` and `{total}`.
+Owner mail bodies support optional Markdown and the shared **Edit / Preview** editor. Available placeholders include `{name}`, `{monitor}`, `{due}`, and `{url}`. The initial due notice also supports `{deadline}`, `{response_window}`, and `{max_followup_reminders}`; follow-up reminders support `{number}` and `{total}`.
 
 `{quickcheckin}` is the recommended placeholder for the optional shortcut. It expands to Pulse's localized Markdown quick-check-in link when **Administration → Security → Enable passkey quick check-in** is enabled, and to nothing when the feature is disabled. This is also how the built-in owner templates expose the feature, so the default text now shows exactly where the quick-check-in link will appear.
 
@@ -232,7 +232,6 @@ Pulse provides localized built-in recipient email text. You may replace it with 
 
 Supported placeholders are:
 
-- `{app}` — Pulse;
 - `{name}` — recipient name;
 - `{owner}` — owner display name;
 - `{monitor}` — monitor name;
@@ -246,7 +245,7 @@ A particular recipient may override the monitor-wide recipient email in the reci
 
 The initial safety-contact invitation and later safety reminders can be customized separately for each language.
 
-They support `{app}`, `{name}`, `{owner}`, `{monitor}`, and `{url}`. Safety reminder text additionally supports `{number}` and `{total}`.
+They support `{name}`, `{owner}`, `{monitor}`, and `{url}`. Safety reminder text additionally supports `{number}` and `{total}`.
 
 Leave a language-specific subject/body pair empty to use Pulse's built-in localized text. Safety-contact mail bodies are also Markdown-capable.
 
@@ -257,7 +256,7 @@ The monitor-wide portal content is separate from the notification email. Configu
 - **Page introduction** — generic explanatory text about the page;
 - **Portal expiry** — 30 days, 90 days, one year, a custom number of days, or no automatic expiry.
 
-The generic Page introduction remains plain text and supports `{app}`, `{name}`, `{owner}`, and `{monitor}`. Personal messages are not monitor defaults: they are written separately in an individual recipient's **Portal** tab.
+The generic Page introduction remains plain text and supports `{name}`, `{owner}`, and `{monitor}`. Personal messages are not monitor defaults: they are written separately in an individual recipient's **Portal** tab.
 
 In Markdown-capable fields, ending a source line with **two spaces** forces a line break without starting a new paragraph.
 
@@ -300,9 +299,9 @@ Pulse shows the effective/default template in a collapsible preview. The require
 
 ### Portal
 
-Configure an optional personal portal message specifically for this recipient. This is the place for a personal goodbye or anything intended only for that person. The message supports Markdown and `{app}`, `{name}`, `{owner}`, and `{monitor}`; it does not need `{url}` because the recipient is already on the portal.
+Configure an optional personal portal message specifically for this recipient. This is the place for a personal goodbye or anything intended only for that person. The message supports Markdown and `{name}`, `{owner}`, and `{monitor}`; it does not need `{url}` because the recipient is already on the portal.
 
-The personal-message box appears on the authenticated portal only when **Use a personal portal message for this recipient** is enabled and the message contains text. Pulse has no monitor-wide or built-in fallback personal message.
+The personal-message box appears on the authenticated portal only when **Use a personal portal message for this recipient** is enabled and the message contains text. Disabling the option retains the saved message as a reusable draft, so enabling it again restores the text. Pulse has no monitor-wide or built-in fallback personal message.
 
 If the recipient currently has an active released delivery, this tab also lets the owner edit that delivery's **presentation** independently of future monitor settings. The introduction remains editable; a personal message can be edited only when that delivery was released with one. These changes do not alter authorization or the underlying documents.
 

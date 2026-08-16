@@ -160,7 +160,7 @@ final class RecipientController extends BaseController
 			'notification_locale' => (string)$recipient['notification_locale'],
 			'owner_name' => (string)$recipient['owner_name'],
 			'monitor_name' => (string)$recipient['monitor_name'],
-			'portal_message_override_enabled' => !empty($recipient['portal_override_id']),
+			'portal_message_override_enabled' => !empty($recipient['portal_override_enabled']),
 			'portal_message_override' => (string)($recipient['portal_override_body'] ?? ''),
 			'portal_intro_text' => (string)($recipient['default_portal_intro'] ?? ''),
 		]);
@@ -298,10 +298,15 @@ final class RecipientController extends BaseController
 			: (string)($recipient['override_body'] ?? '');
 		$usePortalOverride = $returnSection === 'portal'
 			? $this->_request->PostBool('use_portal_message_override')
-			: !empty($recipient['portal_override_id']);
+			: !empty($recipient['portal_override_enabled']);
 		$portalBody = $returnSection === 'portal'
 			? $this->_request->PostString('portal_message_body', 1000000, false)
 			: (string)($recipient['portal_override_body'] ?? '');
+
+		if ($returnSection === 'portal' && !$usePortalOverride && trim($portalBody) === '')
+		{
+			$portalBody = (string)($recipient['portal_override_body'] ?? '');
+		}
 
 		if ($returnSection === 'portal' && $usePortalOverride && trim($portalBody) === '')
 		{

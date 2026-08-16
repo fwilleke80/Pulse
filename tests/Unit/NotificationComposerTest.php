@@ -237,6 +237,8 @@ class NotificationComposerTest extends TestCase
 
 		self::assertStringContainsString('{owner}', $english['subject']);
 		self::assertStringContainsString('{url}', $english['body_text']);
+		self::assertStringNotContainsString('{app}', $english['subject']);
+		self::assertStringNotContainsString('{app}', $english['body_text']);
 		self::assertNotSame($english['body_text'], $german['body_text']);
 	}
 

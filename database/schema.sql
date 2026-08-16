@@ -197,6 +197,7 @@ CREATE TABLE contact_portal_messages
 	id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
 	monitor_contact_id BIGINT UNSIGNED NOT NULL,
 	body_text LONGTEXT NOT NULL,
+	is_enabled TINYINT(1) NOT NULL DEFAULT 1,
 	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	UNIQUE KEY uq_contact_portal_messages_monitor_contact (monitor_contact_id),

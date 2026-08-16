@@ -1,3 +1,14 @@
+## 1.2.2 - 2026-08-16
+
+### Form and portal-message refinements
+- Increased the responsive minimum width of owner and contact email fields so wide screens use fewer, more comfortable columns while smaller screens continue to reflow safely.
+- Preserved a recipient's personal portal message as a reusable draft when **Use a personal portal message for this recipient** is disabled. The separate enabled state now determines whether future portal releases include the saved message.
+- Clarified that recipient portal availability applies to portals created by the monitor currently being edited.
+
+### Fixed branding and editor placeholders
+- Removed the `{app}` placeholder from all editor help and replaced it with the literal name **Pulse** in every built-in localized mail template. Existing custom templates containing `{app}` remain compatible.
+- Added migration `005_recipient_portal_message_state.sql`, updated the reference schema, translations, documentation, and regression coverage, and advanced the release metadata to Pulse 1.2.2.
+
 ## 1.2.1 - 2026-08-16
 
 ### Redundant, separately checked email addresses

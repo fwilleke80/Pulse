@@ -296,6 +296,7 @@ document.addEventListener('DOMContentLoaded', function ()
 	{
 		const toggle = override.querySelector('[data-message-override-toggle]');
 		const fields = override.querySelector('[data-message-fields]');
+		const preserveDisabledFields = override.hasAttribute('data-preserve-disabled-fields');
 
 		if (!toggle || !fields)
 		{
@@ -309,7 +310,7 @@ document.addEventListener('DOMContentLoaded', function ()
 
 			for (const field of fields.querySelectorAll('input, textarea'))
 			{
-				field.disabled = !toggle.checked;
+				field.disabled = !toggle.checked && !preserveDisabledFields;
 			}
 		};
 

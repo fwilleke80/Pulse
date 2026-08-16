@@ -31,6 +31,7 @@ final class RecipientRepositorySourceTest extends TestCase
 		self::assertStringContainsString('LEFT JOIN monitor_portal_templates mpt', $source);
 		self::assertStringContainsString('AND mpt.locale = c.notification_locale', $source);
 		self::assertStringContainsString('mpt.intro_text AS default_portal_intro', $source);
+		self::assertStringContainsString('COALESCE(cpm.is_enabled, 0) AS portal_override_enabled', $source);
 		self::assertStringNotContainsString('mpt.message_text AS default_portal_message', $source);
 	}
 }

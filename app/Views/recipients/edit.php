@@ -24,7 +24,7 @@ declare(strict_types=1);
 /** @var string $base_url */
 
 $hasOverride = !empty($recipient['override_message_id']);
-$hasPortalOverride = !empty($recipient['portal_override_id']);
+$hasPortalOverride = !empty($recipient['portal_override_enabled']);
 $recipientAddresses = \Pulse\Core\EmailAddressCollection::FromRow($recipient);
 $isArchivedMonitor = !empty($recipient['monitor_is_archived']);
 $sections = [
@@ -123,7 +123,7 @@ ob_start();
 					<label for="message_body"><?= e__('monitors.messages.body') ?></label>
 					<?= markdown_editor($base_url, 'message_body', 'message_body', (string)($recipient['override_body'] ?? ''), 11, 'email', ['data-recipient-template-body' => true]) ?>
 					<div class="template-validation-warning" role="alert" data-recipient-url-warning<?= ($hasOverride && in_array('recipient_portal_url_missing', $messageIssues, true)) ? '' : ' hidden' ?>><strong><?= e__('mail.validation.portal_url_missing.heading') ?></strong> <?= e__('recipients.message.portal_url_missing_warning') ?></div>
-					<p class="form-hint placeholder-help"><?= e__('recipients.message.placeholders') ?> <code>{app}</code> — <?= e__('mail.placeholders.app') ?>; <code>{name}</code> — <?= e__('mail.placeholders.name') ?>; <code>{owner}</code> — <?= e__('mail.placeholders.owner') ?>; <code>{monitor}</code> — <?= e__('mail.placeholders.monitor') ?>; <code>{url}</code> — <?= e__('mail.placeholders.recipient_url') ?>.</p>
+					<p class="form-hint placeholder-help"><?= e__('recipients.message.placeholders') ?> <code>{name}</code> — <?= e__('mail.placeholders.name') ?>; <code>{owner}</code> — <?= e__('mail.placeholders.owner') ?>; <code>{monitor}</code> — <?= e__('mail.placeholders.monitor') ?>; <code>{url}</code> — <?= e__('mail.placeholders.recipient_url') ?>.</p>
 					<p class="form-hint"><?= e__('recipients.message.custom_hint') ?></p>
 				</div>
 				<details class="mail-default-disclosure">
@@ -154,7 +154,7 @@ ob_start();
 			<?= csrf_field() ?>
 			<input type="hidden" name="id" value="<?= (int)$recipient['id'] ?>">
 			<input type="hidden" name="recipient_section" value="portal">
-			<section class="configuration-block" data-message-override>
+			<section class="configuration-block" data-message-override data-preserve-disabled-fields>
 				<h2><?= e__('recipients.portal_message.heading') ?></h2>
 				<p class="form-hint"><?= e__('recipients.portal_message.hint') ?></p>
 				<p class="form-hint"><?= e__('recipients.portal_message.future_hint') ?></p>
@@ -162,7 +162,7 @@ ob_start();
 				<div data-message-fields>
 					<label for="portal_message_body"><?= e__('recipients.portal_message.body') ?></label>
 					<?= markdown_editor($base_url, 'portal_message_body', 'portal_message_body', (string)($recipient['portal_override_body'] ?? ''), 8, 'web') ?>
-					<p class="form-hint placeholder-help"><?= e__('recipients.portal_message.placeholders') ?> <code>{app}</code> — <?= e__('mail.placeholders.app') ?>; <code>{name}</code> — <?= e__('mail.placeholders.name') ?>; <code>{owner}</code> — <?= e__('mail.placeholders.owner') ?>; <code>{monitor}</code> — <?= e__('mail.placeholders.monitor') ?>.</p>
+					<p class="form-hint placeholder-help"><?= e__('recipients.portal_message.placeholders') ?> <code>{name}</code> — <?= e__('mail.placeholders.name') ?>; <code>{owner}</code> — <?= e__('mail.placeholders.owner') ?>; <code>{monitor}</code> — <?= e__('mail.placeholders.monitor') ?>.</p>
 				</div>
 			</section>
 			<button type="submit" class="btn-primary"><?= e__('recipients.edit.submit') ?></button>

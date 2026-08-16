@@ -271,7 +271,6 @@ Under **Messages & content → Recipient email**, custom templates can be writte
 
 Supported recipient-email placeholders are:
 
-- `{app}` — Pulse;
 - `{name}` — recipient name;
 - `{owner}` — owner display name;
 - `{monitor}` — monitor name;

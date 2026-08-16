@@ -117,7 +117,9 @@ Open a recipient editor and verify the owner-only portal preview:
 - document View/Download and permanent portal closure remain disabled;
 - the preview uses the saved recipient language, portal text, document assignments, and location-sharing settings.
 - the monitor-wide Portal page editor contains the language-specific Page introduction but no default personal message;
-- the personal-message card is absent when the recipient option is disabled or empty and appears only for a saved, enabled recipient-specific message.
+- disabling the recipient's personal-message option preserves its saved draft after reload and removes the card from the preview; re-enabling it restores the draft without retyping;
+- the personal-message card is absent when the recipient option is disabled or empty and appears only for a saved, enabled recipient-specific message;
+- editor placeholder help no longer advertises `{app}`, and all built-in message templates use the literal name **Pulse**.
 
 ## 8. Check-in and owner-notice lifecycle
 

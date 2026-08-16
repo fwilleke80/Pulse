@@ -1,8 +1,8 @@
-# Pulse roadmap after 1.2.1
+# Pulse roadmap after 1.2.2
 
-This roadmap starts from the stable Pulse 1.2.1 baseline. It is directional rather than a promise of dates; privacy, migration safety, recovery behavior, and test coverage remain release gates.
+This roadmap starts from the stable Pulse 1.2.2 baseline. It is directional rather than a promise of dates; privacy, migration safety, recovery behavior, and test coverage remain release gates.
 
-## Current baseline — Pulse 1.2.1
+## Current baseline — Pulse 1.2.2
 
 Pulse 1.2.0 completed the location-aware check-in and portal-preview roadmap:
 
@@ -24,9 +24,16 @@ Pulse 1.2.1 adds:
 - clear unchecked-address warnings without preventing a contact from being saved;
 - recipient-only personal portal messages, shown only when explicitly enabled and non-empty.
 
-## Next candidate — Optional TOTP two-factor authentication
+Pulse 1.2.2 refines that release with:
 
-This is the next substantial security feature under consideration, not a missing part of Pulse 1.2.
+- wider responsive email fields on Profile and contact forms;
+- reusable personal portal message drafts whose enabled state controls only future releases;
+- clearer monitor-specific recipient portal availability guidance;
+- literal **Pulse** branding in built-in templates, without advertising the legacy `{app}` placeholder.
+
+## Next planned 1.2.x — Optional TOTP two-factor authentication
+
+This is the next planned security update in the Pulse 1.2.x line. Pulse will move to 1.3 only after enough additional features have accumulated for a larger release.
 
 - Enrol authenticator apps using a standard TOTP secret, QR code, and manual setup key.
 - Require a successful six-digit-code verification before enabling the method.

@@ -343,7 +343,9 @@ This is private authenticated storage, not encryption at rest.
 
 `monitor_portal_templates` stores the language-specific monitor-wide page introduction. Personal portal messages exist only as recipient-specific overrides attached to the monitor-contact assignment.
 
-Recipient-specific overrides are attached to the monitor-contact assignment. At release time, Pulse includes the personal message only when that recipient's option is enabled and its text is non-empty. Portal rendering happens from the delivery snapshot. Mail queue rows likewise retain the composed Markdown-capable body source; SMTP delivery derives `text/plain` and `text/html` MIME alternatives from it.
+Recipient-specific overrides are attached to the monitor-contact assignment. Their text and enabled state are stored independently, so disabling a personal message preserves the draft for later reuse. At release time, Pulse includes the personal message only when that recipient's option is enabled and its text is non-empty. Portal rendering happens from the delivery snapshot. Mail queue rows likewise retain the composed Markdown-capable body source; SMTP delivery derives `text/plain` and `text/html` MIME alternatives from it.
+
+The app name is fixed as **Pulse** in built-in message templates. `{app}` remains accepted when composing an existing custom template for backward compatibility, but it is no longer advertised in editors or used in defaults.
 
 Owners and contacts have four bounded email slots, each with its own checked timestamp. Safety requests and recipient releases copy the checked addresses into dedicated snapshot tables. One logical notification produces an independent queue row per snapshotted address while lifecycle state continues to represent the person/delivery rather than treating each mailbox as a separate recipient.
 

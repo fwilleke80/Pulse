@@ -1785,7 +1785,7 @@ small
 .email-address-grid
 {
 	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(min(100%, 245px), 1fr));
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
 	gap: 0.8rem;
 }
 

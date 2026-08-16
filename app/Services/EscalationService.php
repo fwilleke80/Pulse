@@ -347,7 +347,7 @@ final class EscalationService
 					'notification_locale' => (string)$recipient['notification_locale'],
 					'owner_name' => (string)$cycle['owner_name'],
 					'monitor_name' => (string)$cycle['monitor_name'],
-					'portal_message_override_enabled' => !empty($recipient['portal_message_override_id']),
+					'portal_message_override_enabled' => !empty($recipient['portal_message_override_enabled']),
 					'portal_message_override' => (string)($recipient['portal_message_override'] ?? ''),
 					'portal_intro_text' => (string)($recipient['portal_intro_text'] ?? ''),
 				]);
@@ -1057,8 +1057,8 @@ final class EscalationService
 				m.recipient_portal_expiry_days AS portal_availability_days,
 				COALESCE(cm.subject, mmt.subject) AS message_subject,
 				COALESCE(cm.body_text, mmt.body_text) AS message_body,
-				cpm.id AS portal_message_override_id,
 				cpm.body_text AS portal_message_override,
+				COALESCE(cpm.is_enabled, 0) AS portal_message_override_enabled,
 				mpt.intro_text AS portal_intro_text
 			FROM monitor_contacts mc
 			INNER JOIN monitors m ON m.id = mc.monitor_id

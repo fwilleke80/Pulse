@@ -48,8 +48,8 @@ final class RecipientRepository
 				mmt.subject AS default_message_subject,
 				mmt.body_text AS default_message_body,
 				mpt.intro_text AS default_portal_intro,
-				cpm.id AS portal_override_id,
 				cpm.body_text AS portal_override_body,
+				COALESCE(cpm.is_enabled, 0) AS portal_override_enabled,
 				c.name,
 				c.email,
 				c.email_checked_at,
@@ -226,16 +226,17 @@ final class RecipientRepository
 				$deleteMessage->execute(['id' => $monitorContactId]);
 			}
 
-			if ($usePortalOverride)
+			if (trim($portalBodyText) !== '')
 			{
 				$upsertPortal = $connection->prepare('
-					INSERT INTO contact_portal_messages (monitor_contact_id, body_text)
-					VALUES (:monitor_contact_id, :body_text)
-					ON DUPLICATE KEY UPDATE body_text = VALUES(body_text)
+					INSERT INTO contact_portal_messages (monitor_contact_id, body_text, is_enabled)
+					VALUES (:monitor_contact_id, :body_text, :is_enabled)
+					ON DUPLICATE KEY UPDATE body_text = VALUES(body_text), is_enabled = VALUES(is_enabled)
 				');
 				$upsertPortal->execute([
 					'monitor_contact_id' => $monitorContactId,
 					'body_text' => $portalBodyText,
+					'is_enabled' => $usePortalOverride ? 1 : 0,
 				]);
 			}
 			else
