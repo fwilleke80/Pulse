@@ -38,6 +38,10 @@ return [
 		'login_block_seconds' => Environment::GetInt('PULSE_LOGIN_BLOCK_SECONDS', 900, 60),
 		'password_minimum_length' => Environment::GetInt('PULSE_PASSWORD_MINIMUM_LENGTH', 12, 8, 128),
 		'passkey_quick_checkin_enabled' => Environment::GetBool('PULSE_PASSKEY_QUICK_CHECKIN_ENABLED', false),
+		'totp_encryption_key' => Environment::Get('PULSE_TOTP_ENCRYPTION_KEY'),
+		'totp_max_attempts' => Environment::GetInt('PULSE_TOTP_MAX_ATTEMPTS', 6, 2, 50),
+		'totp_window_seconds' => Environment::GetInt('PULSE_TOTP_WINDOW_SECONDS', 300, 60),
+		'totp_block_seconds' => Environment::GetInt('PULSE_TOTP_BLOCK_SECONDS', 300, 60),
 	],
 	'uploads' => [
 		'maximum_bytes' => Environment::GetInt('PULSE_UPLOAD_MAXIMUM_BYTES', 26214400, 1024),

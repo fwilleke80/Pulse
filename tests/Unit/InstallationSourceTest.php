@@ -73,6 +73,8 @@ final class InstallationSourceTest extends TestCase
 		self::assertGreaterThanOrEqual(6, substr_count($service, 'RequireStage('));
 		self::assertStringContainsString("PULSE_MAIL_ENABLED' => 'false'", $service);
 		self::assertStringContainsString("PULSE_PASSKEY_QUICK_CHECKIN_ENABLED' => 'false'", $service);
+		self::assertStringContainsString("'PULSE_TOTP_ENCRYPTION_KEY' => \$totpEncryptionKey", $service);
+		self::assertStringContainsString('base64_encode(random_bytes(32))', $service);
 	}
 
 	/** @brief Ensures completion reuses runtime validation and removes the browser installer only afterward. */
@@ -87,6 +89,11 @@ final class InstallationSourceTest extends TestCase
 		self::assertStringContainsString('@unlink($this->_installerPath)', $service);
 		self::assertStringContainsString('$installer->VerifyInstallation()', $installer);
 		self::assertStringContainsString('$installer->RemoveInstaller()', $installer);
+		$verificationStart = strpos($service, 'public function VerifyInstallation(): array');
+		$verificationEnd = strpos($service, 'public function RemoveInstaller(): bool');
+		self::assertIsInt($verificationStart);
+		self::assertIsInt($verificationEnd);
+		self::assertStringNotContainsString('PULSE_TOTP_ENCRYPTION_KEY', substr($service, $verificationStart, $verificationEnd - $verificationStart));
 	}
 
 	/** @brief Ensures the resumable state marker contains workflow state, not submitted credentials or passwords. */

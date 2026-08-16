@@ -22,10 +22,12 @@ use Pulse\Services\AuthService;
 use Pulse\Services\PasskeyService;
 use Pulse\Services\QuickCheckInService;
 use Pulse\Services\MonitorExecutionService;
+use Pulse\Services\SecurityAttemptThrottleService;
+use Pulse\Services\TotpService;
 use Throwable;
 
 /**
- * @brief Manages passkeys through Pulse's extensible account-security layer.
+ * @brief Manages passkeys and optional TOTP through Pulse's extensible account-security layer.
  */
 final class SecurityController extends BaseController
 {
@@ -34,6 +36,8 @@ final class SecurityController extends BaseController
 	private CsrfTokenManager $_csrf;
 	private QuickCheckInService $_quickCheckIn;
 	private MonitorExecutionService $_monitorExecution;
+	private TotpService $_totp;
+	private SecurityAttemptThrottleService $_securityThrottle;
 
 	/** @brief Constructs the security controller. */
 	public function __construct(
@@ -46,7 +50,9 @@ final class SecurityController extends BaseController
 		PasskeyService $passkeys,
 		CsrfTokenManager $csrf,
 		QuickCheckInService $quickCheckIn,
-		MonitorExecutionService $monitorExecution
+		MonitorExecutionService $monitorExecution,
+		TotpService $totp,
+		SecurityAttemptThrottleService $securityThrottle
 	)
 	{
 		parent::__construct($view, $session, $auth, $logger, $request);
@@ -55,6 +61,8 @@ final class SecurityController extends BaseController
 		$this->_csrf = $csrf;
 		$this->_quickCheckIn = $quickCheckIn;
 		$this->_monitorExecution = $monitorExecution;
+		$this->_totp = $totp;
+		$this->_securityThrottle = $securityThrottle;
 	}
 
 	/** @brief Starts an authenticated passkey-registration ceremony. */
@@ -129,6 +137,158 @@ final class SecurityController extends BaseController
 		$this->Redirect('/profile?tab=security');
 	}
 
+	/** @brief Starts optional TOTP enrollment after password re-authentication. */
+	public function BeginTotpEnrollment(): void
+	{
+		$user = $this->RequireUser();
+		$userId = (int)$user['id'];
+		$scope = 'totp_management';
+		$clientIp = $this->_request->ClientIp();
+
+		if ($this->_securityThrottle->IsBlocked($scope, $userId, $clientIp))
+		{
+			$this->Flash('error', __('security.totp.throttled'));
+			$this->Redirect('/profile?tab=security');
+		}
+
+		$currentPassword = $this->_request->PostString('current_password', 4096, false);
+
+		if ($currentPassword === '' || !password_verify($currentPassword, (string)$user['password_hash']))
+		{
+			$this->_securityThrottle->RecordFailure($scope, $userId, $clientIp);
+			$this->Flash('error', __('security.totp.current_password_invalid'));
+			$this->Redirect('/profile?tab=security');
+		}
+
+		try
+		{
+			$this->_totp->BeginEnrollment($user);
+			$this->_securityThrottle->Clear($scope, $userId, $clientIp);
+			$this->Flash('success', __('security.totp.setup_started'));
+		}
+		catch (Throwable $throwable)
+		{
+			$this->_logger->Error('TOTP enrollment could not be started', ['user_id' => $userId, 'error' => $throwable->getMessage()]);
+			$this->Flash('error', __('security.totp.setup_failed'));
+		}
+
+		$this->Redirect('/profile?tab=security');
+	}
+
+	/** @brief Confirms the first authenticator code before enabling TOTP. */
+	public function ConfirmTotpEnrollment(): void
+	{
+		$user = $this->RequireUser();
+		$userId = (int)$user['id'];
+		$scope = 'totp_enrollment';
+		$clientIp = $this->_request->ClientIp();
+
+		if ($this->_securityThrottle->IsBlocked($scope, $userId, $clientIp))
+		{
+			$this->Flash('error', __('security.totp.throttled'));
+			$this->Redirect('/profile?tab=security');
+		}
+
+		$code = $this->_request->PostString('code', 32);
+		$recoveryCodes = null;
+
+		try
+		{
+			$recoveryCodes = $code !== '' ? $this->_totp->ConfirmEnrollment($userId, $code) : null;
+		}
+		catch (Throwable $throwable)
+		{
+			$this->_logger->Error('TOTP enrollment confirmation failed internally', ['user_id' => $userId, 'error' => $throwable->getMessage()]);
+		}
+
+		if (!is_array($recoveryCodes))
+		{
+			$this->_securityThrottle->RecordFailure($scope, $userId, $clientIp);
+			$this->Flash('error', __('security.totp.confirm_failed'));
+			$this->Redirect('/profile?tab=security');
+		}
+
+		$this->_securityThrottle->Clear($scope, $userId, $clientIp);
+		$this->_logger->Info('TOTP two-factor authentication enabled', ['user_id' => $userId]);
+		$this->Flash('success', __('security.totp.enabled'));
+		$this->Redirect('/profile?tab=security');
+	}
+
+	/** @brief Cancels an unfinished TOTP enrollment. */
+	public function CancelTotpEnrollment(): void
+	{
+		$user = $this->RequireUser();
+		$this->_totp->CancelEnrollment((int)$user['id']);
+		$this->Flash('warning', __('security.totp.setup_cancelled'));
+		$this->Redirect('/profile?tab=security');
+	}
+
+	/** @brief Removes plaintext recovery codes from the authenticated session after acknowledgement. */
+	public function AcknowledgeTotpRecoveryCodes(): void
+	{
+		$user = $this->RequireUser();
+		$this->_totp->AcknowledgeRecoveryCodes((int)$user['id']);
+		$this->Redirect('/profile?tab=security');
+	}
+
+	/** @brief Replaces recovery codes after password and second-factor re-authentication. */
+	public function RegenerateTotpRecoveryCodes(): void
+	{
+		$user = $this->RequireUser();
+		$userId = (int)$user['id'];
+
+		if (!$this->VerifyTotpManagement($user, 'totp_recovery_regeneration'))
+		{
+			$this->Redirect('/profile?tab=security');
+		}
+
+		try
+		{
+			$this->_totp->RegenerateRecoveryCodes($userId);
+			$this->_logger->Info('TOTP recovery codes regenerated', ['user_id' => $userId]);
+			$this->Flash('success', __('security.totp.recovery.regenerated'));
+		}
+		catch (Throwable $throwable)
+		{
+			$this->_logger->Error('TOTP recovery codes could not be regenerated', ['user_id' => $userId, 'error' => $throwable->getMessage()]);
+			$this->Flash('error', __('security.totp.management_failed'));
+		}
+
+		$this->Redirect('/profile?tab=security');
+	}
+
+	/** @brief Disables TOTP after password and second-factor re-authentication. */
+	public function DisableTotp(): void
+	{
+		$user = $this->RequireUser();
+		$userId = (int)$user['id'];
+
+		if (!$this->VerifyTotpManagement($user, 'totp_disable'))
+		{
+			$this->Redirect('/profile?tab=security');
+		}
+
+		try
+		{
+			if ($this->_totp->Disable($userId))
+			{
+				$this->_logger->Info('TOTP two-factor authentication disabled', ['user_id' => $userId]);
+				$this->Flash('success', __('security.totp.disabled'));
+			}
+			else
+			{
+				$this->Flash('warning', __('security.totp.not_enabled'));
+			}
+		}
+		catch (Throwable $throwable)
+		{
+			$this->_logger->Error('TOTP could not be disabled', ['user_id' => $userId, 'error' => $throwable->getMessage()]);
+			$this->Flash('error', __('security.totp.management_failed'));
+		}
+
+		$this->Redirect('/profile?tab=security');
+	}
+
 	/** @brief Starts passkey login, constrained to the pending quick-check-in account when applicable. */
 	public function LoginOptions(): string
 	{
@@ -154,6 +314,11 @@ final class SecurityController extends BaseController
 				}
 
 				$targetUserId = (int)$context['user_id'];
+			}
+			else
+			{
+				$pendingTotp = $this->_totp->PendingLogin();
+				$targetUserId = is_array($pendingTotp) ? (int)$pendingTotp['user_id'] : null;
 			}
 
 			return $this->Json(['publicKey' => $this->_passkeys->BeginAuthentication('login', $targetUserId)]);
@@ -198,6 +363,7 @@ final class SecurityController extends BaseController
 			}
 
 			$this->_csrf->Rotate();
+			$this->_totp->CancelPendingLogin();
 
 			if ($quickTokenHash !== '')
 			{
@@ -225,6 +391,45 @@ final class SecurityController extends BaseController
 			$this->_logger->Warning('Passkey login failed', ['error' => $throwable->getMessage()]);
 			return $this->JsonError(__('security.passkeys.login_failed'), 401);
 		}
+	}
+
+	/** @param array<string, mixed> $user @brief Verifies password plus one current TOTP or recovery code for a sensitive action. */
+	private function VerifyTotpManagement(array $user, string $scope): bool
+	{
+		$userId = (int)$user['id'];
+		$clientIp = $this->_request->ClientIp();
+
+		if ($this->_securityThrottle->IsBlocked($scope, $userId, $clientIp))
+		{
+			$this->Flash('error', __('security.totp.throttled'));
+			return false;
+		}
+
+		$currentPassword = $this->_request->PostString('current_password', 4096, false);
+		$code = $this->_request->PostString('code', 64);
+		$verified = false;
+
+		try
+		{
+			$verified = $currentPassword !== ''
+				&& $code !== ''
+				&& password_verify($currentPassword, (string)$user['password_hash'])
+				&& $this->_totp->VerifyManagementCode($userId, $code);
+		}
+		catch (Throwable $throwable)
+		{
+			$this->_logger->Error('TOTP management re-authentication failed internally', ['user_id' => $userId, 'error' => $throwable->getMessage()]);
+		}
+
+		if (!$verified)
+		{
+			$this->_securityThrottle->RecordFailure($scope, $userId, $clientIp);
+			$this->Flash('error', __('security.totp.reauthentication_failed'));
+			return false;
+		}
+
+		$this->_securityThrottle->Clear($scope, $userId, $clientIp);
+		return true;
 	}
 
 	/** @return array<string, string> @brief Reads a WebAuthn response from form fields. */

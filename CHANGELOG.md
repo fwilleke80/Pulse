@@ -1,3 +1,29 @@
+## 1.2.5 - 2026-08-16
+
+### TOTP authentication database hotfix
+- Fixed valid authenticator codes being consumed and then reported as invalid. The previous multi-table update changed both the replay counter and method metadata, but accepted the code only when PDO reported exactly one affected row; MySQL can report both changed rows.
+- Split counter consumption and last-used metadata into separate statements inside one transaction. The conditional counter update remains atomic and replay-safe, while its one-row result can now be evaluated reliably.
+- No database migration or TOTP re-enrollment is required. A code attempted on the previous build may already have been consumed, so use a newly generated code after updating and after any active five-minute login throttle has expired.
+
+## 1.2.4 - 2026-08-16
+
+### TOTP first-login hotfix
+- Fixed an enrollment handoff that treated the successful setup-verification code as an already-used login code. Logging out while that same 30-second code was still visible could therefore reject it as a replay; repeated attempts could then activate the five-minute TOTP throttle and temporarily reject later codes as well.
+- TOTP setup now proves that the authenticator and Pulse share the same secret without consuming a login time step. Replay protection begins with the first actual TOTP authentication and remains atomic for every later authentication.
+- Made the attempt that reaches the rate limit immediately display the throttling message instead of showing one final generic invalid-code message. No database migration is required.
+
+## 1.2.3 - 2026-08-16
+
+### Optional authenticator-app two-factor authentication
+- Added optional RFC 6238-compatible TOTP under **Profile → Account security**. Enrollment requires the current password and a successful six-digit test code before the method becomes active.
+- Password sign-ins now request a current authenticator code when the account has enabled TOTP, with 10 single-use recovery codes as an offline fallback. Passkey sign-in remains a complete phishing-resistant authentication and does not require a subsequent TOTP code.
+- Rendered the enrollment QR code locally in the authenticated browser with a vendored MIT-licensed QR generator, so the TOTP provisioning URI is never sent to an external QR service. A manual Base32 setup key remains available.
+
+### Credential and recovery protection
+- Encrypted TOTP secrets at rest with an installation-specific AES-256-GCM key stored in `.env`; fresh installations generate the key automatically, while upgraded installations create it only when TOTP setup begins.
+- Stored recovery codes only as installation-keyed hashes, displayed plaintext codes only once in the authenticated session, and required password plus TOTP/recovery re-authentication before regenerating codes or disabling TOTP.
+- Added bounded clock skew, atomic time-step replay prevention, one-time recovery consumption, account- and network-scoped attempt throttling, security audit events, localized UI, RFC interoperability tests, migration `006_totp_two_factor_authentication.sql`, and Pulse 1.2.3 release metadata.
+
 ## 1.2.2 - 2026-08-16
 
 ### Form and portal-message refinements

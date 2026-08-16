@@ -24,6 +24,7 @@ use Pulse\Core\Request;
 use Pulse\Core\Router;
 use Pulse\Core\Session;
 use Pulse\Core\Translator;
+use Pulse\Core\TotpAlgorithm;
 use Pulse\Core\View;
 use Pulse\Mail\SmtpMailTransport;
 use Pulse\Repositories\ContactRepository;
@@ -31,6 +32,7 @@ use Pulse\Repositories\DocumentRepository;
 use Pulse\Repositories\LoginThrottleRepository;
 use Pulse\Repositories\MailQueueRepository;
 use Pulse\Repositories\SystemStatusRepository;
+use Pulse\Repositories\TotpCredentialRepository;
 use Pulse\Repositories\MessageRepository;
 use Pulse\Repositories\MonitorRepository;
 use Pulse\Repositories\RecipientRepository;
@@ -49,9 +51,12 @@ use Pulse\Services\NotificationScheduler;
 use Pulse\Services\RecipientPortalArchiveBuilder;
 use Pulse\Services\RecipientPortalService;
 use Pulse\Services\SecurityChallengeService;
+use Pulse\Services\SecurityAttemptThrottleService;
 use Pulse\Services\PasskeyService;
 use Pulse\Services\QuickCheckInService;
 use Pulse\Services\TestNotificationService;
+use Pulse\Services\TotpSecretProtector;
+use Pulse\Services\TotpService;
 
 $composerAutoloader = __DIR__ . '/vendor/autoload.php';
 
@@ -140,10 +145,14 @@ $mailQueueRepository = new MailQueueRepository($database);
 $systemStatusRepository = new SystemStatusRepository($database);
 $loginThrottleRepository = new LoginThrottleRepository($database);
 $securityCredentialRepository = new SecurityCredentialRepository($database);
+$totpCredentialRepository = new TotpCredentialRepository($database);
 $securityChallengeService = new SecurityChallengeService($session);
 $passkeyService = new PasskeyService($securityCredentialRepository, $securityChallengeService, $appConfig);
 $quickCheckInService = new QuickCheckInService($database, $appConfig);
 $loginThrottle = new LoginThrottleService($loginThrottleRepository, (array)$appConfig['security']);
+$securityAttemptThrottle = new SecurityAttemptThrottleService($loginThrottleRepository, (array)$appConfig['security']);
+$totpProtector = new TotpSecretProtector((string)$appConfig['security']['totp_encryption_key'], $environmentFile);
+$totpService = new TotpService($totpCredentialRepository, new TotpAlgorithm(), $totpProtector, $session);
 $monitorStateMachine = new MonitorStateMachine();
 $monitorExecutionService = new MonitorExecutionService($database, $monitorStateMachine, $logger);
 $auth = new AuthService($userRepository, $session, $logger);
@@ -272,8 +281,11 @@ return [
 	'documentService' => $documentService,
 	'loginThrottle' => $loginThrottle,
 	'securityCredentialRepository' => $securityCredentialRepository,
+	'totpCredentialRepository' => $totpCredentialRepository,
 	'securityChallengeService' => $securityChallengeService,
 	'passkeyService' => $passkeyService,
+	'totpService' => $totpService,
+	'securityAttemptThrottle' => $securityAttemptThrottle,
 	'quickCheckInService' => $quickCheckInService,
 	'mailQueueWorker' => $mailQueueWorker,
 	'notificationScheduler' => $notificationScheduler,

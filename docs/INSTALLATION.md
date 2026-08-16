@@ -39,7 +39,7 @@ python3 tools/write_version.py
 To set a release explicitly:
 
 ```bash
-PULSE_VERSION=1.2.2 python3 tools/write_version.py
+PULSE_VERSION=1.2.5 python3 tools/write_version.py
 ```
 
 Pulse still starts if the generated version file is missing, but displays **version unavailable**.
@@ -148,11 +148,13 @@ Do not add a trailing slash, query string, credentials, or a URL path.
 
 The timezone field is a standard IANA timezone selector. It affects how Pulse displays dates and times; lifecycle timestamps continue to be stored in UTC.
 
-Pulse generates the remaining safe defaults automatically, including trusted-host configuration, secure-session defaults, login throttling, upload defaults, and a cryptographically random web-cron token.
+Pulse generates the remaining safe defaults automatically, including trusted-host configuration, secure-session defaults, login throttling, upload defaults, a cryptographically random web-cron token, and the installation-specific encryption key used if TOTP is enabled later.
 
 An HTTPS public URL configures Pulse for production defaults. An HTTP URL configures a development installation.
 
 Passkeys and passkey quick check-in depend on the production hostname and HTTPS. After installation, register a passkey under **Profile → Account security**, then verify that a Pulse passkey is available on every device you intend to use for routine quick check-ins. Password managers such as iCloud Keychain may synchronize the same passkey automatically; create additional credentials only where necessary. Rehearse quick check-in from those devices before relying on the feature.
+
+Authenticator-app TOTP is optional and can be enabled under **Profile → Account security**. Upgraded installations that do not yet have `PULSE_TOTP_ENCRYPTION_KEY` create it in `.env` only when the owner starts TOTP setup. The root `.env` must therefore remain writable for that first setup, and its backup becomes essential: losing this key makes both the encrypted TOTP secret and the installation-keyed recovery-code hashes unusable. Recovery codes protect against loss of the authenticator, not loss of `.env`.
 
 The installer then applies the current Pulse database schema.
 
@@ -289,6 +291,8 @@ Then:
 4. Open Pulse normally. Because the release contains `public/install.php`, Pulse first verifies the existing initialized account and attempts to remove the installer without recreating configuration, users, or database data.
 5. If the web server cannot remove `public/install.php`, delete that one file manually and open Pulse again.
 6. Normal startup applies each new numbered schema migration automatically.
+
+Pulse 1.2.3 adds migration `006_totp_two_factor_authentication.sql`. It creates only the optional credential tables; it does not enable TOTP for an existing account. Existing installations create `PULSE_TOTP_ENCRYPTION_KEY` only when the authenticated owner deliberately starts TOTP enrollment.
 
 An uploaded `public/install.php` temporarily locks normal operation only until the existing installation has been verified and the installer removes itself. Invalid database credentials deliberately stop that verification instead of modifying the installation.
 

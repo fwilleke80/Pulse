@@ -528,7 +528,8 @@ th
 }
 
 .status-scheduled,
-.status-checked-in
+.status-checked-in,
+.status-verified
 {
 	background: color-mix(in srgb, var(--success) 14%, transparent);
 	color: var(--success);
@@ -559,7 +560,8 @@ th
 	color: var(--escalated);
 }
 
-.status-paused
+.status-paused,
+.status-muted
 {
 	background: color-mix(in srgb, var(--muted) 15%, transparent);
 	color: var(--muted);
@@ -1402,6 +1404,142 @@ small
 	margin-top: 0;
 }
 
+.security-method-heading
+{
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 1rem;
+}
+
+.security-method-heading h3
+{
+	margin: 0;
+}
+
+.security-method-heading p
+{
+	margin: 0.35rem 0 0;
+}
+
+.security-method-summary
+{
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem 1.2rem;
+	margin: 1rem 0;
+	color: var(--muted);
+	font-size: 0.9rem;
+}
+
+.security-method-management
+{
+	margin-top: 0.8rem;
+	padding: 0.75rem 0.85rem;
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	background: var(--surface);
+}
+
+.security-method-management > summary
+{
+	cursor: pointer;
+	font-weight: 700;
+}
+
+.security-method-danger > summary
+{
+	color: var(--danger);
+}
+
+.totp-setup-grid
+{
+	display: grid;
+	grid-template-columns: minmax(190px, 0.65fr) minmax(240px, 1.35fr);
+	gap: 1.25rem;
+	align-items: start;
+	margin: 1rem 0;
+}
+
+.totp-setup-grid h4
+{
+	margin-top: 0;
+}
+
+.totp-qr-panel
+{
+	text-align: center;
+}
+
+.totp-qr-code
+{
+	display: block;
+	width: min(100%, 260px);
+	height: auto;
+	margin: 0 auto;
+	border: 10px solid #ffffff;
+	border-radius: 8px;
+	background: #ffffff;
+	image-rendering: pixelated;
+}
+
+.totp-manual-secret
+{
+	display: block;
+	max-width: 100%;
+	padding: 0.8rem;
+	border: 1px solid var(--border);
+	border-radius: 7px;
+	background: var(--surface);
+	font-size: 1rem;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+	line-height: 1.7;
+	overflow-wrap: anywhere;
+	user-select: all;
+}
+
+.totp-confirm-form
+{
+	max-width: 28rem;
+}
+
+.totp-recovery-display
+{
+	border-color: color-mix(in srgb, var(--warning) 38%, var(--border));
+}
+
+.totp-recovery-code-grid
+{
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+	gap: 0.55rem 1rem;
+	margin: 1rem 0;
+	padding: 0;
+	list-style: none;
+}
+
+.totp-recovery-code-grid li
+{
+	padding: 0.55rem 0.7rem;
+	border: 1px solid var(--border);
+	border-radius: 7px;
+	background: var(--surface);
+	text-align: center;
+}
+
+.totp-recovery-code-grid code
+{
+	font-size: 0.95rem;
+	font-weight: 700;
+	letter-spacing: 0.06em;
+}
+
+.button-row form
+{
+	margin: 0;
+}
+
 .security-credential-list
 {
 	display: grid;
@@ -1459,6 +1597,25 @@ small
 .passkey-primary-action small
 {
 	color: var(--muted);
+}
+
+@media (max-width: 680px)
+{
+	.security-method-heading
+	{
+		align-items: stretch;
+		flex-direction: column;
+	}
+
+	.security-method-heading .status-badge
+	{
+		align-self: flex-start;
+	}
+
+	.totp-setup-grid
+	{
+		grid-template-columns: 1fr;
+	}
 }
 
 .auth-separator

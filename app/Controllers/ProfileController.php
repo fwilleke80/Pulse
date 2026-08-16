@@ -22,6 +22,7 @@ use Pulse\Core\WebsiteLanguagePreference;
 use Pulse\Repositories\SecurityCredentialRepository;
 use Pulse\Repositories\UserRepository;
 use Pulse\Services\AuthService;
+use Pulse\Services\TotpService;
 
 /**
  * @brief Controller for personal profile data and password management.
@@ -32,6 +33,7 @@ class ProfileController extends BaseController
 	private SecurityCredentialRepository $_securityCredentials;
 	private int $_passwordMinimumLength;
 	private NotificationLanguage $_notificationLanguage;
+	private TotpService $_totp;
 
 	/**
 	 * @brief Constructs the profile controller.
@@ -44,6 +46,7 @@ class ProfileController extends BaseController
 	 * @param SecurityCredentialRepository $securityCredentials Security-method credential repository.
 	 * @param int $passwordMinimumLength Minimum accepted password length.
 	 * @param NotificationLanguage $notificationLanguage Recipient-language resolver.
+	 * @param TotpService $totp Optional TOTP security service.
 	 */
 	public function __construct(
 		View $view,
@@ -54,7 +57,8 @@ class ProfileController extends BaseController
 		UserRepository $userRepository,
 		SecurityCredentialRepository $securityCredentials,
 		int $passwordMinimumLength,
-		NotificationLanguage $notificationLanguage
+		NotificationLanguage $notificationLanguage,
+		TotpService $totp
 	)
 	{
 		parent::__construct($view, $session, $auth, $logger, $request);
@@ -62,6 +66,7 @@ class ProfileController extends BaseController
 		$this->_securityCredentials = $securityCredentials;
 		$this->_passwordMinimumLength = $passwordMinimumLength;
 		$this->_notificationLanguage = $notificationLanguage;
+		$this->_totp = $totp;
 	}
 
 	/**
@@ -71,6 +76,7 @@ class ProfileController extends BaseController
 	public function Index(): string
 	{
 		$user = $this->RequireUser();
+		$userId = (int)$user['id'];
 
 		return $this->_view->Render('profile.index', [
 			'user' => $user,
@@ -81,7 +87,10 @@ class ProfileController extends BaseController
 			'websiteLocale' => $this->_notificationLanguage->Resolve(
 				isset($user['website_locale']) ? (string)$user['website_locale'] : null
 			),
-			'passkeys' => $this->_securityCredentials->FindPasskeysForUser((int)$user['id']),
+			'passkeys' => $this->_securityCredentials->FindPasskeysForUser($userId),
+			'totpStatus' => $this->_totp->Status($userId),
+			'totpSetup' => $this->_totp->PendingEnrollment($userId),
+			'totpRecoveryCodes' => $this->_totp->RecoveryCodes($userId),
 			'activeTab' => $this->ActiveTab(),
 		]);
 	}

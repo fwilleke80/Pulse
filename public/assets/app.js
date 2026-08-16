@@ -1623,6 +1623,93 @@ document.addEventListener('DOMContentLoaded', function ()
 	});
 });
 
+/** @brief Renders TOTP enrollment QR codes and supports one-time recovery-code copying locally. */
+document.addEventListener('DOMContentLoaded', function ()
+{
+	for (const canvas of document.querySelectorAll('[data-totp-qr-code]'))
+	{
+		const value = canvas.dataset.totpUri || '';
+
+		if (value === '' || typeof qrcodegen === 'undefined')
+		{
+			continue;
+		}
+
+		try
+		{
+			const qr = qrcodegen.QrCode.encodeText(value, qrcodegen.QrCode.Ecc.MEDIUM);
+			const border = 4;
+			const scale = 6;
+			const size = (qr.size + border * 2) * scale;
+			const context = canvas.getContext('2d');
+
+			if (!context)
+			{
+				continue;
+			}
+
+			canvas.width = size;
+			canvas.height = size;
+			context.imageSmoothingEnabled = false;
+			context.fillStyle = '#ffffff';
+			context.fillRect(0, 0, size, size);
+			context.fillStyle = '#000000';
+
+			for (let y = 0; y < qr.size; y++)
+			{
+				for (let x = 0; x < qr.size; x++)
+				{
+					if (qr.getModule(x, y))
+					{
+						context.fillRect((x + border) * scale, (y + border) * scale, scale, scale);
+					}
+				}
+			}
+		}
+		catch (error)
+		{
+			canvas.hidden = true;
+		}
+	}
+
+	const copyButton = document.querySelector('[data-copy-totp-recovery-codes]');
+
+	if (copyButton)
+	{
+		copyButton.addEventListener('click', async function ()
+		{
+			const codes = Array.from(document.querySelectorAll('[data-totp-recovery-code-list] code'))
+				.map(function (node) { return node.textContent ? node.textContent.trim() : ''; })
+				.filter(Boolean);
+			const status = document.querySelector('[data-totp-recovery-copy-status]');
+
+			try
+			{
+				await navigator.clipboard.writeText(codes.join('\n'));
+
+				if (status)
+				{
+					status.textContent = copyButton.dataset.copySuccess || '';
+					status.hidden = false;
+				}
+			}
+			catch (error)
+			{
+				const selection = window.getSelection();
+				const list = document.querySelector('[data-totp-recovery-code-list]');
+
+				if (selection && list)
+				{
+					const range = document.createRange();
+					range.selectNodeContents(list);
+					selection.removeAllRanges();
+					selection.addRange(range);
+				}
+			}
+		});
+	}
+});
+
 /** @brief Progressive enhancement for WebAuthn passkey registration, login, and quick check-in. */
 document.addEventListener('DOMContentLoaded', function ()
 {

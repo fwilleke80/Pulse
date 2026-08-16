@@ -13,6 +13,7 @@ declare(strict_types=1);
 /** @var string $content */
 /** @var string|null $title */
 /** @var bool|null $portalPreview */
+/** @var bool|null $needsQrCode */
 
 $assetVersion = trim((string)$appVersion) !== '' ? (string)$appVersion : 'unversioned';
 $portalPreview = !empty($portalPreview);
@@ -28,6 +29,9 @@ $versionLabel = trim((string)$appVersion) !== ''
 	<title><?= htmlspecialchars((isset($title) ? ($title . " :: ") : "") . $appName, ENT_QUOTES, 'UTF-8') ?></title>
 	<link rel="stylesheet" href="<?= e($base_url) ?>/assets/style.css?v=<?= e(rawurlencode($assetVersion)) ?>">
 	<link rel="icon" href="<?= e($base_url) ?>/favicon.png">
+	<?php if (!empty($needsQrCode)): ?>
+		<script src="<?= e($base_url) ?>/assets/vendor/qrcodegen-v1.8.0.js?v=<?= e(rawurlencode($assetVersion)) ?>" defer></script>
+	<?php endif; ?>
 	<script src="<?= e($base_url) ?>/assets/app.js?v=<?= e(rawurlencode($assetVersion)) ?>" defer></script>
 </head>
 <body>

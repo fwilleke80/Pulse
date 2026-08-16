@@ -437,21 +437,35 @@ If SMTP settings are changed, send another successful test before relying on the
 
 For reliable delivery, add the configured Pulse sender address or domain to safe-sender/allowlist or whitelist rules where practical. This complements rather than replaces correct SMTP, SPF, DKIM, and DMARC configuration.
 
-## Account security and passkeys
+## Account security, TOTP, and passkeys
 
-Profile is organized into **Profile data**, **Account security**, and **Change password** tabs. Open **Profile → Account security** to register and remove passkeys. Passkeys can be used for normal Pulse login and for quick check-in. Registration and removal require the current password, so possession of an already authenticated browser session alone is not enough to change passkey credentials.
+Profile is organized into **Profile data**, **Account security**, and **Change password** tabs. Open **Profile → Account security** to manage the optional authenticator app and to register or remove passkeys.
+
+### Optional authenticator-app codes
+
+Select **Set up authenticator app**, confirm your current Pulse password, then scan the QR code with an authenticator app or a password manager such as Apple Passwords. You can also enter the displayed setup key manually. Enter one current six-digit code to prove that setup works; Pulse does not enable TOTP before this confirmation succeeds. QR generation happens locally in the browser and does not send the setup secret to another service.
+
+After TOTP is enabled, a successful **password** sign-in leads to a second page that accepts either the current six-digit code or one unused recovery code. The setup test proves that both sides share the secret but does not consume that code as a login, so you may safely sign out and use it while it is still current. Codes are normally valid for their 30-second time step with a small adjacent-step allowance for clock skew, but a code accepted for an actual authentication cannot be replayed. Repeated failures are rate-limited.
+
+Pulse shows 10 recovery codes once after enrollment or regeneration. Copy them to a secure place separate from the device that generates your TOTP codes, then acknowledge the list. Each recovery code works once. Profile reports how many remain, and generating a new set immediately invalidates every old code. Regenerating codes or disabling TOTP requires the current password plus a current TOTP code or unused recovery code.
+
+TOTP is optional. Enabling it does not change passkey behavior: a successful passkey is already a complete, phishing-resistant authentication, so Pulse does not ask for TOTP afterward. This also keeps passkey quick check-in low-friction. If you lose the authenticator, use a recovery code or an available passkey; do not wait for an urgent check-in to test your recovery plan.
+
+### Passkeys
+
+Passkeys can be used for normal Pulse login and for quick check-in. Registration and removal require the current password, so possession of an already authenticated browser session alone is not enough to change passkey credentials.
 
 A passkey may be backed by Face ID, Touch ID, Windows Hello, a hardware security key, or another authenticator supported by the browser and operating system. Pulse stores the credential identifier and public verification material; it does not receive the authenticator's private key or biometric template.
 
 For the most reliable quick-check-in setup, make sure a Pulse passkey is **available** on every device you may use to respond to a reminder. Passkeys may be synchronized automatically by a password manager such as iCloud Keychain, so one registered passkey can already work on several devices. Only add a separate passkey when a device or password manager cannot access an existing one. Give independently registered credentials recognizable names such as **iCloud Keychain**, **Work password manager**, or **YubiKey**, and test each intended device before relying on quick check-in during a real reminder.
 
-The normal password remains available as recovery/fallback authentication in Pulse 1.2. The account-security storage separates authentication methods from monitor logic so later releases can add additional methods and second-factor policies.
+The normal password remains available, but password sign-in includes the TOTP step when the account has enabled it. A passkey remains a complete alternative authentication method.
 
 ### Quick check-in from reminder mail
 
 Quick check-in is the recommended low-friction way to acknowledge routine Pulse reminders. When an administrator enables **Enable passkey quick check-in**, the built-in owner reminder templates use `{quickcheckin}` to place the quick-check-in link explicitly in the template. Custom templates can use `{quickcheckin}` for the localized optional block or `{quickurl}` for a custom link. The URL contains a random, expiring, single-use pointer tied to the monitoring cycle that created the reminder. Opening the URL alone does not check anything in.
 
-The normal flow is simply: open the reminder on a device with a Pulse passkey, activate **Quick check-in**, approve Face ID, Touch ID, Windows Hello, or the available authenticator, and Pulse performs the same global check-in as **Check in now**, confirming all active monitors at once. If the passkey is unavailable or fails, choose the password fallback and complete the same global check-in after normal authentication.
+The normal flow is simply: open the reminder on a device with a Pulse passkey, activate **Quick check-in**, approve Face ID, Touch ID, Windows Hello, or the available authenticator, and Pulse performs the same global check-in as **Check in now**, confirming all active monitors at once. If the passkey is unavailable or fails, choose the password fallback; when TOTP is enabled, complete its code step before Pulse performs the check-in.
 
 Because quick check-in is intended to remove friction, do not wait for an urgent reminder to discover that a particular device has no usable passkey. Verify passkey availability on the devices you actually carry or use, then rehearse the flow.
 

@@ -73,6 +73,8 @@ $recipientPortalArchiveBuilder = $container['recipientPortalArchiveBuilder'];
 $markdownRenderer = $container['markdownRenderer'];
 $securityCredentialRepository = $container['securityCredentialRepository'];
 $passkeyService = $container['passkeyService'];
+$totpService = $container['totpService'];
+$securityAttemptThrottle = $container['securityAttemptThrottle'];
 $quickCheckInService = $container['quickCheckInService'];
 
 $securityPolicyConfig = (array)$config['security'];
@@ -84,7 +86,8 @@ $view->SetGlobals(['flash' => $session->PullFlash()], true);
 
 if ($request->Method() === 'POST' && !$csrf->IsValid($request->PostString('_csrf_token', 128)))
 {
-	if ($request->Path() === '/login' && $auth->IsAuthenticated())
+	if (($request->Path() === '/login' && $auth->IsAuthenticated())
+		|| ($request->Path() === '/login/totp' && $auth->IsAuthenticated()))
 	{
 		$logger->Info('Ignored stale login POST after authentication');
 		$quickCheckInResult = $session->Get('pulse_quick_checkin_result');
@@ -114,7 +117,19 @@ $homeController = new HomeController(
 	$monitorRepository,
 	$monitorExecutionService
 );
-$authController = new AuthController($view, $session, $auth, $logger, $request, $loginThrottle, $csrf, $quickCheckInService, $monitorExecutionService);
+$authController = new AuthController(
+	$view,
+	$session,
+	$auth,
+	$logger,
+	$request,
+	$loginThrottle,
+	$csrf,
+	$quickCheckInService,
+	$monitorExecutionService,
+	$totpService,
+	$securityAttemptThrottle
+);
 
 $securityController = new SecurityController(
 	$view,
@@ -126,7 +141,9 @@ $securityController = new SecurityController(
 	$passkeyService,
 	$csrf,
 	$quickCheckInService,
-	$monitorExecutionService
+	$monitorExecutionService,
+	$totpService,
+	$securityAttemptThrottle
 );
 $quickCheckInController = new QuickCheckInController(
 	$view,
@@ -149,7 +166,8 @@ $profileController = new ProfileController(
 	$userRepository,
 	$securityCredentialRepository,
 	(int)$config['security']['password_minimum_length'],
-	$notificationLanguage
+	$notificationLanguage,
+	$totpService
 );
 $administrationController = new AdministrationController(
 	$view,
@@ -292,6 +310,12 @@ $router->Get('/monitors/documents/download', [$documentController, 'Download']);
 $router->Post('/security/passkeys/register/options', [$securityController, 'RegisterOptions']);
 $router->Post('/security/passkeys/register/verify', [$securityController, 'RegisterVerify']);
 $router->Post('/security/passkeys/delete', [$securityController, 'DeletePasskey']);
+$router->Post('/security/totp/setup', [$securityController, 'BeginTotpEnrollment']);
+$router->Post('/security/totp/confirm', [$securityController, 'ConfirmTotpEnrollment']);
+$router->Post('/security/totp/cancel', [$securityController, 'CancelTotpEnrollment']);
+$router->Post('/security/totp/recovery/acknowledge', [$securityController, 'AcknowledgeTotpRecoveryCodes']);
+$router->Post('/security/totp/recovery/regenerate', [$securityController, 'RegenerateTotpRecoveryCodes']);
+$router->Post('/security/totp/disable', [$securityController, 'DisableTotp']);
 $router->Post('/login/passkey/options', [$securityController, 'LoginOptions']);
 $router->Post('/login/passkey/verify', [$securityController, 'LoginVerify']);
 $router->Get('/quick-check-in', [$quickCheckInController, 'Open']);
@@ -301,6 +325,9 @@ $router->Get('/quick-check-in/success', [$quickCheckInController, 'Success']);
 
 $router->Get('/login', [$authController, 'ShowLogin']);
 $router->Post('/login', [$authController, 'Login']);
+$router->Get('/login/totp', [$authController, 'ShowTotp']);
+$router->Post('/login/totp', [$authController, 'VerifyTotp']);
+$router->Post('/login/totp/cancel', [$authController, 'CancelTotp']);
 $router->Post('/logout', [$authController, 'Logout']);
 $router->Post('/language/set', [$languageController, 'Set']);
 $router->Get('/safety/confirm', [$safetyController, 'Show']);

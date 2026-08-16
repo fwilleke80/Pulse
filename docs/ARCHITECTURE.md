@@ -302,7 +302,7 @@ The stable line begins with:
 001_initial_schema.sql
 ```
 
-which contains the complete 1.0 baseline. Stable post-1.0 releases add new numbered migrations; 1.1.2 adds `002_security_methods_and_owner_mail.sql`.
+which contains the complete 1.0 baseline. Stable post-1.0 releases add new numbered migrations; the current sequence ends with `006_totp_two_factor_authentication.sql` in Pulse 1.2.3.
 
 At startup, Pulse acquires a database advisory lock, verifies previously applied migration checksums, and applies pending migrations in order.
 
@@ -312,9 +312,11 @@ Once a migration has shipped in a stable release, do not edit it. Future schema 
 
 ## Account security methods
 
-Account authentication beyond the password is represented by generic `user_security_methods` records. Method-specific credential data is stored separately; 1.1.2 implements `passkey` credentials in `user_passkey_credentials`. `user_security_profiles` provides the stable opaque WebAuthn user handle.
+Account authentication beyond the password is represented by generic `user_security_methods` records. Method-specific credential data is stored separately: passkeys use `user_passkey_credentials`, while Pulse 1.2.3 stores encrypted authenticator secrets and replay counters in `user_totp_credentials` and one-time recovery-code hashes in `user_totp_recovery_codes`. `user_security_profiles` provides the stable opaque WebAuthn user handle.
 
-`SecurityChallengeService` is method-neutral challenge storage in the browser session. `PasskeyService` implements WebAuthn registration/assertion verification on top of that layer. This separation is intentional so a later TOTP/recovery-code implementation can add another method or second-factor policy without placing authentication rules in monitor controllers.
+`SecurityChallengeService` is method-neutral challenge storage in the browser session. `PasskeyService` implements WebAuthn registration/assertion verification. `TotpService` coordinates short-lived enrollment/login state, `TotpAlgorithm` implements the RFC-compatible code calculation, `TotpSecretProtector` encrypts secrets and keys recovery-code hashes, and `TotpCredentialRepository` performs atomic counter/code consumption. `SecurityAttemptThrottleService` reuses the opaque login-attempt store with operation-specific keys.
+
+Password verification and authenticated-session establishment are separate operations. Accounts without TOTP proceed directly; enabled accounts receive a short-lived second-factor challenge. Passkey login remains complete authentication and clears any pending password/TOTP state after the assertion is bound to the intended account.
 
 Quick check-in is also separated from authentication. `QuickCheckInService` creates hashed, expiring, cycle-bound email pointers. After the pointer is resolved, either passkey or password authentication must succeed before `MonitorExecutionService::CheckInAllActiveForUser()` is invoked.
 

@@ -24,15 +24,17 @@ final class BaselineIntegritySourceTest extends TestCase
 		$locationMigration = (string)file_get_contents($root . '/database/migrations/003_check_in_locations.sql');
 		$emailMigration = (string)file_get_contents($root . '/database/migrations/004_multiple_email_addresses.sql');
 		$portalMessageMigration = (string)file_get_contents($root . '/database/migrations/005_recipient_portal_message_state.sql');
+		$totpMigration = (string)file_get_contents($root . '/database/migrations/006_totp_two_factor_authentication.sql');
 
 		self::assertIsArray($migrations);
 		sort($migrations);
-		self::assertCount(5, $migrations);
+		self::assertCount(6, $migrations);
 		self::assertStringEndsWith('/001_initial_schema.sql', str_replace('\\', '/', $migrations[0]));
 		self::assertStringEndsWith('/002_security_methods_and_owner_mail.sql', str_replace('\\', '/', $migrations[1]));
 		self::assertStringEndsWith('/003_check_in_locations.sql', str_replace('\\', '/', $migrations[2]));
 		self::assertStringEndsWith('/004_multiple_email_addresses.sql', str_replace('\\', '/', $migrations[3]));
 		self::assertStringEndsWith('/005_recipient_portal_message_state.sql', str_replace('\\', '/', $migrations[4]));
+		self::assertStringEndsWith('/006_totp_two_factor_authentication.sql', str_replace('\\', '/', $migrations[5]));
 		self::assertStringContainsString('CREATE TABLE recipient_release_deliveries', $schema);
 		self::assertStringContainsString('is_archived TINYINT(1) NOT NULL DEFAULT 0', $schema);
 		self::assertStringContainsString('CREATE TABLE system_status', $schema);
@@ -44,6 +46,8 @@ final class BaselineIntegritySourceTest extends TestCase
 		self::assertStringContainsString('CREATE TABLE check_in_locations', $locationMigration);
 		self::assertStringContainsString('email_4_checked_at', $emailMigration);
 		self::assertStringContainsString('ADD COLUMN is_enabled', $portalMessageMigration);
+		self::assertStringContainsString('CREATE TABLE user_totp_credentials', $totpMigration);
+		self::assertStringContainsString('CREATE TABLE user_totp_recovery_codes', $totpMigration);
 		self::assertStringContainsString('CREATE TABLE recipient_release_locations', $locationMigration);
 	}
 

@@ -198,21 +198,29 @@ Do not put passwords, cryptographic recovery keys, or other high-value secrets d
 
 Configure SPF, DKIM, and DMARC where applicable. Add the Pulse sender address/domain to safe-sender or allowlist/whitelist rules where practical, especially for the owner mailbox. Consider doing the same for safety contacts and final recipients.
 
-## Passkeys and the extensible account-security layer
+## Passkeys, TOTP, and the account-security layer
 
-Pulse 1.2 stores additional account authentication methods separately from monitor configuration. Passkeys are the first implemented method; the storage model deliberately leaves room for later second-factor methods and recovery mechanisms.
+Pulse 1.2 stores account authentication methods separately from monitor configuration. Passkeys and optional TOTP each use method-specific credential records behind the same owner-scoped security-method layer.
 
 Passkey registration requires the current Pulse password and WebAuthn user verification. Pulse stores a stable opaque user handle, the credential ID, public verification key, algorithm, transports, and signature-counter metadata. The credential private key and any biometric data stay with the authenticator/platform and are never stored by Pulse.
 
 Each WebAuthn ceremony uses a fresh, short-lived, single-use challenge. Pulse verifies the ceremony type, challenge, configured origin, RP ID hash, user-presence/user-verification flags, credential/account binding, and assertion signature. Passkeys are therefore tied to the configured Pulse hostname; changing the production hostname can make existing credentials unusable. Production passkey use requires HTTPS.
 
-Normal password authentication remains available as recovery/fallback. For operational reliability, verify that a Pulse passkey is available on every device you expect to use for quick check-in. Synced passkeys may cover several devices automatically; independently register another credential only where necessary. A strong cryptographic design does not help if no usable authenticator is available when a reminder arrives.
+For operational reliability, verify that a Pulse passkey is available on every device you expect to use for quick check-in. Synced passkeys may cover several devices automatically; independently register another credential only where necessary. A strong cryptographic design does not help if no usable authenticator is available when a reminder arrives.
+
+TOTP enrollment is optional, requires the current password, and is not committed until Pulse verifies a current code from the new authenticator entry. Enrollment verifies the shared secret without recording that setup code as an authenticated use. Pulse implements the interoperable RFC 6238 HMAC-SHA1 profile with six digits, 30-second steps, and a one-step clock-skew window. Beginning with the first actual authentication, an atomic monotonically increasing counter prevents reuse of an already accepted time-step code. Counter consumption and the separate method-usage timestamp update are committed together in one database transaction.
+
+The TOTP secret is encrypted with AES-256-GCM before database storage. Its installation-specific 256-bit key is held in `PULSE_TOTP_ENCRYPTION_KEY` in `.env`, not in the database. QR rendering is local browser code loaded from the Pulse origin; the provisioning URI is never requested from a remote QR service. Protect and back up `.env` with the database. A database-only theft does not reveal the secret, but compromise of both stores still can.
+
+Pulse issues 10 random 80-bit Base32 recovery codes. Only installation-keyed SHA-256 hashes are stored, each code is consumed transactionally once, and plaintext codes remain only in the authenticated session during the one-time display. Regeneration replaces the whole set. Sensitive TOTP changes require both the current password and a current TOTP or unused recovery code. Attempt throttles use separate opaque account and network keys, and enable, disable, login, recovery-use, and regeneration events are recorded in the audit log without secret material.
+
+TOTP is a second factor for password authentication only. A successful passkey assertion remains a complete phishing-resistant authentication and bypasses the password/TOTP pair; Pulse constrains a passkey assertion started on a pending TOTP page to that password-verified account. This policy is deliberate rather than an accidental omission of a second prompt.
 
 ## Quick check-in threat model
 
 The quick-check-in URL in owner reminder mail is intentionally **not** a magic login link. Its random token is stored only as a hash, expires, is single-use, and is tied to the check cycle that generated it. It merely selects the owner/cycle that may attempt quick check-in.
 
-The action completes only after passkey authentication or the normal password-login fallback. Successful authentication performs the existing global check-in operation for all active monitors. This is intentionally the preferred low-friction owner workflow: the reminder link removes navigation steps, while WebAuthn still supplies the authentication boundary. An old link stops being eligible once its source cycle is confirmed, escalated, cancelled, expired, or otherwise leaves the owner-reminder states.
+The action completes only after passkey authentication or the normal password-login fallback, including the TOTP step when that account has enabled it. Successful authentication performs the existing global check-in operation for all active monitors. This is intentionally the preferred low-friction owner workflow: the reminder link removes navigation steps, while WebAuthn still supplies the authentication boundary. An old link stops being eligible once its source cycle is confirmed, escalated, cancelled, expired, or otherwise leaves the owner-reminder states.
 
 ## Optional location privacy model
 

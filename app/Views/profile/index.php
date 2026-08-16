@@ -7,6 +7,9 @@ declare(strict_types=1);
 /** @var string $notificationLocale */
 /** @var string $websiteLocale */
 /** @var array<int, array<string, mixed>> $passkeys */
+/** @var array<string, mixed>|null $totpStatus */
+/** @var array{secret:string,formatted_secret:string,provisioning_uri:string}|null $totpSetup */
+/** @var array<int, string> $totpRecoveryCodes */
 /** @var string $activeTab */
 /** @var string $base_url */
 
@@ -88,6 +91,97 @@ $ownerAddresses = \Pulse\Core\EmailAddressCollection::FromRow($user);
 <section class="stack monitor-tab-panel<?= $activeTab === 'security' ? ' is-active' : '' ?>" id="profile-panel-security" role="tabpanel" aria-labelledby="profile-tab-security" data-tab-panel="security"<?= $activeTab === 'security' ? '' : ' hidden' ?>>
 	<h2><?= e__('security.heading') ?></h2>
 	<p><?= e__('security.hint') ?></p>
+
+	<?php if ($totpRecoveryCodes !== []): ?>
+		<div class="configuration-block totp-recovery-display" role="region" aria-labelledby="totp-recovery-heading">
+			<h3 id="totp-recovery-heading"><?= e__('security.totp.recovery.heading') ?></h3>
+			<div class="template-validation-warning" role="alert"><?= e__('security.totp.recovery.warning') ?></div>
+			<ul class="totp-recovery-code-grid" data-totp-recovery-code-list>
+				<?php foreach ($totpRecoveryCodes as $recoveryCode): ?>
+					<li><code><?= e($recoveryCode) ?></code></li>
+				<?php endforeach; ?>
+			</ul>
+			<div class="button-row">
+				<button type="button" data-copy-totp-recovery-codes data-copy-success="<?= e__('security.totp.recovery.copied') ?>"><?= e__('security.totp.recovery.copy') ?></button>
+				<form method="post" action="<?= e($base_url) ?>/security/totp/recovery/acknowledge">
+					<?= csrf_field() ?>
+					<button type="submit" class="btn-primary"><?= e__('security.totp.recovery.saved') ?></button>
+				</form>
+			</div>
+			<p class="security-method-status" data-totp-recovery-copy-status hidden></p>
+		</div>
+	<?php endif; ?>
+
+	<div class="configuration-block">
+		<div class="security-method-heading">
+			<div>
+				<h3><?= e__('security.totp.heading') ?></h3>
+				<p><?= e__('security.totp.hint') ?></p>
+			</div>
+			<span class="status-badge <?= is_array($totpStatus) ? 'status-verified' : 'status-muted' ?>"><?= e__(is_array($totpStatus) ? 'security.totp.status.enabled' : 'security.totp.status.disabled') ?></span>
+		</div>
+		<p class="form-hint"><?= e__('security.totp.passkey_hint') ?></p>
+
+		<?php if (is_array($totpStatus)): ?>
+			<div class="security-method-summary">
+				<span><?= e__('security.totp.enabled_at', ['date' => format_datetime((string)$totpStatus['enabled_at'])]) ?></span>
+				<span><?= e__('security.totp.recovery.remaining', ['count' => (int)$totpStatus['recovery_codes_remaining']]) ?></span>
+				<?php if (!empty($totpStatus['last_used_at'])): ?><span><?= e__('security.totp.last_used', ['date' => format_datetime((string)$totpStatus['last_used_at'])]) ?></span><?php endif; ?>
+			</div>
+
+			<details class="security-method-management">
+				<summary><?= e__('security.totp.recovery.regenerate') ?></summary>
+				<p class="form-hint"><?= e__('security.totp.reauthentication_hint') ?></p>
+				<form method="post" action="<?= e($base_url) ?>/security/totp/recovery/regenerate" class="stack compact-form" data-confirm="<?= e__('security.totp.recovery.regenerate_confirm') ?>">
+					<?= csrf_field() ?>
+					<label><?= e__('security.totp.current_password') ?><input type="password" name="current_password" autocomplete="current-password" required></label>
+					<label><?= e__('security.totp.code_or_recovery') ?><input type="text" name="code" autocomplete="one-time-code" maxlength="64" required></label>
+					<button type="submit"><?= e__('security.totp.recovery.regenerate') ?></button>
+				</form>
+			</details>
+
+			<details class="security-method-management security-method-danger">
+				<summary><?= e__('security.totp.disable') ?></summary>
+				<p class="form-hint"><?= e__('security.totp.disable_hint') ?></p>
+				<form method="post" action="<?= e($base_url) ?>/security/totp/disable" class="stack compact-form" data-confirm="<?= e__('security.totp.disable_confirm') ?>">
+					<?= csrf_field() ?>
+					<label><?= e__('security.totp.current_password') ?><input type="password" name="current_password" autocomplete="current-password" required></label>
+					<label><?= e__('security.totp.code_or_recovery') ?><input type="text" name="code" autocomplete="one-time-code" maxlength="64" required></label>
+					<button type="submit" class="btn-danger"><?= e__('security.totp.disable') ?></button>
+				</form>
+			</details>
+		<?php else: ?>
+			<?php if (is_array($totpSetup)): ?>
+				<div class="totp-setup-grid">
+					<div class="totp-qr-panel">
+						<h4><?= e__('security.totp.setup.scan_heading') ?></h4>
+						<canvas class="totp-qr-code" data-totp-qr-code data-totp-uri="<?= e($totpSetup['provisioning_uri']) ?>" role="img" aria-label="<?= e__('security.totp.setup.qr_label') ?>"></canvas>
+					</div>
+					<div>
+						<h4><?= e__('security.totp.setup.manual_heading') ?></h4>
+						<p><?= e__('security.totp.setup.manual_hint') ?></p>
+						<code class="totp-manual-secret"><?= e($totpSetup['formatted_secret']) ?></code>
+					</div>
+				</div>
+				<p><?= e__('security.totp.setup.confirm_hint') ?></p>
+				<form method="post" action="<?= e($base_url) ?>/security/totp/confirm" class="stack compact-form totp-confirm-form">
+					<?= csrf_field() ?>
+					<label><?= e__('security.totp.code') ?><input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,12}" maxlength="12" required autofocus></label>
+					<button type="submit" class="btn-primary"><?= e__('security.totp.setup.confirm') ?></button>
+				</form>
+				<form method="post" action="<?= e($base_url) ?>/security/totp/cancel" class="compact-form">
+					<?= csrf_field() ?>
+					<button type="submit"><?= e__('actions.cancel') ?></button>
+				</form>
+			<?php else: ?>
+				<form method="post" action="<?= e($base_url) ?>/security/totp/setup" class="stack compact-form">
+					<?= csrf_field() ?>
+					<label><?= e__('security.totp.current_password') ?><input type="password" name="current_password" autocomplete="current-password" required></label>
+					<div><button type="submit"><?= e__('security.totp.setup.start') ?></button></div>
+				</form>
+			<?php endif; ?>
+		<?php endif; ?>
+	</div>
 
 	<div class="configuration-block">
 		<h3><?= e__('security.passkeys.heading') ?></h3>
@@ -188,4 +282,5 @@ $ownerAddresses = \Pulse\Core\EmailAddressCollection::FromRow($user);
 <?php
 $content = ob_get_clean();
 $title = __('profile.title');
+$needsQrCode = is_array($totpSetup);
 require __DIR__ . '/../layouts/main.php';

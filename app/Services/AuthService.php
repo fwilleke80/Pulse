@@ -42,26 +42,26 @@ class AuthService
 	}
 
 	/**
-	 * @brief Attempts to authenticate a user.
+	 * @brief Verifies password credentials without yet establishing a session.
 	 * @param string $email Email address.
 	 * @param string $password Plain-text password.
-	 * @return bool True on success.
+	 * @return array<string, mixed>|null Active verified user, or null on failure.
 	 */
-	public function Login(string $email, string $password): bool
+	public function VerifyPassword(string $email, string $password): ?array
 	{
 		$user = $this->_userRepository->FindByEmail($email);
 
 		if ($user === null)
 		{
 			password_verify($password, self::DUMMY_PASSWORD_HASH);
-			return false;
+			return null;
 		}
 
 		if (!(bool)$user['is_active'])
 		{
 			password_verify($password, (string)$user['password_hash']);
 			$this->_logger->Warning('Login failed for inactive account');
-			return false;
+			return null;
 		}
 
 		$passwordHash = (string)$user['password_hash'];
@@ -69,7 +69,7 @@ class AuthService
 		if (!password_verify($password, $passwordHash))
 		{
 			$this->_logger->Warning('Login failed');
-			return false;
+			return null;
 		}
 
 		$userId = (int)$user['id'];
@@ -79,7 +79,7 @@ class AuthService
 			$this->_userRepository->UpdatePasswordHash($userId, password_hash($password, PASSWORD_DEFAULT));
 		}
 
-		return $this->LoginUser($userId, 'password');
+		return $user;
 	}
 
 	/**

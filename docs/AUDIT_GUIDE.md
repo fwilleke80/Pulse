@@ -348,7 +348,24 @@ Recipient → History should contain delivery state plus significant portal acti
 
 Do not treat a simple unauthenticated portal GET as proof of human recipient activity because mail-security systems may follow links automatically.
 
-## 25. Database/schema integrity
+## 25. Optional TOTP authentication
+
+Test with TOTP initially disabled and confirm password and passkey login behave exactly as before. Then:
+
+1. Start setup under **Profile → Account security** with a wrong and then the correct current password.
+2. Scan the locally rendered QR code in at least one interoperable authenticator and confirm that a wrong code does not enable the method.
+3. Confirm a current code, save the 10 one-time recovery codes, acknowledge the display, and verify only the remaining count is shown afterward.
+4. Sign out and verify password login now requires the second factor. Confirm that a fresh current TOTP code completes login and updates both the consumed counter and method-usage timestamp, then test an invalid code, the previously accepted same-step code, and one recovery code.
+5. Verify a used recovery code cannot be used again and the remaining count decreases.
+6. Verify passkey login from both the normal login page and the pending TOTP page completes authentication without another TOTP prompt and cannot select a different account.
+7. Generate a replacement recovery set and confirm every old unused code is invalid immediately.
+8. Disable TOTP with password plus second factor and confirm password login no longer shows the challenge.
+
+Inspect the browser network log during enrollment: the provisioning URI must not leave the Pulse origin, and no remote QR-code endpoint may be contacted. Review the database to confirm it contains an authenticated-encryption envelope and recovery hashes, not plaintext secrets or recovery codes. Confirm replay consumption and recovery use are atomic under concurrent requests, attempt throttling blocks both account and network scopes, and audit events contain no secret material.
+
+Back up and restore `.env` together with the database in the update rehearsal. On an upgraded 1.2.2 installation, confirm migration `006_totp_two_factor_authentication.sql` does not enable TOTP and that the encryption key is created only when authenticated setup starts.
+
+## 26. Database/schema integrity
 
 Review the current schema and new migrations for:
 
@@ -361,7 +378,7 @@ Review the current schema and new migrations for:
 
 The stable baseline must not carry unused pre-release tables or compatibility branches.
 
-## 26. Localization
+## 27. Localization
 
 Check English, German, French, and Italian for:
 
@@ -372,7 +389,7 @@ Check English, German, French, and Italian for:
 - working footer language switching;
 - no obsolete version-specific UI text.
 
-## 27. UI consistency
+## 28. UI consistency
 
 Compare Dashboard, Monitors, Contacts, Monitor Editor, Recipient Editor, Profile, Administration, and the public portal.
 
@@ -388,7 +405,7 @@ Check:
 - dates/timestamps;
 - status terminology.
 
-## 28. Configuration and Administration
+## 29. Configuration and Administration
 
 Verify:
 
@@ -400,7 +417,7 @@ Verify:
 - Last successful cron run updates only after a complete successful combined run;
 - Never/Stale warning behavior is correct.
 
-## 29. Repository/documentation cleanup
+## 30. Repository/documentation cleanup
 
 Search source and docs for:
 
@@ -413,7 +430,7 @@ Search source and docs for:
 - obsolete UI wording;
 - documentation that no longer matches current tabs/actions.
 
-## 30. Release package
+## 31. Release package
 
 Before shipping:
 
@@ -427,7 +444,7 @@ Before shipping:
 - inspect the actual release ZIP;
 - ensure no `.env`, secrets, installation-state marker, logs, or transient files are included.
 
-## 31. Final readiness checklist
+## 32. Final readiness checklist
 
 - [ ] Fresh install passes
 - [ ] Stable-version update/migration passes where applicable
@@ -435,6 +452,7 @@ Before shipping:
 - [ ] SMTP test passes
 - [ ] Cron status updates
 - [ ] Authentication/administrator authorization passes
+- [ ] Optional TOTP enrollment, password challenge, passkey bypass, recovery, replay, and throttling pass
 - [ ] Check-in/owner reminder flow passes
 - [ ] Direct escalation passes
 - [ ] Safety confirmation/cannot-confirm/timeout branches pass

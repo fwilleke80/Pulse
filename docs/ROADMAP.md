@@ -1,8 +1,8 @@
-# Pulse roadmap after 1.2.2
+# Pulse roadmap after 1.2.5
 
-This roadmap starts from the stable Pulse 1.2.2 baseline. It is directional rather than a promise of dates; privacy, migration safety, recovery behavior, and test coverage remain release gates.
+This roadmap starts from the stable Pulse 1.2.5 baseline. It is directional rather than a promise of dates; privacy, migration safety, recovery behavior, and test coverage remain release gates. The next releases remain in the 1.2.x line while smaller features accumulate; Pulse moves to 1.3 only when the combined scope justifies a larger release.
 
-## Current baseline — Pulse 1.2.2
+## Current baseline — Pulse 1.2.5
 
 Pulse 1.2.0 completed the location-aware check-in and portal-preview roadmap:
 
@@ -31,25 +31,28 @@ Pulse 1.2.2 refines that release with:
 - clearer monitor-specific recipient portal availability guidance;
 - literal **Pulse** branding in built-in templates, without advertising the legacy `{app}` placeholder.
 
-## Next planned 1.2.x — Optional TOTP two-factor authentication
-
-This is the next planned security update in the Pulse 1.2.x line. Pulse will move to 1.3 only after enough additional features have accumulated for a larger release.
+Pulse 1.2.3 completes optional authenticator-app two-factor authentication:
 
 - Enrol authenticator apps using a standard TOTP secret, QR code, and manual setup key.
 - Require a successful six-digit-code verification before enabling the method.
 - Protect disable/reset actions with deliberate re-authentication.
 - Generate one-time recovery codes, store only hashes, and support safe regeneration.
 - Require TOTP after password login when the account enables it.
-- Keep passkey login as a phishing-resistant complete authentication by default. Requiring TOTP after a passkey would be a separate explicit strict-policy option, not an automatic consequence of enabling TOTP.
+- Keep passkey login as a phishing-resistant complete authentication; it does not add a redundant TOTP prompt.
 - Add rate limiting, replay resistance for the current time step, clock-skew bounds, audit events, localized UI, and recovery tests.
+- Encrypt authenticator secrets with an installation key kept outside the database and render enrollment QR codes locally.
+
+Pulse 1.2.4 corrects the first-login handoff so the setup-verification code is not mistaken for an already-used authentication code; no schema change is required.
+
+Pulse 1.2.5 fixes the remaining MySQL affected-row handling error that consumed valid login codes before reporting them as invalid. Counter consumption and usage metadata now update separately inside one transaction; no schema change or TOTP re-enrollment is required.
 
 ## Later security-policy and recovery hardening
 
-These changes should follow only after optional TOTP has been exercised in real deployments.
+These changes should follow only after optional TOTP has been exercised in real deployments. None is scheduled for the next build yet.
 
 - Optional administrator policy for required second-factor enrolment.
 - Clear account recovery and credential-loss workflows that do not weaken the normal authentication boundary.
-- Security-method overview, last-used information, and user-visible recovery readiness checks.
+- Expanded recovery-readiness guidance or warnings if real-world testing shows they are useful.
 - Upgrade and rollback documentation for authentication-policy changes.
 
 ## Later location refinements
