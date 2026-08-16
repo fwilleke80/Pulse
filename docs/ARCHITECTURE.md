@@ -35,7 +35,7 @@ Pulse/
 
 Only `public/` is intended to be web-accessible.
 
-Location-aware check-ins use `check_in_locations` as a one-to-one extension of the corresponding `monitor.checked_in` audit event and closed check cycle. Recording remains a per-monitor opt-in. When portal sharing is also enabled, escalation copies the configured bounded history into `recipient_release_locations`; authenticated deliveries read that release-level snapshot rather than live check-in data. Browser code performs one-shot geolocation and optional reverse geocoding, while recipient map tiles are loaded only on demand.
+Location-aware check-ins use `check_in_locations` as a one-to-one extension of the corresponding `monitor.checked_in` audit event and closed check cycle. Recording remains a per-monitor opt-in. When portal sharing is also enabled, escalation copies the configured bounded history into `recipient_release_locations`; authenticated deliveries read that release-level snapshot rather than live check-in data. Browser code performs one-shot geolocation and optional reverse geocoding. Recipient portals render the map shell inside the authenticated page but create no tile images until **Show locations on map** is selected. The browser then fetches only visible OpenStreetMap tiles and renders Pulse points, accuracy areas, and the chronological overlay locally without a third-party JavaScript dependency.
 
 With Apache, `public/.htaccess` rewrites application URLs to `public/index.php` while leaving actual public files alone. Pulse 1.1's built-in exact-path router expects this public directory at the root of its host/virtual host rather than below a URL prefix.
 

@@ -39,7 +39,7 @@ python3 tools/write_version.py
 To set a release explicitly:
 
 ```bash
-PULSE_VERSION=1.1.6 python3 tools/write_version.py
+PULSE_VERSION=1.1.10 python3 tools/write_version.py
 ```
 
 Pulse still starts if the generated version file is missing, but displays **version unavailable**.
@@ -283,15 +283,16 @@ Before updating:
 
 Then:
 
-1. Extract the new release locally.
-2. If deploying from a source checkout, generate `config/version.php`.
-3. Keep the server's existing `.env` and `storage/` data.
-4. Upload the complete new application over the existing installation.
-5. Open Pulse in a browser.
+1. Extract the complete new Pulse ZIP locally.
+2. Upload the complete contents over the existing installation, merging directories and overwriting application files without deleting the existing server tree first.
+3. Keep the server's existing `.env`, `storage/`, and uploaded documents.
+4. Open Pulse normally. Because the release contains `public/install.php`, Pulse first verifies the existing initialized account and attempts to remove the installer without recreating configuration, users, or database data.
+5. If the web server cannot remove `public/install.php`, delete that one file manually and open Pulse again.
+6. Normal startup applies each new numbered schema migration automatically.
 
-Release archives include `public/install.php`. On an already initialized installation, the installer recognizes the existing account and does not recreate users or configuration; it only attempts to remove itself. If the server cannot remove it, delete `public/install.php` manually.
+An uploaded `public/install.php` temporarily locks normal operation only until the existing installation has been verified and the installer removes itself. Invalid database credentials deliberately stop that verification instead of modifying the installation.
 
-After the installer is gone, normal startup applies any new schema migrations automatically.
+Do not remove the existing `.env`, enter the fresh-install workflow, or import `database/schema.sql` as part of an update.
 
 Finally:
 

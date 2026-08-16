@@ -1,6 +1,6 @@
 # Pulse
 
-**Current stable release: 1.1.6**
+**Current stable release: 1.1.10**
 
 Pulse is a private, self-hosted check-in and notification system for situations in which something could happen to you and the people who need to know might otherwise not be informed for some time. You might use it to make sure family, friends, or other trusted people are contacted if you die or become seriously ill, or as an additional safety measure while travelling alone, going on an expedition, or spending time somewhere where help may be difficult to reach.
 
@@ -33,7 +33,7 @@ The installer creates `.env`; a normal installation does not require manual dote
 
 For reliable notifications, configure normal sender authentication such as SPF, DKIM, and DMARC where applicable. Also add the configured Pulse sender address or domain to safe-sender/allowlist rules on mailboxes and mail servers you control.
 
-See [docs/INSTALLATION.md](docs/INSTALLATION.md) for the complete installation, permissions, SMTP, cron, verification, and update procedure.
+See [docs/INSTALLATION.md](docs/INSTALLATION.md) for the complete installation, permissions, SMTP, cron, verification, and update procedure. A complete release ZIP can be uploaded over an existing installation. The installer recognizes the initialized account and attempts to remove itself without recreating configuration or users; delete `public/install.php` manually only if automatic removal fails. Preserve the server's `.env` and private `storage/` data.
 
 When preparing source for deployment, generate `config/version.php` before uploading:
 
@@ -61,7 +61,7 @@ Users with the `administrator` role have access to **Administration**, organized
 
 ## Account security and quick check-in
 
-Pulse 1.1.6 includes passkeys as a general account authentication method. Register passkeys under **Profile → Account security** and use them on the normal login page. The security-method storage is deliberately generic so later releases can add additional methods or second-factor policies without tying account authentication to passkeys alone.
+Pulse 1.1 includes passkeys as a general account authentication method. Register passkeys under **Profile → Account security** and use them on the normal login page. The security-method storage is deliberately generic so later releases can add additional methods or second-factor policies without tying account authentication to passkeys alone.
 
 Administrators can enable **Passkey quick check-in** under **Administration → Security**. This is the lowest-effort way to perform routine check-ins: open the link in an owner reminder, authenticate with the passkey available on that device, and Pulse immediately performs the same global action as **Check in now** for all active monitors. The email link itself is not authentication, and normal password login remains available as fallback.
 
@@ -75,7 +75,7 @@ Passkeys require HTTPS and a stable Pulse hostname in normal deployment.
 
 Each monitor can independently request a one-time browser location during check-in. Enabling the setting asks the current device for permission; the browser decides whether that grant is retained. Pulse never tracks continuously, and check-in always continues if location is denied or unavailable.
 
-Recorded owner-history locations link to OpenStreetMap. A second, separate monitor option can publish a bounded last-known trail of 1–20 points in the authenticated recipient portal after escalation. That trail is frozen with the release and cannot gain later check-ins. Map tiles load only when a recipient explicitly opens the map. Positions and straight lines are approximate and do not replace rescue or emergency services.
+Recorded owner-history locations link to OpenStreetMap. A second, separate monitor option can publish a bounded last-known history of 1–20 points in the authenticated recipient portal after escalation. That history is frozen with the release and cannot gain later check-ins. The portal presents a compact chronological table after the documents and makes no map request until the recipient deliberately selects **Show locations on map**. The map then expands below the table with numbered points, accuracy areas, and a straight chronological path plus pan, zoom, and point details. Positions are approximate and do not replace rescue or emergency services.
 
 ## Documentation
 

@@ -86,6 +86,14 @@ ob_start();
 			<div class="review-stat"><strong><?= count($deliveryHistory) ?></strong><span><?= e__('recipients.tabs.history') ?></span></div>
 		</div>
 
+		<section class="configuration-block recipient-portal-preview-action">
+			<div>
+				<h2><?= e__('recipients.portal_preview.heading') ?></h2>
+				<p class="form-hint"><?= e__('recipients.portal_preview.hint') ?></p>
+			</div>
+			<a class="button-link button-link-primary" href="<?= e($base_url) ?>/monitors/recipients/portal-preview?id=<?= (int)$recipient['id'] ?>" target="_blank" rel="noopener noreferrer"><?= e__('recipients.portal_preview.button') ?></a>
+		</section>
+
 		<?php if (!empty($recipient['release_in_progress'])): ?>
 			<div class="dashboard-system-warning" role="alert"><div><strong><?= e__('recipients.snapshot.heading') ?></strong><p><?= e__('recipients.snapshot.message') ?></p></div></div>
 		<?php endif; ?>

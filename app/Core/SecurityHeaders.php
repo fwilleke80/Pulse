@@ -33,7 +33,7 @@ final class SecurityHeaders
 		header('Cross-Origin-Opener-Policy: same-origin');
 		header('Cross-Origin-Resource-Policy: same-origin');
 		header('Permissions-Policy: camera=(), geolocation=(self), microphone=(), payment=(), usb=()');
-		header('Referrer-Policy: no-referrer');
+		header('Referrer-Policy: strict-origin-when-cross-origin');
 		header('X-Content-Type-Options: nosniff');
 		header('X-Frame-Options: DENY');
 

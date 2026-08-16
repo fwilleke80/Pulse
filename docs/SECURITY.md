@@ -200,7 +200,7 @@ Configure SPF, DKIM, and DMARC where applicable. Add the Pulse sender address/do
 
 ## Passkeys and the extensible account-security layer
 
-Pulse 1.1.6 stores additional account authentication methods separately from monitor configuration. Passkeys are the first implemented method; the storage model deliberately leaves room for later second-factor methods and recovery mechanisms.
+Pulse 1.1 stores additional account authentication methods separately from monitor configuration. Passkeys are the first implemented method; the storage model deliberately leaves room for later second-factor methods and recovery mechanisms.
 
 Passkey registration requires the current Pulse password and WebAuthn user verification. Pulse stores a stable opaque user handle, the credential ID, public verification key, algorithm, transports, and signature-counter metadata. The credential private key and any biometric data stay with the authenticator/platform and are never stored by Pulse.
 
@@ -220,9 +220,13 @@ Location recording is disabled by default and configured independently for each 
 
 Pulse requests a one-shot current position and does not use a watch/continuous-tracking API. A location failure never blocks a check-in. Coordinates, reported browser accuracy, and any approximate address are stored beside the specific completed check-in only for enabled monitors. Approximate address resolution sends the point to the configured OpenStreetMap Nominatim endpoint from the user's browser.
 
-Portal location sharing is fail-closed. At recipient-release staging time, Pulse copies at most the configured 1–20 most recent points into a release-specific snapshot. Recipients see that snapshot only after normal portal-token and emailed access-code authentication. Later check-ins cannot appear in an existing release. OpenStreetMap tiles are fetched only after the authenticated recipient explicitly loads the map.
+Portal location sharing is fail-closed. At recipient-release staging time, Pulse copies at most the configured 1–20 most recent points into a release-specific snapshot. Recipients see that snapshot only after normal portal-token and emailed access-code authentication. Later check-ins cannot appear in an existing release. The preview remains protected by the logged-in owner session and a recipient lookup scoped to that owner.
 
-The displayed path joins discrete check-in points with straight lines. It is not proof of the route travelled, positions can be inaccurate or misleading, and it must not be treated as a substitute for emergency services, professional search and rescue, or other appropriate response channels.
+The authenticated portal initially makes no OpenStreetMap tile request. **Show locations on map** deliberately reveals the inline map and starts its tile loading. The map requests only tiles intersecting the current viewport, performs no background prefetch, relies on normal browser caching, and keeps visible OpenStreetMap attribution. Hiding the map does not undo the connection that already occurred.
+
+The tile service receives the requested tile coordinates, normal browser connection information, and the Pulse origin as required for web identification. Pulse uses `strict-origin-when-cross-origin`, so a cross-origin tile request does not disclose the path or query containing the private portal token. Exact check-in coordinates, address labels, timestamps, accuracy values, numbered nodes, and the connecting line are rendered locally and are not encoded into tile requests. Direct external location links retain `rel="noreferrer"`.
+
+The chronological points and locally drawn straight line are not proof of the route travelled. Positions can be inaccurate or misleading, and the location history must not be treated as a substitute for emergency services, professional search and rescue, or other appropriate response channels. Enabling recipient location sharing means accepting that the external tile provider can observe the approximate map area when an authenticated recipient reveals the map.
 
 ## Current limitation: no application-level encryption at rest
 

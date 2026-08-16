@@ -42,6 +42,8 @@ final class RecipientRepository
 				mc.sort_order,
 				m.name AS monitor_name,
 				m.is_archived AS monitor_is_archived,
+				m.portal_location_sharing_enabled,
+				m.portal_location_history_limit,
 				u.display_name AS owner_name,
 				mmt.subject AS default_message_subject,
 				mmt.body_text AS default_message_body,
@@ -286,6 +288,117 @@ final class RecipientRepository
 		$rows = $statement->fetchAll(PDO::FETCH_COLUMN);
 
 		return is_array($rows) ? array_map('intval', $rows) : [];
+	}
+
+	/**
+	 * @brief Returns current documents assigned to one owned monitor recipient.
+	 * @return array<int, array<string, mixed>> Documents in release order.
+	 */
+	public function FindAssignedDocumentsForUser(int $monitorContactId, int $userId): array
+	{
+		$statement = $this->_database->GetConnection()->prepare('
+			SELECT
+				d.id,
+				d.monitor_id,
+				d.title,
+				d.description,
+				d.storage_type,
+				d.text_content,
+				d.stored_filename,
+				d.original_filename,
+				d.mime_type,
+				d.file_size_bytes,
+				d.created_at,
+				d.updated_at
+			FROM document_monitor_contacts dmc
+			INNER JOIN documents d ON d.id = dmc.document_id
+			INNER JOIN monitor_contacts mc ON mc.id = dmc.monitor_contact_id
+			INNER JOIN monitors m ON m.id = mc.monitor_id
+			WHERE dmc.monitor_contact_id = :id
+				AND d.monitor_id = mc.monitor_id
+				AND m.user_id = :user_id
+			ORDER BY d.created_at ASC, d.id ASC
+		');
+		$statement->execute(['id' => $monitorContactId, 'user_id' => $userId]);
+		$rows = $statement->fetchAll(PDO::FETCH_ASSOC);
+
+		return is_array($rows) ? $rows : [];
+	}
+
+	/**
+	 * @brief Finds one current document assigned to an owned monitor recipient.
+	 * @return array<string, mixed>|null Assigned document or null.
+	 */
+	public function FindAssignedDocumentForUser(int $monitorContactId, int $documentId, int $userId): ?array
+	{
+		$statement = $this->_database->GetConnection()->prepare('
+			SELECT
+				d.id,
+				d.monitor_id,
+				d.title,
+				d.description,
+				d.storage_type,
+				d.text_content,
+				d.stored_filename,
+				d.original_filename,
+				d.mime_type,
+				d.file_size_bytes
+			FROM document_monitor_contacts dmc
+			INNER JOIN documents d ON d.id = dmc.document_id
+			INNER JOIN monitor_contacts mc ON mc.id = dmc.monitor_contact_id
+			INNER JOIN monitors m ON m.id = mc.monitor_id
+			WHERE dmc.monitor_contact_id = :recipient_id
+				AND dmc.document_id = :document_id
+				AND d.monitor_id = mc.monitor_id
+				AND m.user_id = :user_id
+			LIMIT 1
+		');
+		$statement->execute([
+			'recipient_id' => $monitorContactId,
+			'document_id' => $documentId,
+			'user_id' => $userId,
+		]);
+		$row = $statement->fetch(PDO::FETCH_ASSOC);
+
+		return is_array($row) ? $row : null;
+	}
+
+	/**
+	 * @brief Returns the current location trail that a future portal release would snapshot.
+	 * @return array<int, array<string, mixed>> Chronological locations, or an empty list when sharing is disabled.
+	 */
+	public function FindPortalPreviewLocationsForUser(int $monitorContactId, int $userId): array
+	{
+		$recipient = $this->FindByIdForUser($monitorContactId, $userId);
+
+		if (!is_array($recipient) || empty($recipient['portal_location_sharing_enabled']))
+		{
+			return [];
+		}
+
+		$limit = max(1, min(20, (int)$recipient['portal_location_history_limit']));
+		$statement = $this->_database->GetConnection()->prepare('
+			SELECT
+				cil.latitude,
+				cil.longitude,
+				cil.accuracy_meters,
+				cil.address_label,
+				cil.created_at AS checked_in_at
+			FROM check_in_locations cil
+			INNER JOIN monitor_contacts mc ON mc.monitor_id = cil.monitor_id
+			INNER JOIN monitors m ON m.id = mc.monitor_id
+			WHERE mc.id = :recipient_id
+				AND m.user_id = :user_id
+			ORDER BY cil.created_at DESC, cil.id DESC
+			LIMIT ' . $limit . '
+		');
+		$statement->execute([
+			'recipient_id' => $monitorContactId,
+			'user_id' => $userId,
+		]);
+		$rows = $statement->fetchAll(PDO::FETCH_ASSOC);
+
+		return is_array($rows) ? array_values(array_reverse($rows)) : [];
 	}
 
 	/** @return array<int, array<string, mixed>> @brief Returns immutable delivery history for one recipient assignment. */

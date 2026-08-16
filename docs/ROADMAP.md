@@ -10,7 +10,7 @@ Status: implemented in 1.1.6.
 - Permission requested when location recording is enabled, with a safe retry during the next check-in when the browser requires it.
 - Approximate address and OpenStreetMap link in owner history.
 - Separately enabled immutable recipient-portal snapshot of the last 1–20 recorded points.
-- On-demand OpenStreetMap trail with discrete nodes, straight connecting lines, attribution, and safety limitations.
+- Recipient location history refined in 1.1.8 to a compact post-documents table, in 1.1.9 with an authenticated interactive map, and in 1.1.10 with that map expanding on demand directly below the table.
 - Profile organized into Profile data, Account security, and Change password tabs.
 
 ## Step 2 — Optional TOTP two-factor authentication
@@ -41,4 +41,3 @@ Candidates, not yet scheduled.
 - Configurable retention and deletion controls for owner check-in locations.
 - Optional self-hosted or administrator-selected reverse-geocoding/tile endpoints.
 - Additional export or incident-sharing tools only with explicit owner authorization and a narrowly defined privacy model.
-

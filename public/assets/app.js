@@ -1061,158 +1061,564 @@ document.addEventListener('DOMContentLoaded', function ()
 	}
 });
 
-/** @brief Loads an OpenStreetMap tile snapshot only after the recipient explicitly requests it. */
+/** @brief Closes an auxiliary preview or map tab without opening a duplicate parent page. */
 document.addEventListener('DOMContentLoaded', function ()
 {
-	const loadButton = document.querySelector('[data-location-map-load]');
-	const map = document.querySelector('[data-location-map]');
+	const closeButton = document.querySelector('[data-window-close]');
 
-	if (!loadButton || !map)
+	if (!closeButton)
 	{
 		return;
 	}
 
-	let loaded = false;
-	let resizeTimer = 0;
-
-	/** @brief Projects a point to global Web Mercator pixels at one zoom level. */
-	const project = function (latitude, longitude, zoom)
+	closeButton.addEventListener('click', function ()
 	{
-		const size = 256 * Math.pow(2, zoom);
+		window.close();
+	});
+});
+
+/** @brief Reveals and renders an on-demand OpenStreetMap tile view with local Pulse overlays. */
+document.addEventListener('DOMContentLoaded', function ()
+{
+	const map = document.querySelector('[data-interactive-location-map]');
+	const mapPanel = document.querySelector('[data-map-panel]');
+	const mapToggle = document.querySelector('[data-map-toggle]');
+
+	if (!map || !mapPanel || !mapToggle)
+	{
+		return;
+	}
+
+	const tileLayer = map.querySelector('[data-map-tile-layer]');
+	const overlay = map.querySelector('[data-map-overlay]');
+	const markerLayer = map.querySelector('[data-map-marker-layer]');
+	const zoomInButton = document.querySelector('[data-map-zoom-in]');
+	const zoomOutButton = document.querySelector('[data-map-zoom-out]');
+	const fitButton = document.querySelector('[data-map-fit]');
+	const details = document.querySelector('[data-map-details]');
+	const detailsHeading = details ? details.querySelector('[data-map-details-heading]') : null;
+	const detailsTimestamp = details ? details.querySelector('[data-map-details-timestamp]') : null;
+	const detailsAccuracy = details ? details.querySelector('[data-map-details-accuracy]') : null;
+	const detailsLink = details ? details.querySelector('[data-map-details-link]') : null;
+	const detailsClose = details ? details.querySelector('[data-map-details-close]') : null;
+	const tileTemplate = map.dataset.mapTileUrl || '';
+	const pointLabel = map.dataset.mapPointLabel || 'Check-in point';
+	const tileSize = 256;
+	const minimumZoom = 1;
+	const maximumZoom = 19;
+	const maximumFitZoom = 17;
+	const earthRadius = 6378137;
+	let points = [];
+
+	try
+	{
+		points = JSON.parse(map.dataset.mapPoints || '[]');
+	}
+	catch (error)
+	{
+		return;
+	}
+
+	points = Array.isArray(points) ? points.filter(function (point)
+	{
+		const latitude = Number(point.latitude);
+		const longitude = Number(point.longitude);
+		return Number.isFinite(latitude)
+			&& Number.isFinite(longitude)
+			&& latitude >= -90
+			&& latitude <= 90
+			&& longitude >= -180
+			&& longitude <= 180;
+	}) : [];
+
+	if (!tileLayer || !overlay || !markerLayer || points.length === 0 || tileTemplate === '')
+	{
+		return;
+	}
+
+	mapToggle.hidden = false;
+
+	let zoom = 16;
+	let center = {x: 0, y: 0};
+	let dragging = false;
+	let dragStart = {x: 0, y: 0, centerX: 0, centerY: 0};
+	let resizeTimer = 0;
+	let mapInitialized = false;
+	const tileElements = new Map();
+	const markerElements = [];
+
+	/** @brief Projects latitude and longitude into global Web Mercator pixels. */
+	const project = function (latitude, longitude, requestedZoom)
+	{
+		const worldSize = tileSize * Math.pow(2, requestedZoom);
 		const limitedLatitude = Math.max(-85.05112878, Math.min(85.05112878, latitude));
 		const radians = limitedLatitude * Math.PI / 180;
 		return {
-			x: (longitude + 180) / 360 * size,
-			y: (1 - Math.log(Math.tan(radians) + 1 / Math.cos(radians)) / Math.PI) / 2 * size,
+			x: (longitude + 180) / 360 * worldSize,
+			y: (1 - Math.log(Math.tan(radians) + 1 / Math.cos(radians)) / Math.PI) / 2 * worldSize,
 		};
 	};
 
-	/** @brief Renders a bounded non-interactive tile map and recorded straight-line trail. */
-	const render = function ()
+	/** @brief Keeps the center inside the finite Mercator world while wrapping horizontally. */
+	const normalizeCenter = function ()
 	{
-		let points = [];
+		const worldSize = tileSize * Math.pow(2, zoom);
+		center.x = ((center.x % worldSize) + worldSize) % worldSize;
+		center.y = Math.max(0, Math.min(worldSize, center.y));
+	};
 
-		try
+	/** @brief Returns a projected point using the shortest horizontal wrap around the center. */
+	const screenPosition = function (point)
+	{
+		const width = map.clientWidth;
+		const height = map.clientHeight;
+		const worldSize = tileSize * Math.pow(2, zoom);
+		const projected = project(Number(point.latitude), Number(point.longitude), zoom);
+		let differenceX = projected.x - center.x;
+
+		if (differenceX > worldSize / 2)
 		{
-			points = JSON.parse(map.dataset.locationMapPoints || '[]');
+			differenceX -= worldSize;
 		}
-		catch (error)
+		else if (differenceX < -worldSize / 2)
 		{
-			return;
-		}
-
-		if (!Array.isArray(points) || points.length === 0)
-		{
-			return;
-		}
-
-		map.replaceChildren();
-		const width = Math.max(280, map.clientWidth || 800);
-		const height = Math.max(320, map.clientHeight || 420);
-		let zoom = 16;
-		let projected = [];
-
-		for (; zoom >= 2; --zoom)
-		{
-			projected = points.map(function (point)
-			{
-				return project(Number(point.latitude), Number(point.longitude), zoom);
-			});
-			const xs = projected.map((point) => point.x);
-			const ys = projected.map((point) => point.y);
-
-			if (Math.max(...xs) - Math.min(...xs) <= width - 80 && Math.max(...ys) - Math.min(...ys) <= height - 80)
-			{
-				break;
-			}
+			differenceX += worldSize;
 		}
 
-		const xs = projected.map((point) => point.x);
-		const ys = projected.map((point) => point.y);
-		const centerX = (Math.min(...xs) + Math.max(...xs)) / 2;
-		const centerY = (Math.min(...ys) + Math.max(...ys)) / 2;
-		const originX = centerX - width / 2;
-		const originY = centerY - height / 2;
-		const tileMinimumX = Math.floor(originX / 256);
-		const tileMaximumX = Math.floor((originX + width) / 256);
-		const tileMinimumY = Math.floor(originY / 256);
-		const tileMaximumY = Math.floor((originY + height) / 256);
-		const tileCount = Math.pow(2, zoom);
+		return {
+			x: width / 2 + differenceX,
+			y: height / 2 + projected.y - center.y,
+		};
+	};
 
-		for (let tileY = tileMinimumY; tileY <= tileMaximumY; ++tileY)
+	/** @brief Adds and repositions exactly the raster tiles intersecting the current viewport. */
+	const renderTiles = function ()
+	{
+		const width = map.clientWidth;
+		const height = map.clientHeight;
+		const worldTileCount = Math.pow(2, zoom);
+		const originX = center.x - width / 2;
+		const originY = center.y - height / 2;
+		const minimumTileX = Math.floor(originX / tileSize);
+		const maximumTileX = Math.floor((originX + width - 1) / tileSize);
+		const minimumTileY = Math.floor(originY / tileSize);
+		const maximumTileY = Math.floor((originY + height - 1) / tileSize);
+		const visibleKeys = new Set();
+
+		for (let tileY = minimumTileY; tileY <= maximumTileY; ++tileY)
 		{
-			if (tileY < 0 || tileY >= tileCount)
+			if (tileY < 0 || tileY >= worldTileCount)
 			{
 				continue;
 			}
 
-			for (let tileX = tileMinimumX; tileX <= tileMaximumX; ++tileX)
+			for (let tileX = minimumTileX; tileX <= maximumTileX; ++tileX)
 			{
-				const wrappedX = ((tileX % tileCount) + tileCount) % tileCount;
-				const image = document.createElement('img');
-				image.alt = '';
-				image.width = 256;
-				image.height = 256;
-				image.referrerPolicy = 'strict-origin-when-cross-origin';
-				image.src = (map.dataset.locationMapTileUrl || '')
-					.replace('{z}', String(zoom))
-					.replace('{x}', String(wrappedX))
-					.replace('{y}', String(tileY));
-				image.style.left = (tileX * 256 - originX) + 'px';
-				image.style.top = (tileY * 256 - originY) + 'px';
-				map.appendChild(image);
+				const wrappedTileX = ((tileX % worldTileCount) + worldTileCount) % worldTileCount;
+				const key = zoom + '/' + tileX + '/' + tileY;
+				visibleKeys.add(key);
+				let image = tileElements.get(key);
+
+				if (!image)
+				{
+					image = document.createElement('img');
+					image.alt = '';
+					image.width = tileSize;
+					image.height = tileSize;
+					image.draggable = false;
+					image.decoding = 'async';
+					image.referrerPolicy = 'strict-origin-when-cross-origin';
+					image.src = tileTemplate
+						.replace('{z}', String(zoom))
+						.replace('{x}', String(wrappedTileX))
+						.replace('{y}', String(tileY));
+					tileLayer.appendChild(image);
+					tileElements.set(key, image);
+				}
+
+				image.style.left = (tileX * tileSize - originX) + 'px';
+				image.style.top = (tileY * tileSize - originY) + 'px';
 			}
 		}
 
-		const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-		svg.setAttribute('viewBox', '0 0 ' + width + ' ' + height);
-		svg.setAttribute('role', 'img');
-		svg.setAttribute('aria-label', map.dataset.locationMapLabel || 'Recorded check-in locations');
-		const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
-		polyline.setAttribute('points', projected.map(function (point)
+		for (const [key, image] of tileElements.entries())
 		{
-			return (point.x - originX) + ',' + (point.y - originY);
-		}).join(' '));
-		polyline.setAttribute('class', 'portal-location-path');
-		svg.appendChild(polyline);
-
-		for (const [index, point] of projected.entries())
-		{
-			const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-			circle.setAttribute('cx', String(point.x - originX));
-			circle.setAttribute('cy', String(point.y - originY));
-			circle.setAttribute('r', index === projected.length - 1 ? '8' : '6');
-			circle.setAttribute('class', index === projected.length - 1 ? 'portal-location-node is-last' : 'portal-location-node');
-			svg.appendChild(circle);
+			if (!visibleKeys.has(key))
+			{
+				image.remove();
+				tileElements.delete(key);
+			}
 		}
-
-		map.appendChild(svg);
-		const attribution = document.createElement('a');
-		attribution.className = 'portal-location-attribution';
-		attribution.href = 'https://www.openstreetmap.org/copyright';
-		attribution.target = '_blank';
-		attribution.rel = 'noopener noreferrer';
-		attribution.textContent = '© OpenStreetMap contributors';
-		map.appendChild(attribution);
 	};
 
-	loadButton.addEventListener('click', function ()
+	/** @brief Draws the chronological path and browser-reported accuracy areas locally. */
+	const renderOverlay = function ()
 	{
-		map.hidden = false;
-		loadButton.hidden = true;
-		loaded = true;
+		const width = map.clientWidth;
+		const height = map.clientHeight;
+		const positions = points.map(screenPosition);
+		overlay.replaceChildren();
+		overlay.setAttribute('viewBox', '0 0 ' + width + ' ' + height);
+
+		for (const [index, point] of points.entries())
+		{
+			const latitudeRadians = Number(point.latitude) * Math.PI / 180;
+			const metersPerPixel = Math.cos(latitudeRadians) * 2 * Math.PI * earthRadius
+				/ (tileSize * Math.pow(2, zoom));
+			const radius = Math.max(0, Number(point.accuracy_meters)) / Math.max(0.01, metersPerPixel);
+
+			if (radius >= 2 && radius <= Math.max(width, height))
+			{
+				const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+				circle.setAttribute('cx', String(positions[index].x));
+				circle.setAttribute('cy', String(positions[index].y));
+				circle.setAttribute('r', String(radius));
+				circle.setAttribute('class', 'portal-map-accuracy-area');
+				overlay.appendChild(circle);
+			}
+		}
+
+		if (positions.length > 1)
+		{
+			const path = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+			path.setAttribute('points', positions.map(function (position)
+			{
+				return position.x + ',' + position.y;
+			}).join(' '));
+			path.setAttribute('class', 'portal-map-path');
+			overlay.appendChild(path);
+		}
+	};
+
+	/** @brief Repositions the reusable numbered point buttons over the current view. */
+	const renderMarkers = function ()
+	{
+		const width = map.clientWidth;
+		const height = map.clientHeight;
+
+		for (const [index, point] of points.entries())
+		{
+			const position = screenPosition(point);
+			const marker = markerElements[index];
+			marker.style.left = position.x + 'px';
+			marker.style.top = position.y + 'px';
+			marker.hidden = position.x < -40 || position.x > width + 40 || position.y < -40 || position.y > height + 40;
+		}
+	};
+
+	/** @brief Refreshes tiles and local overlays for the current camera. */
+	const render = function ()
+	{
+		normalizeCenter();
+		renderTiles();
+		renderOverlay();
+		renderMarkers();
+	};
+
+	/** @brief Shows the metadata for one recorded check-in point without sending it elsewhere. */
+	const showPoint = function (point)
+	{
+		if (!details || !detailsHeading || !detailsTimestamp || !detailsAccuracy || !detailsLink)
+		{
+			return;
+		}
+
+		detailsHeading.textContent = pointLabel + ' ' + point.number + ': ' + point.label;
+		detailsTimestamp.textContent = point.timestamp;
+		detailsAccuracy.textContent = point.accuracy_label;
+		detailsLink.href = point.openstreetmap_url;
+		details.hidden = false;
+	};
+
+	for (const point of points)
+	{
+		const marker = document.createElement('button');
+		marker.type = 'button';
+		marker.className = Number(point.number) === points.length
+			? 'portal-map-marker is-last'
+			: 'portal-map-marker';
+		marker.textContent = String(point.number);
+		marker.setAttribute('aria-label', pointLabel + ' ' + point.number + ': ' + point.label);
+		marker.addEventListener('pointerdown', function (event)
+		{
+			event.stopPropagation();
+		});
+		marker.addEventListener('click', function ()
+		{
+			showPoint(point);
+		});
+		markerLayer.appendChild(marker);
+		markerElements.push(marker);
+	}
+
+	/** @brief Fits every recorded point inside the viewport with a modest margin. */
+	const fitPoints = function ()
+	{
+		const width = Math.max(280, map.clientWidth);
+		const height = Math.max(320, map.clientHeight);
+		const horizontalMargin = Math.min(120, width * 0.2);
+		const verticalMargin = Math.min(120, height * 0.2);
+
+		if (points.length === 1)
+		{
+			zoom = 16;
+			center = project(Number(points[0].latitude), Number(points[0].longitude), zoom);
+			render();
+			return;
+		}
+
+		for (let candidateZoom = maximumFitZoom; candidateZoom >= minimumZoom; --candidateZoom)
+		{
+			const worldSize = tileSize * Math.pow(2, candidateZoom);
+			const projected = points.map(function (point)
+			{
+				return project(Number(point.latitude), Number(point.longitude), candidateZoom);
+			});
+			const referenceX = projected[0].x;
+
+			for (const position of projected)
+			{
+				while (position.x - referenceX > worldSize / 2)
+				{
+					position.x -= worldSize;
+				}
+
+				while (position.x - referenceX < -worldSize / 2)
+				{
+					position.x += worldSize;
+				}
+			}
+
+			const xValues = projected.map((position) => position.x);
+			const yValues = projected.map((position) => position.y);
+			const minimumX = Math.min(...xValues);
+			const maximumX = Math.max(...xValues);
+			const minimumY = Math.min(...yValues);
+			const maximumY = Math.max(...yValues);
+
+			if (maximumX - minimumX <= width - horizontalMargin
+				&& maximumY - minimumY <= height - verticalMargin)
+			{
+				zoom = candidateZoom;
+				center = {
+					x: (minimumX + maximumX) / 2,
+					y: (minimumY + maximumY) / 2,
+				};
+				render();
+				return;
+			}
+		}
+
+		zoom = minimumZoom;
+		const fallbackPositions = points.map(function (point)
+		{
+			return project(Number(point.latitude), Number(point.longitude), zoom);
+		});
+		const fallbackX = fallbackPositions.map((position) => position.x);
+		const fallbackY = fallbackPositions.map((position) => position.y);
+		center = {
+			x: (Math.min(...fallbackX) + Math.max(...fallbackX)) / 2,
+			y: (Math.min(...fallbackY) + Math.max(...fallbackY)) / 2,
+		};
+		render();
+	};
+
+	/** @brief Changes zoom around a screen-space anchor while retaining its geographic position. */
+	const changeZoom = function (delta, anchorX, anchorY)
+	{
+		const requestedZoom = Math.max(minimumZoom, Math.min(maximumZoom, zoom + delta));
+
+		if (requestedZoom === zoom)
+		{
+			return;
+		}
+
+		const width = map.clientWidth;
+		const height = map.clientHeight;
+		const screenX = Number.isFinite(anchorX) ? anchorX : width / 2;
+		const screenY = Number.isFinite(anchorY) ? anchorY : height / 2;
+		const scale = Math.pow(2, requestedZoom - zoom);
+		center = {
+			x: (center.x + screenX - width / 2) * scale - screenX + width / 2,
+			y: (center.y + screenY - height / 2) * scale - screenY + height / 2,
+		};
+		zoom = requestedZoom;
+		render();
+	};
+
+	map.addEventListener('pointerdown', function (event)
+	{
+		if (event.button !== 0)
+		{
+			return;
+		}
+
+		dragging = true;
+		dragStart = {
+			x: event.clientX,
+			y: event.clientY,
+			centerX: center.x,
+			centerY: center.y,
+		};
+		map.setPointerCapture(event.pointerId);
+		map.classList.add('is-dragging');
+	});
+
+	map.addEventListener('pointermove', function (event)
+	{
+		if (!dragging)
+		{
+			return;
+		}
+
+		center.x = dragStart.centerX - (event.clientX - dragStart.x);
+		center.y = dragStart.centerY - (event.clientY - dragStart.y);
 		render();
 	});
 
+	/** @brief Ends a pointer-driven pan gesture. */
+	const stopDragging = function (event)
+	{
+		if (!dragging)
+		{
+			return;
+		}
+
+		dragging = false;
+		map.classList.remove('is-dragging');
+
+		if (map.hasPointerCapture(event.pointerId))
+		{
+			map.releasePointerCapture(event.pointerId);
+		}
+	};
+
+	map.addEventListener('pointerup', stopDragging);
+	map.addEventListener('pointercancel', stopDragging);
+
+	map.addEventListener('wheel', function (event)
+	{
+		event.preventDefault();
+		const bounds = map.getBoundingClientRect();
+		changeZoom(event.deltaY < 0 ? 1 : -1, event.clientX - bounds.left, event.clientY - bounds.top);
+	}, {passive: false});
+
+	map.addEventListener('keydown', function (event)
+	{
+		const panAmount = event.shiftKey ? 180 : 80;
+
+		if (event.key === 'ArrowLeft')
+		{
+			center.x -= panAmount;
+		}
+		else if (event.key === 'ArrowRight')
+		{
+			center.x += panAmount;
+		}
+		else if (event.key === 'ArrowUp')
+		{
+			center.y -= panAmount;
+		}
+		else if (event.key === 'ArrowDown')
+		{
+			center.y += panAmount;
+		}
+		else if (event.key === '+' || event.key === '=')
+		{
+			changeZoom(1);
+			event.preventDefault();
+			return;
+		}
+		else if (event.key === '-' || event.key === '_')
+		{
+			changeZoom(-1);
+			event.preventDefault();
+			return;
+		}
+		else if (event.key === '0' || event.key === 'Home')
+		{
+			fitPoints();
+			event.preventDefault();
+			return;
+		}
+		else
+		{
+			return;
+		}
+
+		event.preventDefault();
+		render();
+	});
+
+	if (zoomInButton)
+	{
+		zoomInButton.addEventListener('click', function ()
+		{
+			changeZoom(1);
+		});
+	}
+
+	if (zoomOutButton)
+	{
+		zoomOutButton.addEventListener('click', function ()
+		{
+			changeZoom(-1);
+		});
+	}
+
+	if (fitButton)
+	{
+		fitButton.addEventListener('click', fitPoints);
+	}
+
+	if (detailsClose && details)
+	{
+		detailsClose.addEventListener('click', function ()
+		{
+			details.hidden = true;
+		});
+	}
+
 	window.addEventListener('resize', function ()
 	{
-		if (!loaded)
+		if (!mapInitialized || mapPanel.hidden)
 		{
 			return;
 		}
 
 		window.clearTimeout(resizeTimer);
-		resizeTimer = window.setTimeout(render, 150);
+		resizeTimer = window.setTimeout(render, 120);
+	});
+
+	mapToggle.addEventListener('click', function ()
+	{
+		const showMap = mapPanel.hidden;
+		mapPanel.hidden = !showMap;
+		mapToggle.setAttribute('aria-expanded', showMap ? 'true' : 'false');
+		mapToggle.textContent = showMap
+			? (mapToggle.dataset.mapHideLabel || 'Hide map')
+			: (mapToggle.dataset.mapShowLabel || 'Show locations on map');
+
+		if (!showMap)
+		{
+			mapToggle.focus();
+			return;
+		}
+
+		window.requestAnimationFrame(function ()
+		{
+			if (mapInitialized)
+			{
+				render();
+			}
+			else
+			{
+				mapInitialized = true;
+				fitPoints();
+			}
+
+			map.focus();
+		});
 	});
 });
 

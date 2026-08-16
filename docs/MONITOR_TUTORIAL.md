@@ -1,36 +1,24 @@
-# Choosing a monitor setup
+# Monitor tutorial: two typical uses
 
-A Pulse monitor is not just a timer. It watches for your continued responsiveness. Its check-in interval, reminder timing, recipients, wording, documents, and optional safety contacts determine what happens if you stop responding.
+A Pulse monitor can serve very different purposes. The same check-in and escalation machinery can quietly preserve documents for loved ones, or record a sequence of recent positions during a journey. The right settings depend on what the monitor is meant to accomplish.
 
-The examples below are starting points, not guarantees. Email can be delayed, filtered, or unavailable. Pulse is not an emergency service and should not replace emergency services, professional welfare checks, medical response plans, or legal procedures when those are appropriate.
+This tutorial develops two practical examples:
 
-## Understand the two escalation paths
+1. **Am I still alive?** — a cautious long-term monitor whose main purpose is delivering personal messages and documents after your death.
+2. **I am on an adventure vacation** — a shorter-interval monitor whose recent location-aware check-ins may help trusted people understand where you were before you stopped responding.
 
-Every active monitor begins the same way:
+The values below are starting points, not guarantees. Pulse depends on its server, cron, email delivery, your device, and the people receiving its messages. It is not an emergency service, a live tracker, or a substitute for a satellite communicator, personal locator beacon, professional welfare check, medical response plan, or legal procedure.
 
-1. The check-in becomes due.
-2. Pulse sends you the initial due notice.
-3. The response window ends.
+## What every monitor does
+
+Every active monitor follows the same basic sequence:
+
+1. You check in and Pulse schedules the next due date.
+2. If that date passes, Pulse sends the initial due notice.
+3. The response window gives you time to check in.
 4. Pulse sends the configured follow-up reminders.
-5. After the final reminder interval has elapsed, the owner reminder phase is complete.
-
-Then the monitor follows one of two paths.
-
-### Direct escalation
-
-Pulse proceeds toward the final recipients.
-
-This is the simpler option and can work well when the owner phase already provides enough time and a false final notification would be manageable.
-
-### Safety-contact confirmation
-
-Pulse first asks one or more trusted people whether they recently had direct contact with you.
-
-If enough safety contacts confirm, Pulse postpones the monitor and starts a fresh cycle. If the required confirmation count is not reached before the safety stage ends, the monitor proceeds toward the final recipients.
-
-A safety contact can postpone escalation, but cannot make it happen sooner and cannot see recipient messages or documents.
-
-## Calculate the owner timing
+5. Pulse either proceeds directly to the final recipients or first asks safety contacts whether they recently had direct contact with you.
+6. If the situation is not resolved, Pulse creates an immutable recipient release and sends the final notifications.
 
 The owner phase lasts approximately:
 
@@ -39,9 +27,9 @@ response window
 + (reminder interval × maximum follow-up reminders)
 ```
 
-The initial due notice occurs at the due time and does not count as a follow-up reminder.
+The initial due notice occurs at the due time and is not one of the follow-up reminders. A safety-contact monitor adds its safety response window and safety reminder intervals afterward. Cron frequency and mail delivery can add further delay.
 
-Example:
+For example:
 
 ```text
 Response window:       2 days
@@ -54,62 +42,32 @@ Reminder 2             day 3
 Owner phase complete   day 4
 ```
 
-A safety-contact monitor adds the safety response window and safety reminder intervals after that.
+## Use case 1: “Am I still alive?”
 
-These are intended timings. Pulse advances important stages only after the required notification work has actually been processed. Cron frequency also affects precision: a once-per-minute schedule keeps delays small, while an hourly cron can add almost an hour before any eligible stage is noticed.
+### Purpose
 
-## Three practical examples
+This monitor is intended to remain active for months or years. If you die or become permanently unable to respond, Pulse should eventually tell selected people and give each of them the personal message and documents you prepared for them.
 
-| Purpose | Check interval | Owner response | Owner reminders | Escalation | Approx. time from due to final recipient stage |
-| --- | ---: | ---: | ---: | --- | ---: |
-| Gentle routine | 14 days | 3 days | 2 × every 2 days | Direct | 7 days |
-| Important welfare check | 7 days | 2 days | 2 × every 1 day | 1 safety contact | 7 days |
-| High-consequence plan | 30 days | 2 days | 2 × every 1 day | 2 of 3 safety contacts | 7 days |
+The priority is not speed. The priority is avoiding a false final notification while still ensuring that the material is released when you really can no longer check in.
 
-The final timing assumes cron is running frequently enough and mail delivery is accepted promptly.
+### Suggested starting settings
 
-### Example 1: gentle routine
+- **Monitor name:** Something clear but discreet, such as `Personal continuity`.
+- **Check-in interval:** 7 days.
+- **Response window:** 2 days.
+- **Reminder interval:** 1 day.
+- **Maximum follow-up reminders:** 2.
+- **Safety & escalation:** Safety-contact confirmation.
+- **Safety contacts:** 3 trusted people, if that is practical.
+- **Confirmations required:** 2.
+- **Safety response window:** 2 days.
+- **Safety reminder interval:** 1 day.
+- **Maximum safety reminders:** 1.
+- **Postpone by days:** 7, or `0` to reuse the normal check-in interval.
+- **Record location during check-ins:** Off.
+- **Share check-in locations in the recipient portal:** Off.
 
-Use this for a low-urgency continuity check where an accidental final message would be inconvenient rather than dangerous.
-
-Suggested settings:
-
-- **Check-in interval:** 14 days
-- **Response window:** 3 days
-- **Reminder interval:** 2 days
-- **Maximum follow-up reminders:** 2
-- **Safety & escalation:** Direct escalation
-
-Timeline:
-
-```text
-day 0   due notice
-day 3   reminder 1
-day 5   reminder 2
-day 7   recipient stage
-```
-
-The generous owner phase already gives you a full week after the due date, so an additional human gate may not add much value.
-
-### Example 2: important welfare monitor
-
-Use this when a missed check-in matters, but one trusted person is likely to know whether you are fine.
-
-Suggested settings:
-
-- **Check-in interval:** 7 days
-- **Response window:** 2 days
-- **Reminder interval:** 1 day
-- **Maximum follow-up reminders:** 2
-- **Safety & escalation:** Safety-contact confirmation
-- **Safety contacts:** 1
-- **Confirmations required:** 1
-- **Safety response window:** 2 days
-- **Safety reminder interval:** 1 day
-- **Maximum safety reminders:** 1
-- **Postpone by days:** 7, or `0` to reuse the normal check-in interval
-
-Approximate timeline:
+This example produces an approximate timeline like this:
 
 ```text
 day 0   due notice
@@ -120,55 +78,198 @@ day 6   safety reminder
 day 7   recipient stage if there was no qualifying confirmation
 ```
 
-The safety contact should confirm only after actual recent direct contact, not merely because they assume everything is fine.
+Seven days after the due date may sound slow, but a monitor of this kind should be deliberately cautious. A forgotten check-in, illness, broken phone, vacation, or mail problem should not immediately send a message that implies you may have died.
 
-### Example 3: high-consequence monitor
+### Why use safety contacts?
 
-Use this only after rehearsing the entire workflow and discussing the role with the people involved.
+A safety contact provides a human check before the final release. They should confirm only after recent direct contact with you—not because they assume you are probably fine.
 
-Suggested settings:
+Requiring two of three confirmations reduces the chance that one mistaken response postpones a real escalation. The trade-off is that the safety stage continues to its deadline if only one person is available.
 
-- **Check-in interval:** choose a cadence that matches the real purpose; 30 days is only an example
-- **Response window:** 2 days
-- **Reminder interval:** 1 day
-- **Maximum follow-up reminders:** 2
-- **Safety & escalation:** Safety-contact confirmation
-- **Safety contacts:** 3
-- **Confirmations required:** 2
-- **Safety response window:** 2 days
-- **Safety reminder interval:** 1 day
-- **Maximum safety reminders:** 1
-- **Postpone by days:** deliberately chosen, often the normal check-in interval
+A safety contact does not receive your final documents and cannot trigger an earlier escalation. Their only role is to confirm that you were recently responsive and postpone the monitor, or to say that they cannot confirm.
 
-Requiring two of three confirmations protects against one mistaken confirmation. The trade-off is that the gate continues to its deadline if only one person is available.
+### Decide who receives what
 
-For genuinely time-critical danger, an email-based multi-day workflow is the wrong mechanism. Use a professional or emergency response arrangement instead of reducing every Pulse delay to its minimum.
+Create every person under **Contacts**, then add the final recipients to the monitor. A recipient sees only the documents assigned to that recipient.
 
-## Build a monitor step by step
+Possible material includes:
 
-A practical setup sequence is:
+- a personal letter;
+- practical information about your home, pets, possessions, or ongoing commitments;
+- a list of people who should be contacted;
+- funeral or memorial wishes;
+- an explanation of where original legal documents are kept;
+- selected photographs or other personal files.
 
-1. Create the people you need under **Contacts**.
-2. Carefully check each email address and choose the contact's **Pulse interface language**.
-3. Create the monitor. Remember that a new monitor starts active immediately; pause it while preparing if necessary.
+Pulse should not be the only home of important material. Keep authoritative legal documents in the legally appropriate form and location. Avoid storing account passwords, recovery keys, or unprotected copies of extremely sensitive identity documents unless you have deliberately accepted the risk: Pulse 1.1 does not encrypt stored application data at rest.
+
+### Write the recipient message
+
+The notification email should be calm and understandable without hidden context. It should explain:
+
+- that you configured Pulse yourself;
+- why the message may have been sent;
+- that Pulse could not verify the situation independently;
+- what the recipient should check before drawing conclusions;
+- what they will find in the private portal.
+
+The email body must contain `{url}` so the recipient can reach the portal. The longer personal message belongs on the portal page, where it appears after access-code authentication.
+
+Review the effective email, portal message, and assigned documents separately for every recipient. Different people may need very different information.
+
+### Make weekly check-in easy
+
+If passkey quick check-in is enabled under **Administration → Security**, the reminder email can take you directly to an authenticated check-in. Test the complete link and passkey flow on every phone or computer you may use.
+
+A synchronized passkey may already be available on several devices. Keep password login working as a fallback.
+
+### Rehearse this monitor
+
+Use harmless test wording and test addresses first. Rehearse:
+
+1. the due notice and every owner reminder;
+2. the safety-contact message and explicit confirmation action;
+3. progression when safety contacts do not confirm;
+4. final recipient notification;
+5. portal access-code authentication;
+6. document viewing, individual downloads, and **Download all**;
+7. portal and delivery history.
+
+Never send realistic death-related test wording to someone who has not been warned about the rehearsal.
+
+## Use case 2: “I am on an adventure vacation”
+
+### Purpose
+
+Imagine a solo bicycle trip through the Balkans. You check in regularly from your phone. Each successful check-in can record a one-time browser position. If you stop checking in and the monitor eventually escalates, the final recipients can see the most recent released positions as a chronological table and an interactive map.
+
+Here the documents may be useful, but the primary information is the sequence of recent check-in locations.
+
+### Suggested starting settings
+
+Pulse schedules monitors in whole days, so its shortest check-in interval is one day.
+
+- **Monitor name:** Something specific, such as `Balkan bicycle trip 2026`.
+- **Check-in interval:** 1 day.
+- **Response window:** 1 day.
+- **Reminder interval:** 1 day.
+- **Maximum follow-up reminders:** 1.
+- **Safety & escalation:** Direct escalation, unless a particular person is genuinely able to verify you during the trip.
+- **Record location during check-ins:** On.
+- **Share the last known check-in locations in the recipient portal:** On.
+- **Number of locations to share:** 10–20, depending on the expected trip length.
+
+With direct escalation, the approximate timetable is:
+
+```text
+day 0   check-in becomes due and Pulse sends the due notice
+day 1   owner reminder
+day 2   recipient stage if you still have not checked in
+```
+
+Because the due date is already one day after the previous check-in, final recipients may not be notified until roughly three days after the last successful position. Mail or cron delays can make that longer. This is far too slow for an immediate rescue system.
+
+For a genuinely hazardous trip, combine Pulse with an appropriate live-location or satellite safety service and an agreed emergency plan. Pulse is best treated as an additional record and notification path.
+
+### Prepare location-aware check-in
+
+When you enable **Record location during check-ins**, Pulse asks the current browser for location permission. The browser may remember that permission, but it can be revoked later and may be managed separately on each device.
+
+Before departure:
+
+1. enable location recording for the monitor;
+2. allow location access on the phone and browser you will carry;
+3. perform several test check-ins outdoors and indoors;
+4. inspect the reported accuracy and approximate address in activity history;
+5. verify that a denied or unavailable location does not block the check-in;
+6. test again after browser or operating-system privacy settings change.
+
+Pulse requests one current position per check-in. It does not run continuous background tracking. Closing the page ends the location interaction.
+
+### Choose how many positions to release
+
+The portal can receive the most recent 1–20 recorded positions. The selected points are copied into the recipient release at escalation time, so that portal is an immutable snapshot. It does not acquire new positions later.
+
+For a daily check-in:
+
+- 7 points cover roughly the last week;
+- 14 points cover roughly two weeks;
+- 20 points provide the maximum recent history currently available.
+
+Choose a smaller number if recipients need only the latest area. Choose a larger number when the direction of travel matters.
+
+### Understand the map correctly
+
+After authenticating, a recipient sees **Last known check-in locations** below the documents. The compact table shows location, browser-reported accuracy, and timestamp.
+
+The recipient can deliberately choose **Show locations on map**. Only then does Pulse load visible OpenStreetMap tiles. Numbered points appear in chronological order, and the most recent point is distinguished. Selecting a point shows its location label, time, accuracy, and an external OpenStreetMap link.
+
+The connecting line is only a straight chronological connection between separate check-ins. It does not show the road or trail actually travelled, and it does not prove that you passed through any place between two points. GPS readings and approximate addresses can also be wrong or imprecise.
+
+The owner-only recipient portal preview shows the same table and on-demand map using the monitor’s current saved check-ins. Use it before departure to confirm exactly what each recipient would see.
+
+### Give recipients useful supporting information
+
+For a travel monitor, consider assigning:
+
+- a simple itinerary with intended overnight stops;
+- planned dates and route alternatives;
+- contact details for travel companions or local hosts;
+- bicycle, vehicle, clothing, or equipment descriptions;
+- insurance and assistance contact information;
+- instructions about whom to contact and in what order.
+
+Keep the information current. If plans change substantially, update the monitor’s documents and messages. Changes affect future releases, not a portal that has already been released.
+
+### Choose recipients and safety contacts differently
+
+Final recipients should be people who understand the trip and are prepared to interpret the location history carefully. They should know in advance that Pulse is not declaring an emergency; it is reporting that the configured check-in process reached its final stage.
+
+A safety contact can be useful if someone has reliable daily contact with you outside Pulse. However, every safety-contact stage adds delay before the location snapshot reaches final recipients. Do not add that gate merely because it sounds safer—decide whether human verification or faster final notification is more important for this specific journey.
+
+### Rehearse the travel flow
+
+Before departure, run a complete harmless rehearsal:
+
+1. perform check-ins from several different positions;
+2. verify approximate addresses, timestamps, and accuracy;
+3. preview the authenticated recipient portal;
+4. open and operate the inline map;
+5. confirm that the points are chronological and the newest point is recognizable;
+6. hide and show the map again;
+7. trigger a test escalation using non-alarming wording;
+8. authenticate as the recipient and verify the released location snapshot;
+9. confirm that cron and email are healthy;
+10. check the actual phone, browser, mobile-data, and passkey setup you will carry.
+
+Also tell the recipients what action you expect. A map without an agreed response plan can create confusion rather than help.
+
+## Build either monitor step by step
+
+The practical construction sequence is the same for both examples:
+
+1. Create the people you need under **Contacts** and verify every email address.
+2. Choose each contact’s **Pulse interface language**.
+3. Create the monitor. A new monitor starts active immediately; pause it while preparing if necessary.
 4. Under **Details**, give it a clear name and description.
-5. Under **Schedule**, choose the owner timing.
-6. Under **Documents**, create/upload anything the final recipients may need.
-7. Under **Recipients**, add the final recipients.
-8. Open each recipient and assign documents under the recipient's **Documents** tab.
-9. Under **Safety & escalation**, choose Direct escalation or Safety-contact confirmation. If using safety contacts, configure the contacts, confirmation count, timing, and postponement period.
-10. Under **Messages & content**, review Recipient email, Safety-contact email, and Portal page content.
-11. Open each recipient and inspect the effective **Notification email** and any personal portal override.
+5. Under **Schedule**, choose the check-in and owner-reminder timing.
+6. Under **Documents**, create or upload the material that may be released.
+7. Under **Recipients**, add each final recipient.
+8. Open each recipient and assign only the intended documents.
+9. Under **Safety & escalation**, choose direct escalation or configure the safety-contact gate.
+10. Under **Messages & content**, review owner notices, safety-contact mail, recipient mail, and portal text.
+11. Configure the two separate location options when the monitor needs them.
 12. Resolve every warning under **Review & activation**.
 13. Send a successful test from **Administration → Mail** and verify cron under **Administration → Cron**.
+14. Use the recipient editor’s portal preview to inspect the saved result.
 
-## Write a useful recipient email
+## Understand email and portal content
 
-Pulse provides localized built-in recipient text, so a monitor can operate without custom wording.
+Pulse provides localized built-in text, but important monitors deserve deliberate wording.
 
-Under **Messages & content → Recipient email**, monitor-wide custom templates can be written separately for every installed Pulse language. Pulse selects the version matching each recipient's **Pulse interface language**. Recipient-specific personal overrides take precedence.
+Under **Messages & content → Recipient email**, custom templates can be written for every installed Pulse language. Pulse selects the version matching the recipient’s interface language. Recipient-specific overrides take precedence.
 
-Supported placeholders are:
+Supported recipient-email placeholders are:
 
 - `{app}` — Pulse;
 - `{name}` — recipient name;
@@ -176,69 +277,31 @@ Supported placeholders are:
 - `{monitor}` — monitor name;
 - `{url}` — private recipient portal URL.
 
-A custom recipient **body must contain `{url}`**. Pulse does not silently append a missing portal link. Do not put `{url}` in the subject.
-
-A recipient should be able to understand the email without hidden context. Consider including:
-
-- who configured the message;
-- why it has been sent;
-- what you want the recipient to do;
-- what they should verify independently before taking consequential action;
-- another way to verify the situation when appropriate.
-
-Avoid passwords, recovery keys, and highly sensitive secrets. The message is stored unencrypted in Pulse 1.1 and, once sent, is also copied to the sender's and recipient's mail systems.
-
-## Decide what belongs in email and what belongs in the portal
-
-The notification email should be enough for the recipient to understand why they should open the private link. The portal is better for longer personal text and documents.
+A custom recipient body must contain `{url}`. Pulse does not silently append a missing portal link. Do not put `{url}` in the subject.
 
 Under **Messages & content → Portal page**:
 
-- **Personal portal message** is the owner's message to the recipient;
-- **Page introduction** explains the private Pulse page more generally;
+- **Personal portal message** is your message to the recipient;
+- **Page introduction** explains the private page more generally;
 - **Portal expiry** controls how long future released portals remain available.
 
-Do not use email as the only place for sensitive details that are better kept behind the portal access-code step.
+The notification email should explain why the recipient should open the private link. Longer personal text and documents belong in the access-code-protected portal.
 
-## Choose safety contacts carefully
+## Test the complete infrastructure
 
-A safety contact is not a final recipient and does not receive the final documents. Their job is narrow: determine whether they can truthfully confirm recent direct contact.
+Whichever use case you choose, verify the machinery before relying on it:
 
-Good safety contacts should:
-
-- know that Pulse may contact them;
-- understand what counts as direct contact;
-- use an email address they actually monitor;
-- avoid confirming merely because they assume you are probably fine.
-
-If a contact says **Cannot confirm**, the existing escalation timetable remains unchanged. It is intentionally not an emergency trigger.
-
-## Make routine check-in effortless
-
-If **Administration → Security → Enable passkey quick check-in** is enabled, the quickest normal workflow is to use the quick-check-in link in the owner reminder mail. It still requires authentication, but on a prepared phone or computer that usually means opening the link and approving the available passkey. The successful action checks in all active monitors at once.
-
-Before relying on that workflow, verify that a Pulse passkey is available on every device you expect to use for reminders. A synchronized passkey may already work across several devices, so create another credential only when needed. Keep password login available as the fallback and test the complete path from the reminder mail on each important device.
-
-## Rehearse before relying on it
-
-Use non-sensitive test contacts and wording for the first rehearsal.
-
-At minimum:
-
-1. Confirm that cron is running at the cadence you intend to use. Once per minute is recommended for normal operation.
-2. Send a test from **Administration → Mail**.
-3. Confirm that a due monitor produces the expected owner notification after the next cron run.
-4. Rehearse a safety-contact flow if you intend to use one.
-5. Confirm that opening a safety link alone changes nothing and that an explicit response is required.
-6. Verify final recipient notification.
-7. Request and use a portal access code.
-8. Verify View, Download, and **Download all** for released documents.
-9. Verify recipient delivery/activity history.
-10. If useful, deliberately fail one test mail and verify retry/recovery behavior.
+1. Confirm that cron runs at the intended cadence. Once per minute is recommended for normal operation.
+2. Send a successful mail test.
+3. Confirm delivery of owner notices, safety-contact messages when used, and recipient mail.
+4. Test passkey and password login from the expected devices.
+5. Verify portal access-code delivery and authentication.
+6. Verify documents and location presentation appropriate to the monitor.
+7. Inspect activity, delivery, and mail history.
 
 ### Debug lifecycle actions
 
-In a non-production environment with `PULSE_DEBUG=true`, the monitor `⋮` action menu exposes test actions.
+With `PULSE_DEBUG=true`, the monitor `⋮` action menu exposes lifecycle test actions.
 
 A direct monitor can progress through:
 
@@ -248,8 +311,6 @@ Force due now
 → Send recipient notification now
 ```
 
-**Force due now** changes the monitor state only. The normal cron run is still responsible for discovering the due monitor and creating its due-notice queue job. If cron has already sent the due notice, a manual **Send due notice now** attempt should not create a duplicate.
-
 A safety-contact monitor can progress through:
 
 ```text
@@ -258,18 +319,14 @@ Force due now
 → Send safety contact notification now
 ```
 
-While the safety gate is active, **Expire safety contact window now** moves only the safety deadline into the past. The next normal cron run then exercises the real production timeout path. **Send recipient notification now** remains a separate debug bypass when you deliberately want to skip the remaining safety timetable.
+**Force due now** changes the state only; cron normally discovers the due monitor and creates its notification work. **Expire safety contact window now** moves the deadline into the past so the next cron run exercises the normal timeout path. **Send recipient notification now** is a deliberate bypass of the remaining safety timetable.
 
-These actions can send real mail. Use only harmless test contacts and recipients.
+These actions can send real email. Use only harmless test contacts, recipients, wording, documents, and locations.
 
-After recipient delivery escalates the monitor, use **Reset and reactivate** for another rehearsal cycle or **Archive** to keep the completed test monitor for reference. Archived monitor configuration is read-only until reset/reactivated.
+After a rehearsal escalates the monitor, use **Reset and reactivate** for another cycle or **Archive** to retain the completed test monitor. Archived configuration is read-only until it is reset and reactivated.
 
-Never rehearse with wording that could alarm a real recipient.
+## Review monitors when life or plans change
 
-## Review monitors when circumstances change
+Revisit active monitors whenever relationships, addresses, health, travel plans, intended actions, safety contacts, device permissions, or document contents change.
 
-Revisit active monitors when relationships, email addresses, travel plans, legal arrangements, intended recipient actions, or document contents change.
-
-Also review the wording periodically. A message that made sense when the monitor was created may be confusing or incorrect years later.
-
-Remember that historical recipient deliveries are snapshots. Editing the current monitor changes future releases, not already released portals.
+Historical recipient deliveries are snapshots. Editing the current monitor changes future releases, not portals that were already released.

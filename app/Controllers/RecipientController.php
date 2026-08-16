@@ -10,14 +10,18 @@ declare(strict_types=1);
 
 namespace Pulse\Controllers;
 
+use Pulse\Core\DocumentException;
 use Pulse\Core\Logger;
+use Pulse\Core\NotificationLanguage;
 use Pulse\Core\Request;
 use Pulse\Core\Session;
+use Pulse\Core\Translator;
 use Pulse\Core\View;
 use Pulse\Repositories\DocumentRepository;
 use Pulse\Repositories\MonitorRepository;
 use Pulse\Repositories\RecipientRepository;
 use Pulse\Services\AuthService;
+use Pulse\Services\DocumentService;
 use Pulse\Services\NotificationComposer;
 use Pulse\Services\RecipientPortalService;
 use Pulse\Services\RecipientMessageValidator;
@@ -31,8 +35,11 @@ final class RecipientController extends BaseController
 	private RecipientRepository $_recipientRepository;
 	private MonitorRepository $_monitorRepository;
 	private DocumentRepository $_documentRepository;
+	private DocumentService $_documentService;
 	private NotificationComposer $_composer;
 	private RecipientPortalService $_portalService;
+	private NotificationLanguage $_languages;
+	private string $_languagePath;
 
 	/** @brief Constructs the monitor-recipient controller. */
 	public function __construct(
@@ -44,16 +51,22 @@ final class RecipientController extends BaseController
 		RecipientRepository $recipientRepository,
 		MonitorRepository $monitorRepository,
 		DocumentRepository $documentRepository,
+		DocumentService $documentService,
 		NotificationComposer $composer,
-		RecipientPortalService $portalService
+		RecipientPortalService $portalService,
+		NotificationLanguage $languages,
+		string $languagePath
 	)
 	{
 		parent::__construct($view, $session, $auth, $logger, $request);
 		$this->_recipientRepository = $recipientRepository;
 		$this->_monitorRepository = $monitorRepository;
 		$this->_documentRepository = $documentRepository;
+		$this->_documentService = $documentService;
 		$this->_composer = $composer;
 		$this->_portalService = $portalService;
+		$this->_languages = $languages;
+		$this->_languagePath = $languagePath;
 	}
 
 	/** @brief Displays one dedicated monitor-recipient page. */
@@ -137,6 +150,108 @@ final class RecipientController extends BaseController
 			'activeDeliveryDocuments' => $activeDeliveryDocuments,
 			'activeSection' => $this->ActiveSection(),
 		]);
+	}
+
+	/** @brief Displays an owner-only preview of the future authenticated recipient portal. */
+	public function PortalPreview(): string
+	{
+		$user = $this->RequireUser();
+		$userId = (int)$user['id'];
+		$monitorContactId = $this->_request->QueryInt('id');
+		$recipient = $this->_recipientRepository->FindByIdForUser($monitorContactId, $userId);
+
+		if (!is_array($recipient))
+		{
+			http_response_code(404);
+			return $this->_view->Render('home.not-found');
+		}
+
+		$this->UsePreviewLanguage((string)$recipient['notification_locale'], $monitorContactId);
+		$portalContent = $this->_composer->ComposeRecipientPortalContent([
+			'recipient_name' => (string)$recipient['name'],
+			'notification_locale' => (string)$recipient['notification_locale'],
+			'owner_name' => (string)$recipient['owner_name'],
+			'monitor_name' => (string)$recipient['monitor_name'],
+			'portal_message_override_enabled' => !empty($recipient['portal_override_id']),
+			'portal_message_override' => (string)($recipient['portal_override_body'] ?? ''),
+			'portal_default_message' => (string)($recipient['default_portal_message'] ?? ''),
+			'portal_intro_text' => (string)($recipient['default_portal_intro'] ?? ''),
+		]);
+		[$documents, $availableDocumentCount, $totalDownloadBytes] = $this->PreparePreviewDocuments(
+			$this->_recipientRepository->FindAssignedDocumentsForUser($monitorContactId, $userId),
+			$monitorContactId
+		);
+
+		return $this->_view->Render('portal.access', [
+			'delivery' => [
+				'delivery_id' => 0,
+				'owner_name' => (string)$recipient['owner_name'],
+				'monitor_name' => (string)$recipient['monitor_name'],
+				'recipient_name' => (string)$recipient['name'],
+				'portal_expires_at' => null,
+				'portal_intro_text' => $portalContent['intro_text'],
+				'portal_message_text' => $portalContent['message_text'],
+			],
+			'documents' => $documents,
+			'locations' => $this->_recipientRepository->FindPortalPreviewLocationsForUser($monitorContactId, $userId),
+			'token' => '',
+			'availableDocumentCount' => $availableDocumentCount,
+			'totalDownloadBytes' => $totalDownloadBytes,
+			'previewMode' => true,
+			'previewRecipientName' => (string)$recipient['name'],
+		]);
+	}
+
+	/** @brief Streams an owner-authenticated image used only inside a portal preview. */
+	public function PortalPreviewAsset(): void
+	{
+		$user = $this->RequireUser();
+		$userId = (int)$user['id'];
+		$monitorContactId = $this->_request->QueryInt('recipient');
+		$documentId = $this->_request->QueryInt('document');
+		$document = $this->_recipientRepository->FindAssignedDocumentForUser($monitorContactId, $documentId, $userId);
+
+		if (!is_array($document) || !$this->IsPreviewImageType((string)($document['mime_type'] ?? '')))
+		{
+			$this->PreviewAssetNotFound();
+		}
+
+		try
+		{
+			$download = $this->_documentService->PrepareDownloadForUser(
+				$userId,
+				(int)$document['monitor_id'],
+				$documentId
+			);
+		}
+		catch (DocumentException)
+		{
+			$this->PreviewAssetNotFound();
+		}
+
+		$path = (string)$download['path'];
+		$filename = (string)($document['original_filename'] ?? $document['title'] ?? 'preview');
+		$asciiFilename = preg_replace('/[^A-Za-z0-9._ -]/', '_', $filename) ?: 'preview';
+		$fileSize = filesize($path);
+
+		if (session_status() === PHP_SESSION_ACTIVE)
+		{
+			session_write_close();
+		}
+
+		header('Content-Type: ' . (string)$document['mime_type']);
+		header('Content-Disposition: inline; filename="' . str_replace('"', '', $asciiFilename) . '"; filename*=UTF-8\'\'' . rawurlencode($filename));
+
+		if (is_int($fileSize))
+		{
+			header('Content-Length: ' . $fileSize);
+		}
+
+		header('Cache-Control: no-store, private');
+		header('Pragma: no-cache');
+		header('X-Content-Type-Options: nosniff');
+		readfile($path);
+		exit;
 	}
 
 	/** @brief Adds an existing contact to a monitor and opens its dedicated page. */
@@ -333,6 +448,104 @@ final class RecipientController extends BaseController
 			$this->Flash('warning', __('monitors.archived.readonly.flash'));
 			$this->Redirect($redirect);
 		}
+	}
+
+	/**
+	 * @brief Adds recipient-portal presentation metadata to current assigned documents.
+	 * @param array<int, array<string, mixed>> $documents Current assigned documents.
+	 * @return array{0: array<int, array<string, mixed>>, 1: int, 2: int}
+	 */
+	private function PreparePreviewDocuments(array $documents, int $monitorContactId): array
+	{
+		$totalDownloadBytes = 0;
+
+		foreach ($documents as &$document)
+		{
+			$isText = (string)($document['storage_type'] ?? '') === 'text';
+			$sizeBytes = $isText
+				? strlen((string)($document['text_content'] ?? ''))
+				: max(0, (int)($document['file_size_bytes'] ?? 0));
+			$mimeType = strtolower(trim((string)($document['mime_type'] ?? '')));
+
+			$document['download_available'] = true;
+			$document['view_available'] = $isText || $this->IsPreviewInlineType($mimeType);
+			$document['image_preview'] = !$isText && $this->IsPreviewImageType($mimeType);
+			$document['size_bytes'] = $sizeBytes;
+			$document['type_label'] = $this->DocumentTypeLabel($document);
+			$document['preview_image_url'] = '/monitors/recipients/portal-preview/asset?recipient='
+				. $monitorContactId . '&document=' . (int)$document['id'];
+			$totalDownloadBytes += $sizeBytes;
+		}
+		unset($document);
+
+		return [$documents, count($documents), $totalDownloadBytes];
+	}
+
+	/** @brief Selects the recipient's language while retaining the owner's authenticated authorization. */
+	private function UsePreviewLanguage(string $storedLocale, int $monitorContactId): void
+	{
+		$locale = $this->_languages->Resolve($storedLocale);
+		setTranslator(new Translator($this->_languagePath, $locale));
+		$this->_view->SetGlobals([
+			'locale' => $locale,
+			'currentTarget' => '/monitors/recipients/portal-preview?id=' . $monitorContactId,
+			'isAuthenticated' => false,
+			'currentUser' => null,
+			'portalPreview' => true,
+		], true);
+	}
+
+	/** @brief Returns whether a current file can be represented by the portal's passive View action. */
+	private function IsPreviewInlineType(string $mimeType): bool
+	{
+		return $mimeType === 'application/pdf' || $this->IsPreviewImageType($mimeType);
+	}
+
+	/** @brief Returns whether a current uploaded file is a safe raster image preview. */
+	private function IsPreviewImageType(string $mimeType): bool
+	{
+		return in_array(strtolower(trim($mimeType)), [
+			'image/gif',
+			'image/jpeg',
+			'image/png',
+			'image/webp',
+			'image/avif',
+		], true);
+	}
+
+	/** @brief Returns the same compact file-type label used by an authenticated recipient portal. */
+	private function DocumentTypeLabel(array $document): string
+	{
+		if ((string)($document['storage_type'] ?? '') === 'text')
+		{
+			return 'MD';
+		}
+
+		$extension = strtoupper(pathinfo((string)($document['original_filename'] ?? ''), PATHINFO_EXTENSION));
+
+		if ($extension !== '')
+		{
+			return substr($extension, 0, 8);
+		}
+
+		$mimeType = strtolower((string)($document['mime_type'] ?? ''));
+		return match ($mimeType)
+		{
+			'application/pdf' => 'PDF',
+			'image/jpeg' => 'JPG',
+			'image/png' => 'PNG',
+			default => __('portal.documents.type.file'),
+		};
+	}
+
+	/** @brief Emits a generic owner-only preview-asset 404. */
+	private function PreviewAssetNotFound(): never
+	{
+		http_response_code(404);
+		header('Content-Type: text/plain; charset=utf-8');
+		header('Cache-Control: no-store, private');
+		echo 'Preview unavailable.';
+		exit;
 	}
 
 	/** @brief Returns the active recipient sub-editor section. */

@@ -52,4 +52,5 @@ final class CheckInLocationTest extends TestCase
 			'location_accuracy' => '20',
 		], [], [])));
 	}
+
 }

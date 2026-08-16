@@ -1,3 +1,49 @@
+## 1.1.10 - 2026-08-16
+
+### Inline on-demand location map
+- Moved the interactive map into **Last known check-in locations**, directly below the compact location table. **Show locations on map** expands it in place, and **Hide map** collapses it again without opening another browser tab.
+- Preserved the deliberate privacy boundary: the authenticated portal initially makes no OpenStreetMap tile request. Tile loading begins only after the user reveals the map, while exact points, accuracy areas, details, and the chronological line continue to be rendered locally.
+- Applied the same inline behavior to the owner-only recipient portal preview and removed the now-unneeded dedicated recipient and preview map routes.
+
+### Scenario-based monitor tutorial
+- Rewrote `docs/MONITOR_TUTORIAL.md` around two concrete uses: a cautious long-term “Am I still alive?” document-delivery monitor and a daily location-aware adventure-travel monitor.
+- Added focused guidance for recipients, safety contacts, documents, timing, location permission, trail length, portal preview, rehearsals, and the limits of email-based escalation and discrete location points.
+- No database migration or third-party JavaScript library is required.
+
+## 1.1.9 - 2026-08-16
+
+### Authenticated interactive location map
+- Replaced the surrounding-area OpenStreetMap link with **View locations on map**, which opens a dedicated Pulse map page in a new tab only after deliberate recipient action.
+- Added mouse, touch, wheel, button, and keyboard navigation; **Fit** returns to all recorded points. Numbered check-in nodes open their location, timestamp, reported accuracy, and individual OpenStreetMap link.
+- Draws reported accuracy areas and a straight chronological line between the immutable released points. The interface clearly distinguishes that line from continuous tracking or proof of the route actually travelled.
+- Added the same map to the owner-only recipient portal preview. The preview route requires the logged-in owner and a recipient lookup scoped to that owner; the real map requires the same active token-bound recipient session as the authenticated portal.
+
+### Tile privacy and policy boundaries
+- The authenticated portal table itself still makes no map request. Opening the dedicated map loads only the OpenStreetMap raster tiles intersecting the current viewport, with ordinary browser caching, visible attribution, and no background prefetch.
+- Exact Pulse points, details, accuracy areas, and connecting lines are rendered locally and are not included in tile requests. OpenStreetMap receives the displayed tile area, the Pulse site origin, and normal browser connection information, but not the token-bearing portal URL.
+- Updated the content-security and referrer policies for the configured tile origin while retaining `rel="noreferrer"` on direct external location links.
+- No database migration or third-party JavaScript library is required.
+
+## 1.1.8 - 2026-08-16
+
+### Compact recipient location history
+- Moved **Last known check-in locations** below the portal document section and replaced the tall numbered list and embedded map with a compact table containing **Location**, **Accuracy**, and **Timestamp** columns.
+- Kept each recorded location as an explicit OpenStreetMap link and added one **Open area in OpenStreetMap** action covering all released points. Standard OpenStreetMap permalinks cannot reproduce an arbitrary Pulse point sequence as a path, so the interface no longer suggests that the surrounding-area link shows the travelled route.
+- Removed automatic OpenStreetMap tile loading from recipient portals and removed the tile host from Pulse's content-security policy. Merely viewing an authenticated portal now makes no third-party map request; coordinates leave Pulse only when the recipient deliberately follows an OpenStreetMap link.
+
+### Portal preview and update guidance
+- Replaced **Back to recipient editor** in a new-tab portal preview with **Close preview**, preventing a second recipient-editor tab from being created.
+- Corrected the update guide to match the verified installer behavior: a full release archive may be uploaded over an initialized installation, where `public/install.php` verifies the existing account and attempts to remove itself without recreating configuration or users.
+- No database migration is required for this release.
+
+## 1.1.7 - 2026-08-16
+
+### Owner-only recipient portal preview
+- Added **Preview recipient portal** to the recipient editor’s Overview tab. It opens the future authenticated recipient portal in a new tab using the currently saved recipient language, portal text, assigned documents, and location-sharing settings.
+- Kept the preview behind the normal owner login and monitor-recipient ownership checks. Sharing its URL does not grant access, and another Pulse account cannot use the recipient ID to view it.
+- Preview requests do not create releases, portal tokens, access codes, email, audit activity, or recipient sessions. Document downloads and permanent portal closure are visibly disabled.
+- Current assigned text and image documents are represented in the portal layout, and current check-in locations appear only when portal location sharing is enabled for the monitor.
+
 ## 1.1.6 - 2026-08-16
 
 ### Optional location-aware check-ins
@@ -13,6 +59,7 @@
 
 ### Database and verification
 - Added migration `003_check_in_locations.sql`, updated the current reference schema, security policy, translations, documentation, and source/unit regression coverage.
+- Added a dedicated 1.1.5-to-1.1.6 update package that excludes the fresh-install entry point, `.env`, and mutable private data; clarified that the full source archive is not a drop-in update archive.
 
 ## 1.1.5 - 2026-08-16
 

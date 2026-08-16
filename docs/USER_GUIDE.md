@@ -47,9 +47,13 @@ Pulse asks for one current position only while enabling the option or submitting
 
 If an approximate address can be resolved, the check-in history reads that the named monitor was checked in from that location. The location is a link to OpenStreetMap. Coordinates and reported accuracy remain the authoritative stored values when no useful address is available.
 
-**Share the last known check-in locations in the recipient portal** is a separate opt-in. Choose between 1 and 20 points. If escalation eventually releases recipient portals, Pulse copies the selected most recent points into that release in chronological order. The copy is immutable: later check-ins are never added to an already released portal. Recipients must still authenticate with their emailed access code, and map tiles load only after they choose **Load map**.
+**Share the last known check-in locations in the recipient portal** is a separate opt-in. Choose between 1 and 20 points. If escalation eventually releases recipient portals, Pulse copies the selected most recent points into that release in chronological order. The copy is immutable: later check-ins are never added to an already released portal. Recipients must still authenticate with their emailed access code.
 
-The portal joins recorded points with straight lines for orientation. Those lines are not a continuously tracked route, GPS positions can be inaccurate, and Pulse remains an additional safety tool rather than an emergency or rescue service.
+The authenticated portal shows the released points after the documents in a compact **Location / Accuracy / Timestamp** table. Each location links to that individual point in OpenStreetMap. **Show locations on map** expands an interactive map directly below the table with numbered points, reported accuracy areas, and a straight chronological line between check-ins. The map supports mouse/touch panning, wheel and button zooming, keyboard navigation, **Fit**, and selectable point details. **Hide map** collapses it again.
+
+The portal initially does not contact a map-tile service. OpenStreetMap tiles are loaded only after the recipient deliberately reveals the interactive map. OpenStreetMap then receives the visible tile area, the Pulse site origin, and normal connection information; the token-bearing portal URL and the exact Pulse point records are not sent with tile requests.
+
+The table shows separate check-in points rather than a continuously tracked route. GPS positions can be inaccurate, and Pulse remains an additional safety tool rather than an emergency or rescue service.
 
 Paused, escalated, and archived monitors are not included in a global check-in.
 
@@ -321,6 +325,16 @@ The activity timeline records significant recipient-side events such as:
 
 A simple unauthenticated page load is deliberately not treated as proof that the recipient personally visited the portal because mail-security systems may automatically follow links.
 
+### Previewing the authenticated portal
+
+Open a recipient’s **Overview** tab and select **Preview recipient portal**. Pulse opens an owner-only preview in a new browser tab using the recipient’s currently saved language, portal text, document assignments, and the monitor’s portal-location-sharing settings.
+
+The preview URL is not a recipient invitation. It requires the monitor owner’s active Pulse login and checks ownership again on every request. Sharing the URL with somebody else does not let them view the preview. The preview also creates no release, email, access code, portal token, recipient session, or audit event; document actions and permanent access closure remain disabled.
+
+Select **Close preview** to close that new tab and return to the recipient editor tab that was already open.
+
+When location sharing is enabled, **Show locations on map** inside the preview expands the same interactive map below the previewed location table. No additional URL or browser tab is opened, and the map remains inside the already owner-authenticated, recipient-scoped preview.
+
 ## Recipient releases are snapshots
 
 When Pulse stages a final recipient release, it snapshots the information needed for that delivery. Later edits to the current monitor should not silently rewrite what was already released.
@@ -429,7 +443,7 @@ A passkey may be backed by Face ID, Touch ID, Windows Hello, a hardware security
 
 For the most reliable quick-check-in setup, make sure a Pulse passkey is **available** on every device you may use to respond to a reminder. Passkeys may be synchronized automatically by a password manager such as iCloud Keychain, so one registered passkey can already work on several devices. Only add a separate passkey when a device or password manager cannot access an existing one. Give independently registered credentials recognizable names such as **iCloud Keychain**, **Work password manager**, or **YubiKey**, and test each intended device before relying on quick check-in during a real reminder.
 
-The normal password remains available as recovery/fallback authentication in 1.1.6. The account-security storage separates authentication methods from monitor logic so later releases can add additional methods and second-factor policies.
+The normal password remains available as recovery/fallback authentication in Pulse 1.1. The account-security storage separates authentication methods from monitor logic so later releases can add additional methods and second-factor policies.
 
 ### Quick check-in from reminder mail
 

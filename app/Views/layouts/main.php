@@ -12,8 +12,10 @@ declare(strict_types=1);
 /** @var array<string, string>|null $flash */
 /** @var string $content */
 /** @var string|null $title */
+/** @var bool|null $portalPreview */
 
 $assetVersion = trim((string)$appVersion) !== '' ? (string)$appVersion : 'unversioned';
+$portalPreview = !empty($portalPreview);
 $versionLabel = trim((string)$appVersion) !== ''
 	? 'v' . (string)$appVersion
 	: __('footer.version_unavailable');
@@ -65,17 +67,28 @@ $versionLabel = trim((string)$appVersion) !== ''
 
 <footer>
 	<nav class="footer-nav" aria-label="<?= e__('footer.links') ?>">
-		<form method="post" action="<?= e($base_url) ?>/language/set" class="language-switcher">
-			<?= csrf_field() ?>
-			<input type="hidden" name="redirect" value="<?= e($currentTarget) ?>">
-			<label for="footer-locale-select"><?= e__('footer.language') ?></label>
-			<select id="footer-locale-select" name="locale" data-language-autosubmit aria-label="<?= e__('footer.language') ?>">
-				<?php foreach ($availableLocales as $localeOption): ?>
-					<option value="<?= e($localeOption) ?>"<?= $localeOption === $locale ? ' selected' : '' ?>><?= e(language_name($localeOption)) ?></option>
-				<?php endforeach; ?>
-			</select>
-			<noscript><button type="submit" class="button button-secondary button-small"><?= e__('actions.save') ?></button></noscript>
-		</form>
+		<?php if ($portalPreview): ?>
+			<div class="language-switcher">
+				<label for="footer-locale-select"><?= e__('footer.language') ?></label>
+				<select id="footer-locale-select" aria-label="<?= e__('footer.language') ?>" disabled>
+					<?php foreach ($availableLocales as $localeOption): ?>
+						<option value="<?= e($localeOption) ?>"<?= $localeOption === $locale ? ' selected' : '' ?>><?= e(language_name($localeOption)) ?></option>
+					<?php endforeach; ?>
+				</select>
+			</div>
+		<?php else: ?>
+			<form method="post" action="<?= e($base_url) ?>/language/set" class="language-switcher">
+				<?= csrf_field() ?>
+				<input type="hidden" name="redirect" value="<?= e($currentTarget) ?>">
+				<label for="footer-locale-select"><?= e__('footer.language') ?></label>
+				<select id="footer-locale-select" name="locale" data-language-autosubmit aria-label="<?= e__('footer.language') ?>">
+					<?php foreach ($availableLocales as $localeOption): ?>
+						<option value="<?= e($localeOption) ?>"<?= $localeOption === $locale ? ' selected' : '' ?>><?= e(language_name($localeOption)) ?></option>
+					<?php endforeach; ?>
+				</select>
+				<noscript><button type="submit" class="button button-secondary button-small"><?= e__('actions.save') ?></button></noscript>
+			</form>
+		<?php endif; ?>
 		<a href="<?= e($base_url) ?>/about"><?= e__('footer.about') ?></a>
 		<a href="<?= e($base_url) ?>/imprint"><?= e__('footer.imprint') ?></a>
 	</nav>

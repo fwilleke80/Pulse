@@ -197,8 +197,11 @@ $recipientController = new RecipientController(
 	$recipientRepository,
 	$monitorRepository,
 	$documentRepository,
+	$documentService,
 	$notificationComposer,
-	$recipientPortalService
+	$recipientPortalService,
+	$notificationLanguage,
+	dirname(__DIR__) . '/app/Lang'
 );
 $safetyController = new SafetyController(
 	$view,
@@ -268,6 +271,8 @@ $router->Post('/monitors/send-safety-contact-notifications', [$monitorController
 $router->Post('/monitors/expire-safety-contact-window', [$monitorController, 'ExpireSafetyContactWindow']);
 $router->Post('/monitors/send-recipient-notifications', [$monitorController, 'SendRecipientNotifications']);
 $router->Get('/monitors/recipients/edit', [$recipientController, 'Edit']);
+$router->Get('/monitors/recipients/portal-preview', [$recipientController, 'PortalPreview']);
+$router->Get('/monitors/recipients/portal-preview/asset', [$recipientController, 'PortalPreviewAsset']);
 $router->Post('/monitors/recipients/add', [$recipientController, 'Add']);
 $router->Post('/monitors/recipients/update', [$recipientController, 'Update']);
 $router->Post('/monitors/recipients/portal/revoke', [$recipientController, 'RevokePortal']);
