@@ -1,3 +1,11 @@
+## 1.1.5 - 2026-08-16
+
+### Passkey login reliability
+- Separated passkey sign-in controls from the native username/password form so Safari cannot accidentally submit the password form while a WebAuthn ceremony is completing.
+- Added a client-side passkey-login lock that suppresses native password-form submission until passkey authentication either fails/cancels or redirects successfully.
+- Changed successful passkey navigation to replace the login page in browser history.
+- Added a narrow server-side safety net for an already-authenticated stale `POST /login`: the stale request remains rejected as a login attempt but is redirected to the authenticated destination instead of showing the CSRF 419 page. CSRF rotation and normal invalid-CSRF handling remain unchanged.
+
 ## 1.1.4 - 2026-08-16
 
 ### Passkey registration UX

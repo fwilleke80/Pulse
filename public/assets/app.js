@@ -991,6 +991,43 @@ document.addEventListener('DOMContentLoaded', function ()
 		});
 	}
 
+	/** @brief Prevents a native password submission while passkey login owns the authentication flow. */
+	const setPasskeyLoginBusy = function (container, busy)
+	{
+		const scope = container.closest('[data-passkey-login-scope]');
+
+		if (!scope)
+		{
+			return;
+		}
+
+		scope.dataset.passkeyCeremonyActive = busy ? 'true' : 'false';
+		const passwordForm = scope.querySelector('[data-password-login-form]');
+		const passwordSubmit = passwordForm ? passwordForm.querySelector('button[type="submit"]') : null;
+
+		if (passwordSubmit)
+		{
+			passwordSubmit.disabled = busy;
+		}
+	};
+
+	for (const scope of document.querySelectorAll('[data-passkey-login-scope]'))
+	{
+		const passwordForm = scope.querySelector('[data-password-login-form]');
+
+		if (passwordForm)
+		{
+			passwordForm.addEventListener('submit', function (event)
+			{
+				if (scope.dataset.passkeyCeremonyActive === 'true')
+				{
+					event.preventDefault();
+					event.stopImmediatePropagation();
+				}
+			}, true);
+		}
+	}
+
 	/** @brief Runs a passkey assertion for a login/quick-check-in form. */
 	const authenticate = async function (form, button)
 	{
@@ -1003,6 +1040,8 @@ document.addEventListener('DOMContentLoaded', function ()
 		}
 
 		button.disabled = true;
+		setPasskeyLoginBusy(form, true);
+		let redirecting = false;
 
 		try
 		{
@@ -1027,7 +1066,8 @@ document.addEventListener('DOMContentLoaded', function ()
 
 			if (verified.redirect)
 			{
-				window.location.assign(verified.redirect);
+				redirecting = true;
+				window.location.replace(verified.redirect);
 			}
 		}
 		catch (error)
@@ -1037,7 +1077,11 @@ document.addEventListener('DOMContentLoaded', function ()
 		}
 		finally
 		{
-			button.disabled = false;
+			if (!redirecting)
+			{
+				button.disabled = false;
+				setPasskeyLoginBusy(form, false);
+			}
 		}
 	};
 

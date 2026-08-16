@@ -82,6 +82,15 @@ $view->SetGlobals(['flash' => $session->PullFlash()], true);
 
 if ($request->Method() === 'POST' && !$csrf->IsValid($request->PostString('_csrf_token', 128)))
 {
+	if ($request->Path() === '/login' && $auth->IsAuthenticated())
+	{
+		$logger->Info('Ignored stale login POST after authentication');
+		$quickCheckInResult = $session->Get('pulse_quick_checkin_result');
+		$destination = is_array($quickCheckInResult) ? '/quick-check-in/success' : '/';
+		header('Location: ' . $destination, true, 303);
+		exit;
+	}
+
 	$logger->Warning('Rejected request with invalid CSRF token', ['path' => $request->Path()]);
 	http_response_code(419);
 	echo $view->Render('home.error', [

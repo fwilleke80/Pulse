@@ -157,4 +157,27 @@ final class PasskeyQuickCheckInSourceTest extends TestCase
 		self::assertStringContainsString('form.dataset.passkeyAlreadyAvailable', $script);
 	}
 
+	/** @brief Ensures passkey login cannot race a stale native password submission after CSRF rotation. */
+	public function testPasskeyLoginPreventsStalePasswordFormSubmission(): void
+	{
+		$root = dirname(__DIR__, 2);
+		$login = (string)file_get_contents($root . '/app/Views/auth/login.php');
+		$script = (string)file_get_contents($root . '/public/assets/app.js');
+		$frontController = (string)file_get_contents($root . '/public/index.php');
+
+		$passwordFormEnd = strpos($login, '</form>');
+		$passkeyContainer = strpos($login, 'data-passkey-login-form');
+		self::assertIsInt($passwordFormEnd);
+		self::assertIsInt($passkeyContainer);
+		self::assertGreaterThan($passwordFormEnd, $passkeyContainer);
+		self::assertStringContainsString('data-password-login-form', $login);
+		self::assertStringContainsString('data-passkey-login-scope', $login);
+		self::assertStringContainsString("scope.dataset.passkeyCeremonyActive === 'true'", $script);
+		self::assertStringContainsString('event.stopImmediatePropagation()', $script);
+		self::assertStringContainsString('window.location.replace(verified.redirect)', $script);
+		self::assertStringContainsString("\$request->Path() === '/login' && \$auth->IsAuthenticated()", $frontController);
+		self::assertStringContainsString("Ignored stale login POST after authentication", $frontController);
+		self::assertStringContainsString("header('Location: ' . \$destination, true, 303)", $frontController);
+	}
+
 }

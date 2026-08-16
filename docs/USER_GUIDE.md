@@ -417,7 +417,7 @@ A passkey may be backed by Face ID, Touch ID, Windows Hello, a hardware security
 
 For the most reliable quick-check-in setup, make sure a Pulse passkey is **available** on every device you may use to respond to a reminder. Passkeys may be synchronized automatically by a password manager such as iCloud Keychain, so one registered passkey can already work on several devices. Only add a separate passkey when a device or password manager cannot access an existing one. Give independently registered credentials recognizable names such as **iCloud Keychain**, **Work password manager**, or **YubiKey**, and test each intended device before relying on quick check-in during a real reminder.
 
-The normal password remains available as recovery/fallback authentication in 1.1.4. The account-security storage separates authentication methods from monitor logic so later releases can add additional methods and second-factor policies.
+The normal password remains available as recovery/fallback authentication in 1.1.5. The account-security storage separates authentication methods from monitor logic so later releases can add additional methods and second-factor policies.
 
 ### Quick check-in from reminder mail
 
