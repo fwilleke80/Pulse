@@ -11,6 +11,7 @@ declare(strict_types=1);
 /** @var string $base_url */
 
 ob_start();
+$ownerAddresses = \Pulse\Core\EmailAddressCollection::FromRow($user);
 ?>
 
 <h1><?= e__('profile.heading') ?></h1>
@@ -38,16 +39,23 @@ ob_start();
 			>
 		</div>
 
-		<div>
-			<label for="email"><?= e__('profile.data.email') ?></label><br>
-			<input
-				type="email"
-				id="email"
-				name="email"
-				value="<?= htmlspecialchars((string)($user['email'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
-				required
-			>
+		<div class="email-address-grid">
+			<?php for ($slot = 1; $slot <= \Pulse\Core\EmailAddressCollection::MAX_ADDRESSES; $slot++): ?>
+				<?php
+				$emailField = \Pulse\Core\EmailAddressCollection::EmailField($slot);
+				$checkedField = $slot === 1 ? 'email_checked' : 'email_' . $slot . '_checked';
+				$address = $ownerAddresses[$slot - 1] ?? ['email' => '', 'checked' => false];
+				?>
+				<div class="email-address-card" data-email-address-card>
+					<label for="profile_<?= e($emailField) ?>"><?= e__('profile.data.email') ?></label>
+					<input type="email" id="profile_<?= e($emailField) ?>" name="<?= e($emailField) ?>" data-contact-email data-original-email="<?= e((string)$address['email']) ?>" value="<?= e((string)$address['email']) ?>"<?= $slot === 1 ? ' required' : '' ?>>
+					<p class="email-suggestion is-hidden" data-email-suggestion data-suggestion-template="<?= e__('contacts.email.suggestion') ?>" role="status"></p>
+					<label class="compact-check"><input type="checkbox" name="<?= e($checkedField) ?>" data-email-checked<?= !empty($address['checked']) ? ' checked' : '' ?>> <?= e__('contacts.email_checked.label') ?></label>
+				</div>
+			<?php endfor; ?>
 		</div>
+		<small><?= e__('profile.data.email_hint') ?></small>
+		<?php if (\Pulse\Core\EmailAddressCollection::Checked($user) === []): ?><div class="template-validation-warning" role="alert"><?= e__('profile.data.no_checked_email_warning') ?></div><?php endif; ?>
 
 		<div class="field-grid field-grid-two">
 			<div>

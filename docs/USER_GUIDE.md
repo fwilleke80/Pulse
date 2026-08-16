@@ -13,7 +13,7 @@ For any monitor that matters, do these things before treating it as operational:
 1. Send a successful test from **Administration → Mail**.
 2. Confirm that **Administration → Cron** shows a recent successful cron run.
 3. Add the configured Pulse sender address or domain to safe-sender/allowlist rules on mail systems you control.
-4. Carefully check every recipient and safety-contact email address.
+4. Carefully mark every recipient and safety-contact address you intend Pulse to use as checked.
 5. Rehearse the workflow with harmless wording and test addresses.
 6. Make sure the recipients know how to independently verify important information before acting on it.
 
@@ -78,7 +78,7 @@ Open **Contacts** to maintain reusable people.
 A contact can contain:
 
 - name
-- email address
+- up to four email addresses
 - **Pulse interface language**
 - an optional cell-phone number
 - optional notes
@@ -87,7 +87,9 @@ The cell-phone field is currently reference information only; Pulse 1.2 sends no
 
 ### Checking an email address
 
-Pulse asks you to mark that you personally checked the contact's email address. This does not send a verification message and does not prove that the mailbox exists or belongs to that person. It records only that you reviewed the address yourself.
+Each address has its own **I checked this email address carefully** option. You may save a contact with unchecked addresses, but Pulse sends mail only to the addresses you marked as checked. The checkbox does not send a verification message and does not prove that the mailbox exists or belongs to that person. It records only that you reviewed that specific address yourself.
+
+Pulse supports up to four separate addresses per contact. Every checked address receives its own independently queued copy, so a temporary problem at one mailbox or provider does not prevent attempts to the others. A recipient or safety contact with no checked address is clearly marked and cannot be used for delivery.
 
 If Pulse recognizes a likely typo in a common email domain, it may display a suggestion. You remain responsible for deciding whether the address is correct.
 
@@ -250,13 +252,12 @@ Leave a language-specific subject/body pair empty to use Pulse's built-in locali
 
 #### Portal page
 
-The portal content is separate from the notification email. Configure:
+The monitor-wide portal content is separate from the notification email. Configure:
 
-- **Personal portal message** — the owner's message shown inside the authenticated recipient portal;
 - **Page introduction** — generic explanatory text about the page;
 - **Portal expiry** — 30 days, 90 days, one year, a custom number of days, or no automatic expiry.
 
-The **Personal portal message** supports Markdown and the shared **Edit / Preview** editor. The generic Page introduction remains plain text. Portal text supports `{app}`, `{name}`, `{owner}`, and `{monitor}`. It does not need `{url}` because the recipient is already on the portal.
+The generic Page introduction remains plain text and supports `{app}`, `{name}`, `{owner}`, and `{monitor}`. Personal messages are not monitor defaults: they are written separately in an individual recipient's **Portal** tab.
 
 In Markdown-capable fields, ending a source line with **two spaces** forces a line break without starting a new paragraph.
 
@@ -299,9 +300,11 @@ Pulse shows the effective/default template in a collapsible preview. The require
 
 ### Portal
 
-Configure an optional personal portal-message override for this recipient.
+Configure an optional personal portal message specifically for this recipient. This is the place for a personal goodbye or anything intended only for that person. The message supports Markdown and `{app}`, `{name}`, `{owner}`, and `{monitor}`; it does not need `{url}` because the recipient is already on the portal.
 
-If the recipient currently has an active released delivery, this tab also lets the owner edit that delivery's **presentation** independently of future monitor defaults. This can change the released portal introduction/message without changing authorization or the underlying documents.
+The personal-message box appears on the authenticated portal only when **Use a personal portal message for this recipient** is enabled and the message contains text. Pulse has no monitor-wide or built-in fallback personal message.
+
+If the recipient currently has an active released delivery, this tab also lets the owner edit that delivery's **presentation** independently of future monitor settings. The introduction remains editable; a personal message can be edited only when that delivery was released with one. These changes do not alter authorization or the underlying documents.
 
 ### Documents
 
@@ -474,7 +477,7 @@ Configuration warnings appear at the top of Administration and on affected tabs.
 
 ## Profile and languages
 
-Your **Profile** contains personal account settings and password management.
+Your **Profile** contains personal account settings and password management. You can store up to four email addresses, sign in with any of them, and mark each address as checked independently. Owner due notices, reminders, and mail tests are queued separately for every checked owner address; unchecked owner addresses receive no mail.
 
 Two language settings are separate:
 

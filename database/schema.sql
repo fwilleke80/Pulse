@@ -16,6 +16,13 @@ CREATE TABLE users
 (
 	id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
 	email VARCHAR(255) NOT NULL UNIQUE,
+	email_checked_at DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+	email_2 VARCHAR(255) NULL,
+	email_2_checked_at DATETIME NULL,
+	email_3 VARCHAR(255) NULL,
+	email_3_checked_at DATETIME NULL,
+	email_4 VARCHAR(255) NULL,
+	email_4_checked_at DATETIME NULL,
 	password_hash VARCHAR(255) NOT NULL,
 	display_name VARCHAR(255) NOT NULL,
 	role ENUM('user','administrator') NOT NULL DEFAULT 'user',
@@ -68,6 +75,12 @@ CREATE TABLE contacts
 	email VARCHAR(255) NOT NULL,
 	notification_locale VARCHAR(10) NULL,
 	email_checked_at DATETIME NULL,
+	email_2 VARCHAR(255) NULL,
+	email_2_checked_at DATETIME NULL,
+	email_3 VARCHAR(255) NULL,
+	email_3_checked_at DATETIME NULL,
+	email_4 VARCHAR(255) NULL,
+	email_4_checked_at DATETIME NULL,
 	cell_phone VARCHAR(50) NULL,
 	notes TEXT NULL,
 	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -315,6 +328,16 @@ CREATE TABLE safety_request_tokens
 	FOREIGN KEY (safety_request_id) REFERENCES safety_contact_requests(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE safety_contact_request_emails
+(
+	safety_request_id BIGINT UNSIGNED NOT NULL,
+	sort_order TINYINT UNSIGNED NOT NULL,
+	email VARCHAR(255) NOT NULL,
+	PRIMARY KEY (safety_request_id, sort_order),
+	UNIQUE KEY uq_safety_request_email (safety_request_id, email),
+	FOREIGN KEY (safety_request_id) REFERENCES safety_contact_requests(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE recipient_releases
 (
 	id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -374,6 +397,16 @@ CREATE TABLE recipient_release_deliveries
 	FOREIGN KEY (check_cycle_id) REFERENCES check_cycles(id) ON DELETE CASCADE,
 	FOREIGN KEY (monitor_id) REFERENCES monitors(id) ON DELETE RESTRICT,
 	FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE recipient_release_delivery_emails
+(
+	recipient_delivery_id BIGINT UNSIGNED NOT NULL,
+	sort_order TINYINT UNSIGNED NOT NULL,
+	email VARCHAR(255) NOT NULL,
+	PRIMARY KEY (recipient_delivery_id, sort_order),
+	UNIQUE KEY uq_recipient_delivery_email (recipient_delivery_id, email),
+	FOREIGN KEY (recipient_delivery_id) REFERENCES recipient_release_deliveries(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE recipient_delivery_documents

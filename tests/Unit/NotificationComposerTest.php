@@ -348,6 +348,38 @@ class NotificationComposerTest extends TestCase
 		self::assertStringNotContainsString('quick-check-in', $message['body_text']);
 	}
 
+	/** @brief Personal portal content exists only for an enabled non-empty recipient message. */
+	public function testPortalMessageRequiresEnabledRecipientText(): void
+	{
+		$composer = $this->Composer();
+		$base = [
+			'recipient_name' => 'Alex',
+			'owner_name' => 'Owner',
+			'monitor_name' => 'Monitor',
+			'notification_locale' => 'en',
+			'portal_intro_text' => '',
+			'portal_default_message' => 'Obsolete monitor default',
+		];
+
+		$disabled = $composer->ComposeRecipientPortalContent($base + [
+			'portal_message_override_enabled' => false,
+			'portal_message_override' => 'Private message',
+		]);
+		$empty = $composer->ComposeRecipientPortalContent($base + [
+			'portal_message_override_enabled' => true,
+			'portal_message_override' => '   ',
+		]);
+		$enabled = $composer->ComposeRecipientPortalContent($base + [
+			'portal_message_override_enabled' => true,
+			'portal_message_override' => 'Goodbye, {name}. — {owner}',
+		]);
+
+		self::assertSame('', $disabled['message_text']);
+		self::assertSame('', $empty['message_text']);
+		self::assertSame('Goodbye, Alex. — Owner', $enabled['message_text']);
+		self::assertNotSame('', $enabled['intro_text']);
+	}
+
 	private function Composer(): NotificationComposer
 	{
 		return new NotificationComposer(

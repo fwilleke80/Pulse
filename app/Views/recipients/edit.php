@@ -18,7 +18,6 @@ declare(strict_types=1);
 /** @var array{subject: string, body_text: string} $defaultTemplate */
 /** @var array<int, string> $messageIssues */
 /** @var array<int, string> $defaultMessageIssues */
-/** @var array{message_text: string, intro_text: string} $defaultPortalPreview */
 /** @var array<string, mixed>|null $activeDelivery */
 /** @var array<int, array<string, mixed>> $activeDeliveryDocuments */
 /** @var string $activeSection */
@@ -26,6 +25,7 @@ declare(strict_types=1);
 
 $hasOverride = !empty($recipient['override_message_id']);
 $hasPortalOverride = !empty($recipient['portal_override_id']);
+$recipientAddresses = \Pulse\Core\EmailAddressCollection::FromRow($recipient);
 $isArchivedMonitor = !empty($recipient['monitor_is_archived']);
 $sections = [
 	'overview' => 'recipients.tabs.overview',
@@ -63,15 +63,15 @@ ob_start();
 			<h2><?= e__('recipients.contact.heading') ?></h2>
 			<dl class="recipient-summary-list">
 				<div><dt><?= e__('recipients.contact.name') ?></dt><dd><?= e((string)$recipient['name']) ?></dd></div>
-				<div><dt><?= e__('recipients.contact.email') ?></dt><dd><?= e((string)$recipient['email']) ?></dd></div>
+				<div><dt><?= e__('recipients.contact.email') ?></dt><dd><div class="email-address-list"><?php foreach ($recipientAddresses as $address): ?><span class="email-address-list-item"><?= e($address['email']) ?><span class="mini-status mini-status-<?= $address['checked'] ? 'ok' : 'warning' ?>"><?= e__($address['checked'] ? 'contacts.status.checked' : 'contacts.status.not_checked') ?></span></span><?php endforeach; ?></div></dd></div>
 				<div><dt><?= e__('recipients.contact.language') ?></dt><dd><?= e(notification_language_name(isset($recipient['notification_locale']) ? (string)$recipient['notification_locale'] : null)) ?></dd></div>
 				<div>
 					<dt><?= e__('recipients.contact.address_status') ?></dt>
 					<dd>
-						<?php if (!empty($recipient['email_checked_at'])): ?>
-							<span class="status-badge status-checked-in"><?= e__('contacts.status.checked') ?></span>
+						<?php if (\Pulse\Core\EmailAddressCollection::HasChecked($recipient)): ?>
+							<span class="status-badge status-checked-in"><?= e__('contacts.status.checked_available') ?></span>
 						<?php else: ?>
-							<span class="status-badge status-overdue"><?= e__('contacts.status.not_checked') ?></span>
+							<span class="status-badge status-overdue"><?= e__('contacts.status.none_checked') ?></span>
 						<?php endif; ?>
 					</dd>
 				</div>
@@ -81,7 +81,7 @@ ob_start();
 
 		<div class="recipient-overview-summary-grid">
 			<div class="review-stat"><strong><?= $hasOverride ? e__('recipients.overview.personal') : e__('recipients.overview.default') ?></strong><span><?= e__('recipients.tabs.notification') ?></span></div>
-			<div class="review-stat"><strong><?= $hasPortalOverride ? e__('recipients.overview.personal') : e__('recipients.overview.default') ?></strong><span><?= e__('recipients.tabs.portal') ?></span></div>
+			<div class="review-stat"><strong><?= $hasPortalOverride ? e__('recipients.overview.personal') : e__('recipients.overview.none') ?></strong><span><?= e__('recipients.tabs.portal') ?></span></div>
 			<div class="review-stat"><strong><?= count($assignedDocumentIds) ?></strong><span><?= e__('recipients.tabs.documents') ?></span></div>
 			<div class="review-stat"><strong><?= count($deliveryHistory) ?></strong><span><?= e__('recipients.tabs.history') ?></span></div>
 		</div>
@@ -156,6 +156,7 @@ ob_start();
 			<input type="hidden" name="recipient_section" value="portal">
 			<section class="configuration-block" data-message-override>
 				<h2><?= e__('recipients.portal_message.heading') ?></h2>
+				<p class="form-hint"><?= e__('recipients.portal_message.hint') ?></p>
 				<p class="form-hint"><?= e__('recipients.portal_message.future_hint') ?></p>
 				<label class="compact-check"><input type="checkbox" name="use_portal_message_override" value="1" data-message-override-toggle <?= $hasPortalOverride ? 'checked' : '' ?>> <?= e__('recipients.portal_message.use_override') ?></label>
 				<div data-message-fields>
@@ -163,7 +164,6 @@ ob_start();
 					<?= markdown_editor($base_url, 'portal_message_body', 'portal_message_body', (string)($recipient['portal_override_body'] ?? ''), 8, 'web') ?>
 					<p class="form-hint placeholder-help"><?= e__('recipients.portal_message.placeholders') ?> <code>{app}</code> — <?= e__('mail.placeholders.app') ?>; <code>{name}</code> — <?= e__('mail.placeholders.name') ?>; <code>{owner}</code> — <?= e__('mail.placeholders.owner') ?>; <code>{monitor}</code> — <?= e__('mail.placeholders.monitor') ?>.</p>
 				</div>
-				<div class="mail-default-template"><strong><?= e__('recipients.portal_message.default_preview.heading') ?></strong><div class="markdown-content"><?= markdown_html((string)$defaultPortalPreview['message_text']) ?></div></div>
 			</section>
 			<button type="submit" class="btn-primary"><?= e__('recipients.edit.submit') ?></button>
 			</fieldset>
@@ -179,8 +179,10 @@ ob_start();
 					<input type="hidden" name="delivery_id" value="<?= (int)$activeDelivery['id'] ?>">
 					<label for="active_portal_intro"><?= e__('monitors.messages.portal_content.intro') ?></label>
 					<textarea id="active_portal_intro" name="portal_intro_text" rows="4"><?= e((string)($activeDelivery['portal_intro_text'] ?? '')) ?></textarea>
-					<label for="active_portal_message"><?= e__('monitors.messages.portal_content.message') ?></label>
-					<?= markdown_editor($base_url, 'active_portal_message', 'portal_message_text', (string)($activeDelivery['portal_message_text'] ?? ''), 8, 'web') ?>
+					<?php if (trim((string)($activeDelivery['portal_message_text'] ?? '')) !== ''): ?>
+						<label for="active_portal_message"><?= e__('recipients.portal_message.body') ?></label>
+						<?= markdown_editor($base_url, 'active_portal_message', 'portal_message_text', (string)$activeDelivery['portal_message_text'], 8, 'web') ?>
+					<?php endif; ?>
 					<p class="form-hint"><?= e__('recipients.active_portal.expanded_hint') ?></p>
 					<button type="submit"><?= e__('recipients.active_portal.submit') ?></button>
 				</form>
@@ -257,7 +259,7 @@ ob_start();
 						<?php foreach ($deliveryHistory as $delivery): ?>
 							<tr>
 								<td><?= e(format_datetime((string)$delivery['created_at'])) ?></td>
-								<td><?= e((string)$delivery['recipient_email']) ?></td>
+								<td><div class="email-address-list"><?php foreach (explode("\n", (string)($delivery['recipient_emails'] ?? $delivery['recipient_email'])) as $email): ?><span><?= e($email) ?></span><?php endforeach; ?></div></td>
 								<td><span class="mini-status mini-status-<?= e((string)$delivery['status']) ?>"><?= e__('recipients.delivery.status.' . (string)$delivery['status']) ?></span></td>
 								<td><?= e(format_datetime(isset($delivery['sent_at']) ? (string)$delivery['sent_at'] : null)) ?></td>
 								<td>

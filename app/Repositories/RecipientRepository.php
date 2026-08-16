@@ -47,14 +47,19 @@ final class RecipientRepository
 				u.display_name AS owner_name,
 				mmt.subject AS default_message_subject,
 				mmt.body_text AS default_message_body,
-				mpt.message_text AS default_portal_message,
 				mpt.intro_text AS default_portal_intro,
 				cpm.id AS portal_override_id,
 				cpm.body_text AS portal_override_body,
 				c.name,
 				c.email,
-				c.notification_locale,
 				c.email_checked_at,
+				c.email_2,
+				c.email_2_checked_at,
+				c.email_3,
+				c.email_3_checked_at,
+				c.email_4,
+				c.email_4_checked_at,
+				c.notification_locale,
 				cm.id AS override_message_id,
 				cm.subject AS override_subject,
 				cm.body_text AS override_body,
@@ -414,6 +419,11 @@ final class RecipientRepository
 		$limit = max(1, min(100, $limit));
 		$statement = $this->_database->GetConnection()->prepare('
 			SELECT rrd.id, rrd.status, rrd.recipient_email, rrd.sent_at, rrd.failed_at, rrd.created_at,
+				COALESCE((
+					SELECT GROUP_CONCAT(rrde.email ORDER BY rrde.sort_order SEPARATOR \'\\n\')
+					FROM recipient_release_delivery_emails rrde
+					WHERE rrde.recipient_delivery_id = rrd.id
+				), rrd.recipient_email) AS recipient_emails,
 				rrd.portal_released_at, rrd.portal_expires_at, rrd.portal_revoked_at, rrd.portal_closed_by_recipient_at,
 				CASE
 					WHEN rrd.portal_closed_by_recipient_at IS NOT NULL THEN \'closed\'
@@ -594,7 +604,10 @@ final class RecipientRepository
 			INNER JOIN monitors m ON m.id = mc.monitor_id
 			SET
 				rrd.portal_intro_text = :intro_text,
-				rrd.portal_message_text = :message_text,
+				rrd.portal_message_text = CASE
+					WHEN TRIM(COALESCE(rrd.portal_message_text, \'\')) = \'\' THEN rrd.portal_message_text
+					ELSE :message_text
+				END,
 				rrd.updated_at = UTC_TIMESTAMP()
 			WHERE rrd.id = :delivery_id
 				AND mc.id = :monitor_contact_id

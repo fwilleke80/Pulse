@@ -248,7 +248,7 @@ Also tell the recipients what action you expect. A map without an agreed respons
 
 The practical construction sequence is the same for both examples:
 
-1. Create the people you need under **Contacts** and verify every email address.
+1. Create the people you need under **Contacts** and mark every email address you intend Pulse to use as checked.
 2. Choose each contact’s **Pulse interface language**.
 3. Create the monitor. A new monitor starts active immediately; pause it while preparing if necessary.
 4. Under **Details**, give it a clear name and description.
@@ -281,9 +281,10 @@ A custom recipient body must contain `{url}`. Pulse does not silently append a m
 
 Under **Messages & content → Portal page**:
 
-- **Personal portal message** is your message to the recipient;
-- **Page introduction** explains the private page more generally;
+- **Page introduction** explains the private page generally for the whole monitor;
 - **Portal expiry** controls how long future released portals remain available.
+
+Write an optional personal or goodbye message separately in each recipient's **Portal** tab. It appears only when **Use a personal portal message for this recipient** is enabled and the message contains text.
 
 The notification email should explain why the recipient should open the private link. Longer personal text and documents belong in the access-code-protected portal.
 

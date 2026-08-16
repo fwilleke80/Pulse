@@ -112,6 +112,26 @@ final class RecipientPortalRepository
 	}
 
 	/**
+	 * @brief Returns every snapshotted email address for one recipient delivery.
+	 * @param int $deliveryId Recipient delivery ID.
+	 * @param string $fallback Legacy primary address when no snapshot rows exist.
+	 * @return array<int, string>
+	 */
+	public function FindEmailsForDelivery(int $deliveryId, string $fallback): array
+	{
+		$statement = $this->_database->GetConnection()->prepare('
+			SELECT email
+			FROM recipient_release_delivery_emails
+			WHERE recipient_delivery_id = :delivery_id
+			ORDER BY sort_order ASC
+		');
+		$statement->execute(['delivery_id' => $deliveryId]);
+		$emails = $statement->fetchAll(PDO::FETCH_COLUMN);
+
+		return is_array($emails) && $emails !== [] ? array_map('strval', $emails) : [$fallback];
+	}
+
+	/**
 	 * @brief Creates one new short-lived access code and invalidates older unused codes.
 	 * @param int $deliveryId Recipient release delivery ID.
 	 * @param string $codeHash Password-hash representation of the generated code.

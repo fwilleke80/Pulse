@@ -10,6 +10,7 @@ declare(strict_types=1);
 
 namespace Pulse\Services;
 
+use Pulse\Core\EmailAddressCollection;
 use Pulse\Repositories\MailQueueRepository;
 
 /**
@@ -40,7 +41,7 @@ final class TestNotificationService
 	}
 
 	/**
-	 * @brief Sends a test to the authenticated owner's current profile address.
+	 * @brief Sends a test independently to every checked owner address.
 	 * @param array<string, mixed> $user User row.
 	 * @return string Queue outcome.
 	 */
@@ -55,21 +56,40 @@ final class TestNotificationService
 			(string)$user['display_name'],
 			isset($user['notification_locale']) ? (string)$user['notification_locale'] : null
 		);
-		$jobId = $this->_queue->Enqueue([
-			'user_id' => (int)$user['id'],
-			'check_cycle_id' => null,
-			'monitor_id' => null,
-			'contact_id' => null,
-			'mail_type' => 'test',
-			'idempotency_key' => 'test:' . (int)$user['id'] . ':' . bin2hex(random_bytes(16)),
-			'reminder_number' => null,
-			'recipient_email' => (string)$user['email'],
-			'subject' => $content['subject'],
-			'body_text' => $content['body_text'],
-			'max_attempts' => $this->_maxAttempts,
-			'available_at' => gmdate('Y-m-d H:i:s'),
-		]);
+		$outcomes = [];
+		$batchKey = 'test:' . (int)$user['id'] . ':' . bin2hex(random_bytes(16));
 
-		return $this->_worker->ProcessById($jobId);
+		foreach (EmailAddressCollection::Checked($user) as $index => $email)
+		{
+			$jobId = $this->_queue->Enqueue([
+				'user_id' => (int)$user['id'],
+				'check_cycle_id' => null,
+				'monitor_id' => null,
+				'contact_id' => null,
+				'mail_type' => 'test',
+				'idempotency_key' => $batchKey . ':address' . ($index + 1),
+				'reminder_number' => null,
+				'recipient_email' => $email,
+				'subject' => $content['subject'],
+				'body_text' => $content['body_text'],
+				'max_attempts' => $this->_maxAttempts,
+				'available_at' => gmdate('Y-m-d H:i:s'),
+			]);
+			$outcomes[] = $this->_worker->ProcessById($jobId);
+		}
+
+		if ($outcomes === [] || in_array('failed', $outcomes, true))
+		{
+			return 'failed';
+		}
+
+		if (in_array('retrying', $outcomes, true))
+		{
+			return 'retrying';
+		}
+
+		return count(array_filter($outcomes, static fn (string $outcome): bool => $outcome === 'sent')) === count($outcomes)
+			? 'sent'
+			: 'queued';
 	}
 }

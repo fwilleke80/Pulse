@@ -15,6 +15,7 @@ use DateTimeImmutable;
 use DateTimeZone;
 use PDO;
 use Pulse\Core\Database;
+use Pulse\Core\EmailAddressCollection;
 use Pulse\Core\Logger;
 use RuntimeException;
 use Throwable;
@@ -83,7 +84,7 @@ final class EscalationService
 
 			foreach ($contacts as $contact)
 			{
-				if (empty($contact['email_checked_at']))
+				if (!EmailAddressCollection::HasChecked($contact))
 				{
 					$this->WriteAudit($connection, $cycle, 'monitor.safety_blocked', ['reason' => 'unchecked_safety_contact']);
 					$connection->commit();
@@ -106,6 +107,7 @@ final class EscalationService
 
 			foreach ($contacts as $contact)
 			{
+				$emails = EmailAddressCollection::Checked($contact);
 				$rawToken = bin2hex(random_bytes(32));
 				$expiresAt = $this->SafetyTokenExpiry($cycle);
 				$insertRequest = $connection->prepare('
@@ -125,7 +127,7 @@ final class EscalationService
 					'monitor_id' => (int)$cycle['monitor_id'],
 					'contact_id' => (int)$contact['id'],
 					'contact_name' => (string)$contact['name'],
-					'contact_email' => (string)$contact['email'],
+					'contact_email' => $emails[0],
 					'notification_locale' => (string)$contact['notification_locale'],
 					'invitation_subject' => $contact['safety_invitation_subject'] ?? null,
 					'invitation_body' => $contact['safety_invitation_body'] ?? null,
@@ -135,6 +137,7 @@ final class EscalationService
 					'updated_at' => $now,
 				]);
 				$requestId = (int)$connection->lastInsertId();
+				$this->InsertSafetyRequestEmails($connection, $requestId, $emails);
 				$this->InsertSafetyToken($connection, $requestId, $rawToken, $expiresAt);
 				$content = $this->_composer->ComposeSafetyInvitation([
 					'contact_name' => (string)$contact['name'],
@@ -144,21 +147,25 @@ final class EscalationService
 					'message_subject' => (string)($contact['safety_invitation_subject'] ?? ''),
 					'message_body' => (string)($contact['safety_invitation_body'] ?? ''),
 				], $rawToken);
-				$this->InsertQueue($connection, [
-					'user_id' => (int)$cycle['user_id'],
-					'check_cycle_id' => $cycleId,
-					'monitor_id' => (int)$cycle['monitor_id'],
-					'contact_id' => (int)$contact['id'],
-					'safety_request_id' => $requestId,
-					'recipient_delivery_id' => null,
-					'mail_type' => 'safety_invitation',
-					'idempotency_key' => 'safety-invitation:' . $cycleId . ':' . (int)$contact['id'],
-					'reminder_number' => null,
-					'recipient_email' => (string)$contact['email'],
-					'subject' => $content['subject'],
-					'body_text' => $content['body_text'],
-					'available_at' => $now,
-				]);
+				foreach ($emails as $index => $email)
+				{
+					$key = 'safety-invitation:' . $cycleId . ':' . (int)$contact['id'];
+					$this->InsertQueue($connection, [
+						'user_id' => (int)$cycle['user_id'],
+						'check_cycle_id' => $cycleId,
+						'monitor_id' => (int)$cycle['monitor_id'],
+						'contact_id' => (int)$contact['id'],
+						'safety_request_id' => $requestId,
+						'recipient_delivery_id' => null,
+						'mail_type' => 'safety_invitation',
+						'idempotency_key' => $index === 0 ? $key : $key . ':address' . ($index + 1),
+						'reminder_number' => null,
+						'recipient_email' => $email,
+						'subject' => $content['subject'],
+						'body_text' => $content['body_text'],
+						'available_at' => $now,
+					]);
+				}
 			}
 
 			$this->WriteAudit($connection, $cycle, 'monitor.safety_requested', [
@@ -319,9 +326,11 @@ final class EscalationService
 			}
 
 			$this->SnapshotRecipientLocations($connection, $releaseId, (int)$cycle['monitor_id']);
+			$queuedNotifications = 0;
 
 			foreach ($recipients as $recipient)
 			{
+				$emails = EmailAddressCollection::Checked($recipient);
 				$rawPortalToken = bin2hex(random_bytes(32));
 				$portalUrl = $this->_composer->RecipientPortalUrl($rawPortalToken, (string)$recipient['notification_locale']);
 				$content = $this->_composer->ComposeRecipientNotification([
@@ -340,7 +349,6 @@ final class EscalationService
 					'monitor_name' => (string)$cycle['monitor_name'],
 					'portal_message_override_enabled' => !empty($recipient['portal_message_override_id']),
 					'portal_message_override' => (string)($recipient['portal_message_override'] ?? ''),
-					'portal_default_message' => (string)($recipient['portal_default_message'] ?? ''),
 					'portal_intro_text' => (string)($recipient['portal_intro_text'] ?? ''),
 				]);
 				$storedContent = $this->_composer->ComposeRecipientNotification([
@@ -372,7 +380,7 @@ final class EscalationService
 					'monitor_id' => (int)$cycle['monitor_id'],
 					'contact_id' => (int)$recipient['contact_id'],
 					'recipient_name' => (string)$recipient['name'],
-					'recipient_email' => (string)$recipient['email'],
+					'recipient_email' => $emails[0],
 					'notification_locale' => (string)$recipient['notification_locale'],
 					'portal_token_hash' => hash('sha256', $rawPortalToken),
 					'portal_availability_days' => $recipient['portal_availability_days'],
@@ -384,23 +392,33 @@ final class EscalationService
 					'updated_at' => $now,
 				]);
 				$deliveryId = (int)$connection->lastInsertId();
+				$this->InsertRecipientDeliveryEmails($connection, $deliveryId, $emails);
 				$this->SnapshotRecipientDocuments($connection, $deliveryId, (int)$recipient['monitor_contact_id']);
-				$queueId = $this->InsertQueue($connection, [
-					'user_id' => (int)$cycle['user_id'],
-					'check_cycle_id' => $cycleId,
-					'monitor_id' => (int)$cycle['monitor_id'],
-					'contact_id' => (int)$recipient['contact_id'],
-					'safety_request_id' => null,
-					'recipient_delivery_id' => $deliveryId,
-					'recipient_portal_code_id' => null,
-					'mail_type' => 'recipient_notification',
-					'idempotency_key' => 'recipient-notification:' . $cycleId . ':' . (int)$recipient['contact_id'],
-					'reminder_number' => null,
-					'recipient_email' => (string)$recipient['email'],
-					'subject' => $content['subject'],
-					'body_text' => $content['body_text'],
-					'available_at' => $now,
-				]);
+				$queueId = 0;
+
+				foreach ($emails as $index => $email)
+				{
+					$key = 'recipient-notification:' . $cycleId . ':' . (int)$recipient['contact_id'];
+					$currentQueueId = $this->InsertQueue($connection, [
+						'user_id' => (int)$cycle['user_id'],
+						'check_cycle_id' => $cycleId,
+						'monitor_id' => (int)$cycle['monitor_id'],
+						'contact_id' => (int)$recipient['contact_id'],
+						'safety_request_id' => null,
+						'recipient_delivery_id' => $deliveryId,
+						'recipient_portal_code_id' => null,
+						'mail_type' => 'recipient_notification',
+						'idempotency_key' => $index === 0 ? $key : $key . ':address' . ($index + 1),
+						'reminder_number' => null,
+						'recipient_email' => $email,
+						'subject' => $content['subject'],
+						'body_text' => $content['body_text'],
+						'available_at' => $now,
+					]);
+					$queueId = $queueId > 0 ? $queueId : $currentQueueId;
+					$queuedNotifications++;
+				}
+
 				$updateDelivery = $connection->prepare('UPDATE recipient_release_deliveries SET queue_id = :queue_id WHERE id = :id');
 				$updateDelivery->execute(['queue_id' => $queueId, 'id' => $deliveryId]);
 			}
@@ -413,7 +431,7 @@ final class EscalationService
 			$connection->commit();
 			$this->_logger->Info('Recipient release staged', ['cycle_id' => $cycleId, 'recipient_count' => count($recipients)]);
 
-			return ['status' => 'pending', 'queued' => count($recipients), 'release_id' => $releaseId, 'issues' => []];
+			return ['status' => 'pending', 'queued' => $queuedNotifications, 'release_id' => $releaseId, 'issues' => []];
 		}
 		catch (Throwable $throwable)
 		{
@@ -722,8 +740,9 @@ final class EscalationService
 		$statement = $this->_database->GetConnection()->prepare('
 			SELECT mq.id
 			FROM mail_queue mq
-			INNER JOIN recipient_release_deliveries rrd ON rrd.queue_id = mq.id
+			INNER JOIN recipient_release_deliveries rrd ON rrd.id = mq.recipient_delivery_id
 			WHERE rrd.release_id = :release_id AND mq.status IN (\'queued\', \'retrying\')
+			  AND mq.mail_type = \'recipient_notification\'
 			ORDER BY mq.id ASC
 		');
 		$statement->execute(['release_id' => $releaseId]);
@@ -756,7 +775,9 @@ final class EscalationService
 	{
 		$statement = $connection->prepare('
 			SELECT
-				c.id, c.name, c.email, c.notification_locale, c.email_checked_at,
+				c.id, c.name, c.email, c.email_checked_at,
+				c.email_2, c.email_2_checked_at, c.email_3, c.email_3_checked_at, c.email_4, c.email_4_checked_at,
+				c.notification_locale,
 				invitation.subject AS safety_invitation_subject, invitation.body_text AS safety_invitation_body,
 				reminder.subject AS safety_reminder_subject, reminder.body_text AS safety_reminder_body
 			FROM monitor_safety_contacts msc
@@ -841,21 +862,26 @@ final class EscalationService
 				'message_subject' => (string)($current['reminder_subject'] ?? ''),
 				'message_body' => (string)($current['reminder_body'] ?? ''),
 			], $rawToken, $number);
-			$this->InsertQueue($connection, [
-				'user_id' => (int)$cycle['user_id'],
-				'check_cycle_id' => (int)$cycle['id'],
-				'monitor_id' => (int)$cycle['monitor_id'],
-				'contact_id' => $request['contact_id'],
-				'safety_request_id' => (int)$request['id'],
-				'recipient_delivery_id' => null,
-				'mail_type' => 'safety_reminder',
-				'idempotency_key' => $key,
-				'reminder_number' => $number,
-				'recipient_email' => (string)$request['contact_email'],
-				'subject' => $content['subject'],
-				'body_text' => $content['body_text'],
-				'available_at' => $this->Now(),
-			]);
+			$emails = $this->FindSafetyRequestEmails($connection, (int)$request['id'], (string)$request['contact_email']);
+
+			foreach ($emails as $index => $email)
+			{
+				$this->InsertQueue($connection, [
+					'user_id' => (int)$cycle['user_id'],
+					'check_cycle_id' => (int)$cycle['id'],
+					'monitor_id' => (int)$cycle['monitor_id'],
+					'contact_id' => $request['contact_id'],
+					'safety_request_id' => (int)$request['id'],
+					'recipient_delivery_id' => null,
+					'mail_type' => 'safety_reminder',
+					'idempotency_key' => $index === 0 ? $key : $key . ':address' . ($index + 1),
+					'reminder_number' => $number,
+					'recipient_email' => $email,
+					'subject' => $content['subject'],
+					'body_text' => $content['body_text'],
+					'available_at' => $this->Now(),
+				]);
+			}
 			$connection->commit();
 
 			return true;
@@ -1025,13 +1051,14 @@ final class EscalationService
 	{
 		$statement = $connection->prepare('
 			SELECT
-				mc.id AS monitor_contact_id, mc.contact_id, c.name, c.email, c.notification_locale, c.email_checked_at,
+				mc.id AS monitor_contact_id, mc.contact_id, c.name, c.email, c.email_checked_at,
+				c.email_2, c.email_2_checked_at, c.email_3, c.email_3_checked_at, c.email_4, c.email_4_checked_at,
+				c.notification_locale,
 				m.recipient_portal_expiry_days AS portal_availability_days,
 				COALESCE(cm.subject, mmt.subject) AS message_subject,
 				COALESCE(cm.body_text, mmt.body_text) AS message_body,
 				cpm.id AS portal_message_override_id,
 				cpm.body_text AS portal_message_override,
-				mpt.message_text AS portal_default_message,
 				mpt.intro_text AS portal_intro_text
 			FROM monitor_contacts mc
 			INNER JOIN monitors m ON m.id = mc.monitor_id
@@ -1071,7 +1098,7 @@ final class EscalationService
 		{
 			$recipientName = trim((string)($recipient['name'] ?? ''));
 
-			if (empty($recipient['email_checked_at']))
+			if (!EmailAddressCollection::HasChecked($recipient))
 			{
 				$issues[] = ['reason' => 'unchecked_recipient', 'recipient_name' => $recipientName];
 			}
@@ -1253,6 +1280,56 @@ final class EscalationService
 		}
 
 		return $queueId;
+	}
+
+	/** @brief Stores the checked address snapshot used by a safety-contact request. */
+	private function InsertSafetyRequestEmails(PDO $connection, int $requestId, array $emails): void
+	{
+		$insert = $connection->prepare('
+			INSERT INTO safety_contact_request_emails (safety_request_id, sort_order, email)
+			VALUES (:request_id, :sort_order, :email)
+		');
+
+		foreach ($emails as $index => $email)
+		{
+			$insert->execute([
+				'request_id' => $requestId,
+				'sort_order' => $index + 1,
+				'email' => $email,
+			]);
+		}
+	}
+
+	/** @return array<int, string> @brief Returns the snapshotted safety-request addresses. */
+	private function FindSafetyRequestEmails(PDO $connection, int $requestId, string $fallback): array
+	{
+		$statement = $connection->prepare('
+			SELECT email FROM safety_contact_request_emails
+			WHERE safety_request_id = :request_id
+			ORDER BY sort_order ASC
+		');
+		$statement->execute(['request_id' => $requestId]);
+		$emails = $statement->fetchAll(PDO::FETCH_COLUMN);
+
+		return is_array($emails) && $emails !== [] ? array_map('strval', $emails) : [$fallback];
+	}
+
+	/** @brief Stores the checked recipient addresses released with one portal delivery. */
+	private function InsertRecipientDeliveryEmails(PDO $connection, int $deliveryId, array $emails): void
+	{
+		$insert = $connection->prepare('
+			INSERT INTO recipient_release_delivery_emails (recipient_delivery_id, sort_order, email)
+			VALUES (:delivery_id, :sort_order, :email)
+		');
+
+		foreach ($emails as $index => $email)
+		{
+			$insert->execute([
+				'delivery_id' => $deliveryId,
+				'sort_order' => $index + 1,
+				'email' => $email,
+			]);
+		}
 	}
 
 	/** @brief Stores one expiring safety-link token as a hash inside the caller's transaction. */

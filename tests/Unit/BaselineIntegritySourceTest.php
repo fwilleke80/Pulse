@@ -22,13 +22,15 @@ final class BaselineIntegritySourceTest extends TestCase
 		$schema = (string)file_get_contents($root . '/database/migrations/001_initial_schema.sql');
 		$securityMigration = (string)file_get_contents($root . '/database/migrations/002_security_methods_and_owner_mail.sql');
 		$locationMigration = (string)file_get_contents($root . '/database/migrations/003_check_in_locations.sql');
+		$emailMigration = (string)file_get_contents($root . '/database/migrations/004_multiple_email_addresses.sql');
 
 		self::assertIsArray($migrations);
 		sort($migrations);
-		self::assertCount(3, $migrations);
+		self::assertCount(4, $migrations);
 		self::assertStringEndsWith('/001_initial_schema.sql', str_replace('\\', '/', $migrations[0]));
 		self::assertStringEndsWith('/002_security_methods_and_owner_mail.sql', str_replace('\\', '/', $migrations[1]));
 		self::assertStringEndsWith('/003_check_in_locations.sql', str_replace('\\', '/', $migrations[2]));
+		self::assertStringEndsWith('/004_multiple_email_addresses.sql', str_replace('\\', '/', $migrations[3]));
 		self::assertStringContainsString('CREATE TABLE recipient_release_deliveries', $schema);
 		self::assertStringContainsString('is_archived TINYINT(1) NOT NULL DEFAULT 0', $schema);
 		self::assertStringContainsString('CREATE TABLE system_status', $schema);
@@ -38,6 +40,7 @@ final class BaselineIntegritySourceTest extends TestCase
 		self::assertStringContainsString('CREATE TABLE user_passkey_credentials', $securityMigration);
 		self::assertStringContainsString('CREATE TABLE quick_checkin_tokens', $securityMigration);
 		self::assertStringContainsString('CREATE TABLE check_in_locations', $locationMigration);
+		self::assertStringContainsString('email_4_checked_at', $emailMigration);
 		self::assertStringContainsString('CREATE TABLE recipient_release_locations', $locationMigration);
 	}
 

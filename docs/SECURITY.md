@@ -74,7 +74,7 @@ If an authenticated user's account is deleted or deactivated, later authenticate
 
 ## Contact addresses
 
-Pulse's **address checked** flag means only that the signed-in owner reviewed the email address.
+Pulse's per-address **checked** flag means only that the signed-in owner reviewed that specific email address. Contacts can be saved without checking an address, but unchecked addresses are excluded from owner, safety-contact, recipient, and portal-code mail delivery.
 
 It does not:
 
@@ -117,7 +117,7 @@ They cannot accelerate recipient release, inspect recipient messages, or access 
 
 Every final recipient delivery receives its own random portal token. Pulse stores the token hash in the delivery record; the raw URL necessarily exists in the outgoing notification until that mail is delivered.
 
-Opening the portal link does not reveal document metadata or content. The recipient must authenticate with an access code sent to the configured recipient email address.
+Opening the portal link does not reveal document metadata or content. The recipient must authenticate with an access code sent separately to every checked email address snapshotted for that recipient delivery.
 
 Access codes:
 
@@ -128,7 +128,7 @@ Access codes:
 - are request/attempt rate-limited;
 - invalidate older unused codes when a later code is successfully issued.
 
-The portal does not display the configured recipient email address. Code-request responses are intentionally generic so the page does not reveal internal mail/rate-limit state.
+The portal does not display the configured recipient email addresses. Code-request responses are intentionally generic so the page does not reveal internal mail/rate-limit state.
 
 A successful code verification creates a session entry scoped to that specific delivery. Authenticating one recipient delivery does not authenticate another.
 

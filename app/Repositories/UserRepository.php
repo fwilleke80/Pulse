@@ -12,6 +12,7 @@ namespace Pulse\Repositories;
 
 use PDO;
 use Pulse\Core\Database;
+use Pulse\Core\EmailAddressCollection;
 
 /**
  * @brief Repository for user accounts.
@@ -36,10 +37,13 @@ class UserRepository
 	 */
 	public function FindByEmail(string $email): ?array
 	{
-		$sql = 'SELECT * FROM users WHERE email = :email LIMIT 1';
+		$sql = 'SELECT * FROM users WHERE email = :email_1 OR email_2 = :email_2 OR email_3 = :email_3 OR email_4 = :email_4 LIMIT 1';
 		$statement = $this->_database->GetConnection()->prepare($sql);
 		$statement->execute([
-			'email' => $email,
+			'email_1' => $email,
+			'email_2' => $email,
+			'email_3' => $email,
+			'email_4' => $email,
 		]);
 
 		$user = $statement->fetch(PDO::FETCH_ASSOC);
@@ -71,10 +75,13 @@ class UserRepository
 	 */
 	public function FindByEmailExcludingUserId(int $excludeUserId, string $email): ?array
 	{
-		$sql = 'SELECT * FROM users WHERE email = :email AND id <> :id LIMIT 1';
+		$sql = 'SELECT * FROM users WHERE (email = :email_1 OR email_2 = :email_2 OR email_3 = :email_3 OR email_4 = :email_4) AND id <> :id LIMIT 1';
 		$statement = $this->_database->GetConnection()->prepare($sql);
 		$statement->execute([
-			'email' => $email,
+			'email_1' => $email,
+			'email_2' => $email,
+			'email_3' => $email,
+			'email_4' => $email,
 			'id' => $excludeUserId,
 		]);
 
@@ -86,24 +93,55 @@ class UserRepository
 	 * @brief Updates the profile data of a user.
 	 * @param int $userId User ID.
 	 * @param string $displayName Display name.
-	 * @param string $email Email address.
+	 * @param array<int, array{email: string, checked: bool}> $addresses Owner email addresses.
 	 * @param string $notificationLocale Language for notifications sent to this user.
 	 * @param string $websiteLocale Persistent website/UI language.
 	 */
-	public function UpdateProfile(int $userId, string $displayName, string $email, string $notificationLocale, string $websiteLocale): void
+	public function UpdateProfile(int $userId, string $displayName, array $addresses, string $notificationLocale, string $websiteLocale): void
 	{
+		$bindings = $this->AddressBindings($addresses);
 		$sql = 'UPDATE users
-			SET display_name = :display_name, email = :email, notification_locale = :notification_locale, website_locale = :website_locale
+			SET display_name = :display_name,
+				email = :email,
+				email_checked_at = CASE WHEN :email_checked = 1 THEN UTC_TIMESTAMP() ELSE NULL END,
+				email_2 = :email_2,
+				email_2_checked_at = CASE WHEN :email_2_checked = 1 THEN UTC_TIMESTAMP() ELSE NULL END,
+				email_3 = :email_3,
+				email_3_checked_at = CASE WHEN :email_3_checked = 1 THEN UTC_TIMESTAMP() ELSE NULL END,
+				email_4 = :email_4,
+				email_4_checked_at = CASE WHEN :email_4_checked = 1 THEN UTC_TIMESTAMP() ELSE NULL END,
+				notification_locale = :notification_locale,
+				website_locale = :website_locale
 			WHERE id = :id';
 
 		$statement = $this->_database->GetConnection()->prepare($sql);
-		$statement->execute([
+		$statement->execute(array_merge([
 			'display_name' => $displayName,
-			'email' => $email,
 			'notification_locale' => $notificationLocale,
 			'website_locale' => $websiteLocale,
 			'id' => $userId,
-		]);
+		], $bindings));
+	}
+
+	/**
+	 * @brief Builds fixed SQL bindings for the compacted four-address model.
+	 * @param array<int, array{email: string, checked: bool}> $addresses Normalized addresses.
+	 * @return array<string, string|int|null>
+	 */
+	private function AddressBindings(array $addresses): array
+	{
+		$bindings = [];
+
+		for ($slot = 1; $slot <= EmailAddressCollection::MAX_ADDRESSES; $slot++)
+		{
+			$address = $addresses[$slot - 1] ?? null;
+			$emailField = EmailAddressCollection::EmailField($slot);
+			$checkedField = $slot === 1 ? 'email_checked' : 'email_' . $slot . '_checked';
+			$bindings[$emailField] = is_array($address) ? (string)$address['email'] : null;
+			$bindings[$checkedField] = is_array($address) && !empty($address['checked']) ? 1 : 0;
+		}
+
+		return $bindings;
 	}
 
 	/**

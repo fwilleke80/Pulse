@@ -425,14 +425,14 @@ document.addEventListener('DOMContentLoaded', function ()
 
 	for (const email of document.querySelectorAll('[data-contact-email]'))
 	{
-		const form = email.closest('form');
-		const checked = form ? form.querySelector('[data-email-checked]') : null;
-		const suggestion = form ? form.querySelector('[data-email-suggestion]') : null;
+		const card = email.closest('[data-email-address-card]');
+		const checked = card ? card.querySelector('[data-email-checked]') : null;
+		const suggestion = card ? card.querySelector('[data-email-suggestion]') : null;
 		const originalEmail = email.dataset.originalEmail || '';
 
 		email.addEventListener('input', function ()
 		{
-			if (checked && originalEmail !== '' && email.value.trim() !== originalEmail)
+			if (checked && email.value.trim() !== originalEmail)
 			{
 				checked.checked = false;
 			}

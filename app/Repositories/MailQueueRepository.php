@@ -149,14 +149,28 @@ final class MailQueueRepository
 		$statement->execute();
 		$recovered = $statement->rowCount();
 
+		$redact = $this->_database->GetConnection()->prepare('
+			UPDATE mail_queue
+			SET body_text = \'[Access code redacted after final lease failure]\', updated_at = UTC_TIMESTAMP()
+			WHERE mail_type = \'recipient_access_code\' AND status = \'failed\'
+		');
+		$redact->execute();
+
 		$invalidate = $this->_database->GetConnection()->prepare('
 			UPDATE recipient_portal_codes rpc
 			INNER JOIN mail_queue mq ON mq.recipient_portal_code_id = rpc.id
-			SET rpc.invalidated_at = COALESCE(rpc.invalidated_at, UTC_TIMESTAMP()), rpc.updated_at = UTC_TIMESTAMP(),
-				mq.body_text = \'[Access code redacted after final lease failure]\', mq.updated_at = UTC_TIMESTAMP()
+			SET rpc.invalidated_at = COALESCE(rpc.invalidated_at, UTC_TIMESTAMP()), rpc.updated_at = UTC_TIMESTAMP()
 			WHERE mq.mail_type = \'recipient_access_code\'
 				AND mq.status = \'failed\'
 				AND rpc.used_at IS NULL
+				AND NOT EXISTS
+				(
+					SELECT 1
+					FROM mail_queue sibling
+					WHERE sibling.recipient_portal_code_id = mq.recipient_portal_code_id
+						AND sibling.id <> mq.id
+						AND sibling.status IN (\'queued\', \'retrying\', \'processing\', \'sent\')
+				)
 		');
 		$invalidate->execute();
 
@@ -269,8 +283,8 @@ final class MailQueueRepository
 				INNER JOIN check_cycles cc ON cc.id = rrd.check_cycle_id
 				INNER JOIN monitors m ON m.id = rrd.monitor_id
 				WHERE rrd.id = :delivery_id
-					AND rrd.status = \'queued\'
-					AND rr.status IN (\'pending\', \'partial\', \'failed\')
+					AND rrd.status IN (\'queued\', \'sent\', \'failed\')
+					AND rr.status IN (\'pending\', \'partial\', \'sent\', \'failed\')
 					AND cc.status IN (\'overdue\', \'escalated\')
 					AND m.is_paused = 0
 			');
@@ -978,7 +992,7 @@ final class MailQueueRepository
 				END,
 				portal_released_at = COALESCE(portal_released_at, :portal_released_at),
 				last_error = NULL, updated_at = :updated_at
-			WHERE id = :id AND status IN (\'queued\', \'cancelled\')
+			WHERE id = :id AND status IN (\'queued\', \'cancelled\', \'failed\')
 		');
 		$update->execute([
 			'sent_at' => $now,
@@ -1078,6 +1092,27 @@ final class MailQueueRepository
 
 		if ($mailType === 'recipient_access_code')
 		{
+			$redact = $connection->prepare('UPDATE mail_queue SET body_text = \'[Access code redacted after final failure]\' WHERE id = :id');
+			$redact->execute(['id' => (int)$job['id']]);
+			$siblings = $connection->prepare('
+				SELECT COUNT(*) FROM mail_queue
+				WHERE recipient_portal_code_id = :code_id
+					AND id <> :queue_id
+					AND status IN (\'queued\', \'retrying\', \'processing\', \'sent\')
+			');
+			$siblings->execute([
+				'code_id' => (int)$job['recipient_portal_code_id'],
+				'queue_id' => (int)$job['id'],
+			]);
+
+			if ((int)$siblings->fetchColumn() > 0)
+			{
+				$this->InsertAudit($connection, $job, 'recipient.portal_code_address_failed', $now, [
+					'delivery_id' => $job['recipient_delivery_id'],
+				]);
+				return;
+			}
+
 			$update = $connection->prepare('
 				UPDATE recipient_portal_codes
 				SET invalidated_at = COALESCE(invalidated_at, :invalidated_at), updated_at = :updated_at
@@ -1088,8 +1123,6 @@ final class MailQueueRepository
 				'updated_at' => $now,
 				'id' => (int)$job['recipient_portal_code_id'],
 			]);
-			$redact = $connection->prepare('UPDATE mail_queue SET body_text = \'[Access code redacted after final failure]\' WHERE id = :id');
-			$redact->execute(['id' => (int)$job['id']]);
 			$this->InsertAudit($connection, $job, 'recipient.portal_code_failed', $now, [
 				'delivery_id' => $job['recipient_delivery_id'],
 			]);
@@ -1102,6 +1135,27 @@ final class MailQueueRepository
 		}
 
 		$deliveryId = (int)$job['recipient_delivery_id'];
+		$siblings = $connection->prepare('
+			SELECT COUNT(*) FROM mail_queue
+			WHERE recipient_delivery_id = :delivery_id
+				AND mail_type = \'recipient_notification\'
+				AND id <> :queue_id
+				AND status IN (\'queued\', \'retrying\', \'processing\', \'sent\')
+		');
+		$siblings->execute([
+			'delivery_id' => $deliveryId,
+			'queue_id' => (int)$job['id'],
+		]);
+
+		if ((int)$siblings->fetchColumn() > 0)
+		{
+			$this->InsertAudit($connection, $job, 'mail.recipient_address_failed', $now, [
+				'delivery_id' => $deliveryId,
+				'contact_id' => $job['contact_id'],
+			]);
+			return;
+		}
+
 		$update = $connection->prepare('
 			UPDATE recipient_release_deliveries
 			SET status = \'failed\', last_error = :last_error, failed_at = :failed_at, updated_at = :updated_at

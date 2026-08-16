@@ -118,21 +118,10 @@ final class RecipientController extends BaseController
 			(string)($recipient['default_message_subject'] ?? ''),
 			(string)($recipient['default_message_body'] ?? '')
 		);
-		$portalOverrideEnabled = !empty($recipient['portal_override_id']);
 		$activeDelivery = $this->_recipientRepository->FindLatestAvailableDeliveryForUser((int)$recipient['id'], (int)$user['id']);
 		$activeDeliveryDocuments = is_array($activeDelivery)
 			? $this->_recipientRepository->FindReleasedDocumentsForUser((int)$activeDelivery['id'], (int)$recipient['id'], (int)$user['id'])
 			: [];
-		$defaultPortalPreview = $this->_composer->ComposeRecipientPortalContent([
-			'recipient_name' => (string)$recipient['name'],
-			'notification_locale' => (string)$recipient['notification_locale'],
-			'owner_name' => (string)$recipient['owner_name'],
-			'monitor_name' => (string)$recipient['monitor_name'],
-			'portal_message_override_enabled' => false,
-			'portal_default_message' => (string)($recipient['default_portal_message'] ?? ''),
-			'portal_intro_text' => (string)($recipient['default_portal_intro'] ?? ''),
-		]);
-
 		return $this->_view->Render('recipients.edit', [
 			'user' => $user,
 			'recipient' => $recipient,
@@ -145,7 +134,6 @@ final class RecipientController extends BaseController
 			'defaultTemplate' => $defaultTemplate,
 			'messageIssues' => $messageIssues,
 			'defaultMessageIssues' => $defaultMessageIssues,
-			'defaultPortalPreview' => $defaultPortalPreview,
 			'activeDelivery' => $activeDelivery,
 			'activeDeliveryDocuments' => $activeDeliveryDocuments,
 			'activeSection' => $this->ActiveSection(),
@@ -174,7 +162,6 @@ final class RecipientController extends BaseController
 			'monitor_name' => (string)$recipient['monitor_name'],
 			'portal_message_override_enabled' => !empty($recipient['portal_override_id']),
 			'portal_message_override' => (string)($recipient['portal_override_body'] ?? ''),
-			'portal_default_message' => (string)($recipient['default_portal_message'] ?? ''),
 			'portal_intro_text' => (string)($recipient['default_portal_intro'] ?? ''),
 		]);
 		[$documents, $availableDocumentCount, $totalDownloadBytes] = $this->PreparePreviewDocuments(
@@ -315,6 +302,12 @@ final class RecipientController extends BaseController
 		$portalBody = $returnSection === 'portal'
 			? $this->_request->PostString('portal_message_body', 1000000, false)
 			: (string)($recipient['portal_override_body'] ?? '');
+
+		if ($returnSection === 'portal' && $usePortalOverride && trim($portalBody) === '')
+		{
+			$this->Flash('error', __('recipients.portal_message.flash.body_required'));
+			$this->Redirect('/monitors/recipients/edit?id=' . $monitorContactId . '&section=portal');
+		}
 		$documentIds = $returnSection === 'documents'
 			? $this->_request->PostIntArray('document_ids')
 			: $this->_recipientRepository->FindAssignedDocumentIdsForUser($monitorContactId, $userId);

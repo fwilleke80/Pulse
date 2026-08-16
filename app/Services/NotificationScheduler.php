@@ -15,6 +15,7 @@ use DateTimeImmutable;
 use DateTimeZone;
 use PDO;
 use Pulse\Core\Database;
+use Pulse\Core\EmailAddressCollection;
 use Pulse\Core\Logger;
 use Pulse\Repositories\MailQueueRepository;
 use Pulse\Repositories\MessageRepository;
@@ -82,8 +83,10 @@ final class NotificationScheduler
 
 				if ($scheduledAt <= $now)
 				{
-					$this->EnqueueDueNotice($cycle, $scheduledAt);
-					$dueNoticesReady++;
+					if ($this->EnqueueDueNotice($cycle, $scheduledAt) !== null)
+					{
+						$dueNoticesReady++;
+					}
 				}
 
 				continue;
@@ -101,21 +104,19 @@ final class NotificationScheduler
 				{
 					$cycle = $this->PrepareOwnerMailCycle($cycle, 'owner_reminder');
 					$content = $this->_composer->ComposeOwnerReminder($cycle, $reminderNumber);
-					$this->_queue->Enqueue([
-						'user_id' => (int)$cycle['user_id'],
-						'check_cycle_id' => (int)$cycle['id'],
-						'monitor_id' => (int)$cycle['monitor_id'],
-						'contact_id' => null,
-						'mail_type' => 'owner_reminder',
-						'idempotency_key' => 'owner-reminder:' . (int)$cycle['id'] . ':' . $reminderNumber,
-						'reminder_number' => $reminderNumber,
-						'recipient_email' => (string)$cycle['email'],
-						'subject' => $content['subject'],
-						'body_text' => $content['body_text'],
-						'max_attempts' => $this->_maxAttempts,
-						'available_at' => $scheduledAt->format('Y-m-d H:i:s'),
-					]);
-					$remindersReady++;
+					$queued = $this->QueueOwnerMessages(
+						$cycle,
+						'owner_reminder',
+						'owner-reminder:' . (int)$cycle['id'] . ':' . $reminderNumber,
+						$content,
+						$scheduledAt,
+						$reminderNumber
+					);
+
+					if ($queued !== [])
+					{
+						$remindersReady++;
+					}
 				}
 
 				continue;
@@ -193,7 +194,12 @@ final class NotificationScheduler
 		}
 
 		$jobId = $this->EnqueueDueNotice($cycle, new DateTimeImmutable('now', new DateTimeZone('UTC')));
-		$this->_queue->PrepareImmediateDebugRetry($jobId);
+
+		if ($jobId !== null)
+		{
+			$this->_queue->PrepareImmediateDebugRetry($jobId);
+		}
+
 		return $jobId;
 	}
 
@@ -239,7 +245,10 @@ final class NotificationScheduler
 				m.user_id,
 				m.name AS monitor_name,
 				m.response_window_days,
-				u.email,
+				u.email, u.email_checked_at,
+				u.email_2, u.email_2_checked_at,
+				u.email_3, u.email_3_checked_at,
+				u.email_4, u.email_4_checked_at,
 				u.display_name,
 				u.notification_locale
 			FROM check_cycles cc
@@ -277,7 +286,10 @@ final class NotificationScheduler
 				m.user_id,
 				m.name AS monitor_name,
 				m.response_window_days,
-				u.email,
+				u.email, u.email_checked_at,
+				u.email_2, u.email_2_checked_at,
+				u.email_3, u.email_3_checked_at,
+				u.email_4, u.email_4_checked_at,
 				u.display_name,
 				u.notification_locale
 			FROM check_cycles cc
@@ -300,25 +312,58 @@ final class NotificationScheduler
 	}
 
 	/** @brief Freezes and idempotently queues an initial due notice. */
-	private function EnqueueDueNotice(array $cycle, DateTimeImmutable $availableAt): int
+	private function EnqueueDueNotice(array $cycle, DateTimeImmutable $availableAt): ?int
 	{
 		$cycle = $this->PrepareOwnerMailCycle($cycle, 'owner_due_notice');
 		$content = $this->_composer->ComposeOwnerDueNotice($cycle);
+		$ids = $this->QueueOwnerMessages(
+			$cycle,
+			'owner_due_notice',
+			'owner-due-notice:' . (int)$cycle['id'],
+			$content,
+			$availableAt,
+			null
+		);
 
-		return $this->_queue->Enqueue([
-			'user_id' => (int)$cycle['user_id'],
-			'check_cycle_id' => (int)$cycle['id'],
-			'monitor_id' => (int)$cycle['monitor_id'],
-			'contact_id' => null,
-			'mail_type' => 'owner_due_notice',
-			'idempotency_key' => 'owner-due-notice:' . (int)$cycle['id'],
-			'reminder_number' => null,
-			'recipient_email' => (string)$cycle['email'],
-			'subject' => $content['subject'],
-			'body_text' => $content['body_text'],
-			'max_attempts' => $this->_maxAttempts,
-			'available_at' => $availableAt->format('Y-m-d H:i:s'),
-		]);
+		return $ids[0] ?? null;
+	}
+
+	/**
+	 * @brief Queues one logical owner message independently to every checked address.
+	 * @param array<string, mixed> $cycle Owner check cycle.
+	 * @param array{subject: string, body_text: string} $content Composed immutable content.
+	 * @return array<int, int> Queue job IDs.
+	 */
+	private function QueueOwnerMessages(
+		array $cycle,
+		string $mailType,
+		string $idempotencyKey,
+		array $content,
+		DateTimeImmutable $availableAt,
+		?int $reminderNumber
+	): array
+	{
+		$ids = [];
+
+		foreach (EmailAddressCollection::Checked($cycle) as $index => $email)
+		{
+			$ids[] = $this->_queue->Enqueue([
+				'user_id' => (int)$cycle['user_id'],
+				'check_cycle_id' => (int)$cycle['id'],
+				'monitor_id' => (int)$cycle['monitor_id'],
+				'contact_id' => null,
+				'mail_type' => $mailType,
+				'idempotency_key' => $index === 0 ? $idempotencyKey : $idempotencyKey . ':address' . ($index + 1),
+				'reminder_number' => $reminderNumber,
+				'recipient_email' => $email,
+				'subject' => $content['subject'],
+				'body_text' => $content['body_text'],
+				'max_attempts' => $this->_maxAttempts,
+				'available_at' => $availableAt->format('Y-m-d H:i:s'),
+			]);
+		}
+
+		return $ids;
 	}
 
 

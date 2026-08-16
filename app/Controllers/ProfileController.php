@@ -10,6 +10,9 @@ declare(strict_types=1);
 
 namespace Pulse\Controllers;
 
+use InvalidArgumentException;
+use Pulse\Core\EmailAddressCollection;
+use Pulse\Core\EmailAddressValidator;
 use Pulse\Core\Logger;
 use Pulse\Core\NotificationLanguage;
 use Pulse\Core\Request;
@@ -92,22 +95,25 @@ class ProfileController extends BaseController
 		$userId = (int)$user['id'];
 
 		$displayName = $this->_request->PostString('display_name', 255);
-		$email = $this->_request->PostString('email', 255);
+		$addresses = $this->PostedEmailAddresses();
 		$notificationLocale = $this->_request->PostString('notification_locale', 10);
 		$websiteLocale = $this->_request->PostString('website_locale', 10);
 
-		if ($displayName === '' || $email === '')
+		if ($displayName === '' || $addresses === [])
 		{
 			$this->_logger->Warning('Profile update failed due to missing fields', ['user_id' => $userId]);
 			$this->Flash('error', __('profile.flash.update.required'));
 			$this->Redirect('/profile?tab=profile');
 		}
 
-		if (!filter_var($email, FILTER_VALIDATE_EMAIL))
+		foreach ($addresses as $address)
 		{
-			$this->_logger->Warning('Profile update failed due to invalid email format', ['user_id' => $userId]);
-			$this->Flash('error', __('profile.flash.update.invalid_email'));
-			$this->Redirect('/profile?tab=profile');
+			if (!EmailAddressValidator::IsValid((string)$address['email']))
+			{
+				$this->_logger->Warning('Profile update failed due to invalid email format', ['user_id' => $userId]);
+				$this->Flash('error', __('profile.flash.update.invalid_email'));
+				$this->Redirect('/profile?tab=profile');
+			}
 		}
 
 		if (!$this->_notificationLanguage->IsSupported($notificationLocale) || !$this->_notificationLanguage->IsSupported($websiteLocale))
@@ -117,16 +123,17 @@ class ProfileController extends BaseController
 			$this->Redirect('/profile?tab=profile');
 		}
 
-		$existingUser = $this->_userRepository->FindByEmailExcludingUserId($userId, $email);
-
-		if ($existingUser !== null)
+		foreach ($addresses as $address)
 		{
-			$this->_logger->Warning('Profile update failed due to email already taken', ['user_id' => $userId]);
-			$this->Flash('error', __('profile.flash.update.email_taken'));
-			$this->Redirect('/profile?tab=profile');
+			if ($this->_userRepository->FindByEmailExcludingUserId($userId, (string)$address['email']) !== null)
+			{
+				$this->_logger->Warning('Profile update failed due to email already taken', ['user_id' => $userId]);
+				$this->Flash('error', __('profile.flash.update.email_taken'));
+				$this->Redirect('/profile?tab=profile');
+			}
 		}
 
-		$this->_userRepository->UpdateProfile($userId, $displayName, $email, $notificationLocale, $websiteLocale);
+		$this->_userRepository->UpdateProfile($userId, $displayName, $addresses, $notificationLocale, $websiteLocale);
 		$this->_session->Set('locale', $websiteLocale);
 		WebsiteLanguagePreference::Write($websiteLocale, $this->_request->IsSecure());
 
@@ -190,5 +197,34 @@ class ProfileController extends BaseController
 	{
 		$tab = $this->_request->QueryString('tab', 20);
 		return in_array($tab, ['profile', 'security', 'password'], true) ? $tab : 'profile';
+	}
+
+	/**
+	 * @brief Reads, deduplicates, and compacts the four owner email-address cards.
+	 * @return array<int, array{email: string, checked: bool}>
+	 */
+	private function PostedEmailAddresses(): array
+	{
+		$addresses = [];
+
+		for ($slot = 1; $slot <= EmailAddressCollection::MAX_ADDRESSES; $slot++)
+		{
+			$field = EmailAddressCollection::EmailField($slot);
+			$checkedField = $slot === 1 ? 'email_checked' : 'email_' . $slot . '_checked';
+			$addresses[] = [
+				'email' => $this->_request->PostString($field, 255),
+				'checked' => $this->_request->PostBool($checkedField),
+			];
+		}
+
+		try
+		{
+			return EmailAddressCollection::Normalize($addresses);
+		}
+		catch (InvalidArgumentException)
+		{
+			$this->Flash('error', __('profile.flash.update.duplicate_email'));
+			$this->Redirect('/profile?tab=profile');
+		}
 	}
 }

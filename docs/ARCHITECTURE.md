@@ -237,10 +237,10 @@ When final escalation is staged, Pulse creates a release and one independent `re
 
 The delivery snapshots include the information that should not later change implicitly:
 
-- recipient identity/address/language;
+- recipient identity, checked-address snapshot, and language;
 - final composed notification subject/body;
 - portal availability/expiry policy;
-- resolved personal portal message/introduction;
+- optional recipient-specific personal portal message and monitor-wide introduction;
 - authorized document set;
 - recipient-facing document titles/descriptions;
 - text-document content;
@@ -341,9 +341,11 @@ This is private authenticated storage, not encryption at rest.
 - safety invitation email;
 - safety reminder email.
 
-`monitor_portal_templates` stores language-specific portal message/introduction defaults.
+`monitor_portal_templates` stores the language-specific monitor-wide page introduction. Personal portal messages exist only as recipient-specific overrides attached to the monitor-contact assignment.
 
-Recipient-specific overrides are attached to the monitor-contact assignment. At release time, Pulse resolves the effective content for that recipient and snapshots the Markdown source into the delivery. Portal rendering happens from that immutable source snapshot. Mail queue rows likewise retain the composed Markdown-capable body source; SMTP delivery derives `text/plain` and `text/html` MIME alternatives from it.
+Recipient-specific overrides are attached to the monitor-contact assignment. At release time, Pulse includes the personal message only when that recipient's option is enabled and its text is non-empty. Portal rendering happens from the delivery snapshot. Mail queue rows likewise retain the composed Markdown-capable body source; SMTP delivery derives `text/plain` and `text/html` MIME alternatives from it.
+
+Owners and contacts have four bounded email slots, each with its own checked timestamp. Safety requests and recipient releases copy the checked addresses into dedicated snapshot tables. One logical notification produces an independent queue row per snapshotted address while lifecycle state continues to represent the person/delivery rather than treating each mailbox as a separate recipient.
 
 `Translator` falls back to English for missing keys in an additional language so a partial translation remains usable during development.
 

@@ -289,7 +289,7 @@ ob_start();
 			<?php endif; ?>
 
 			<?php if ($mailEnabled): ?>
-				<p><?= e__('profile.notifications.test.hint', ['email' => (string)$user['email']]) ?></p>
+				<p><?= e__('profile.notifications.test.hint') ?></p>
 				<form method="post" action="<?= e($base_url) ?>/administration/mail/test"><?= csrf_field() ?><button type="submit"><?= e__('profile.notifications.test.submit') ?></button></form>
 			<?php else: ?>
 				<div class="notification-disabled-warning" id="mail-disabled-help" role="alert"><strong><?= e__('administration.mail.disabled.heading') ?></strong><span><?= e__('administration.mail.disabled.message') ?></span></div>

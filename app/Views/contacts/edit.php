@@ -15,6 +15,7 @@ declare(strict_types=1);
 /** @var string $notificationLocale */
 
 ob_start();
+$addresses = \Pulse\Core\EmailAddressCollection::FromRow($contact);
 ?>
 
 <h1><?= e__('contacts.edit.heading') ?></h1>
@@ -33,16 +34,22 @@ ob_start();
 		value="<?= htmlspecialchars((string)$contact['name'], ENT_QUOTES, 'UTF-8') ?>"
 		required>
 
-	<label for="email"><?= e__('contacts.edit.email') ?></label>
-	<input
-		type="email"
-		id="email"
-		name="email"
-		data-contact-email
-		data-original-email="<?= htmlspecialchars((string)$contact['email'], ENT_QUOTES, 'UTF-8') ?>"
-		value="<?= htmlspecialchars((string)$contact['email'], ENT_QUOTES, 'UTF-8') ?>"
-		required>
-	<p class="email-suggestion is-hidden" data-email-suggestion data-suggestion-template="<?= e__('contacts.email.suggestion') ?>" role="status"></p>
+	<div class="email-address-grid">
+		<?php for ($slot = 1; $slot <= \Pulse\Core\EmailAddressCollection::MAX_ADDRESSES; $slot++): ?>
+			<?php
+			$emailField = \Pulse\Core\EmailAddressCollection::EmailField($slot);
+			$checkedField = $slot === 1 ? 'email_checked' : 'email_' . $slot . '_checked';
+			$address = $addresses[$slot - 1] ?? ['email' => '', 'checked' => false];
+			?>
+			<div class="email-address-card" data-email-address-card>
+				<label for="<?= e($emailField) ?>"><?= e__('contacts.edit.email') ?></label>
+				<input type="email" id="<?= e($emailField) ?>" name="<?= e($emailField) ?>" data-contact-email data-original-email="<?= e((string)$address['email']) ?>" value="<?= e((string)$address['email']) ?>"<?= $slot === 1 ? ' required' : '' ?>>
+				<p class="email-suggestion is-hidden" data-email-suggestion data-suggestion-template="<?= e__('contacts.email.suggestion') ?>" role="status"></p>
+				<label class="compact-check"><input type="checkbox" name="<?= e($checkedField) ?>" data-email-checked<?= !empty($address['checked']) ? ' checked' : '' ?>> <?= e__('contacts.email_checked.label') ?></label>
+			</div>
+		<?php endfor; ?>
+	</div>
+	<small><?= e__('contacts.email_checked.hint') ?></small>
 	<label for="notification_locale"><?= e__('contacts.notification_language') ?></label>
 	<select id="notification_locale" name="notification_locale" required>
 		<?php foreach ($notificationLocales as $localeOption): ?>
@@ -52,18 +59,6 @@ ob_start();
 		<?php endforeach; ?>
 	</select>
 	<small><?= e__('contacts.notification_language_hint') ?></small>
-	<div class="checkbox-row contact-email-check">
-		<label>
-			<input
-				type="checkbox"
-				name="email_checked"
-				data-email-checked
-				<?= !empty($contact['email_checked_at']) ? 'checked' : '' ?>
-				required>
-			<?= e__('contacts.email_checked.label') ?>
-		</label>
-		<small><?= e__('contacts.email_checked.hint') ?></small>
-	</div>
 
 	<label for="cell_phone"><?= e__('contacts.edit.cell_phone') ?></label>
 	<input

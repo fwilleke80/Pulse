@@ -278,21 +278,8 @@ final class NotificationComposer
 		];
 		$overrideEnabled = !empty($recipient['portal_message_override_enabled']);
 		$overrideText = (string)($recipient['portal_message_override'] ?? '');
-		$defaultText = (string)($recipient['portal_default_message'] ?? '');
 		$introText = (string)($recipient['portal_intro_text'] ?? '');
-
-		if ($overrideEnabled)
-		{
-			$messageText = $overrideText;
-		}
-		elseif (trim($defaultText) !== '')
-		{
-			$messageText = $defaultText;
-		}
-		else
-		{
-			$messageText = $this->Translate($locale, 'portal.access.default_message', []);
-		}
+		$messageText = $overrideEnabled && trim($overrideText) !== '' ? $overrideText : '';
 
 		if (trim($introText) === '')
 		{
@@ -314,7 +301,7 @@ final class NotificationComposer
 	{
 		$locale = $this->_languages->Resolve($locale);
 		return [
-			'message_text' => $this->Translate($locale, 'portal.access.default_message', []),
+			'message_text' => '',
 			'intro_text' => $this->Translate($locale, 'portal.access.intro', []),
 		];
 	}

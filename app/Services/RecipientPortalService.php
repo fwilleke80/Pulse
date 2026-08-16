@@ -99,23 +99,35 @@ final class RecipientPortalService
 
 		try
 		{
-			return $this->_mailQueueRepository->Enqueue([
-				'user_id' => (int)$delivery['user_id'],
-				'check_cycle_id' => (int)$delivery['check_cycle_id'],
-				'monitor_id' => (int)$delivery['monitor_id'],
-				'contact_id' => $delivery['contact_id'],
-				'safety_request_id' => null,
-				'recipient_delivery_id' => (int)$delivery['delivery_id'],
-				'recipient_portal_code_id' => $codeId,
-				'mail_type' => 'recipient_access_code',
-				'idempotency_key' => 'recipient-access-code:' . (int)$delivery['delivery_id'] . ':' . $codeId,
-				'reminder_number' => null,
-				'recipient_email' => (string)$delivery['recipient_email'],
-				'subject' => $content['subject'],
-				'body_text' => $content['body_text'],
-				'max_attempts' => $this->_maxMailAttempts,
-				'available_at' => gmdate('Y-m-d H:i:s'),
-			]);
+			$queueIds = [];
+			$emails = $this->_portalRepository->FindEmailsForDelivery(
+				(int)$delivery['delivery_id'],
+				(string)$delivery['recipient_email']
+			);
+
+			foreach ($emails as $index => $email)
+			{
+				$key = 'recipient-access-code:' . (int)$delivery['delivery_id'] . ':' . $codeId;
+				$queueIds[] = $this->_mailQueueRepository->Enqueue([
+					'user_id' => (int)$delivery['user_id'],
+					'check_cycle_id' => (int)$delivery['check_cycle_id'],
+					'monitor_id' => (int)$delivery['monitor_id'],
+					'contact_id' => $delivery['contact_id'],
+					'safety_request_id' => null,
+					'recipient_delivery_id' => (int)$delivery['delivery_id'],
+					'recipient_portal_code_id' => $codeId,
+					'mail_type' => 'recipient_access_code',
+					'idempotency_key' => $index === 0 ? $key : $key . ':address' . ($index + 1),
+					'reminder_number' => null,
+					'recipient_email' => $email,
+					'subject' => $content['subject'],
+					'body_text' => $content['body_text'],
+					'max_attempts' => $this->_maxMailAttempts,
+					'available_at' => gmdate('Y-m-d H:i:s'),
+				]);
+			}
+
+			return $queueIds[0] ?? null;
 		}
 		catch (Throwable $throwable)
 		{

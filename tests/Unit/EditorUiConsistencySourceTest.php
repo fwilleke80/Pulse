@@ -77,15 +77,19 @@ final class EditorUiConsistencySourceTest extends TestCase
 		$this->assertGreaterThan($reminderBody, $reminderHelp);
 	}
 
-	/** @brief Ensures each portal content field exposes its own nearby Pulse default disclosure. */
-	public function testPortalContentFieldsHaveSeparateDefaultDisclosures(): void
+	/** @brief Ensures monitor-wide portal content contains only the page introduction. */
+	public function testMonitorPortalContentContainsOnlyPageIntroduction(): void
 	{
-		$view = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Views/monitors/edit.php');
-		$portalSection = strstr($view, 'id="portal_message_');
+		$root = dirname(__DIR__, 2);
+		$view = (string)file_get_contents($root . '/app/Views/monitors/edit.php');
+		$controller = (string)file_get_contents($root . '/app/Controllers/MonitorController.php');
+		$portalSection = strstr($view, 'data-subtab-panel="portal"');
 		$this->assertNotFalse($portalSection);
-		$this->assertGreaterThanOrEqual(2, substr_count((string)$portalSection, 'mail-default-disclosure'));
-		$this->assertStringContainsString('$portalDefault[\'message_text\']', (string)$portalSection);
-		$this->assertStringContainsString('$portalDefault[\'intro_text\']', (string)$portalSection);
+		$this->assertStringNotContainsString('id="portal_message_', (string)$portalSection);
+		$this->assertStringNotContainsString('$portalDefault[\'message_text\']', (string)$portalSection);
+		$this->assertStringNotContainsString("PostString('portal_message_'", $controller);
+		$this->assertStringContainsString('id="portal_intro_', (string)$portalSection);
+		$this->assertStringContainsString('$portalBuiltIn[\'intro_text\']', (string)$portalSection);
 	}
 
 }

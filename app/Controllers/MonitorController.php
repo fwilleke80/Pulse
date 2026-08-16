@@ -11,6 +11,7 @@ declare(strict_types=1);
 namespace Pulse\Controllers;
 
 use Pulse\Core\CheckInLocation;
+use Pulse\Core\EmailAddressCollection;
 use Pulse\Core\Logger;
 use Pulse\Core\Request;
 use Pulse\Core\Session;
@@ -849,7 +850,7 @@ class MonitorController extends BaseController
 				(string)($template['body_text'] ?? '')
 			);
 
-			if (empty($monitorContact['email_checked_at']))
+			if (!EmailAddressCollection::HasChecked($monitorContact))
 			{
 				array_unshift($issues, 'unchecked_recipient');
 			}
@@ -949,7 +950,7 @@ class MonitorController extends BaseController
 		{
 			$fieldLocale = preg_replace('/[^a-z0-9_]/i', '_', $locale);
 			$result[$locale] = [
-				'message_text' => $this->_request->PostString('portal_message_' . $fieldLocale, 1000000, false),
+				'message_text' => '',
 				'intro_text' => $this->_request->PostString('portal_intro_' . $fieldLocale, 1000000, false),
 			];
 		}
@@ -1210,7 +1211,7 @@ class MonitorController extends BaseController
 
 		foreach ($contactIds as $contactId)
 		{
-			if (!isset($byId[$contactId]) || empty($byId[$contactId]['email_checked_at']))
+			if (!isset($byId[$contactId]) || !EmailAddressCollection::HasChecked($byId[$contactId]))
 			{
 				$this->Flash('error', __('monitors.escalation.flash.unchecked_contact'));
 				$this->Redirect($redirect);

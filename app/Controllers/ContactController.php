@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Pulse\Controllers;
 
+use InvalidArgumentException;
 use Pulse\Core\EmailAddressValidator;
+use Pulse\Core\EmailAddressCollection;
 use Pulse\Core\Logger;
 use Pulse\Core\NotificationLanguage;
 use Pulse\Core\Request;
@@ -85,19 +87,18 @@ class ContactController extends BaseController
 		$user = $this->RequireUser();
 
 		$name = $this->_request->PostString('name', 255);
-		$email = $this->_request->PostString('email', 255);
+		$addresses = $this->PostedEmailAddresses();
 		$notificationLocale = $this->_request->PostString('notification_locale', 10);
 		$cellPhone = $this->_request->PostString('cell_phone', 50);
 		$notes = $this->_request->PostString('notes', 10000);
-		$emailChecked = $this->_request->PostBool('email_checked');
 
-		if ($name === '' || $email === '')
+		if ($name === '' || $addresses === [])
 		{
 			$this->Flash('error', __('contacts.add.flash.required'));
 			$this->Redirect('/contacts/new');
 		}
 
-		if (!EmailAddressValidator::IsValid($email))
+		if (!$this->AddressesAreValid($addresses))
 		{
 			$this->Flash('error', __('contacts.add.flash.invalidemail'));
 			$this->Redirect('/contacts/new');
@@ -109,24 +110,17 @@ class ContactController extends BaseController
 			$this->Redirect('/contacts/new');
 		}
 
-		if (!$emailChecked)
-		{
-			$this->Flash('error', __('contacts.add.flash.email_not_checked'));
-			$this->Redirect('/contacts/new');
-		}
-
 		$this->_contactRepository->CreateForUser(
 			(int)$user['id'],
 			$name,
-			$email,
+			$addresses,
 			$notificationLocale,
-			$emailChecked,
 			$cellPhone !== '' ? $cellPhone : null,
 			$notes !== '' ? $notes : null
 		);
 
 		$this->_logger->Info('Contact created', ['user_id' => (int)$user['id']]);
-		$suggestion = EmailAddressValidator::Suggestion($email);
+		$suggestion = $this->FirstSuggestion($addresses);
 		$this->Flash(
 			$suggestion === null ? 'success' : 'warning',
 			$suggestion === null
@@ -207,11 +201,10 @@ class ContactController extends BaseController
 		$contactId = $this->_request->PostInt('id');
 		$returnMonitorId = max(0, $this->_request->PostInt('return_monitor_id'));
 		$name = $this->_request->PostString('name', 255);
-		$email = $this->_request->PostString('email', 255);
+		$addresses = $this->PostedEmailAddresses();
 		$notificationLocale = $this->_request->PostString('notification_locale', 10);
 		$cellPhone = $this->_request->PostString('cell_phone', 50);
 		$notes = $this->_request->PostString('notes', 10000);
-		$emailChecked = $this->_request->PostBool('email_checked');
 
 		if ($contactId <= 0)
 		{
@@ -229,14 +222,14 @@ class ContactController extends BaseController
 			$this->Redirect('/contacts');
 		}
 
-		if ($name === '' || $email === '')
+		if ($name === '' || $addresses === [])
 		{
 			$this->_logger->Warning('User ID ' . $user['id'] . ' attempted to update contact ID ' . $contactId . ' with missing required fields');
 			$this->Flash('error', __('contacts.edit.flash.required'));
 			$this->Redirect($this->ContactEditPath($contactId, $returnMonitorId));
 		}
 
-		if (!EmailAddressValidator::IsValid($email))
+		if (!$this->AddressesAreValid($addresses))
 		{
 			$this->_logger->Warning('Contact update rejected due to invalid email', ['user_id' => (int)$user['id'], 'contact_id' => $contactId]);
 			$this->Flash('error', __('contacts.edit.flash.invalidemail'));
@@ -249,25 +242,18 @@ class ContactController extends BaseController
 			$this->Redirect($this->ContactEditPath($contactId, $returnMonitorId));
 		}
 
-		if (!$emailChecked)
-		{
-			$this->Flash('error', __('contacts.edit.flash.email_not_checked'));
-			$this->Redirect($this->ContactEditPath($contactId, $returnMonitorId));
-		}
-
 		$this->_contactRepository->UpdateForUser(
 			$contactId,
 			(int)$user['id'],
 			$name,
-			$email,
+			$addresses,
 			$notificationLocale,
-			$emailChecked,
 			$cellPhone !== '' ? $cellPhone : null,
 			$notes !== '' ? $notes : null
 		);
 
 		$this->_logger->Info('Contact updated', ['user_id' => (int)$user['id'], 'contact_id' => $contactId]);
-		$suggestion = EmailAddressValidator::Suggestion($email);
+		$suggestion = $this->FirstSuggestion($addresses);
 		$this->Flash(
 			$suggestion === null ? 'success' : 'warning',
 			$suggestion === null
@@ -292,5 +278,66 @@ class ContactController extends BaseController
 		$path = '/contacts/edit?id=' . $contactId;
 
 		return $returnMonitorId > 0 ? $path . '&return_monitor_id=' . $returnMonitorId : $path;
+	}
+
+	/**
+	 * @brief Reads, deduplicates, and compacts the four email-address cards.
+	 * @return array<int, array{email: string, checked: bool}>
+	 */
+	private function PostedEmailAddresses(): array
+	{
+		$addresses = [];
+
+		for ($slot = 1; $slot <= EmailAddressCollection::MAX_ADDRESSES; $slot++)
+		{
+			$field = EmailAddressCollection::EmailField($slot);
+			$checkedField = $slot === 1 ? 'email_checked' : 'email_' . $slot . '_checked';
+			$addresses[] = [
+				'email' => $this->_request->PostString($field, 255),
+				'checked' => $this->_request->PostBool($checkedField),
+			];
+		}
+
+		try
+		{
+			return EmailAddressCollection::Normalize($addresses);
+		}
+		catch (InvalidArgumentException)
+		{
+			$this->Flash('error', __('contacts.flash.duplicate_email'));
+			$this->Redirect($this->_request->PostInt('id') > 0
+				? $this->ContactEditPath($this->_request->PostInt('id'), max(0, $this->_request->PostInt('return_monitor_id')))
+				: '/contacts/new');
+		}
+	}
+
+	/** @brief Returns whether every submitted address has valid syntax. */
+	private function AddressesAreValid(array $addresses): bool
+	{
+		foreach ($addresses as $address)
+		{
+			if (!EmailAddressValidator::IsValid((string)$address['email']))
+			{
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	/** @brief Returns the first likely-domain correction across submitted addresses. */
+	private function FirstSuggestion(array $addresses): ?string
+	{
+		foreach ($addresses as $address)
+		{
+			$suggestion = EmailAddressValidator::Suggestion((string)$address['email']);
+
+			if ($suggestion !== null)
+			{
+				return $suggestion;
+			}
+		}
+
+		return null;
 	}
 }

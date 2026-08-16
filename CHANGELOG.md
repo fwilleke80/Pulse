@@ -1,3 +1,20 @@
+## 1.2.1 - 2026-08-16
+
+### Redundant, separately checked email addresses
+- Added four responsive email-address slots for the owner and for every contact. Each slot has its own **I checked this email address carefully** state; contacts can now be saved without checking an address, while unchecked addresses remain excluded from mail delivery.
+- Added clear per-address and per-person status indicators to Contacts, monitor recipient and safety-contact lists, recipient details, and Profile. Any stored owner address can be used to sign in, while owner notifications and mail tests go only to checked addresses.
+- Queue a separate message for every checked owner, safety-contact, or recipient address. Safety requests and recipient releases snapshot all checked addresses so later contact edits cannot change an active escalation; recipient access codes are likewise sent independently to every released address.
+- Kept lifecycle semantics person-based: the first successful redundant delivery advances the relevant recipient or safety-contact state, while failures at one mailbox do not prevent attempts to the others.
+
+### Recipient-only personal portal messages
+- Removed the monitor-wide **Default personal portal message** from **Messages & content → Portal page**. The monitor-wide language selector, Page introduction, and portal availability remain unchanged.
+- Made personal portal content exclusively recipient-specific. The authenticated portal shows its personal-message card only when **Use a personal portal message for this recipient** is enabled and a non-empty message has been saved.
+- Reworded the recipient editor guidance around a personal or goodbye message and added validation that prevents an enabled-but-empty personal message.
+
+### Database, documentation, and verification
+- Added migration `004_multiple_email_addresses.sql`, including bounded owner/contact columns and immutable safety-request and recipient-delivery address snapshot tables. Existing primary owner addresses are retained as checked, and existing release rows receive their historical address snapshot.
+- Updated the reference schema, user/security/architecture/tutorial/audit documentation, translations, version metadata, and source/unit regression coverage for Pulse 1.2.1.
+
 ## 1.2.0 - 2026-08-16
 
 ### Official Pulse 1.2 release

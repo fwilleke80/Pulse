@@ -112,6 +112,9 @@ class MonitorRepository
 					INNER JOIN contacts warning_c ON warning_c.id = warning_mc.contact_id
 					WHERE warning_mc.monitor_id = monitors.id
 					  AND warning_c.email_checked_at IS NULL
+					  AND warning_c.email_2_checked_at IS NULL
+					  AND warning_c.email_3_checked_at IS NULL
+					  AND warning_c.email_4_checked_at IS NULL
 				) AS unchecked_contact_count,
 				(
 					SELECT COUNT(*)
@@ -714,8 +717,14 @@ class MonitorRepository
 				mc.sort_order,
 				c.name,
 				c.email,
-				c.notification_locale,
 				c.email_checked_at,
+				c.email_2,
+				c.email_2_checked_at,
+				c.email_3,
+				c.email_3_checked_at,
+				c.email_4,
+				c.email_4_checked_at,
+				c.notification_locale,
 				c.cell_phone,
 				c.notes,
 				(

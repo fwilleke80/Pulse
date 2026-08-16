@@ -30,7 +30,7 @@ declare(strict_types=1);
 
 $uncheckedContactCount = count(array_filter(
 	$monitorContacts,
-	static fn (array $contact): bool => empty($contact['email_checked_at'])
+	static fn (array $contact): bool => !\Pulse\Core\EmailAddressCollection::HasChecked($contact)
 ));
 $currentStatus = monitor_status($monitor);
 $isArchived = !empty($monitor['is_archived']);
@@ -327,7 +327,7 @@ ob_start();
 					<article class="recipient-overview-card">
 						<div class="recipient-overview-identity">
 							<strong><a href="<?= e($base_url) ?>/monitors/recipients/edit?id=<?= (int)$monitorContact['id'] ?>"><?= e((string)$monitorContact['name']) ?></a></strong>
-							<small><?= e((string)$monitorContact['email']) ?></small>
+							<small><?= e(implode(', ', array_column(\Pulse\Core\EmailAddressCollection::FromRow($monitorContact), 'email'))) ?></small>
 						</div>
 						<div class="recipient-overview-meta">
 							<span class="recipient-overview-language"><strong><?= e__('recipients.overview.language') ?>:</strong> <?= e(notification_language_name(isset($monitorContact['notification_locale']) ? (string)$monitorContact['notification_locale'] : null)) ?></span>
@@ -377,7 +377,7 @@ ob_start();
 					<select id="add_recipient_contact" name="contact_id" required>
 						<option value=""><?= e__('recipients.add.choose') ?></option>
 						<?php foreach ($availableContacts as $contact): ?>
-							<option value="<?= (int)$contact['id'] ?>"><?= e((string)$contact['name']) ?> — <?= e((string)$contact['email']) ?></option>
+							<option value="<?= (int)$contact['id'] ?>"><?= e((string)$contact['name']) ?> — <?= e(implode(', ', array_column(\Pulse\Core\EmailAddressCollection::FromRow($contact), 'email'))) ?></option>
 						<?php endforeach; ?>
 					</select>
 					<button type="submit"><?= e__('recipients.add.submit') ?></button>
@@ -421,8 +421,8 @@ ob_start();
 								<input type="checkbox" name="safety_contact_ids[]" form="monitor-settings-form" value="<?= (int)$contact['id'] ?>" <?= in_array((int)$contact['id'], $safetyContactIds, true) ? 'checked' : '' ?>>
 								<span>
 									<strong><?= e((string)$contact['name']) ?></strong><br>
-									<small><?= e((string)$contact['email']) ?> · <?= e(notification_language_name((string)$contact['notification_locale'])) ?></small>
-									<span class="mini-status mini-status-<?= !empty($contact['email_checked_at']) ? 'ok' : 'warning' ?>"><?= e__(!empty($contact['email_checked_at']) ? 'contacts.status.checked' : 'contacts.status.not_checked') ?></span>
+									<small><?= e(implode(', ', array_column(\Pulse\Core\EmailAddressCollection::FromRow($contact), 'email'))) ?> · <?= e(notification_language_name((string)$contact['notification_locale'])) ?></small>
+									<span class="mini-status mini-status-<?= \Pulse\Core\EmailAddressCollection::HasChecked($contact) ? 'ok' : 'warning' ?>"><?= e__(\Pulse\Core\EmailAddressCollection::HasChecked($contact) ? 'contacts.status.checked_available' : 'contacts.status.none_checked') ?></span>
 								</span>
 							</label>
 						<?php endforeach; ?>
@@ -601,21 +601,15 @@ ob_start();
 						<?php foreach ($availableLocales as $templateLocale): ?>
 							<?php
 							$templateFieldLocale = language_field_suffix($templateLocale);
-							$portalTemplate = $portalTemplates[$templateLocale] ?? ['message_text' => '', 'intro_text' => ''];
-							$portalDefault = $portalDefaults[$templateLocale] ?? ['message_text' => '', 'intro_text' => ''];
+							$portalContent = $portalTemplates[$templateLocale] ?? ['intro_text' => ''];
+							$portalBuiltIn = $portalDefaults[$templateLocale] ?? ['intro_text' => ''];
 							?>
 							<div class="language-template-panel" data-language-panel="<?= e($templateLocale) ?>">
-								<label for="portal_message_<?= e($templateFieldLocale) ?>"><?= e__('monitors.messages.portal_content.message') ?></label>
-								<?= markdown_editor($base_url, 'portal_message_' . $templateFieldLocale, 'portal_message_' . $templateFieldLocale, (string)$portalTemplate['message_text'], 7, 'web') ?>
-								<p class="form-hint"><?= e__('monitors.messages.portal_content.message_hint') ?></p>
-								<p class="form-hint placeholder-help"><?= e__('monitors.messages.portal_content.placeholders') ?> <code>{app}</code> — <?= e__('mail.placeholders.app') ?>; <code>{name}</code> — <?= e__('mail.placeholders.name') ?>; <code>{owner}</code> — <?= e__('mail.placeholders.owner') ?>; <code>{monitor}</code> — <?= e__('mail.placeholders.monitor') ?>.</p>
-								<details class="mail-default-disclosure"><summary><?= e__('mail.templates.show_default') ?></summary><div class="mail-default-template markdown-content"><?= markdown_html((string)$portalDefault['message_text']) ?></div></details>
-
 								<label for="portal_intro_<?= e($templateFieldLocale) ?>"><?= e__('monitors.messages.portal_content.intro') ?></label>
-								<textarea id="portal_intro_<?= e($templateFieldLocale) ?>" name="portal_intro_<?= e($templateFieldLocale) ?>" rows="5"><?= e((string)$portalTemplate['intro_text']) ?></textarea>
+								<textarea id="portal_intro_<?= e($templateFieldLocale) ?>" name="portal_intro_<?= e($templateFieldLocale) ?>" rows="5"><?= e((string)$portalContent['intro_text']) ?></textarea>
 								<p class="form-hint"><?= e__('monitors.messages.portal_content.intro_hint') ?></p>
 								<p class="form-hint placeholder-help"><?= e__('monitors.messages.portal_content.placeholders') ?> <code>{app}</code> — <?= e__('mail.placeholders.app') ?>; <code>{name}</code> — <?= e__('mail.placeholders.name') ?>; <code>{owner}</code> — <?= e__('mail.placeholders.owner') ?>; <code>{monitor}</code> — <?= e__('mail.placeholders.monitor') ?>.</p>
-								<details class="mail-default-disclosure"><summary><?= e__('mail.templates.show_default') ?></summary><div class="mail-default-template"><pre><?= e((string)$portalDefault['intro_text']) ?></pre></div></details>
+								<details class="mail-default-disclosure"><summary><?= e__('mail.templates.show_default') ?></summary><div class="mail-default-template"><pre><?= e((string)$portalBuiltIn['intro_text']) ?></pre></div></details>
 							</div>
 						<?php endforeach; ?>
 					</div>

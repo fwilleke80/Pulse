@@ -1782,6 +1782,47 @@ small
 	background: var(--surface-subtle);
 }
 
+.email-address-grid
+{
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 245px), 1fr));
+	gap: 0.8rem;
+}
+
+.email-address-card
+{
+	display: flex;
+	flex-direction: column;
+	gap: 0.35rem;
+	min-width: 0;
+	padding: 0.8rem;
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	background: var(--surface-subtle);
+}
+
+.email-address-card label,
+.email-address-card input
+{
+	margin: 0;
+}
+
+.email-address-list
+{
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 0.25rem;
+}
+
+.email-address-list-item
+{
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.35rem;
+}
+
 .email-suggestion
 {
 	margin: 0.4rem 0 0;

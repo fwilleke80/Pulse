@@ -34,14 +34,15 @@ ob_start();
 		</thead>
 		<tbody>
 			<?php foreach ($contacts as $contact): ?>
+				<?php $addresses = \Pulse\Core\EmailAddressCollection::FromRow($contact); $checkedCount = count(array_filter($addresses, static fn (array $address): bool => $address['checked'])); ?>
 				<tr>
 					<td><a href="<?= e($base_url) ?>/contacts/edit?id=<?= (int)$contact['id'] ?>"><strong><?= e((string)$contact['name']) ?></strong></a></td>
-					<td><a href="mailto:<?= e((string)$contact['email']) ?>"><?= e((string)$contact['email']) ?></a></td>
+					<td><div class="email-address-list"><?php foreach ($addresses as $address): ?><span class="email-address-list-item"><a href="mailto:<?= e($address['email']) ?>"><?= e($address['email']) ?></a><span class="mini-status mini-status-<?= $address['checked'] ? 'ok' : 'warning' ?>"><?= e__($address['checked'] ? 'contacts.status.checked' : 'contacts.status.not_checked') ?></span></span><?php endforeach; ?></div></td>
 					<td>
-						<?php if (!empty($contact['email_checked_at'])): ?>
-							<span class="status-badge status-checked-in"><?= e__('contacts.status.checked') ?></span>
+						<?php if ($checkedCount > 0): ?>
+							<span class="status-badge status-checked-in"><?= e__('contacts.status.checked_count', ['checked' => $checkedCount, 'total' => count($addresses)]) ?></span>
 						<?php else: ?>
-							<span class="status-badge status-overdue"><?= e__('contacts.status.not_checked') ?></span>
+							<span class="status-badge status-overdue"><?= e__('contacts.status.none_checked') ?></span>
 						<?php endif; ?>
 					</td>
 					<td><a href="tel:<?= e((string)($contact['cell_phone'] ?? '')) ?>"><?= e((string)($contact['cell_phone'] ?? '')) ?></a></td>

@@ -79,12 +79,14 @@ Verify:
 
 ## 6. Contacts and deletion rules
 
-Create contacts with test addresses.
+Create contacts with one to four test addresses, mixing checked and unchecked states.
 
 Verify:
 
 - names are the edit links;
-- address checked is only a local confirmation;
+- each address has its own checked state and a contact can be saved with unchecked addresses;
+- only checked addresses receive mail, with a separate queue row for each;
+- Contacts and monitor recipient/safety-contact lists clearly flag a person with no checked address;
 - language selection persists;
 - likely email typo suggestions do not silently change the address;
 - a Contact used by any monitor cannot be deleted;
@@ -114,6 +116,8 @@ Open a recipient editor and verify the owner-only portal preview:
 - the preview does not create a release, portal token, access code, recipient session, email, or audit event;
 - document View/Download and permanent portal closure remain disabled;
 - the preview uses the saved recipient language, portal text, document assignments, and location-sharing settings.
+- the monitor-wide Portal page editor contains the language-specific Page introduction but no default personal message;
+- the personal-message card is absent when the recipient option is disabled or empty and appears only for a saved, enabled recipient-specific message.
 
 ## 8. Check-in and owner-notice lifecycle
 
@@ -187,7 +191,7 @@ Before authentication verify:
 
 - no document contents are visible;
 - no document metadata/download URLs are exposed;
-- the configured recipient email address is not displayed;
+- the configured recipient email addresses are not displayed;
 - requesting an access code is available.
 
 ## 14. Access-code behavior

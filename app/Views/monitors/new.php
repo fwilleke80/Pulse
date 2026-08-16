@@ -53,7 +53,7 @@ ob_start();
 						<span>
 							<strong><?= htmlspecialchars((string)$contact['name'], ENT_QUOTES, 'UTF-8') ?></strong>
 							<?php if (!empty($contact['email'])): ?>
-								<br><small><?= htmlspecialchars((string)$contact['email'], ENT_QUOTES, 'UTF-8') ?></small>
+								<br><small><?= e(implode(', ', array_column(\Pulse\Core\EmailAddressCollection::FromRow($contact), 'email'))) ?></small>
 							<?php endif; ?>
 						</span>
 					</label>

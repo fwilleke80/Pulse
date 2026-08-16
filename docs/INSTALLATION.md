@@ -39,7 +39,7 @@ python3 tools/write_version.py
 To set a release explicitly:
 
 ```bash
-PULSE_VERSION=1.2.0 python3 tools/write_version.py
+PULSE_VERSION=1.2.1 python3 tools/write_version.py
 ```
 
 Pulse still starts if the generated version file is missing, but displays **version unavailable**.

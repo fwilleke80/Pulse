@@ -1,10 +1,10 @@
-# Pulse roadmap after 1.2.0
+# Pulse roadmap after 1.2.1
 
-This roadmap starts from the stable Pulse 1.2.0 baseline. It is directional rather than a promise of dates; privacy, migration safety, recovery behavior, and test coverage remain release gates.
+This roadmap starts from the stable Pulse 1.2.1 baseline. It is directional rather than a promise of dates; privacy, migration safety, recovery behavior, and test coverage remain release gates.
 
-## Current baseline — Pulse 1.2.0
+## Current baseline — Pulse 1.2.1
 
-Pulse 1.2.0 completes the location-aware check-in and portal-preview roadmap:
+Pulse 1.2.0 completed the location-aware check-in and portal-preview roadmap:
 
 - optional per-monitor one-shot geolocation during normal and quick check-ins;
 - browser permission requested when location recording is enabled, with safe retries during later check-ins;
@@ -16,6 +16,13 @@ Pulse 1.2.0 completes the location-aware check-in and portal-preview roadmap:
 - passkey registration, login, and quick-check-in reliability improvements.
 
 Location recording and recipient sharing remain independent opt-ins. The map is neither live tracking nor proof of the route travelled.
+
+Pulse 1.2.1 adds:
+
+- up to four separately checked email addresses for the owner and every contact;
+- independent queue delivery to every checked address, including immutable safety-contact and recipient snapshots;
+- clear unchecked-address warnings without preventing a contact from being saved;
+- recipient-only personal portal messages, shown only when explicitly enabled and non-empty.
 
 ## Next candidate — Optional TOTP two-factor authentication
 
