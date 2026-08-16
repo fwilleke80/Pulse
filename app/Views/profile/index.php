@@ -7,6 +7,7 @@ declare(strict_types=1);
 /** @var string $notificationLocale */
 /** @var string $websiteLocale */
 /** @var array<int, array<string, mixed>> $passkeys */
+/** @var string $activeTab */
 /** @var string $base_url */
 
 ob_start();
@@ -14,7 +15,14 @@ ob_start();
 
 <h1><?= e__('profile.heading') ?></h1>
 
-<section class="stack">
+<div class="monitor-editor profile-editor" data-monitor-tabs data-active-tab="<?= e($activeTab) ?>">
+	<nav class="monitor-tabs" role="tablist" aria-label="<?= e__('profile.tabs.label') ?>">
+		<a href="<?= e($base_url) ?>/profile?tab=profile" id="profile-tab-profile" class="monitor-tab-link<?= $activeTab === 'profile' ? ' is-active' : '' ?>" role="tab" aria-selected="<?= $activeTab === 'profile' ? 'true' : 'false' ?>" aria-controls="profile-panel-profile" data-tab-target="profile"><?= e__('profile.tabs.profile_data') ?></a>
+		<a href="<?= e($base_url) ?>/profile?tab=security" id="profile-tab-security" class="monitor-tab-link<?= $activeTab === 'security' ? ' is-active' : '' ?>" role="tab" aria-selected="<?= $activeTab === 'security' ? 'true' : 'false' ?>" aria-controls="profile-panel-security" data-tab-target="security"><?= e__('profile.tabs.account_security') ?></a>
+		<a href="<?= e($base_url) ?>/profile?tab=password" id="profile-tab-password" class="monitor-tab-link<?= $activeTab === 'password' ? ' is-active' : '' ?>" role="tab" aria-selected="<?= $activeTab === 'password' ? 'true' : 'false' ?>" aria-controls="profile-panel-password" data-tab-target="password"><?= e__('profile.tabs.change_password') ?></a>
+	</nav>
+
+<section id="profile-panel-profile" class="stack monitor-tab-panel<?= $activeTab === 'profile' ? ' is-active' : '' ?>" role="tabpanel" aria-labelledby="profile-tab-profile" data-tab-panel="profile"<?= $activeTab === 'profile' ? '' : ' hidden' ?>>
 	<h2><?= e__('profile.data.heading') ?></h2>
 
 	<form method="post" action="<?= e($base_url) ?>/profile/update" class="stack">
@@ -69,9 +77,7 @@ ob_start();
 </section>
 
 
-<hr>
-
-<section class="stack" id="security">
+<section class="stack monitor-tab-panel<?= $activeTab === 'security' ? ' is-active' : '' ?>" id="profile-panel-security" role="tabpanel" aria-labelledby="profile-tab-security" data-tab-panel="security"<?= $activeTab === 'security' ? '' : ' hidden' ?>>
 	<h2><?= e__('security.heading') ?></h2>
 	<p><?= e__('security.hint') ?></p>
 
@@ -120,9 +126,7 @@ ob_start();
 	</div>
 </section>
 
-<hr>
-
-<section class="stack">
+<section id="profile-panel-password" class="stack monitor-tab-panel<?= $activeTab === 'password' ? ' is-active' : '' ?>" role="tabpanel" aria-labelledby="profile-tab-password" data-tab-panel="password"<?= $activeTab === 'password' ? '' : ' hidden' ?>>
 	<h2><?= e__('profile.password.heading') ?></h2>
 
 	<form method="post" action="<?= e($base_url) ?>/profile/password" class="stack">
@@ -169,6 +173,8 @@ ob_start();
 		</div>
 	</form>
 </section>
+
+</div>
 
 
 <?php

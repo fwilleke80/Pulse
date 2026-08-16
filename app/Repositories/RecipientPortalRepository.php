@@ -352,6 +352,31 @@ final class RecipientPortalRepository
 	}
 
 	/**
+	 * @brief Returns the immutable release-level location trail for an authenticated delivery.
+	 * @return array<int, array<string, mixed>> Chronological location snapshots.
+	 */
+	public function FindLocationsForDelivery(int $deliveryId): array
+	{
+		$statement = $this->_database->GetConnection()->prepare(<<<'SQL'
+			SELECT
+				rrl.sequence_number,
+				rrl.latitude,
+				rrl.longitude,
+				rrl.accuracy_meters,
+				rrl.address_label,
+				rrl.checked_in_at
+			FROM recipient_release_deliveries rrd
+			INNER JOIN recipient_release_locations rrl ON rrl.release_id = rrd.release_id
+			WHERE rrd.id = :delivery_id
+			ORDER BY rrl.sequence_number ASC
+		SQL);
+		$statement->execute(['delivery_id' => $deliveryId]);
+		$rows = $statement->fetchAll(PDO::FETCH_ASSOC);
+
+		return is_array($rows) ? $rows : [];
+	}
+
+	/**
 	 * @brief Finds one immutable document snapshot belonging to a recipient delivery.
 	 * @return array<string, mixed>|null Snapshot row or null.
 	 */

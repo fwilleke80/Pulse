@@ -79,6 +79,7 @@ class ProfileController extends BaseController
 				isset($user['website_locale']) ? (string)$user['website_locale'] : null
 			),
 			'passkeys' => $this->_securityCredentials->FindPasskeysForUser((int)$user['id']),
+			'activeTab' => $this->ActiveTab(),
 		]);
 	}
 
@@ -99,21 +100,21 @@ class ProfileController extends BaseController
 		{
 			$this->_logger->Warning('Profile update failed due to missing fields', ['user_id' => $userId]);
 			$this->Flash('error', __('profile.flash.update.required'));
-			$this->Redirect('/profile');
+			$this->Redirect('/profile?tab=profile');
 		}
 
 		if (!filter_var($email, FILTER_VALIDATE_EMAIL))
 		{
 			$this->_logger->Warning('Profile update failed due to invalid email format', ['user_id' => $userId]);
 			$this->Flash('error', __('profile.flash.update.invalid_email'));
-			$this->Redirect('/profile');
+			$this->Redirect('/profile?tab=profile');
 		}
 
 		if (!$this->_notificationLanguage->IsSupported($notificationLocale) || !$this->_notificationLanguage->IsSupported($websiteLocale))
 		{
 			$this->_logger->Warning('Profile update failed due to unsupported language', ['user_id' => $userId]);
 			$this->Flash('error', __('profile.flash.update.invalid_language'));
-			$this->Redirect('/profile');
+			$this->Redirect('/profile?tab=profile');
 		}
 
 		$existingUser = $this->_userRepository->FindByEmailExcludingUserId($userId, $email);
@@ -122,7 +123,7 @@ class ProfileController extends BaseController
 		{
 			$this->_logger->Warning('Profile update failed due to email already taken', ['user_id' => $userId]);
 			$this->Flash('error', __('profile.flash.update.email_taken'));
-			$this->Redirect('/profile');
+			$this->Redirect('/profile?tab=profile');
 		}
 
 		$this->_userRepository->UpdateProfile($userId, $displayName, $email, $notificationLocale, $websiteLocale);
@@ -131,7 +132,7 @@ class ProfileController extends BaseController
 
 		$this->_logger->Info('Profile updated successfully', ['user_id' => $userId]);
 		$this->Flash('success', __('profile.flash.update.success'));
-		$this->Redirect('/profile');
+		$this->Redirect('/profile?tab=profile');
 	}
 
 	/**
@@ -150,7 +151,7 @@ class ProfileController extends BaseController
 		{
 			$this->_logger->Warning('Password change failed due to missing fields', ['user_id' => $userId]);
 			$this->Flash('error', __('profile.flash.password.required'));
-			$this->Redirect('/profile');
+			$this->Redirect('/profile?tab=password');
 		}
 
 		$passwordHash = (string)$user['password_hash'];
@@ -159,21 +160,21 @@ class ProfileController extends BaseController
 		{
 			$this->_logger->Warning('Password change failed due to incorrect current password', ['user_id' => $userId]);
 			$this->Flash('error', __('profile.flash.password.current_invalid'));
-			$this->Redirect('/profile');
+			$this->Redirect('/profile?tab=password');
 		}
 
 		if ($newPassword !== $confirmPassword)
 		{
 			$this->_logger->Warning('Password change failed due to password confirmation mismatch', ['user_id' => $userId]);
 			$this->Flash('error', __('profile.flash.password.confirm_mismatch'));
-			$this->Redirect('/profile');
+			$this->Redirect('/profile?tab=password');
 		}
 
 		if (strlen($newPassword) < $this->_passwordMinimumLength)
 		{
 			$this->_logger->Warning('Password change failed due to new password being too short', ['user_id' => $userId]);
 			$this->Flash('error', __('profile.flash.password.too_short', ['minimum' => $this->_passwordMinimumLength]));
-			$this->Redirect('/profile');
+			$this->Redirect('/profile?tab=password');
 		}
 
 		$newPasswordHash = password_hash($newPassword, PASSWORD_DEFAULT);
@@ -181,6 +182,13 @@ class ProfileController extends BaseController
 
 		$this->_logger->Info('Password changed successfully', ['user_id' => $userId]);
 		$this->Flash('success', __('profile.flash.password.success'));
-		$this->Redirect('/profile');
+		$this->Redirect('/profile?tab=password');
+	}
+
+	/** @brief Returns the requested accessible profile tab with a stable fallback. */
+	private function ActiveTab(): string
+	{
+		$tab = $this->_request->QueryString('tab', 20);
+		return in_array($tab, ['profile', 'security', 'password'], true) ? $tab : 'profile';
 	}
 }

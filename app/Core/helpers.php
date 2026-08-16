@@ -247,6 +247,53 @@ function csrf_field(): string
 	return '<input type="hidden" name="_csrf_token" value="' . e($__pulseCsrfTokenManager->Token()) . '">' . PHP_EOL;
 }
 
+/**
+ * @brief Builds escaped progressive-enhancement attributes for an optional location-aware check-in.
+ * @param string $reverseGeocodeUrl Configured reverse-geocoding endpoint.
+ * @param string $locale Current interface locale.
+ * @return string HTML attributes without a leading space.
+ */
+function check_in_location_attributes(string $reverseGeocodeUrl, string $locale): string
+{
+	$attributes = [
+		'data-check-in-location' => 'true',
+		'data-location-geocode-url' => $reverseGeocodeUrl,
+		'data-location-language' => $locale,
+		'data-location-requesting' => __('location.check_in.requesting'),
+		'data-location-recorded' => __('location.check_in.recorded'),
+		'data-location-unavailable' => __('location.check_in.unavailable'),
+		'data-location-denied' => __('location.check_in.denied'),
+	];
+	$rendered = [];
+
+	foreach ($attributes as $name => $value)
+	{
+		$rendered[] = $name . '="' . e($value) . '"';
+	}
+
+	return implode(' ', $rendered);
+}
+
+/**
+ * @brief Builds a direct OpenStreetMap marker URL for one recorded point.
+ * @param string $baseUrl Configured OpenStreetMap base URL.
+ * @param float $latitude Latitude.
+ * @param float $longitude Longitude.
+ * @param int $zoom Map zoom level.
+ * @return string Absolute map URL.
+ */
+function openstreetmap_location_url(string $baseUrl, float $latitude, float $longitude, int $zoom = 18): string
+{
+	$zoom = max(1, min(19, $zoom));
+	$latitudeValue = number_format($latitude, 7, '.', '');
+	$longitudeValue = number_format($longitude, 7, '.', '');
+
+	return rtrim($baseUrl, '/')
+		. '/?mlat=' . rawurlencode($latitudeValue)
+		. '&mlon=' . rawurlencode($longitudeValue)
+		. '#map=' . $zoom . '/' . rawurlencode($latitudeValue) . '/' . rawurlencode($longitudeValue);
+}
+
 /** @brief Abbreviates a string to a maximum length. @param string $text Input text. @param int $maxLength Maximum length. @return string */
 function abbrev(string $text, int $maxLength): string
 {

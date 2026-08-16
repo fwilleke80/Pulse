@@ -169,6 +169,12 @@ final class RecipientPortalService
 		return $this->_portalRepository->FindDocumentsForDelivery($deliveryId);
 	}
 
+	/** @brief Returns the immutable release-level location trail for an authenticated delivery. */
+	public function LocationsForDelivery(int $deliveryId): array
+	{
+		return $this->_portalRepository->FindLocationsForDelivery($deliveryId);
+	}
+
 	/** @brief Finds one immutable document snapshot for a delivery. @return array<string, mixed>|null */
 	public function DocumentForDelivery(int $deliveryId, int $snapshotDocumentId): ?array
 	{

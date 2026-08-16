@@ -58,8 +58,10 @@ final class PasskeyQuickCheckInSourceTest extends TestCase
 		self::assertIsInt($openStart);
 		self::assertIsInt($openEnd);
 		self::assertStringNotContainsString('CheckInAllActiveForUser', substr($quickController, $openStart, $openEnd - $openStart));
-		self::assertStringContainsString("CheckInAllActiveForUser(\$userId, 'quick_passkey')", $quickController);
-		self::assertStringContainsString("CheckInAllActiveForUser(\$userId, 'quick_password')", $authController);
+		self::assertStringContainsString("'quick_passkey'", $quickController);
+		self::assertStringContainsString("'quick_password'", $authController);
+		self::assertStringContainsString('CheckInLocation::FromRequest($this->_request)', $quickController);
+		self::assertStringContainsString('CheckInLocation::FromRequest($this->_request)', $authController);
 		self::assertStringContainsString('token_hash', $service);
 		self::assertStringContainsString('used_at IS NULL', $service);
 		self::assertStringContainsString('expires_at > UTC_TIMESTAMP()', $service);

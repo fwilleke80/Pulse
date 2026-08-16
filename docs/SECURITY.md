@@ -200,7 +200,7 @@ Configure SPF, DKIM, and DMARC where applicable. Add the Pulse sender address/do
 
 ## Passkeys and the extensible account-security layer
 
-Pulse 1.1.5 stores additional account authentication methods separately from monitor configuration. Passkeys are the first implemented method; the storage model deliberately leaves room for later second-factor methods and recovery mechanisms.
+Pulse 1.1.6 stores additional account authentication methods separately from monitor configuration. Passkeys are the first implemented method; the storage model deliberately leaves room for later second-factor methods and recovery mechanisms.
 
 Passkey registration requires the current Pulse password and WebAuthn user verification. Pulse stores a stable opaque user handle, the credential ID, public verification key, algorithm, transports, and signature-counter metadata. The credential private key and any biometric data stay with the authenticator/platform and are never stored by Pulse.
 
@@ -213,6 +213,16 @@ Normal password authentication remains available as recovery/fallback. For opera
 The quick-check-in URL in owner reminder mail is intentionally **not** a magic login link. Its random token is stored only as a hash, expires, is single-use, and is tied to the check cycle that generated it. It merely selects the owner/cycle that may attempt quick check-in.
 
 The action completes only after passkey authentication or the normal password-login fallback. Successful authentication performs the existing global check-in operation for all active monitors. This is intentionally the preferred low-friction owner workflow: the reminder link removes navigation steps, while WebAuthn still supplies the authentication boundary. An old link stops being eligible once its source cycle is confirmed, escalated, cancelled, expired, or otherwise leaves the owner-reminder states.
+
+## Optional location privacy model
+
+Location recording is disabled by default and configured independently for each monitor. A separate option controls whether any saved locations may be included in a recipient portal. Enabling recording prompts the browser for the Pulse origin's geolocation permission; the browser and operating system control whether that permission persists or is later revoked.
+
+Pulse requests a one-shot current position and does not use a watch/continuous-tracking API. A location failure never blocks a check-in. Coordinates, reported browser accuracy, and any approximate address are stored beside the specific completed check-in only for enabled monitors. Approximate address resolution sends the point to the configured OpenStreetMap Nominatim endpoint from the user's browser.
+
+Portal location sharing is fail-closed. At recipient-release staging time, Pulse copies at most the configured 1–20 most recent points into a release-specific snapshot. Recipients see that snapshot only after normal portal-token and emailed access-code authentication. Later check-ins cannot appear in an existing release. OpenStreetMap tiles are fetched only after the authenticated recipient explicitly loads the map.
+
+The displayed path joins discrete check-in points with straight lines. It is not proof of the route travelled, positions can be inaccurate or misleading, and it must not be treated as a substitute for emergency services, professional search and rescue, or other appropriate response channels.
 
 ## Current limitation: no application-level encryption at rest
 

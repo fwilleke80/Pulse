@@ -1,3 +1,19 @@
+## 1.1.6 - 2026-08-16
+
+### Optional location-aware check-ins
+- Added a per-monitor **Record location during check-ins** option. Enabling it asks the current device for browser geolocation permission; browsers may retain that grant, while Pulse safely retries at check-in time when necessary.
+- Location collection is one-shot and never continuous. A denied, revoked, timed-out, or unavailable position never blocks the check-in.
+- Stored check-ins can include validated coordinates, reported accuracy, and an accuracy-appropriate approximate address resolved through OpenStreetMap Nominatim. Owner activity history links recorded locations to OpenStreetMap.
+- Added a separate per-monitor opt-in to release the most recent 1–20 check-in locations to authenticated recipients. The selected chronological trail is copied into the immutable recipient release, so an existing portal cannot reveal later movements.
+- Added an on-demand OpenStreetMap trail view in the authenticated recipient portal. The map loads tiles only after the recipient selects **Load map**, connects discrete check-in points with straight lines, and clearly states that it is neither continuous tracking nor an actual route.
+
+### Profile navigation
+- Reorganized Profile into the three current responsive tabs: **Profile data**, **Account security**, and **Change password**.
+- Kept validation, passkey-management, and password-change redirects on their originating tabs.
+
+### Database and verification
+- Added migration `003_check_in_locations.sql`, updated the current reference schema, security policy, translations, documentation, and source/unit regression coverage.
+
 ## 1.1.5 - 2026-08-16
 
 ### Passkey login reliability

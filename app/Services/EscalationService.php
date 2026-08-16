@@ -318,6 +318,8 @@ final class EscalationService
 				$releaseId = (int)$connection->lastInsertId();
 			}
 
+			$this->SnapshotRecipientLocations($connection, $releaseId, (int)$cycle['monitor_id']);
+
 			foreach ($recipients as $recipient)
 			{
 				$rawPortalToken = bin2hex(random_bytes(32));
@@ -961,6 +963,61 @@ final class EscalationService
 			'delivery_id' => $deliveryId,
 			'monitor_contact_id' => $monitorContactId,
 		]);
+	}
+
+	/**
+	 * @brief Snapshots the configured bounded location trail once for an immutable recipient release.
+	 * @param PDO $connection Active release transaction.
+	 * @param int $releaseId Recipient release ID.
+	 * @param int $monitorId Monitor ID.
+	 */
+	private function SnapshotRecipientLocations(PDO $connection, int $releaseId, int $monitorId): void
+	{
+		$clear = $connection->prepare('DELETE FROM recipient_release_locations WHERE release_id = :release_id');
+		$clear->execute(['release_id' => $releaseId]);
+		$settings = $connection->prepare('SELECT portal_location_sharing_enabled, portal_location_history_limit FROM monitors WHERE id = :id');
+		$settings->execute(['id' => $monitorId]);
+		$monitor = $settings->fetch(PDO::FETCH_ASSOC);
+
+		if (!is_array($monitor) || empty($monitor['portal_location_sharing_enabled']))
+		{
+			return;
+		}
+
+		$limit = max(1, min(20, (int)$monitor['portal_location_history_limit']));
+		$locations = $connection->prepare('
+			SELECT latitude, longitude, accuracy_meters, address_label, created_at
+			FROM check_in_locations
+			WHERE monitor_id = :monitor_id
+			ORDER BY created_at DESC, id DESC
+			LIMIT ' . $limit . '
+		');
+		$locations->execute(['monitor_id' => $monitorId]);
+		$rows = $locations->fetchAll(PDO::FETCH_ASSOC);
+
+		if (!is_array($rows) || $rows === [])
+		{
+			return;
+		}
+
+		$insert = $connection->prepare('
+			INSERT INTO recipient_release_locations
+			(release_id, sequence_number, latitude, longitude, accuracy_meters, address_label, checked_in_at, created_at)
+			VALUES (:release_id, :sequence_number, :latitude, :longitude, :accuracy_meters, :address_label, :checked_in_at, UTC_TIMESTAMP())
+		');
+
+		foreach (array_values(array_reverse($rows)) as $index => $location)
+		{
+			$insert->execute([
+				'release_id' => $releaseId,
+				'sequence_number' => $index + 1,
+				'latitude' => $location['latitude'],
+				'longitude' => $location['longitude'],
+				'accuracy_meters' => $location['accuracy_meters'],
+				'address_label' => $location['address_label'],
+				'checked_in_at' => $location['created_at'],
+			]);
+		}
 	}
 
 	/** @return array<int, array<string, mixed>> @brief Resolves current recipient/message configuration. */

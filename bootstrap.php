@@ -234,6 +234,9 @@ $view->SetGlobals([
 	'base_url' => $appConfig['base_url'],
 	'currentTarget' => $request->Target(),
 	'availableLocales' => $availableLocales,
+	'locationReverseGeocodeUrl' => (string)$appConfig['location']['reverse_geocode_url'],
+	'locationMapTileUrl' => (string)$appConfig['location']['map_tile_url'],
+	'openStreetMapUrl' => (string)$appConfig['location']['openstreetmap_url'],
 ]);
 
 return [

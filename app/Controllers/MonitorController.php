@@ -10,6 +10,7 @@ declare(strict_types=1);
 
 namespace Pulse\Controllers;
 
+use Pulse\Core\CheckInLocation;
 use Pulse\Core\Logger;
 use Pulse\Core\Request;
 use Pulse\Core\Session;
@@ -167,6 +168,13 @@ class MonitorController extends BaseController
 			$values['reminder_interval_days'],
 			$values['max_reminders']
 		);
+		$this->_monitorRepository->UpdateLocationSettingsForUser(
+			$monitorId,
+			(int)$user['id'],
+			$values['location_check_in_enabled'],
+			$values['portal_location_sharing_enabled'],
+			$values['portal_location_history_limit']
+		);
 		$this->_monitorExecutionService->InitializeMonitorForUser($monitorId, (int)$user['id']);
 		$this->_monitorRepository->ReplaceContactsForMonitor($monitorId, (int)$user['id'], $contactIds);
 		$this->_logger->Info('Monitor created', ['user_id' => (int)$user['id'], 'monitor_id' => $monitorId]);
@@ -301,6 +309,13 @@ class MonitorController extends BaseController
 			null,
 			null,
 			null
+		);
+		$this->_monitorRepository->UpdateLocationSettingsForUser(
+			$monitorId,
+			(int)$user['id'],
+			$values['location_check_in_enabled'],
+			$values['portal_location_sharing_enabled'],
+			$values['portal_location_history_limit']
 		);
 		$this->_monitorExecutionService->SynchronizeMonitorForUser($monitorId, (int)$user['id']);
 		$this->_monitorRepository->ReplaceSafetyContactsForMonitor($monitorId, (int)$user['id'], $safetyContactIds);
@@ -482,7 +497,11 @@ class MonitorController extends BaseController
 	public function CheckIn(): void
 	{
 		$user = $this->RequireUser();
-		$result = $this->_monitorExecutionService->CheckInAllActiveForUser((int)$user['id']);
+		$result = $this->_monitorExecutionService->CheckInAllActiveForUser(
+			(int)$user['id'],
+			'manual',
+			CheckInLocation::FromRequest($this->_request)
+		);
 
 		if ($result['updated'] === 0)
 		{
@@ -893,7 +912,7 @@ class MonitorController extends BaseController
 
 	/**
 	 * @brief Reads and bounds monitor configuration input.
-	 * @return array{name: string, description: string, check_interval_days: int, response_window_days: int, reminder_interval_days: int, max_reminders: int, escalation_policy: string, safety_response_window_days: int, safety_reminder_interval_days: int, safety_max_reminders: int, safety_required_confirmations: int, safety_confirmation_days: int}
+	 * @return array{name: string, description: string, check_interval_days: int, response_window_days: int, reminder_interval_days: int, max_reminders: int, escalation_policy: string, safety_response_window_days: int, safety_reminder_interval_days: int, safety_max_reminders: int, safety_required_confirmations: int, safety_confirmation_days: int, location_check_in_enabled: bool, portal_location_sharing_enabled: bool, portal_location_history_limit: int}
 	 */
 	private function MonitorInput(): array
 	{
@@ -912,6 +931,9 @@ class MonitorController extends BaseController
 			'safety_max_reminders' => $this->_request->PostInt('safety_max_reminders', 1),
 			'safety_required_confirmations' => $this->_request->PostInt('safety_required_confirmations', 1),
 			'safety_confirmation_days' => $this->_request->PostInt('safety_confirmation_days', 0),
+			'location_check_in_enabled' => $this->_request->PostBool('location_check_in_enabled'),
+			'portal_location_sharing_enabled' => $this->_request->PostBool('portal_location_sharing_enabled'),
+			'portal_location_history_limit' => $this->_request->PostInt('portal_location_history_limit', 5),
 		];
 	}
 
@@ -1153,6 +1175,7 @@ class MonitorController extends BaseController
 			|| (int)$values['safety_max_reminders'] < 0 || (int)$values['safety_max_reminders'] > 100
 			|| (int)$values['safety_required_confirmations'] < 1 || (int)$values['safety_required_confirmations'] > 100
 			|| (int)$values['safety_confirmation_days'] < 0 || (int)$values['safety_confirmation_days'] > 3650
+			|| (int)$values['portal_location_history_limit'] < 1 || (int)$values['portal_location_history_limit'] > 20
 		)
 		{
 			$this->_logger->Warning('Monitor validation failed: invalid numeric bounds', ['monitor_id' => $monitorId]);

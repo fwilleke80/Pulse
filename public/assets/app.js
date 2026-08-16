@@ -801,6 +801,421 @@ document.addEventListener('DOMContentLoaded', function ()
 
 });
 
+/** @brief Progressive enhancement for optional, one-shot check-in geolocation. */
+document.addEventListener('DOMContentLoaded', function ()
+{
+	/** @brief Shows a non-blocking location collection or permission status. */
+	const setLocationStatus = function (container, message, isError, selector)
+	{
+		const status = container.querySelector(selector || '[data-location-status]');
+
+		if (!status)
+		{
+			return;
+		}
+
+		status.hidden = message === '';
+		status.textContent = message;
+		status.classList.toggle('is-error', Boolean(isError));
+	};
+
+	/** @brief Requests one current browser position without starting continuous tracking. */
+	const currentPosition = function ()
+	{
+		return new Promise(function (resolve, reject)
+		{
+			if (!navigator.geolocation)
+			{
+				reject(new Error('Geolocation unavailable.'));
+				return;
+			}
+
+			navigator.geolocation.getCurrentPosition(resolve, reject, {
+				enableHighAccuracy: true,
+				timeout: 12000,
+				maximumAge: 60000,
+			});
+		});
+	};
+
+	/** @brief Produces an accuracy-appropriate address from a Nominatim result. */
+	const locationLabel = function (payload, accuracy)
+	{
+		const address = payload && payload.address ? payload.address : {};
+		const locality = address.city || address.town || address.village || address.municipality || address.county || '';
+		let parts = [];
+
+		if (accuracy <= 100)
+		{
+			parts = [[address.road, address.house_number].filter(Boolean).join(' '), address.postcode, locality, address.country];
+		}
+		else if (accuracy <= 1000)
+		{
+			parts = [locality, address.country];
+		}
+		else
+		{
+			parts = [address.state || locality, address.country];
+		}
+
+		parts = parts.filter(function (part, index)
+		{
+			return Boolean(part) && parts.indexOf(part) === index;
+		});
+
+		return (parts.join(', ') || (payload && payload.display_name) || '').slice(0, 1000);
+	};
+
+	/** @brief Reverse-geocodes one point; failures deliberately leave a coordinate-only check-in. */
+	const reverseGeocode = async function (container, latitude, longitude, accuracy)
+	{
+		if (!container.dataset.locationGeocodeUrl)
+		{
+			return '';
+		}
+
+		const controller = window.AbortController ? new AbortController() : null;
+		const timeout = controller ? window.setTimeout(function () { controller.abort(); }, 4000) : 0;
+
+		try
+		{
+			const url = new URL(container.dataset.locationGeocodeUrl, window.location.href);
+			url.searchParams.set('format', 'jsonv2');
+			url.searchParams.set('addressdetails', '1');
+			url.searchParams.set('zoom', '18');
+			url.searchParams.set('lat', latitude.toFixed(7));
+			url.searchParams.set('lon', longitude.toFixed(7));
+			url.searchParams.set('accept-language', container.dataset.locationLanguage || document.documentElement.lang || 'en');
+			const response = await fetch(url.toString(), {
+				headers: {'Accept': 'application/json'},
+				referrerPolicy: 'strict-origin-when-cross-origin',
+				signal: controller ? controller.signal : undefined,
+			});
+
+			if (!response.ok)
+			{
+				return '';
+			}
+
+			return locationLabel(await response.json(), accuracy);
+		}
+		catch (error)
+		{
+			return '';
+		}
+		finally
+		{
+			if (timeout)
+			{
+				window.clearTimeout(timeout);
+			}
+		}
+	};
+
+	/** @brief Collects and fills one optional location payload without blocking the check-in on failure. */
+	const collect = async function (container)
+	{
+		if (!container || container.dataset.checkInLocation !== 'true')
+		{
+			return null;
+		}
+
+		setLocationStatus(container, container.dataset.locationRequesting || 'Requesting location…', false);
+		const available = container.querySelector('[data-location-available]');
+
+		if (available)
+		{
+			available.value = '0';
+		}
+
+		try
+		{
+			const position = await currentPosition();
+			const latitude = Number(position.coords.latitude);
+			const longitude = Number(position.coords.longitude);
+			const accuracy = Math.max(0.01, Number(position.coords.accuracy));
+			const address = await reverseGeocode(container, latitude, longitude, accuracy);
+			const values = {
+				location_available: '1',
+				location_latitude: latitude.toFixed(7),
+				location_longitude: longitude.toFixed(7),
+				location_accuracy: accuracy.toFixed(2),
+				location_address: address,
+			};
+
+			for (const [name, value] of Object.entries(values))
+			{
+				const field = container.querySelector('[name="' + name + '"]');
+
+				if (field)
+				{
+					field.value = value;
+				}
+			}
+
+			setLocationStatus(container, container.dataset.locationRecorded || 'Location will be recorded.', false);
+			return values;
+		}
+		catch (error)
+		{
+			const denied = error && (error.code === 1 || error.name === 'NotAllowedError');
+			setLocationStatus(
+				container,
+				denied ? (container.dataset.locationDenied || 'Location permission was not granted; check-in will continue without it.') : (container.dataset.locationUnavailable || 'Location is unavailable; check-in will continue without it.'),
+				true
+			);
+			return null;
+		}
+	};
+
+	window.PulseCheckInLocation = {collect: collect};
+
+	for (const form of document.querySelectorAll('form[data-check-in-location="true"]'))
+	{
+		form.addEventListener('submit', async function (event)
+		{
+			if (form.dataset.locationCollected === 'true')
+			{
+				return;
+			}
+
+			event.preventDefault();
+			const submitter = event.submitter instanceof HTMLButtonElement ? event.submitter : null;
+
+			if (submitter)
+			{
+				submitter.disabled = true;
+			}
+
+			await collect(form);
+			form.dataset.locationCollected = 'true';
+			form.requestSubmit(submitter || undefined);
+		});
+	}
+
+	for (const toggle of document.querySelectorAll('[data-location-recording-toggle]'))
+	{
+		toggle.addEventListener('change', async function ()
+		{
+			const settings = toggle.closest('[data-location-settings]') || toggle.parentElement.parentElement;
+			const sharing = settings ? settings.querySelector('[data-location-sharing-settings]') : null;
+			const shareToggle = settings ? settings.querySelector('[data-location-sharing-toggle]') : null;
+			const historyLimit = settings ? settings.querySelector('[data-location-history-limit]') : null;
+
+			if (sharing)
+			{
+				sharing.hidden = !toggle.checked;
+			}
+
+			if (!toggle.checked)
+			{
+				if (shareToggle)
+				{
+					shareToggle.checked = false;
+				}
+
+				if (historyLimit)
+				{
+					historyLimit.hidden = true;
+				}
+
+				return;
+			}
+
+			const permissionSettings = settings && settings.matches('[data-location-permission-settings]')
+				? settings
+				: (settings ? settings.querySelector('[data-location-permission-settings]') : null);
+
+			if (!permissionSettings)
+			{
+				return;
+			}
+
+			setLocationStatus(permissionSettings, permissionSettings.dataset.locationRequesting || 'Requesting location permission…', false, '[data-location-permission-status]');
+
+			try
+			{
+				await currentPosition();
+				setLocationStatus(permissionSettings, permissionSettings.dataset.locationRecorded || 'Location permission was granted on this device.', false, '[data-location-permission-status]');
+			}
+			catch (error)
+			{
+				const denied = error && (error.code === 1 || error.name === 'NotAllowedError');
+				setLocationStatus(permissionSettings, denied ? (permissionSettings.dataset.locationDenied || 'Location permission was not granted on this device.') : (permissionSettings.dataset.locationUnavailable || 'Location is unavailable on this device.'), true, '[data-location-permission-status]');
+			}
+		});
+	}
+
+	for (const toggle of document.querySelectorAll('[data-location-sharing-toggle]'))
+	{
+		toggle.addEventListener('change', function ()
+		{
+			const settings = toggle.closest('[data-location-settings]');
+			const historyLimit = settings ? settings.querySelector('[data-location-history-limit]') : null;
+
+			if (historyLimit)
+			{
+				historyLimit.hidden = !toggle.checked;
+			}
+		});
+	}
+});
+
+/** @brief Loads an OpenStreetMap tile snapshot only after the recipient explicitly requests it. */
+document.addEventListener('DOMContentLoaded', function ()
+{
+	const loadButton = document.querySelector('[data-location-map-load]');
+	const map = document.querySelector('[data-location-map]');
+
+	if (!loadButton || !map)
+	{
+		return;
+	}
+
+	let loaded = false;
+	let resizeTimer = 0;
+
+	/** @brief Projects a point to global Web Mercator pixels at one zoom level. */
+	const project = function (latitude, longitude, zoom)
+	{
+		const size = 256 * Math.pow(2, zoom);
+		const limitedLatitude = Math.max(-85.05112878, Math.min(85.05112878, latitude));
+		const radians = limitedLatitude * Math.PI / 180;
+		return {
+			x: (longitude + 180) / 360 * size,
+			y: (1 - Math.log(Math.tan(radians) + 1 / Math.cos(radians)) / Math.PI) / 2 * size,
+		};
+	};
+
+	/** @brief Renders a bounded non-interactive tile map and recorded straight-line trail. */
+	const render = function ()
+	{
+		let points = [];
+
+		try
+		{
+			points = JSON.parse(map.dataset.locationMapPoints || '[]');
+		}
+		catch (error)
+		{
+			return;
+		}
+
+		if (!Array.isArray(points) || points.length === 0)
+		{
+			return;
+		}
+
+		map.replaceChildren();
+		const width = Math.max(280, map.clientWidth || 800);
+		const height = Math.max(320, map.clientHeight || 420);
+		let zoom = 16;
+		let projected = [];
+
+		for (; zoom >= 2; --zoom)
+		{
+			projected = points.map(function (point)
+			{
+				return project(Number(point.latitude), Number(point.longitude), zoom);
+			});
+			const xs = projected.map((point) => point.x);
+			const ys = projected.map((point) => point.y);
+
+			if (Math.max(...xs) - Math.min(...xs) <= width - 80 && Math.max(...ys) - Math.min(...ys) <= height - 80)
+			{
+				break;
+			}
+		}
+
+		const xs = projected.map((point) => point.x);
+		const ys = projected.map((point) => point.y);
+		const centerX = (Math.min(...xs) + Math.max(...xs)) / 2;
+		const centerY = (Math.min(...ys) + Math.max(...ys)) / 2;
+		const originX = centerX - width / 2;
+		const originY = centerY - height / 2;
+		const tileMinimumX = Math.floor(originX / 256);
+		const tileMaximumX = Math.floor((originX + width) / 256);
+		const tileMinimumY = Math.floor(originY / 256);
+		const tileMaximumY = Math.floor((originY + height) / 256);
+		const tileCount = Math.pow(2, zoom);
+
+		for (let tileY = tileMinimumY; tileY <= tileMaximumY; ++tileY)
+		{
+			if (tileY < 0 || tileY >= tileCount)
+			{
+				continue;
+			}
+
+			for (let tileX = tileMinimumX; tileX <= tileMaximumX; ++tileX)
+			{
+				const wrappedX = ((tileX % tileCount) + tileCount) % tileCount;
+				const image = document.createElement('img');
+				image.alt = '';
+				image.width = 256;
+				image.height = 256;
+				image.referrerPolicy = 'strict-origin-when-cross-origin';
+				image.src = (map.dataset.locationMapTileUrl || '')
+					.replace('{z}', String(zoom))
+					.replace('{x}', String(wrappedX))
+					.replace('{y}', String(tileY));
+				image.style.left = (tileX * 256 - originX) + 'px';
+				image.style.top = (tileY * 256 - originY) + 'px';
+				map.appendChild(image);
+			}
+		}
+
+		const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+		svg.setAttribute('viewBox', '0 0 ' + width + ' ' + height);
+		svg.setAttribute('role', 'img');
+		svg.setAttribute('aria-label', map.dataset.locationMapLabel || 'Recorded check-in locations');
+		const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+		polyline.setAttribute('points', projected.map(function (point)
+		{
+			return (point.x - originX) + ',' + (point.y - originY);
+		}).join(' '));
+		polyline.setAttribute('class', 'portal-location-path');
+		svg.appendChild(polyline);
+
+		for (const [index, point] of projected.entries())
+		{
+			const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+			circle.setAttribute('cx', String(point.x - originX));
+			circle.setAttribute('cy', String(point.y - originY));
+			circle.setAttribute('r', index === projected.length - 1 ? '8' : '6');
+			circle.setAttribute('class', index === projected.length - 1 ? 'portal-location-node is-last' : 'portal-location-node');
+			svg.appendChild(circle);
+		}
+
+		map.appendChild(svg);
+		const attribution = document.createElement('a');
+		attribution.className = 'portal-location-attribution';
+		attribution.href = 'https://www.openstreetmap.org/copyright';
+		attribution.target = '_blank';
+		attribution.rel = 'noopener noreferrer';
+		attribution.textContent = '© OpenStreetMap contributors';
+		map.appendChild(attribution);
+	};
+
+	loadButton.addEventListener('click', function ()
+	{
+		map.hidden = false;
+		loadButton.hidden = true;
+		loaded = true;
+		render();
+	});
+
+	window.addEventListener('resize', function ()
+	{
+		if (!loaded)
+		{
+			return;
+		}
+
+		window.clearTimeout(resizeTimer);
+		resizeTimer = window.setTimeout(render, 150);
+	});
+});
+
 /** @brief Progressive enhancement for WebAuthn passkey registration, login, and quick check-in. */
 document.addEventListener('DOMContentLoaded', function ()
 {
@@ -1062,6 +1477,15 @@ document.addEventListener('DOMContentLoaded', function ()
 			verifyData.append('authenticator_data', bytesToBase64Url(credential.response.authenticatorData));
 			verifyData.append('signature', bytesToBase64Url(credential.response.signature));
 			verifyData.append('user_handle', credential.response.userHandle ? bytesToBase64Url(credential.response.userHandle) : '');
+			const location = window.PulseCheckInLocation ? await window.PulseCheckInLocation.collect(form) : null;
+
+			if (location)
+			{
+				for (const [name, value] of Object.entries(location))
+				{
+					verifyData.append(name, value);
+				}
+			}
 			const verified = await postJson(form.dataset.passkeyVerifyUrl || '', verifyData);
 
 			if (verified.redirect)

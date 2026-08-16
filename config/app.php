@@ -51,6 +51,11 @@ return [
 			'text/plain',
 		]),
 	],
+	'location' => [
+		'reverse_geocode_url' => 'https://nominatim.openstreetmap.org/reverse',
+		'map_tile_url' => 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+		'openstreetmap_url' => 'https://www.openstreetmap.org',
+	],
 	'mail' => [
 		'enabled' => Environment::GetBool('PULSE_MAIL_ENABLED', false),
 		'host' => Environment::Get('PULSE_SMTP_HOST'),

@@ -8,10 +8,13 @@ declare(strict_types=1);
 
 /** @var array<string, mixed> $delivery */
 /** @var array<int, array<string, mixed>> $documents */
+/** @var array<int, array<string, mixed>> $locations */
 /** @var string $token */
 /** @var string $base_url */
 /** @var int $availableDocumentCount */
 /** @var int $totalDownloadBytes */
+/** @var string $openStreetMapUrl */
+/** @var string $locationMapTileUrl */
 
 $portalIntro = trim((string)($delivery['portal_intro_text'] ?? ''));
 
@@ -57,6 +60,50 @@ ob_start();
 	<section class="portal-message-card" aria-labelledby="portal-message-heading">
 		<h2 id="portal-message-heading"><?= e__('portal.access.message.heading_owner', ['owner' => (string)$delivery['owner_name']]) ?></h2>
 		<div class="portal-message-body markdown-content"><?= markdown_html((string)$delivery['portal_message_text']) ?></div>
+	</section>
+<?php endif; ?>
+
+<?php if ($locations !== []): ?>
+	<?php
+	$mapPoints = array_map(static function (array $location): array
+	{
+		return [
+			'latitude' => (float)$location['latitude'],
+			'longitude' => (float)$location['longitude'],
+			'label' => trim((string)($location['address_label'] ?? '')),
+			'checked_in_at' => (string)$location['checked_in_at'],
+		];
+	}, $locations);
+	$mapJson = json_encode($mapPoints, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+	?>
+	<section class="portal-location-section" aria-labelledby="portal-location-heading">
+		<div class="portal-documents-heading-row">
+			<div>
+				<h2 id="portal-location-heading"><?= e__('portal.locations.heading') ?></h2>
+				<p><?= e__(count($locations) === 1 ? 'portal.locations.intro.one' : 'portal.locations.intro.many', ['count' => count($locations)]) ?></p>
+			</div>
+			<button type="button" class="btn-secondary" data-location-map-load><?= e__('portal.locations.load_map') ?></button>
+		</div>
+		<ol class="portal-location-list">
+			<?php foreach ($locations as $location): ?>
+				<?php
+				$latitude = (float)$location['latitude'];
+				$longitude = (float)$location['longitude'];
+				$label = trim((string)($location['address_label'] ?? ''));
+				$label = $label !== '' ? $label : __('portal.locations.coordinates', [
+					'latitude' => number_format($latitude, 5, '.', ''),
+					'longitude' => number_format($longitude, 5, '.', ''),
+				]);
+				?>
+				<li>
+					<a href="<?= e(openstreetmap_location_url($openStreetMapUrl, $latitude, $longitude)) ?>" target="_blank" rel="noopener noreferrer"><?= e($label) ?></a>
+					<time datetime="<?= e((string)$location['checked_in_at']) ?>"><?= e(format_datetime((string)$location['checked_in_at'])) ?></time>
+					<small><?= e__('portal.locations.accuracy', ['meters' => (int)ceil((float)$location['accuracy_meters'])]) ?></small>
+				</li>
+			<?php endforeach; ?>
+		</ol>
+		<div class="portal-location-map" data-location-map data-location-map-points="<?= e($mapJson) ?>" data-location-map-tile-url="<?= e($locationMapTileUrl) ?>" data-location-map-label="<?= e__('portal.locations.map_label') ?>" hidden></div>
+		<p class="form-hint"><?= e__('portal.locations.disclaimer') ?></p>
 	</section>
 <?php endif; ?>
 

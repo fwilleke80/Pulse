@@ -10,6 +10,7 @@ declare(strict_types=1);
 
 namespace Pulse\Controllers;
 
+use Pulse\Core\CheckInLocation;
 use Pulse\Core\Logger;
 use Pulse\Core\Request;
 use Pulse\Core\Session;
@@ -77,6 +78,7 @@ final class QuickCheckInController extends BaseController
 
 		return $this->_view->Render('security.quick-checkin', [
 			'hasPasskeys' => $this->_passkeys->HasPasskeys((int)$context['user_id']),
+			'locationRequested' => $this->_monitorExecution->HasLocationEnabledActiveMonitorForUser((int)$context['user_id']),
 		]);
 	}
 
@@ -121,7 +123,11 @@ final class QuickCheckInController extends BaseController
 				throw new \RuntimeException('Quick check-in token is no longer claimable.');
 			}
 
-			$result = $this->_monitorExecution->CheckInAllActiveForUser($userId, 'quick_passkey');
+			$result = $this->_monitorExecution->CheckInAllActiveForUser(
+				$userId,
+				'quick_passkey',
+				CheckInLocation::FromRequest($this->_request)
+			);
 			$this->StoreSuccess((int)$result['updated']);
 			return $this->Json(['ok' => true, 'redirect' => '/quick-check-in/success']);
 		}

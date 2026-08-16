@@ -39,6 +39,28 @@ final class MonitorExecutionService
 		$this->_stateMachine = $stateMachine;
 		$this->_logger = $logger;
 	}
+	/** @brief Returns whether a user has any active monitor configured to record check-in location. */
+	public function HasLocationEnabledActiveMonitorForUser(int $userId): bool
+	{
+		$statement = $this->_database->GetConnection()->prepare('
+			SELECT 1
+			FROM monitors
+			WHERE user_id = :user_id
+				AND location_check_in_enabled = 1
+				AND is_paused = 0
+				AND is_archived = 0
+				AND NOT EXISTS
+				(
+					SELECT 1
+					FROM check_cycles active_cc
+					WHERE active_cc.monitor_id = monitors.id
+						AND active_cc.status = \'escalated\'
+				)
+			LIMIT 1
+		');
+		$statement->execute(['user_id' => $userId]);
+		return $statement->fetchColumn() !== false;
+	}
 
 	/**
 	 * @brief Ensures every active monitor has one current cycle and opens cycles whose due time has arrived.
@@ -134,9 +156,10 @@ final class MonitorExecutionService
 	 * @brief Confirms all active monitors and starts each monitor's next interval from one UTC instant.
 	 * @param int $userId Owner user ID.
 	 * @param string $source Authentication/action source recorded in audit context.
+	 * @param array{latitude: float, longitude: float, accuracy_meters: float, address_label: string|null}|null $location Optional validated browser location.
 	 * @return array{updated: int}
 	 */
-	public function CheckInAllActiveForUser(int $userId, string $source = 'manual'): array
+	public function CheckInAllActiveForUser(int $userId, string $source = 'manual', ?array $location = null): array
 	{
 		$connection = $this->_database->GetConnection();
 		$connection->beginTransaction();
@@ -195,7 +218,7 @@ final class MonitorExecutionService
 					'id' => (int)$monitor['id'],
 				]);
 
-				$this->WriteAudit(
+				$auditId = $this->WriteAudit(
 					$connection,
 					$userId,
 					'monitor.checked_in',
@@ -208,6 +231,19 @@ final class MonitorExecutionService
 						'source' => $source,
 					]
 				);
+
+				if (!empty($monitor['location_check_in_enabled']) && is_array($location))
+				{
+					$this->InsertCheckInLocation(
+						$connection,
+						$auditId,
+						(int)$cycle['id'],
+						(int)$monitor['id'],
+						$userId,
+						$location,
+						$nowValue
+					);
+				}
 				$updated++;
 			}
 
@@ -640,16 +676,22 @@ final class MonitorExecutionService
 		$offset = ($page - 1) * $perPage;
 		$statement = $this->_database->GetConnection()->prepare('
 			SELECT
+				a.id AS audit_id,
 				a.event_type,
 				a.entity_id,
 				a.context_json,
 				a.created_at,
-				m.name AS monitor_name
+				m.name AS monitor_name,
+				cil.latitude AS location_latitude,
+				cil.longitude AS location_longitude,
+				cil.accuracy_meters AS location_accuracy_meters,
+				cil.address_label AS location_address_label
 			FROM audit_log a
 			LEFT JOIN monitors m
 				ON a.entity_type = \'monitor\'
 				AND m.id = a.entity_id
 				AND m.user_id = a.user_id
+			LEFT JOIN check_in_locations cil ON cil.audit_log_id = a.id
 			WHERE a.user_id = :user_id
 				AND a.event_type IN
 				(
@@ -1149,6 +1191,7 @@ final class MonitorExecutionService
 				archived_at,
 				last_confirmed_at,
 				next_check_due_at,
+				location_check_in_enabled,
 				created_at
 			FROM monitors
 			WHERE user_id = :user_id
@@ -1199,6 +1242,7 @@ final class MonitorExecutionService
 				archived_at,
 				last_confirmed_at,
 				next_check_due_at,
+				location_check_in_enabled,
 				created_at
 			FROM monitors
 			WHERE id = :id
@@ -1257,6 +1301,7 @@ final class MonitorExecutionService
 	 * @param int $monitorId Monitor ID.
 	 * @param string $createdAt UTC timestamp.
 	 * @param array<string, mixed> $context Non-sensitive event context.
+	 * @return int New audit-log ID.
 	 */
 	private function WriteAudit(
 		PDO $connection,
@@ -1265,7 +1310,7 @@ final class MonitorExecutionService
 		int $monitorId,
 		string $createdAt,
 		array $context = []
-	): void
+	): int
 	{
 		$statement = $connection->prepare('
 			INSERT INTO audit_log
@@ -1279,6 +1324,67 @@ final class MonitorExecutionService
 			'entity_id' => $monitorId,
 			'message' => $eventType,
 			'context_json' => $context === [] ? null : json_encode($context, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES),
+			'created_at' => $createdAt,
+		]);
+
+		return (int)$connection->lastInsertId();
+	}
+
+	/**
+	 * @brief Stores a validated location beside its check-in audit entry.
+	 * @param PDO $connection Active connection and transaction.
+	 * @param int $auditId Check-in audit-log ID.
+	 * @param int $checkCycleId Closed cycle ID.
+	 * @param int $monitorId Monitor ID.
+	 * @param int $userId Owner user ID.
+	 * @param array{latitude: float, longitude: float, accuracy_meters: float, address_label: string|null} $location Validated location.
+	 * @param string $createdAt UTC check-in timestamp.
+	 */
+	private function InsertCheckInLocation(
+		PDO $connection,
+		int $auditId,
+		int $checkCycleId,
+		int $monitorId,
+		int $userId,
+		array $location,
+		string $createdAt
+	): void
+	{
+		$statement = $connection->prepare('
+			INSERT INTO check_in_locations
+			(
+				audit_log_id,
+				check_cycle_id,
+				monitor_id,
+				user_id,
+				latitude,
+				longitude,
+				accuracy_meters,
+				address_label,
+				created_at
+			)
+			VALUES
+			(
+				:audit_log_id,
+				:check_cycle_id,
+				:monitor_id,
+				:user_id,
+				:latitude,
+				:longitude,
+				:accuracy_meters,
+				:address_label,
+				:created_at
+			)
+		');
+		$statement->execute([
+			'audit_log_id' => $auditId,
+			'check_cycle_id' => $checkCycleId,
+			'monitor_id' => $monitorId,
+			'user_id' => $userId,
+			'latitude' => $location['latitude'],
+			'longitude' => $location['longitude'],
+			'accuracy_meters' => $location['accuracy_meters'],
+			'address_label' => $location['address_label'],
 			'created_at' => $createdAt,
 		]);
 	}

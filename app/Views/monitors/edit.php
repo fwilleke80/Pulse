@@ -161,6 +161,46 @@ ob_start();
 				<input type="number" name="max_reminders" form="monitor-settings-form" min="0" max="100" value="<?= (int)$monitor['max_reminders'] ?>" required>
 			</label>
 		</div>
+
+		<div class="configuration-block check-in-location-settings" data-location-settings data-location-permission-settings data-location-requesting="<?= e__('location.permission.requesting') ?>" data-location-recorded="<?= e__('location.permission.granted') ?>" data-location-unavailable="<?= e__('location.permission.unavailable') ?>" data-location-denied="<?= e__('location.permission.denied') ?>">
+			<h3><?= e__('monitors.location.heading') ?></h3>
+			<label class="checkbox-option" for="location_check_in_enabled">
+				<input
+					type="checkbox"
+					id="location_check_in_enabled"
+					name="location_check_in_enabled"
+					form="monitor-settings-form"
+					value="1"
+					data-location-recording-toggle
+					<?= !empty($monitor['location_check_in_enabled']) ? 'checked' : '' ?>
+				>
+				<span><strong><?= e__('monitors.location.record.label') ?></strong><small><?= e__('monitors.location.record.hint') ?></small></span>
+			</label>
+			<small class="check-in-location-status" data-location-permission-status hidden aria-live="polite"></small>
+
+			<div class="location-sharing-settings" data-location-sharing-settings<?= !empty($monitor['location_check_in_enabled']) ? '' : ' hidden' ?>>
+				<label class="checkbox-option" for="portal_location_sharing_enabled">
+					<input
+						type="checkbox"
+						id="portal_location_sharing_enabled"
+						name="portal_location_sharing_enabled"
+						form="monitor-settings-form"
+						value="1"
+						data-location-sharing-toggle
+						<?= !empty($monitor['portal_location_sharing_enabled']) ? 'checked' : '' ?>
+					>
+					<span><strong><?= e__('monitors.location.portal.label') ?></strong><small><?= e__('monitors.location.portal.hint') ?></small></span>
+				</label>
+
+				<label class="location-history-limit" data-location-history-limit<?= !empty($monitor['portal_location_sharing_enabled']) ? '' : ' hidden' ?>>
+					<?= e__('monitors.location.portal.count') ?>
+					<input type="number" name="portal_location_history_limit" form="monitor-settings-form" min="1" max="20" value="<?= max(1, min(20, (int)($monitor['portal_location_history_limit'] ?? 5))) ?>" required>
+					<small><?= e__('monitors.location.portal.count_hint') ?></small>
+				</label>
+			</div>
+
+			<p class="privacy-note"><?= e__('monitors.location.privacy') ?></p>
+		</div>
 	</section>
 
 	<section id="monitor-tab-documents" class="monitor-tab-panel<?= $activeTab === 'documents' ? ' is-active' : '' ?>" role="tabpanel" data-tab-panel="documents"<?= $activeTab === 'documents' ? '' : ' hidden' ?>>

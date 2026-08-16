@@ -30,6 +30,15 @@ ob_start();
 	<label for="max_reminders"><?= e__('monitors.add.max_reminders') ?></label>
 	<input type="number" id="max_reminders" name="max_reminders" min="0" value="2" required>
 
+	<label class="checkbox-option" for="location_check_in_enabled">
+		<input type="checkbox" id="location_check_in_enabled" name="location_check_in_enabled" value="1" data-location-recording-toggle>
+		<span><strong><?= e__('monitors.location.record.label') ?></strong><small><?= e__('monitors.location.record.hint') ?></small></span>
+	</label>
+	<div data-location-permission-settings data-location-requesting="<?= e__('location.permission.requesting') ?>" data-location-recorded="<?= e__('location.permission.granted') ?>" data-location-unavailable="<?= e__('location.permission.unavailable') ?>" data-location-denied="<?= e__('location.permission.denied') ?>">
+		<small class="check-in-location-status" data-location-permission-status hidden aria-live="polite"></small>
+	</div>
+	<input type="hidden" name="portal_location_history_limit" value="5">
+
 	<div class="assignment-box">
 		<h2><?= e__('monitors.contacts.heading') ?></h2>
 		<p class="form-hint"><?= e__('monitors.contacts.hint') ?></p>

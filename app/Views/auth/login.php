@@ -10,6 +10,9 @@ declare(strict_types=1);
 
 /** @var string $base_url */
 /** @var bool $quickCheckInPending */
+/** @var bool $locationRequested */
+/** @var string $locationReverseGeocodeUrl */
+/** @var string $locale */
 
 ob_start();
 ?>
@@ -23,8 +26,9 @@ ob_start();
 	</div>
 <?php endif; ?>
 <div class="stack" data-passkey-login-scope>
-	<form method="post" action="<?= e($base_url) ?>/login" class="stack" data-password-login-form>
+	<form method="post" action="<?= e($base_url) ?>/login" class="stack" data-password-login-form<?= !empty($locationRequested) ? ' ' . check_in_location_attributes($locationReverseGeocodeUrl, $locale) : '' ?>>
 		<?= csrf_field() ?>
+		<?php if (!empty($locationRequested)): ?><?php require __DIR__ . '/../partials/check-in-location.php'; ?><?php endif; ?>
 		<label for="email"><?= e__('login.email') ?></label>
 		<input type="email" id="email" name="email" autocomplete="username" required>
 		<label for="password"><?= e__('login.password') ?></label>
@@ -32,8 +36,9 @@ ob_start();
 		<button type="submit"><?= e__('login.submit') ?></button>
 	</form>
 	<div class="auth-separator"><span><?= e__('login.or_passkey') ?></span></div>
-	<div class="passkey-primary-action" data-passkey-login-form data-passkey-options-url="<?= e($base_url) ?>/login/passkey/options" data-passkey-verify-url="<?= e($base_url) ?>/login/passkey/verify" data-passkey-unavailable="<?= e__('security.passkeys.browser_unavailable') ?>" data-passkey-cancelled="<?= e__('security.passkeys.cancelled') ?>">
+	<div class="passkey-primary-action" data-passkey-login-form data-passkey-options-url="<?= e($base_url) ?>/login/passkey/options" data-passkey-verify-url="<?= e($base_url) ?>/login/passkey/verify" data-passkey-unavailable="<?= e__('security.passkeys.browser_unavailable') ?>" data-passkey-cancelled="<?= e__('security.passkeys.cancelled') ?>"<?= !empty($locationRequested) ? ' ' . check_in_location_attributes($locationReverseGeocodeUrl, $locale) : '' ?>>
 		<?= csrf_field() ?>
+		<?php if (!empty($locationRequested)): ?><?php require __DIR__ . '/../partials/check-in-location.php'; ?><?php endif; ?>
 		<button type="button" class="btn-primary" data-passkey-login><?= e__('security.passkeys.login_button') ?></button>
 		<small><?= e__('security.passkeys.login_hint') ?></small>
 		<div class="security-method-status" data-passkey-status hidden></div>

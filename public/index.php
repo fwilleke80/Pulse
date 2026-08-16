@@ -75,7 +75,9 @@ $securityCredentialRepository = $container['securityCredentialRepository'];
 $passkeyService = $container['passkeyService'];
 $quickCheckInService = $container['quickCheckInService'];
 
-(new SecurityHeaders())->Apply($request, (array)$config['security']);
+$securityPolicyConfig = (array)$config['security'];
+$securityPolicyConfig['location'] = (array)($config['location'] ?? []);
+(new SecurityHeaders())->Apply($request, $securityPolicyConfig);
 header('Cache-Control: no-store');
 
 $view->SetGlobals(['flash' => $session->PullFlash()], true);

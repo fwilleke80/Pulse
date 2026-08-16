@@ -16,6 +16,9 @@ declare(strict_types=1);
 /** @var bool $mailEnabled */
 /** @var bool $debugEnabled */
 /** @var string $base_url */
+/** @var string $openStreetMapUrl */
+/** @var string $locationReverseGeocodeUrl */
+/** @var string $locale */
 
 $activeMonitors = array_values(array_filter(
 	$monitors,
@@ -29,6 +32,10 @@ $attentionCount = count(array_filter(
 	$activeMonitors,
 	static fn (array $monitor): bool => in_array(monitor_status($monitor), ['awaiting', 'safety-pending', 'overdue'], true)
 ));
+$locationRequested = count(array_filter(
+	$activeMonitors,
+	static fn (array $monitor): bool => !empty($monitor['location_check_in_enabled'])
+)) > 0;
 $activityTranslationKeys = [
 	'monitor.checked_in' => 'dashboard.activity.checked_in',
 	'monitor.awaiting' => 'dashboard.activity.awaiting',
@@ -94,9 +101,10 @@ ob_start();
 			<h2><?= e__('dashboard.check_in.heading') ?></h2>
 			<p><?= e__('dashboard.check_in.message', ['count' => count($activeMonitors)]) ?></p>
 		</div>
-		<form method="post" action="<?= e($base_url) ?>/monitors/check-in">
+		<form method="post" action="<?= e($base_url) ?>/monitors/check-in"<?= $locationRequested ? ' ' . check_in_location_attributes($locationReverseGeocodeUrl, $locale) : '' ?>>
 			<?= csrf_field() ?>
 			<input type="hidden" name="redirect" value="/">
+			<?php if ($locationRequested): ?><?php require __DIR__ . '/../partials/check-in-location.php'; ?><?php endif; ?>
 			<button type="submit" class="btn-primary btn-check-in"><?= e__('monitors.check_in.submit') ?></button>
 		</form>
 	</section>
@@ -192,7 +200,20 @@ ob_start();
 				?>
 				<?php if (is_string($activityKey)): ?>
 					<li>
-						<span><?= e__($activityKey, ['name' => $monitorName]) ?></span>
+						<?php if ((string)$activity['event_type'] === 'monitor.checked_in' && $activity['location_latitude'] !== null): ?>
+							<?php
+							$latitude = (float)$activity['location_latitude'];
+							$longitude = (float)$activity['location_longitude'];
+							$locationLabel = trim((string)($activity['location_address_label'] ?? ''));
+							$locationLabel = $locationLabel !== '' ? $locationLabel : __('location.coordinates', [
+								'latitude' => number_format($latitude, 5, '.', ''),
+								'longitude' => number_format($longitude, 5, '.', ''),
+							]);
+							?>
+							<span><?= e__('dashboard.activity.checked_in_from', ['name' => $monitorName]) ?> <a href="<?= e(openstreetmap_location_url($openStreetMapUrl, $latitude, $longitude)) ?>" target="_blank" rel="noopener noreferrer"><?= e($locationLabel) ?></a>.</span>
+						<?php else: ?>
+							<span><?= e__($activityKey, ['name' => $monitorName]) ?></span>
+						<?php endif; ?>
 						<time datetime="<?= e((string)$activity['created_at']) ?>"><?= e(format_datetime((string)$activity['created_at'])) ?></time>
 					</li>
 				<?php endif; ?>

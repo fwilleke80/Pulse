@@ -115,6 +115,7 @@ Verify:
 - Check in now starts a fresh interval;
 - checking in early is safe;
 - paused/escalated/archived monitors are excluded from global check-in;
+- location-aware monitors request one browser position, location failure does not block check-in, and monitors without the opt-in do not store the shared position;
 - Force due now makes the monitor due but does not itself create the due-notice queue job;
 - the next cron run creates/sends exactly one current due notice;
 - repeated/manual due-notice attempts do not create a duplicate logical job.

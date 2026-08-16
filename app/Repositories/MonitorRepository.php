@@ -59,6 +59,9 @@ class MonitorRepository
 				safety_reminder_subject,
 				safety_reminder_body,
 				recipient_portal_expiry_days,
+				location_check_in_enabled,
+				portal_location_sharing_enabled,
+				portal_location_history_limit,
 				is_paused,
 				paused_at,
 				is_archived,
@@ -184,6 +187,9 @@ class MonitorRepository
 				safety_reminder_subject,
 				safety_reminder_body,
 				recipient_portal_expiry_days,
+				location_check_in_enabled,
+				portal_location_sharing_enabled,
+				portal_location_history_limit,
 				is_paused,
 				paused_at,
 				is_archived,
@@ -496,6 +502,42 @@ class MonitorRepository
 			'safety_invitation_body' => $safetyInvitationBody,
 			'safety_reminder_subject' => $safetyReminderSubject,
 			'safety_reminder_body' => $safetyReminderBody,
+		]);
+	}
+
+	/**
+	 * @brief Updates optional check-in recording and recipient-portal location sharing.
+	 * @param int $monitorId Monitor ID.
+	 * @param int $userId Owner user ID.
+	 * @param bool $recordLocation Whether check-ins should request and store browser location.
+	 * @param bool $shareWithRecipients Whether release portals receive an immutable location snapshot.
+	 * @param int $historyLimit Maximum number of recent locations included in the snapshot.
+	 */
+	public function UpdateLocationSettingsForUser(
+		int $monitorId,
+		int $userId,
+		bool $recordLocation,
+		bool $shareWithRecipients,
+		int $historyLimit
+	): void
+	{
+		$record = $recordLocation ? 1 : 0;
+		$share = $recordLocation && $shareWithRecipients ? 1 : 0;
+		$historyLimit = max(1, min(20, $historyLimit));
+		$statement = $this->_database->GetConnection()->prepare('
+			UPDATE monitors
+			SET location_check_in_enabled = :record_location,
+				portal_location_sharing_enabled = :share_location,
+				portal_location_history_limit = :history_limit,
+				updated_at = UTC_TIMESTAMP()
+			WHERE id = :id AND user_id = :user_id
+		');
+		$statement->execute([
+			'id' => $monitorId,
+			'user_id' => $userId,
+			'record_location' => $record,
+			'share_location' => $share,
+			'history_limit' => $historyLimit,
 		]);
 	}
 

@@ -13,11 +13,18 @@ declare(strict_types=1);
 /** @var bool $debugEnabled */
 /** @var bool $mailEnabled */
 /** @var bool $showArchived */
+/** @var string $locationReverseGeocodeUrl */
+/** @var string $locale */
 
 $activeMonitorCount = count(array_filter(
 	$monitors,
 	static fn (array $monitor): bool => !in_array(monitor_status($monitor), ['paused', 'escalated', 'archived'], true)
 ));
+$locationRequested = count(array_filter(
+	$monitors,
+	static fn (array $monitor): bool => !in_array(monitor_status($monitor), ['paused', 'escalated', 'archived'], true)
+		&& !empty($monitor['location_check_in_enabled'])
+)) > 0;
 
 ob_start();
 ?>
@@ -30,9 +37,10 @@ ob_start();
 	<?php endif; ?>
 	<a href="<?= e($base_url) ?>/monitors<?= $showArchived ? '' : '?view=archived' ?>" class="button-link monitor-view-toggle"><?= e__($showArchived ? 'monitors.index.view.active' : 'monitors.index.view.archived') ?></a>
 	<?php if (!$showArchived && $activeMonitorCount > 0): ?>
-		<form method="post" action="<?= e($base_url) ?>/monitors/check-in">
+		<form method="post" action="<?= e($base_url) ?>/monitors/check-in"<?= $locationRequested ? ' ' . check_in_location_attributes($locationReverseGeocodeUrl, $locale) : '' ?>>
 			<?= csrf_field() ?>
 			<input type="hidden" name="redirect" value="/monitors">
+			<?php if ($locationRequested): ?><?php require __DIR__ . '/../partials/check-in-location.php'; ?><?php endif; ?>
 			<button type="submit" class="btn-primary"><?= e__('monitors.check_in.submit') ?></button>
 		</form>
 	<?php endif; ?>

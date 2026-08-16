@@ -180,6 +180,7 @@ class MonitorExecutionServiceTest extends TestCase
 				paused_at DATETIME NULL,
 				is_archived TINYINT(1) NOT NULL DEFAULT 0,
 				archived_at DATETIME NULL,
+				location_check_in_enabled TINYINT(1) NOT NULL DEFAULT 0,
 				last_confirmed_at DATETIME NULL,
 				next_check_due_at DATETIME NULL,
 				created_at DATETIME NOT NULL,

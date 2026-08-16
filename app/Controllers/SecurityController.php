@@ -10,6 +10,7 @@ declare(strict_types=1);
 
 namespace Pulse\Controllers;
 
+use Pulse\Core\CheckInLocation;
 use Pulse\Core\CsrfTokenManager;
 use Pulse\Core\Logger;
 use Pulse\Core\Request;
@@ -112,7 +113,7 @@ final class SecurityController extends BaseController
 		if ($currentPassword === '' || !password_verify($currentPassword, (string)$user['password_hash']))
 		{
 			$this->Flash('error', __('security.passkeys.current_password_invalid'));
-			$this->Redirect('/profile#security');
+			$this->Redirect('/profile?tab=security');
 		}
 
 		if ($credentialId > 0 && $this->_credentials->DeletePasskeyForUser($credentialId, (int)$user['id']))
@@ -125,7 +126,7 @@ final class SecurityController extends BaseController
 			$this->Flash('warning', __('security.passkeys.not_found'));
 		}
 
-		$this->Redirect('/profile#security');
+		$this->Redirect('/profile?tab=security');
 	}
 
 	/** @brief Starts passkey login, constrained to the pending quick-check-in account when applicable. */
@@ -204,7 +205,11 @@ final class SecurityController extends BaseController
 
 				if (is_array($context) && (int)$context['user_id'] === $userId && $this->_quickCheckIn->Claim($quickTokenHash, $userId))
 				{
-					$result = $this->_monitorExecution->CheckInAllActiveForUser($userId, 'quick_passkey_login');
+					$result = $this->_monitorExecution->CheckInAllActiveForUser(
+						$userId,
+						'quick_passkey_login',
+						CheckInLocation::FromRequest($this->_request)
+					);
 					$this->_session->Remove('pulse_quick_checkin_token_hash');
 					$this->_session->Set('pulse_quick_checkin_result', ['count' => (int)$result['updated']]);
 					return $this->Json(['ok' => true, 'redirect' => '/quick-check-in/success']);

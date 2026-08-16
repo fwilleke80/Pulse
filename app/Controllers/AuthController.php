@@ -10,6 +10,7 @@ declare(strict_types=1);
 
 namespace Pulse\Controllers;
 
+use Pulse\Core\CheckInLocation;
 use Pulse\Core\CsrfTokenManager;
 use Pulse\Core\Logger;
 use Pulse\Core\Request;
@@ -74,6 +75,7 @@ class AuthController extends BaseController
 
 		return $this->_view->Render('auth.login', [
 			'quickCheckInPending' => $quickCheckInPending,
+			'locationRequested' => $quickCheckInPending && $this->QuickCheckInLocationRequested(),
 		]);
 	}
 
@@ -123,7 +125,11 @@ class AuthController extends BaseController
 
 			if (is_array($context) && (int)$context['user_id'] === $userId && $this->_quickCheckIn->Claim($quickTokenHash, $userId))
 			{
-				$result = $this->_monitorExecution->CheckInAllActiveForUser($userId, 'quick_password');
+				$result = $this->_monitorExecution->CheckInAllActiveForUser(
+					$userId,
+					'quick_password',
+					CheckInLocation::FromRequest($this->_request)
+				);
 				$this->_session->Remove('pulse_quick_checkin_token_hash');
 				$this->_session->Set('pulse_quick_checkin_result', ['count' => (int)$result['updated']]);
 				$this->Redirect('/quick-check-in/success');
@@ -143,5 +149,15 @@ class AuthController extends BaseController
 	{
 		$this->_auth->Logout();
 		$this->Redirect('/login');
+	}
+
+	/** @brief Resolves whether the session-bound quick check-in account requests location. */
+	private function QuickCheckInLocationRequested(): bool
+	{
+		$tokenHash = (string)$this->_session->Get('pulse_quick_checkin_token_hash', '');
+		$context = $tokenHash !== '' ? $this->_quickCheckIn->ResolveHash($tokenHash) : null;
+
+		return is_array($context)
+			&& $this->_monitorExecution->HasLocationEnabledActiveMonitorForUser((int)$context['user_id']);
 	}
 }

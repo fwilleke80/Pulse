@@ -1,6 +1,6 @@
 # Pulse
 
-**Current stable release: 1.1.5**
+**Current stable release: 1.1.6**
 
 Pulse is a private, self-hosted check-in and notification system for situations in which something could happen to you and the people who need to know might otherwise not be informed for some time. You might use it to make sure family, friends, or other trusted people are contacted if you die or become seriously ill, or as an additional safety measure while travelling alone, going on an expedition, or spending time somewhere where help may be difficult to reach.
 
@@ -61,7 +61,7 @@ Users with the `administrator` role have access to **Administration**, organized
 
 ## Account security and quick check-in
 
-Pulse 1.1.5 includes passkeys as a general account authentication method. Register passkeys under **Profile → Account security** and use them on the normal login page. The security-method storage is deliberately generic so later releases can add additional methods or second-factor policies without tying account authentication to passkeys alone.
+Pulse 1.1.6 includes passkeys as a general account authentication method. Register passkeys under **Profile → Account security** and use them on the normal login page. The security-method storage is deliberately generic so later releases can add additional methods or second-factor policies without tying account authentication to passkeys alone.
 
 Administrators can enable **Passkey quick check-in** under **Administration → Security**. This is the lowest-effort way to perform routine check-ins: open the link in an owner reminder, authenticate with the passkey available on that device, and Pulse immediately performs the same global action as **Check in now** for all active monitors. The email link itself is not authentication, and normal password login remains available as fallback.
 
@@ -71,6 +71,12 @@ Owner reminder templates normally use `{quickcheckin}`, which expands to the loc
 
 Passkeys require HTTPS and a stable Pulse hostname in normal deployment.
 
+## Optional check-in locations
+
+Each monitor can independently request a one-time browser location during check-in. Enabling the setting asks the current device for permission; the browser decides whether that grant is retained. Pulse never tracks continuously, and check-in always continues if location is denied or unavailable.
+
+Recorded owner-history locations link to OpenStreetMap. A second, separate monitor option can publish a bounded last-known trail of 1–20 points in the authenticated recipient portal after escalation. That trail is frozen with the release and cannot gain later check-ins. Map tiles load only when a recipient explicitly opens the map. Positions and straight lines are approximate and do not replace rescue or emergency services.
+
 ## Documentation
 
 - [Installation and updates](docs/INSTALLATION.md)
@@ -79,6 +85,7 @@ Passkeys require HTTPS and a stable Pulse hostname in normal deployment.
 - [Security model](docs/SECURITY.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Release audit guide](docs/AUDIT_GUIDE.md)
+- [Roadmap](docs/ROADMAP.md)
 - [Changelog](CHANGELOG.md)
 
 ## License

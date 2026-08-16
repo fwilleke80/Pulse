@@ -13,6 +13,7 @@ declare(strict_types=1);
 /** @var int $totalPages */
 /** @var int $total */
 /** @var string $base_url */
+/** @var string $openStreetMapUrl */
 
 $activityTranslationKeys = [
 	'monitor.checked_in' => 'dashboard.activity.checked_in',
@@ -59,7 +60,20 @@ ob_start();
 			?>
 			<?php if (is_string($key)): ?>
 				<li>
-					<span><?= e__($key, ['name' => $monitorName]) ?></span>
+					<?php if ((string)$entry['event_type'] === 'monitor.checked_in' && $entry['location_latitude'] !== null): ?>
+						<?php
+						$latitude = (float)$entry['location_latitude'];
+						$longitude = (float)$entry['location_longitude'];
+						$locationLabel = trim((string)($entry['location_address_label'] ?? ''));
+						$locationLabel = $locationLabel !== '' ? $locationLabel : __('location.coordinates', [
+							'latitude' => number_format($latitude, 5, '.', ''),
+							'longitude' => number_format($longitude, 5, '.', ''),
+						]);
+						?>
+						<span><?= e__('dashboard.activity.checked_in_from', ['name' => $monitorName]) ?> <a href="<?= e(openstreetmap_location_url($openStreetMapUrl, $latitude, $longitude)) ?>" target="_blank" rel="noopener noreferrer"><?= e($locationLabel) ?></a>.</span>
+					<?php else: ?>
+						<span><?= e__($key, ['name' => $monitorName]) ?></span>
+					<?php endif; ?>
 					<time datetime="<?= e((string)$entry['created_at']) ?>"><?= e(format_datetime((string)$entry['created_at'])) ?></time>
 				</li>
 			<?php endif; ?>

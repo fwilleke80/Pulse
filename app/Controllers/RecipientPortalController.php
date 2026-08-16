@@ -194,6 +194,7 @@ final class RecipientPortalController extends BaseController
 		return $this->_view->Render('portal.access', [
 			'delivery' => $this->AuthenticatedDelivery($delivery),
 			'documents' => $documents,
+			'locations' => $this->_portalService->LocationsForDelivery((int)$delivery['delivery_id']),
 			'token' => $token,
 			'availableDocumentCount' => $availableDocumentCount,
 			'totalDownloadBytes' => $totalDownloadBytes,

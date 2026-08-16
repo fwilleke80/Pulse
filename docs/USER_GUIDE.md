@@ -39,6 +39,18 @@ The dashboard gives you the operational overview: monitor counts, monitor states
 
 You do not have to wait until a monitor is due. Checking in early simply proves that you are present now and restarts its interval.
 
+### Optional check-in locations
+
+Under **Monitor Editor → Schedule**, **Record location during check-ins** enables one-shot location collection for that monitor. When you enable it, Pulse asks the current device for browser location permission. The browser may remember the permission for the Pulse site; its own site settings remain the final authority. If permission is denied, revoked, times out, or no position is available, Pulse completes the check-in without a location.
+
+Pulse asks for one current position only while enabling the option or submitting a location-aware check-in. It does not watch or record movement between check-ins. When several active monitors are checked in together, Pulse requests the position once and stores it only for monitors that have location recording enabled.
+
+If an approximate address can be resolved, the check-in history reads that the named monitor was checked in from that location. The location is a link to OpenStreetMap. Coordinates and reported accuracy remain the authoritative stored values when no useful address is available.
+
+**Share the last known check-in locations in the recipient portal** is a separate opt-in. Choose between 1 and 20 points. If escalation eventually releases recipient portals, Pulse copies the selected most recent points into that release in chronological order. The copy is immutable: later check-ins are never added to an already released portal. Recipients must still authenticate with their emailed access code, and map tiles load only after they choose **Load map**.
+
+The portal joins recorded points with straight lines for orientation. Those lines are not a continuously tracked route, GPS positions can be inaccurate, and Pulse remains an additional safety tool rather than an emergency or rescue service.
+
 Paused, escalated, and archived monitors are not included in a global check-in.
 
 ## Monitor statuses
@@ -411,13 +423,13 @@ For reliable delivery, add the configured Pulse sender address or domain to safe
 
 ## Account security and passkeys
 
-Open **Profile → Account security** to register and remove passkeys. Passkeys can be used for normal Pulse login and for quick check-in. Registration and removal require the current password, so possession of an already authenticated browser session alone is not enough to change passkey credentials.
+Profile is organized into **Profile data**, **Account security**, and **Change password** tabs. Open **Profile → Account security** to register and remove passkeys. Passkeys can be used for normal Pulse login and for quick check-in. Registration and removal require the current password, so possession of an already authenticated browser session alone is not enough to change passkey credentials.
 
 A passkey may be backed by Face ID, Touch ID, Windows Hello, a hardware security key, or another authenticator supported by the browser and operating system. Pulse stores the credential identifier and public verification material; it does not receive the authenticator's private key or biometric template.
 
 For the most reliable quick-check-in setup, make sure a Pulse passkey is **available** on every device you may use to respond to a reminder. Passkeys may be synchronized automatically by a password manager such as iCloud Keychain, so one registered passkey can already work on several devices. Only add a separate passkey when a device or password manager cannot access an existing one. Give independently registered credentials recognizable names such as **iCloud Keychain**, **Work password manager**, or **YubiKey**, and test each intended device before relying on quick check-in during a real reminder.
 
-The normal password remains available as recovery/fallback authentication in 1.1.5. The account-security storage separates authentication methods from monitor logic so later releases can add additional methods and second-factor policies.
+The normal password remains available as recovery/fallback authentication in 1.1.6. The account-security storage separates authentication methods from monitor logic so later releases can add additional methods and second-factor policies.
 
 ### Quick check-in from reminder mail
 
