@@ -216,6 +216,8 @@ The TOTP secret is encrypted with AES-256-GCM before database storage. Its insta
 
 Pulse issues 10 random 80-bit Base32 recovery codes. Only installation-keyed SHA-256 hashes are stored, each code is consumed transactionally once, and plaintext codes remain only in the authenticated session during the one-time display. Regeneration replaces the whole set. Sensitive TOTP changes require both the current password and a current TOTP or unused recovery code. Attempt throttles use separate opaque account and network keys, and enable, disable, login, recovery-use, and regeneration events are recorded in the audit log without secret material.
 
+For TOTP-enabled accounts, Profile reports recovery readiness without changing authorization policy. It warns when no passkey exists or when three or fewer recovery codes remain, and reminds the owner that a useful disaster-recovery copy must pair the database with the matching `.env`. Pulse deliberately provides no email or security-question bypass for the second factor. The supported recovery routes are an available passkey, one unused recovery code, or a complete database-and-`.env` restore.
+
 TOTP is a second factor for password authentication only. A successful passkey assertion remains a complete phishing-resistant authentication and bypasses the password/TOTP pair; Pulse constrains a passkey assertion started on a pending TOTP page to that password-verified account. This policy is deliberate rather than an accidental omission of a second prompt.
 
 ## Quick check-in threat model

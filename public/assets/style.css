@@ -677,9 +677,9 @@ th
 	gap: 1.5rem;
 	margin-top: 1.5rem;
 	padding: clamp(1rem, 3vw, 1.5rem);
-	border: 1px solid color-mix(in srgb, var(--primary) 42%, var(--border));
+	border: 1px solid color-mix(in srgb, var(--success) 42%, var(--border));
 	border-radius: var(--radius);
-	background: color-mix(in srgb, var(--primary) 7%, var(--surface));
+	background: color-mix(in srgb, var(--success) 7%, var(--surface));
 }
 
 .global-check-in-card h2,
@@ -708,8 +708,38 @@ th
 
 .btn-check-in
 {
-	min-width: 150px;
-	padding: 0.8rem 1.15rem;
+	display: inline-flex;
+	min-width: 170px;
+	align-items: center;
+	justify-content: center;
+	gap: 0.65rem;
+	padding: 0.8rem 1.25rem;
+	border-color: #167a46;
+	border-radius: 999px;
+	background: #167a46;
+	box-shadow: 0 6px 16px rgba(20, 120, 62, 0.22);
+	color: #ffffff;
+	font-weight: 750;
+}
+
+.btn-check-in:hover
+{
+	border-color: #0f6439;
+	background: #0f6439;
+	color: #ffffff;
+}
+
+.check-in-button-icon
+{
+	display: inline-grid;
+	width: 1.6rem;
+	height: 1.6rem;
+	flex: 0 0 1.6rem;
+	place-items: center;
+	border-radius: 50%;
+	background: rgba(255, 255, 255, 0.18);
+	font-size: 1rem;
+	line-height: 1;
 }
 
 .section-title-row
@@ -835,17 +865,53 @@ th
 	margin-top: 1.25rem;
 }
 
-.monitor-index-toolbar
+.monitor-view-tabs
 {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	gap: 0.65rem;
-	margin: 1rem 0 0.4rem;
+	display: inline-flex;
+	gap: 0.3rem;
+	margin-top: 0.75rem;
+	padding: 0.3rem;
+	border: 1px solid var(--border);
+	border-radius: 10px;
+	background: var(--surface-subtle);
 }
 
-.monitor-index-toolbar form,
-.monitor-index-toolbar button
+.monitor-view-tab
+{
+	padding: 0.5rem 0.8rem;
+	border-radius: 7px;
+	color: var(--muted);
+	font-weight: 700;
+	text-decoration: none;
+}
+
+.monitor-view-tab:hover
+{
+	color: var(--primary);
+}
+
+.monitor-view-tab.is-active
+{
+	background: var(--surface);
+	box-shadow: 0 1px 4px rgba(31, 42, 55, 0.1);
+	color: var(--text);
+}
+
+.monitor-index-command-bar
+{
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	margin: 1.25rem 0;
+	padding: 0.85rem 1rem;
+	border: 1px solid var(--border);
+	border-radius: 10px;
+	background: var(--surface-subtle);
+}
+
+.monitor-index-check-in,
+.monitor-index-command-bar button
 {
 	margin: 0;
 }
@@ -890,9 +956,62 @@ th
 }
 
 .form-hint,
+.field-help,
+label > small,
+.field-grid input + small,
+.field-grid textarea + small,
+.field-grid select + small,
+.checkbox-option small,
+.policy-option-content small
+{
+	color: var(--muted);
+	font-size: 0.82rem;
+	font-weight: 400;
+	line-height: 1.4;
+}
+
+.form-hint,
+.field-help
+{
+	margin: 0.25rem 0 0.75rem;
+}
+
+label > small,
+.field-grid input + small,
+.field-grid textarea + small,
+.field-grid select + small,
+.checkbox-option small,
+.policy-option-content small
+{
+	display: block;
+	margin-top: 0.25rem;
+}
+
 small
 {
 	color: var(--muted);
+}
+
+.checkbox-option
+{
+	display: flex;
+	align-items: flex-start;
+	gap: 0.7rem;
+	margin-top: 0.75rem;
+	font-weight: 400;
+}
+
+.checkbox-option input[type="checkbox"]
+{
+	width: auto;
+	flex: 0 0 auto;
+	margin-top: 0.25rem;
+}
+
+.checkbox-option > span,
+.checkbox-option strong
+{
+	display: block;
 }
 
 .assignment-list,
@@ -1121,6 +1240,11 @@ small
 	margin-top: 1.25rem;
 }
 
+.recipient-add-note
+{
+	margin: 0.65rem 0 1rem;
+}
+
 .escalation-policy-grid
 {
 	display: grid;
@@ -1171,15 +1295,10 @@ small
 
 .recipient-document-checklist
 {
-	display: flex;
-	max-height: 360px;
-	flex-direction: column;
-	gap: 0;
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
+	gap: 0.65rem;
 	margin-top: 0.9rem;
-	overflow-y: auto;
-	border: 1px solid var(--border);
-	border-radius: 8px;
-	background: var(--surface);
 }
 
 .recipient-document-row
@@ -1189,13 +1308,16 @@ small
 	gap: 0.7rem;
 	margin: 0;
 	padding: 0.7rem 0.8rem;
-	border-bottom: 1px solid var(--border);
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	background: var(--surface);
 	font-weight: normal;
 }
 
-.recipient-document-row:last-child
+.recipient-document-row:has(input:checked)
 {
-	border-bottom: 0;
+	border-color: color-mix(in srgb, var(--primary) 55%, var(--border));
+	background: color-mix(in srgb, var(--primary) 5%, var(--surface));
 }
 
 .recipient-document-row input[type="checkbox"]
@@ -1204,9 +1326,12 @@ small
 	margin-top: 0.2rem;
 }
 
-.recipient-document-row span
+.recipient-document-content
 {
+	display: flex;
 	min-width: 0;
+	flex-direction: column;
+	gap: 0.15rem;
 }
 
 .recipient-summary-list
@@ -1410,6 +1535,105 @@ small
 	align-items: flex-start;
 	justify-content: space-between;
 	gap: 1rem;
+}
+
+.recovery-readiness-card
+{
+	padding: 1rem 1.1rem;
+	border: 1px solid color-mix(in srgb, var(--success) 38%, var(--border));
+	border-radius: 10px;
+	background: color-mix(in srgb, var(--success) 5%, var(--surface));
+}
+
+.recovery-readiness-card.needs-attention
+{
+	border-color: color-mix(in srgb, var(--warning) 42%, var(--border));
+	background: color-mix(in srgb, var(--warning) 6%, var(--surface));
+}
+
+.recovery-readiness-heading
+{
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 1rem;
+}
+
+.recovery-readiness-heading h3,
+.recovery-readiness-heading p
+{
+	margin: 0;
+}
+
+.recovery-readiness-heading p
+{
+	margin-top: 0.25rem;
+	color: var(--muted);
+}
+
+.recovery-readiness-grid
+{
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+	gap: 0.65rem;
+	margin-top: 0.9rem;
+}
+
+.recovery-readiness-item
+{
+	display: flex;
+	align-items: flex-start;
+	gap: 0.6rem;
+	padding: 0.65rem 0.7rem;
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	background: var(--surface);
+}
+
+.recovery-readiness-item > div
+{
+	display: flex;
+	min-width: 0;
+	flex-direction: column;
+}
+
+.recovery-readiness-item small
+{
+	display: block;
+	margin-top: 0.15rem;
+	font-size: 0.82rem;
+	line-height: 1.4;
+}
+
+.recovery-readiness-icon
+{
+	display: inline-grid;
+	width: 1.45rem;
+	height: 1.45rem;
+	flex: 0 0 1.45rem;
+	place-items: center;
+	border-radius: 50%;
+	background: color-mix(in srgb, var(--info) 13%, var(--surface));
+	color: var(--info);
+	font-size: 0.8rem;
+	font-weight: 800;
+}
+
+.recovery-readiness-item.is-ready .recovery-readiness-icon
+{
+	background: color-mix(in srgb, var(--success) 13%, var(--surface));
+	color: var(--success);
+}
+
+.recovery-readiness-item.needs-attention .recovery-readiness-icon
+{
+	background: color-mix(in srgb, var(--warning) 14%, var(--surface));
+	color: var(--warning);
+}
+
+.recovery-readiness-routes
+{
+	margin-bottom: 0;
 }
 
 .security-method-heading h3
@@ -1723,6 +1947,24 @@ small
 	margin: 1rem 0 1.5rem;
 }
 
+.document-create-grid .monitor-document-card,
+.document-create-grid .monitor-document-card form
+{
+	display: flex;
+	flex-direction: column;
+}
+
+.document-create-grid .monitor-document-card form
+{
+	flex: 1;
+}
+
+.document-create-grid .monitor-document-card form > button
+{
+	align-self: flex-start;
+	margin-top: auto;
+}
+
 .monitor-document-card h4
 {
 	margin-top: 0;
@@ -1927,7 +2169,7 @@ small
 	display: flex;
 	align-items: center;
 	gap: 1rem;
-	margin-top: 1rem;
+	margin: 1rem clamp(-1rem, -2vw, 0rem) 0;
 	padding: 0.75rem 0.9rem;
 	border: 1px solid var(--border);
 	border-radius: 10px;
@@ -1997,6 +2239,43 @@ small
 .email-address-card input
 {
 	margin: 0;
+}
+
+input[data-main-email].is-invalid,
+input[data-main-email]:user-invalid
+{
+	border-color: var(--danger);
+	outline: 3px solid color-mix(in srgb, var(--danger) 18%, transparent);
+}
+
+.field-validation-message
+{
+	display: block;
+	margin-top: 0.1rem;
+	color: var(--danger);
+	font-size: 0.82rem;
+	font-weight: 600;
+}
+
+.field-validation-message[hidden]
+{
+	display: none;
+}
+
+.cron-token-generator .form-hint
+{
+	display: block;
+	margin-top: 0.25rem;
+}
+
+.safety-confirmation-warning
+{
+	margin-top: 0.9rem;
+}
+
+.safety-confirmation-warning[hidden]
+{
+	display: none;
 }
 
 .email-address-list
@@ -2084,6 +2363,31 @@ footer
 	}
 
 	.global-check-in-card button
+	{
+		width: 100%;
+	}
+
+	.monitor-view-tabs
+	{
+		display: flex;
+		width: 100%;
+	}
+
+	.monitor-view-tab
+	{
+		flex: 1 1 0;
+		text-align: center;
+	}
+
+	.monitor-index-command-bar,
+	.recovery-readiness-heading
+	{
+		align-items: stretch;
+		flex-direction: column;
+	}
+
+	.monitor-index-check-in,
+	.monitor-index-command-bar .btn-check-in
 	{
 		width: 100%;
 	}
@@ -3621,6 +3925,7 @@ footer
 {
 	border-color: color-mix(in srgb, var(--warning) 40%, var(--border));
 	background: color-mix(in srgb, var(--warning) 8%, var(--surface));
+	color: var(--warning);
 }
 
 .status-danger

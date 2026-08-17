@@ -1,3 +1,31 @@
+## 1.2.8 - 2026-08-17
+
+### Profile and administration clarity
+- Labelled the first owner address **Main Email**, made that slot explicitly mandatory in both browser and server validation, and added a clear inline error state when it is empty. The three additional addresses remain optional, and all four stored addresses remain valid login aliases; each address's checked state still controls mail delivery independently.
+- Placed the browser-generated cron-token explanation on its own line below **Generate strong new token**.
+
+### Recipient and safety-contact guidance
+- Moved **Adding a recipient is silent** into the **Add recipient** block so the explanation sits beside the action it describes.
+- Added concise field help to every value in **Safety timing & confirmations**.
+- Replaced the previous blocking safety-contact validation with a live advisory warning when **Confirmations required** exceeds the selected contacts that currently have at least one checked email address. Incomplete setups may be saved for later completion, and the same warning is reflected on the Review tab.
+- Updated all four interface languages, documentation, and source regression coverage. No database migration is required.
+
+## 1.2.7 - 2026-08-17
+
+### Quieter help and clearer primary actions
+- Restyled persistent form help throughout Pulse as smaller, muted copy placed closer to its field, retaining touch, keyboard, and screen-reader availability without hiding essential guidance behind hover-only bubbles.
+- Gave the global **Check in now** action a distinctive friendly confirmation treatment on Dashboard and Monitors, removed redundant schedule explanations, and reduced Dashboard recent activity to five items while retaining the complete-history link.
+- Replaced the Monitors active/archive switch with responsive **Active monitors** and **Archived monitors** tabs, visually separated from page actions.
+
+### Monitor and recipient editor refinements
+- Added concise explanations to the four core schedule values and fixed label/help line breaks for both location-aware check-in options.
+- Matched the monitor save bar width to the editor, enlarged the new text-document editor and aligned both document-creation actions, folded the safety-contact authority explanation into its selectable policy card, and converted recipient document assignments to compact responsive cards.
+- Added source regressions for the shared help treatment, primary action, tabs, editor sizing, safety copy, and recipient document grid. No database migration is required.
+
+### Optional recovery-readiness guidance
+- Added a compact **Recovery readiness** overview under **Profile → Account security** whenever TOTP is enabled. It warns when no passkey is registered or only three recovery codes remain, while showing a ready state when both alternatives are healthy.
+- Documented the supported recovery routes: an available passkey, an unused recovery code, or restoration of the database together with its matching `.env`. Pulse deliberately adds no email or security-question two-factor bypass, and none of these optional authentication methods is made mandatory.
+
 ## 1.2.6 - 2026-08-16
 
 ### Inline-first recipient documents and media

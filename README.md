@@ -1,6 +1,6 @@
 # Pulse
 
-**Current stable release: 1.2.6**
+**Current stable release: 1.2.8**
 
 Pulse is a private, self-hosted check-in and notification system for situations in which something could happen to you and the people who need to know might otherwise not be informed for some time. You might use it to make sure family, friends, or other trusted people are contacted if you die or become seriously ill, or as an additional safety measure while travelling alone, going on an expedition, or spending time somewhere where help may be difficult to reach.
 
@@ -64,6 +64,8 @@ Users with the `administrator` role have access to **Administration**, organized
 Pulse 1.2 includes passkeys as a general account authentication method. Register passkeys under **Profile → Account security** and use them on the normal login page.
 
 Pulse 1.2.3 also adds optional authenticator-app two-factor authentication (TOTP), configured under **Profile → Account security**. After you confirm the setup with a current six-digit code, password sign-ins require a current authenticator code or one unused recovery code. Passkeys remain a complete, phishing-resistant sign-in method and do not trigger an additional TOTP prompt. Enrollment QR codes are rendered locally in the browser; the authenticator secret is not sent to a QR service.
+
+When TOTP is enabled, Pulse 1.2.7 shows a compact recovery-readiness overview in the same tab. It highlights a missing passkey and a low recovery-code count, and reminds you to back up the database together with its matching `.env`. The overview is guidance only; TOTP and passkeys remain optional.
 
 Administrators can enable **Passkey quick check-in** under **Administration → Security**. This is the lowest-effort way to perform routine check-ins: open the link in an owner reminder, authenticate with the passkey available on that device, and Pulse immediately performs the same global action as **Check in now** for all active monitors. The email link itself is not authentication, and normal password login remains available as fallback.
 

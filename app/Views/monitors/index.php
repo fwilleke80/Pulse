@@ -29,25 +29,26 @@ $locationRequested = count(array_filter(
 ob_start();
 ?>
 
-<h1><?= e__($showArchived ? 'monitors.index.archived.heading' : 'monitors.index.heading') ?></h1>
+<h1><?= e__('monitors.index.heading') ?></h1>
 <p><?= e__($showArchived ? 'monitors.index.archived.message' : 'monitors.index.message') ?></p>
-<div class="monitor-index-toolbar">
-	<?php if (!$showArchived): ?>
-		<a href="<?= e($base_url) ?>/monitors/new" class="button-link"><?= e__('monitors.index.add') ?></a>
-	<?php endif; ?>
-	<a href="<?= e($base_url) ?>/monitors<?= $showArchived ? '' : '?view=archived' ?>" class="button-link monitor-view-toggle"><?= e__($showArchived ? 'monitors.index.view.active' : 'monitors.index.view.archived') ?></a>
-	<?php if (!$showArchived && $activeMonitorCount > 0): ?>
-		<form method="post" action="<?= e($base_url) ?>/monitors/check-in"<?= $locationRequested ? ' ' . check_in_location_attributes($locationReverseGeocodeUrl, $locale) : '' ?>>
-			<?= csrf_field() ?>
-			<input type="hidden" name="redirect" value="/monitors">
-			<?php if ($locationRequested): ?><?php require __DIR__ . '/../partials/check-in-location.php'; ?><?php endif; ?>
-			<button type="submit" class="btn-primary"><?= e__('monitors.check_in.submit') ?></button>
-		</form>
-	<?php endif; ?>
-</div>
 
-<?php if (!$showArchived && $activeMonitorCount > 0): ?>
-	<p class="form-hint"><?= e__('monitors.index.check_in_hint', ['count' => $activeMonitorCount]) ?></p>
+<nav class="monitor-view-tabs" aria-label="<?= e__('monitors.index.view.label') ?>">
+	<a href="<?= e($base_url) ?>/monitors" class="monitor-view-tab<?= $showArchived ? '' : ' is-active' ?>"<?= $showArchived ? '' : ' aria-current="page"' ?>><?= e__('monitors.index.view.active') ?></a>
+	<a href="<?= e($base_url) ?>/monitors?view=archived" class="monitor-view-tab<?= $showArchived ? ' is-active' : '' ?>"<?= $showArchived ? ' aria-current="page"' : '' ?>><?= e__('monitors.index.view.archived') ?></a>
+</nav>
+
+<?php if (!$showArchived): ?>
+	<div class="monitor-index-command-bar">
+		<a href="<?= e($base_url) ?>/monitors/new" class="button-link"><?= e__('monitors.index.add') ?></a>
+		<?php if ($activeMonitorCount > 0): ?>
+			<form method="post" action="<?= e($base_url) ?>/monitors/check-in" class="monitor-index-check-in"<?= $locationRequested ? ' ' . check_in_location_attributes($locationReverseGeocodeUrl, $locale) : '' ?>>
+				<?= csrf_field() ?>
+				<input type="hidden" name="redirect" value="/monitors">
+				<?php if ($locationRequested): ?><?php require __DIR__ . '/../partials/check-in-location.php'; ?><?php endif; ?>
+				<button type="submit" class="btn-primary btn-check-in"><span class="check-in-button-icon" aria-hidden="true">✓</span><span><?= e__('monitors.check_in.submit') ?></span></button>
+			</form>
+		<?php endif; ?>
+	</div>
 <?php endif; ?>
 
 <?php if ($monitors === []): ?>

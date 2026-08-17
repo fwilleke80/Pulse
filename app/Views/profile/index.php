@@ -15,6 +15,10 @@ declare(strict_types=1);
 
 ob_start();
 $ownerAddresses = \Pulse\Core\EmailAddressCollection::FromRow($user);
+$totpEnabled = is_array($totpStatus);
+$recoveryCodesRemaining = is_array($totpStatus) ? (int)$totpStatus['recovery_codes_remaining'] : 0;
+$hasPasskey = $passkeys !== [];
+$recoveryReady = $totpEnabled && $hasPasskey && $recoveryCodesRemaining > 3;
 ?>
 
 <h1><?= e__('profile.heading') ?></h1>
@@ -50,8 +54,9 @@ $ownerAddresses = \Pulse\Core\EmailAddressCollection::FromRow($user);
 				$address = $ownerAddresses[$slot - 1] ?? ['email' => '', 'checked' => false];
 				?>
 				<div class="email-address-card" data-email-address-card>
-					<label for="profile_<?= e($emailField) ?>"><?= e__('profile.data.email') ?></label>
-					<input type="email" id="profile_<?= e($emailField) ?>" name="<?= e($emailField) ?>" data-contact-email data-original-email="<?= e((string)$address['email']) ?>" value="<?= e((string)$address['email']) ?>"<?= $slot === 1 ? ' required' : '' ?>>
+					<label for="profile_<?= e($emailField) ?>"><?= e__($slot === 1 ? 'profile.data.main_email' : 'profile.data.email') ?></label>
+					<input type="email" id="profile_<?= e($emailField) ?>" name="<?= e($emailField) ?>" data-contact-email data-original-email="<?= e((string)$address['email']) ?>" value="<?= e((string)$address['email']) ?>"<?= $slot === 1 ? ' data-main-email aria-describedby="profile-main-email-error" required' : '' ?>>
+					<?php if ($slot === 1): ?><small id="profile-main-email-error" class="field-validation-message" data-main-email-error hidden><?= e__('profile.data.main_email_required') ?></small><?php endif; ?>
 					<p class="email-suggestion is-hidden" data-email-suggestion data-suggestion-template="<?= e__('contacts.email.suggestion') ?>" role="status"></p>
 					<label class="compact-check"><input type="checkbox" name="<?= e($checkedField) ?>" data-email-checked<?= !empty($address['checked']) ? ' checked' : '' ?>> <?= e__('contacts.email_checked.label') ?></label>
 				</div>
@@ -92,6 +97,33 @@ $ownerAddresses = \Pulse\Core\EmailAddressCollection::FromRow($user);
 	<h2><?= e__('security.heading') ?></h2>
 	<p><?= e__('security.hint') ?></p>
 
+	<?php if ($totpEnabled): ?>
+		<section class="recovery-readiness-card<?= $recoveryReady ? ' is-ready' : ' needs-attention' ?>" aria-labelledby="recovery-readiness-heading">
+			<div class="recovery-readiness-heading">
+				<div>
+					<h3 id="recovery-readiness-heading"><?= e__('security.recovery.heading') ?></h3>
+					<p><?= e__('security.recovery.intro') ?></p>
+				</div>
+				<span class="status-badge <?= $recoveryReady ? 'status-verified' : 'status-warning' ?>"><?= e__($recoveryReady ? 'security.recovery.status.ready' : 'security.recovery.status.review') ?></span>
+			</div>
+			<div class="recovery-readiness-grid">
+				<div class="recovery-readiness-item<?= $hasPasskey ? ' is-ready' : ' needs-attention' ?>">
+					<span class="recovery-readiness-icon" aria-hidden="true"><?= $hasPasskey ? '✓' : '!' ?></span>
+					<div><strong><?= e__('security.recovery.passkey.heading') ?></strong><small><?= e__($hasPasskey ? 'security.recovery.passkey.ready' : 'security.recovery.passkey.missing') ?></small></div>
+				</div>
+				<div class="recovery-readiness-item<?= $recoveryCodesRemaining > 3 ? ' is-ready' : ' needs-attention' ?>">
+					<span class="recovery-readiness-icon" aria-hidden="true"><?= $recoveryCodesRemaining > 3 ? '✓' : '!' ?></span>
+					<div><strong><?= e__('security.recovery.codes.heading') ?></strong><small><?= e__($recoveryCodesRemaining > 3 ? 'security.recovery.codes.ready' : 'security.recovery.codes.low', ['count' => $recoveryCodesRemaining]) ?></small></div>
+				</div>
+				<div class="recovery-readiness-item">
+					<span class="recovery-readiness-icon" aria-hidden="true">i</span>
+					<div><strong><?= e__('security.recovery.backup.heading') ?></strong><small><?= e__('security.recovery.backup.message') ?></small></div>
+				</div>
+			</div>
+			<p class="form-hint recovery-readiness-routes"><?= e__('security.recovery.routes') ?></p>
+		</section>
+	<?php endif; ?>
+
 	<?php if ($totpRecoveryCodes !== []): ?>
 		<div class="configuration-block totp-recovery-display" role="region" aria-labelledby="totp-recovery-heading">
 			<h3 id="totp-recovery-heading"><?= e__('security.totp.recovery.heading') ?></h3>
@@ -118,14 +150,13 @@ $ownerAddresses = \Pulse\Core\EmailAddressCollection::FromRow($user);
 				<h3><?= e__('security.totp.heading') ?></h3>
 				<p><?= e__('security.totp.hint') ?></p>
 			</div>
-			<span class="status-badge <?= is_array($totpStatus) ? 'status-verified' : 'status-muted' ?>"><?= e__(is_array($totpStatus) ? 'security.totp.status.enabled' : 'security.totp.status.disabled') ?></span>
+			<span class="status-badge <?= $totpEnabled ? 'status-verified' : 'status-muted' ?>"><?= e__($totpEnabled ? 'security.totp.status.enabled' : 'security.totp.status.disabled') ?></span>
 		</div>
 		<p class="form-hint"><?= e__('security.totp.passkey_hint') ?></p>
 
 		<?php if (is_array($totpStatus)): ?>
 			<div class="security-method-summary">
 				<span><?= e__('security.totp.enabled_at', ['date' => format_datetime((string)$totpStatus['enabled_at'])]) ?></span>
-				<span><?= e__('security.totp.recovery.remaining', ['count' => (int)$totpStatus['recovery_codes_remaining']]) ?></span>
 				<?php if (!empty($totpStatus['last_used_at'])): ?><span><?= e__('security.totp.last_used', ['date' => format_datetime((string)$totpStatus['last_used_at'])]) ?></span><?php endif; ?>
 			</div>
 

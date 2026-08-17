@@ -166,7 +166,7 @@ class NotificationInfrastructureSourceTest extends TestCase
 		$dashboard = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Views/home/dashboard.php');
 		$history = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Views/home/activity.php');
 
-		self::assertStringContainsString('FindRecentActivityForUser((int)$user[\'id\'], 10)', $controller);
+		self::assertStringContainsString('FindRecentActivityForUser((int)$user[\'id\'], 5)', $controller);
 		self::assertStringContainsString('/activity', $dashboard);
 		self::assertStringContainsString('activity.pagination.page', $history);
 	}

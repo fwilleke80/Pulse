@@ -104,14 +104,22 @@ class ProfileController extends BaseController
 		$userId = (int)$user['id'];
 
 		$displayName = $this->_request->PostString('display_name', 255);
+		$mainEmail = $this->_request->PostString('email', 255);
 		$addresses = $this->PostedEmailAddresses();
 		$notificationLocale = $this->_request->PostString('notification_locale', 10);
 		$websiteLocale = $this->_request->PostString('website_locale', 10);
 
-		if ($displayName === '' || $addresses === [])
+		if ($displayName === '')
 		{
 			$this->_logger->Warning('Profile update failed due to missing fields', ['user_id' => $userId]);
 			$this->Flash('error', __('profile.flash.update.required'));
+			$this->Redirect('/profile?tab=profile');
+		}
+
+		if ($mainEmail === '' || $addresses === [])
+		{
+			$this->_logger->Warning('Profile update failed due to missing main email', ['user_id' => $userId]);
+			$this->Flash('error', __('profile.flash.update.main_email_required'));
 			$this->Redirect('/profile?tab=profile');
 		}
 

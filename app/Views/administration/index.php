@@ -338,7 +338,7 @@ ob_start();
 			<small><?= e__('administration.secret.keep_hint') ?></small>
 		</label>
 		<div class="field-grid field-grid-two">
-			<div><button type="button" class="btn-secondary" data-generate-cron-token><?= e__('administration.secret.generate_cron') ?></button><small class="form-hint"><?= e__('administration.secret.generate_cron_hint') ?></small></div>
+			<div class="cron-token-generator"><button type="button" class="btn-secondary" data-generate-cron-token><?= e__('administration.secret.generate_cron') ?></button><small class="form-hint"><?= e__('administration.secret.generate_cron_hint') ?></small></div>
 			<div class="checkbox-row"><label><input type="checkbox" name="clear_cron_token" form="administration-settings-form" value="1"><?= e__('administration.secret.clear_cron') ?></label></div>
 		</div>
 		<div class="configuration-block">

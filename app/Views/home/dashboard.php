@@ -105,7 +105,7 @@ ob_start();
 			<?= csrf_field() ?>
 			<input type="hidden" name="redirect" value="/">
 			<?php if ($locationRequested): ?><?php require __DIR__ . '/../partials/check-in-location.php'; ?><?php endif; ?>
-			<button type="submit" class="btn-primary btn-check-in"><?= e__('monitors.check_in.submit') ?></button>
+			<button type="submit" class="btn-primary btn-check-in"><span class="check-in-button-icon" aria-hidden="true">✓</span><span><?= e__('monitors.check_in.submit') ?></span></button>
 		</form>
 	</section>
 <?php else: ?>
@@ -121,7 +121,6 @@ ob_start();
 	<div class="section-title-row">
 		<div>
 			<h2><?= e__('dashboard.monitors.heading') ?></h2>
-			<p><?= e__('dashboard.monitors.hint') ?></p>
 		</div>
 		<a href="<?= e($base_url) ?>/monitors"><?= e__('dashboard.monitors.manage') ?></a>
 	</div>
@@ -183,7 +182,7 @@ ob_start();
 	<div class="section-title-row">
 		<div>
 			<h2><?= e__('dashboard.activity.heading') ?></h2>
-			<p><?= e__('dashboard.activity.latest', ['count' => 10]) ?></p>
+			<p><?= e__('dashboard.activity.latest', ['count' => 5]) ?></p>
 		</div>
 		<a href="<?= e($base_url) ?>/activity"><?= e__('dashboard.activity.view_all') ?></a>
 	</div>

@@ -1,8 +1,8 @@
-# Pulse roadmap after 1.2.6
+# Pulse roadmap after 1.2.8
 
-This roadmap starts from the stable Pulse 1.2.6 baseline. It is directional rather than a promise of dates; privacy, migration safety, recovery behavior, and test coverage remain release gates. The next releases remain in the 1.2.x line while smaller features accumulate; Pulse moves to 1.3 only when the combined scope justifies a larger release.
+This roadmap starts from the stable Pulse 1.2.8 baseline. It is directional rather than a promise of dates; privacy, migration safety, recovery behavior, and test coverage remain release gates. The next releases remain in the 1.2.x line while smaller features accumulate; Pulse moves to 1.3 only when the combined scope justifies a larger release.
 
-## Current baseline — Pulse 1.2.6
+## Current baseline — Pulse 1.2.8
 
 Pulse 1.2.0 completed the location-aware check-in and portal-preview roadmap:
 
@@ -61,13 +61,29 @@ It also marks independently edited document cards as unsaved until their own sav
 
 MP3 and H.264/AAC in MP4 are the primary interoperability targets. Additional accepted containers remain subject to the codecs supported by each recipient's browser.
 
-## Later security-policy and recovery hardening
+Pulse 1.2.7 simplifies the owner interface and adds recovery-readiness guidance:
+
+- persistent field help is visually quieter but remains available to mouse, touch, keyboard, and assistive-technology users;
+- **Check in now** is a distinctive primary action, Dashboard recent activity is capped at five items, and monitor active/archive views use separate tabs;
+- schedule fields explain their lifecycle effect, monitor and document editor alignment is tightened, and recipient document assignment uses compact cards;
+- TOTP-enabled accounts see warnings for a missing passkey and three or fewer unused recovery codes;
+- recovery guidance identifies passkey, unused recovery code, and a matching database-plus-`.env` restore as the supported routes, without adding a weaker email or security-question bypass.
+
+Pulse 1.2.8 follows through on that interface cleanup:
+
+- the recipient silence explanation now sits inside the related Add recipient block;
+- every safety timing value has concise persistent help;
+- an insufficient eligible safety-contact quorum is shown as a live advisory warning instead of preventing an incomplete configuration from being saved;
+- the mandatory first owner address is identified and validated as **Main Email**, while all stored owner addresses continue to work as login aliases and each retains its independent checked-delivery state;
+- browser-generated cron-token guidance appears below its action.
+
+## Later security-policy hardening
 
 These changes should follow only after optional TOTP has been exercised in real deployments. None is scheduled for the next build yet.
 
 - Optional administrator policy for required second-factor enrolment.
 - Clear account recovery and credential-loss workflows that do not weaken the normal authentication boundary.
-- Expanded recovery-readiness guidance or warnings if real-world testing shows they are useful.
+- Further recovery-readiness refinements only if real-world testing shows they are useful.
 - Upgrade and rollback documentation for authentication-policy changes.
 
 ## Later location refinements

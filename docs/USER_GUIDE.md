@@ -199,6 +199,8 @@ For a safety-contact gate, configure:
 - **Confirmations required**
 - **Postpone by days**
 
+Pulse explains each timing value directly below its field. If **Confirmations required** is greater than the number of selected safety contacts that currently have at least one checked email address, the editor and Review tab show an advisory warning. You may still save an incomplete setup and return to finish it, but it cannot reach that confirmation threshold until enough eligible contacts are selected.
+
 A safety contact can only postpone escalation. They cannot make recipient notification happen sooner, see recipient messages, or access documents.
 
 If the required confirmation count is reached, Pulse closes the current cycle and starts a new scheduled cycle. Setting **Postpone by days** to `0` uses the monitor's normal check-in interval.
@@ -455,6 +457,10 @@ After TOTP is enabled, a successful **password** sign-in leads to a second page 
 
 Pulse shows 10 recovery codes once after enrollment or regeneration. Copy them to a secure place separate from the device that generates your TOTP codes, then acknowledge the list. Each recovery code works once. Profile reports how many remain, and generating a new set immediately invalidates every old code. Regenerating codes or disabling TOTP requires the current password plus a current TOTP code or unused recovery code.
 
+When TOTP is enabled, **Recovery readiness** summarizes the current fallback state. Pulse recommends review when no passkey is registered or only three unused recovery codes remain. Generate a fresh code set before the count reaches zero, store it separately from the authenticator, and confirm that an available passkey works on a device you can still reach. Also back up the database and its matching `.env` together: the TOTP encryption and recovery-hash key in `.env` is required after a restore.
+
+Pulse intentionally has no email-reset or security-question bypass for the TOTP step. The supported routes are an available passkey, one unused recovery code, or a complete restore of the database with its matching `.env`. The readiness display is advisory; TOTP and passkey enrollment remain optional.
+
 TOTP is optional. Enabling it does not change passkey behavior: a successful passkey is already a complete, phishing-resistant authentication, so Pulse does not ask for TOTP afterward. This also keeps passkey quick check-in low-friction. If you lose the authenticator, use a recovery code or an available passkey; do not wait for an urgent check-in to test your recovery plan.
 
 ### Passkeys
@@ -496,7 +502,7 @@ Configuration warnings appear at the top of Administration and on affected tabs.
 
 ## Profile and languages
 
-Your **Profile** contains personal account settings and password management. You can store up to four email addresses, sign in with any of them, and mark each address as checked independently. Owner due notices, reminders, and mail tests are queued separately for every checked owner address; unchecked owner addresses receive no mail.
+Your **Profile** contains personal account settings and password management. You can store up to four email addresses, sign in with any of them, and mark each address as checked independently. The first slot is labelled **Main Email** and must contain an address; the other three slots are optional. **Main Email** identifies the mandatory canonical slot, not the only login address, and its checked-delivery state remains independent. Owner due notices, reminders, and mail tests are queued separately for every checked owner address; unchecked owner addresses receive no mail.
 
 Two language settings are separate:
 

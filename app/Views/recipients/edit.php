@@ -208,7 +208,7 @@ ob_start();
 						<?php foreach ($documents as $document): ?>
 							<label class="recipient-document-row">
 								<input type="checkbox" name="document_ids[]" value="<?= (int)$document['id'] ?>" <?= in_array((int)$document['id'], $assignedDocumentIds, true) ? 'checked' : '' ?>>
-								<span><strong><?= e((string)$document['title']) ?></strong><br><small><?= e__('monitors.documents.type.' . (string)$document['storage_type']) ?></small><?php if (trim((string)($document['description'] ?? '')) !== ''): ?><br><small><?= e((string)$document['description']) ?></small><?php endif; ?></span>
+								<span class="recipient-document-content"><strong><?= e((string)$document['title']) ?></strong><small><?= e__('monitors.documents.type.' . (string)$document['storage_type']) ?></small><?php if (trim((string)($document['description'] ?? '')) !== ''): ?><small><?= e((string)$document['description']) ?></small><?php endif; ?></span>
 							</label>
 						<?php endforeach; ?>
 					</div>

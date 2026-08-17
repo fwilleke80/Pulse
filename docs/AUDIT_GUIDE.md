@@ -152,6 +152,9 @@ Configure at least one safety contact and require one confirmation.
 
 Verify:
 
+- every value in **Safety timing & confirmations** has concise subdued help;
+- setting **Confirmations required** above the number of selected contacts with checked addresses displays an immediate advisory warning in the editor and on Review, but does not prevent saving;
+- lowering the requirement or selecting enough eligible contacts clears the warning;
 - the safety email is sent once;
 - merely opening/refreshing the safety page changes nothing;
 - explicit confirmation postpones the monitor and sends no final recipient notification;
@@ -372,6 +375,8 @@ Test with TOTP initially disabled and confirm password and passkey login behave 
 7. Generate a replacement recovery set and confirm every old unused code is invalid immediately.
 8. Disable TOTP with password plus second factor and confirm password login no longer shows the challenge.
 
+With TOTP enabled, inspect **Recovery readiness** under Profile. Confirm it warns when no passkey is registered, changes that item to ready after a passkey is added, shows the exact unused recovery-code count, and warns at three codes or fewer. Confirm the panel is advisory, is absent when TOTP is disabled, and offers no email or security-question reset path.
+
 Inspect the browser network log during enrollment: the provisioning URI must not leave the Pulse origin, and no remote QR-code endpoint may be contacted. Review the database to confirm it contains an authenticated-encryption envelope and recovery hashes, not plaintext secrets or recovery codes. Confirm replay consumption and recovery use are atomic under concurrent requests, attempt throttling blocks both account and network scopes, and audit events contain no secret material.
 
 Back up and restore `.env` together with the database in the update rehearsal. On an upgraded 1.2.2 installation, confirm migration `006_totp_two_factor_authentication.sql` does not enable TOTP and that the encryption key is created only when authenticated setup starts.
@@ -410,11 +415,16 @@ Check:
 - compact `⋮` action columns;
 - empty-state actions;
 - responsive tabs and tables;
+- subdued persistent help directly below or inside its related field, including keyboard/touch use without hover;
+- a distinctive **Check in now** action on Dashboard and Monitors;
+- separate Active/Archived monitor tabs and action controls;
 - warning placement;
 - destructive confirmations;
 - archived read-only behavior;
 - dates/timestamps;
 - status terminology.
+
+On Profile, also verify that the first owner address is labelled **Main Email**, an empty value is marked invalid and rejected even when an optional address is populated, and every stored owner address still works as a login alias. On Administration → Cron, verify that the generated-token help appears below its button.
 
 ## 29. Configuration and Administration
 
@@ -464,6 +474,7 @@ Before shipping:
 - [ ] Cron status updates
 - [ ] Authentication/administrator authorization passes
 - [ ] Optional TOTP enrollment, password challenge, passkey bypass, recovery, replay, and throttling pass
+- [ ] Recovery-readiness states, low-code warning, and database-plus-`.env` guidance pass
 - [ ] Check-in/owner reminder flow passes
 - [ ] Direct escalation passes
 - [ ] Safety confirmation/cannot-confirm/timeout branches pass

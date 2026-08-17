@@ -283,10 +283,7 @@ class MonitorController extends BaseController
 		$values = $this->MonitorInput();
 		$safetyContactIds = $this->AllowedContactIds((int)$user['id'], $this->_request->PostIntArray('safety_contact_ids'));
 
-		if (
-			!$this->ValidateMonitorInput($values, '/monitors/edit?id=' . $monitorId . '&tab=' . $returnTab, $monitorId)
-			|| !$this->ValidateSafetyConfiguration($values, $safetyContactIds, (int)$user['id'], '/monitors/edit?id=' . $monitorId . '&tab=escalation')
-		)
+		if (!$this->ValidateMonitorInput($values, '/monitors/edit?id=' . $monitorId . '&tab=' . $returnTab, $monitorId))
 		{
 			return;
 		}
@@ -1182,40 +1179,6 @@ class MonitorController extends BaseController
 			$this->_logger->Warning('Monitor validation failed: invalid numeric bounds', ['monitor_id' => $monitorId]);
 			$this->Flash('error', __($monitorId > 0 ? 'monitors.edit.flash.invalidnumbers' : 'monitors.add.flash.invalidnumbers'));
 			$this->Redirect($redirect);
-		}
-
-		return true;
-	}
-
-	/** @brief Validates optional safety-contact configuration against current owned contacts. */
-	private function ValidateSafetyConfiguration(array $values, array $contactIds, int $userId, string $redirect): bool
-	{
-		if ((string)$values['escalation_policy'] !== 'safety_contact')
-		{
-			return true;
-		}
-
-		if ($contactIds === [] || (int)$values['safety_required_confirmations'] > count($contactIds))
-		{
-			$this->Flash('error', __('monitors.escalation.flash.invalid_contacts'));
-			$this->Redirect($redirect);
-		}
-
-		$contacts = $this->_contactRepository->FindAllByUserId($userId);
-		$byId = [];
-
-		foreach ($contacts as $contact)
-		{
-			$byId[(int)$contact['id']] = $contact;
-		}
-
-		foreach ($contactIds as $contactId)
-		{
-			if (!isset($byId[$contactId]) || !EmailAddressCollection::HasChecked($byId[$contactId]))
-			{
-				$this->Flash('error', __('monitors.escalation.flash.unchecked_contact'));
-				$this->Redirect($redirect);
-			}
 		}
 
 		return true;

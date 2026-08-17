@@ -42,6 +42,14 @@ $portalExpiryMode = $portalExpiryDays === null
 	: (in_array($portalExpiryDays, [30, 90, 365], true) ? (string)$portalExpiryDays : 'custom');
 $recipientConfigurationWarningCount = count($recipientConfigurationIssues);
 $recipientMessageWarningCount = max(0, (int)$defaultRecipientTemplateIssueCount);
+$eligibleSafetyContactCount = count(array_filter(
+	$contacts,
+	static fn (array $contact): bool => in_array((int)$contact['id'], $safetyContactIds, true)
+		&& \Pulse\Core\EmailAddressCollection::HasChecked($contact)
+));
+$safetyRequiredConfirmations = (int)$monitor['safety_required_confirmations'];
+$safetyConfigurationWarning = (string)$monitor['escalation_policy'] === 'safety_contact'
+	&& $eligibleSafetyContactCount < $safetyRequiredConfirmations;
 
 foreach ($recipientConfigurationIssues as $configurationIssue)
 {
@@ -106,7 +114,8 @@ ob_start();
 			$isActiveTab = $activeTab === $tabName;
 			$tabHasWarning = ($tabName === 'recipients' && $recipientConfigurationWarningCount > 0)
 				|| ($tabName === 'messages' && $recipientMessageWarningCount > 0)
-				|| ($tabName === 'review' && $recipientConfigurationWarningCount > 0);
+				|| ($tabName === 'escalation' && $safetyConfigurationWarning)
+				|| ($tabName === 'review' && ($recipientConfigurationWarningCount > 0 || $safetyConfigurationWarning));
 			?>
 			<a
 				href="<?= e($base_url) ?>/monitors/edit?id=<?= (int)$monitor['id'] ?>&amp;tab=<?= e($tabName) ?>"
@@ -153,18 +162,22 @@ ob_start();
 			<label>
 				<?= e__('monitors.edit.check_interval_days') ?>
 				<input type="number" name="check_interval_days" form="monitor-settings-form" min="1" max="3650" value="<?= (int)$monitor['check_interval_days'] ?>" required>
+				<small><?= e__('monitors.edit.check_interval_days_hint') ?></small>
 			</label>
 			<label>
 				<?= e__('monitors.edit.response_window_days') ?>
 				<input type="number" name="response_window_days" form="monitor-settings-form" min="1" max="365" value="<?= (int)$monitor['response_window_days'] ?>" required>
+				<small><?= e__('monitors.edit.response_window_days_hint') ?></small>
 			</label>
 			<label>
 				<?= e__('monitors.edit.reminder_interval_days') ?>
 				<input type="number" name="reminder_interval_days" form="monitor-settings-form" min="1" max="365" value="<?= (int)$monitor['reminder_interval_days'] ?>" required>
+				<small><?= e__('monitors.edit.reminder_interval_days_hint') ?></small>
 			</label>
 			<label>
 				<?= e__('monitors.edit.max_reminders') ?>
 				<input type="number" name="max_reminders" form="monitor-settings-form" min="0" max="100" value="<?= (int)$monitor['max_reminders'] ?>" required>
+				<small><?= e__('monitors.edit.max_reminders_hint') ?></small>
 			</label>
 		</div>
 
@@ -229,7 +242,7 @@ ob_start();
 					<label for="text_document_title"><?= e__('monitors.documents.upload.title') ?></label>
 					<input type="text" id="text_document_title" name="title" required>
 					<label for="text_document_content"><?= e__('monitors.documents.text.content') ?></label>
-					<?= markdown_editor($base_url, 'text_document_content', 'text_content', '', 7, 'web', ['required' => true]) ?>
+					<?= markdown_editor($base_url, 'text_document_content', 'text_content', '', 9, 'web', ['required' => true]) ?>
 					<button type="submit"><?= e__('monitors.documents.text.create.submit') ?></button>
 				</form>
 			</div>
@@ -320,11 +333,6 @@ ob_start();
 			<p><?= e__('monitors.contacts.hint') ?></p>
 		</div>
 
-		<div class="privacy-note">
-			<strong><?= e__('monitors.contacts.silent.heading') ?></strong>
-			<?= e__('monitors.contacts.silent.message') ?>
-		</div>
-
 		<?php if ($monitorContacts === []): ?>
 			<p><?= e__('monitors.recipients.none_assigned') ?></p>
 		<?php else: ?>
@@ -371,6 +379,10 @@ ob_start();
 
 		<div class="configuration-block recipient-add-block">
 			<h3><?= e__('recipients.add.heading') ?></h3>
+			<div class="privacy-note recipient-add-note">
+				<strong><?= e__('monitors.contacts.silent.heading') ?></strong>
+				<?= e__('monitors.contacts.silent.message') ?>
+			</div>
 			<?php
 			$availableContacts = array_values(array_filter(
 				$contacts,
@@ -413,11 +425,6 @@ ob_start();
 			</label>
 		</div>
 
-		<div class="privacy-note">
-			<strong><?= e__('monitors.escalation.authority.heading') ?></strong>
-			<?= e__('monitors.escalation.authority.message') ?>
-		</div>
-
 		<div data-safety-configuration>
 			<div class="configuration-block">
 				<h3><?= e__('monitors.escalation.contacts.heading') ?></h3>
@@ -428,7 +435,7 @@ ob_start();
 					<div class="assignment-list assignment-grid">
 						<?php foreach ($contacts as $contact): ?>
 							<label class="assignment-item">
-								<input type="checkbox" name="safety_contact_ids[]" form="monitor-settings-form" value="<?= (int)$contact['id'] ?>" <?= in_array((int)$contact['id'], $safetyContactIds, true) ? 'checked' : '' ?>>
+								<input type="checkbox" name="safety_contact_ids[]" form="monitor-settings-form" value="<?= (int)$contact['id'] ?>" data-safety-contact-eligible="<?= \Pulse\Core\EmailAddressCollection::HasChecked($contact) ? '1' : '0' ?>" <?= in_array((int)$contact['id'], $safetyContactIds, true) ? 'checked' : '' ?>>
 								<span>
 									<strong><?= e((string)$contact['name']) ?></strong><br>
 									<small><?= e(implode(', ', array_column(\Pulse\Core\EmailAddressCollection::FromRow($contact), 'email'))) ?> · <?= e(notification_language_name((string)$contact['notification_locale'])) ?></small>
@@ -443,14 +450,16 @@ ob_start();
 			<div class="configuration-block">
 				<h3><?= e__('monitors.escalation.timing.heading') ?></h3>
 				<div class="field-grid field-grid-four">
-					<label><?= e__('monitors.escalation.response_window') ?><input type="number" name="safety_response_window_days" form="monitor-settings-form" min="1" max="365" value="<?= (int)$monitor['safety_response_window_days'] ?>" required></label>
-					<label><?= e__('monitors.escalation.reminder_interval') ?><input type="number" name="safety_reminder_interval_days" form="monitor-settings-form" min="1" max="365" value="<?= (int)$monitor['safety_reminder_interval_days'] ?>" required></label>
-					<label><?= e__('monitors.escalation.max_reminders') ?><input type="number" name="safety_max_reminders" form="monitor-settings-form" min="0" max="100" value="<?= (int)$monitor['safety_max_reminders'] ?>" required></label>
-					<label><?= e__('monitors.escalation.required_confirmations') ?><input type="number" name="safety_required_confirmations" form="monitor-settings-form" min="1" max="100" value="<?= (int)$monitor['safety_required_confirmations'] ?>" required></label>
+					<label><?= e__('monitors.escalation.response_window') ?><input type="number" name="safety_response_window_days" form="monitor-settings-form" min="1" max="365" value="<?= (int)$monitor['safety_response_window_days'] ?>" required><small><?= e__('monitors.escalation.response_window_hint') ?></small></label>
+					<label><?= e__('monitors.escalation.reminder_interval') ?><input type="number" name="safety_reminder_interval_days" form="monitor-settings-form" min="1" max="365" value="<?= (int)$monitor['safety_reminder_interval_days'] ?>" required><small><?= e__('monitors.escalation.reminder_interval_hint') ?></small></label>
+					<label><?= e__('monitors.escalation.max_reminders') ?><input type="number" name="safety_max_reminders" form="monitor-settings-form" min="0" max="100" value="<?= (int)$monitor['safety_max_reminders'] ?>" required><small><?= e__('monitors.escalation.max_reminders_hint') ?></small></label>
+					<label><?= e__('monitors.escalation.required_confirmations') ?><input type="number" name="safety_required_confirmations" form="monitor-settings-form" min="1" max="100" value="<?= $safetyRequiredConfirmations ?>" data-safety-required-confirmations required><small><?= e__('monitors.escalation.required_confirmations_hint') ?></small></label>
+					<label><?= e__('monitors.escalation.confirmation_days') ?><input type="number" name="safety_confirmation_days" form="monitor-settings-form" min="0" max="3650" value="<?= (int)($monitor['safety_confirmation_days'] ?? 0) ?>"><small><?= e__('monitors.escalation.confirmation_days_hint') ?></small></label>
 				</div>
-				<label for="safety_confirmation_days"><?= e__('monitors.escalation.confirmation_days') ?></label>
-				<input type="number" id="safety_confirmation_days" name="safety_confirmation_days" form="monitor-settings-form" min="0" max="3650" value="<?= (int)($monitor['safety_confirmation_days'] ?? 0) ?>">
-				<p class="form-hint"><?= e__('monitors.escalation.confirmation_days_hint') ?></p>
+				<div class="template-validation-warning safety-confirmation-warning" role="alert" data-safety-confirmation-warning data-message-template="<?= e__('monitors.escalation.confirmation_warning.message', ['required' => '{required}', 'available' => '{available}']) ?>"<?= $safetyConfigurationWarning ? '' : ' hidden' ?>>
+					<strong><?= e__('monitors.escalation.confirmation_warning.heading') ?></strong>
+					<span data-safety-confirmation-warning-message><?= e__('monitors.escalation.confirmation_warning.message', ['required' => $safetyRequiredConfirmations, 'available' => $eligibleSafetyContactCount]) ?></span>
+				</div>
 			</div>
 		</div>
 	</section>
@@ -667,8 +676,8 @@ ob_start();
 			<?php if ($uncheckedContactCount > 0 && empty($monitor['is_paused'])): ?><div class="review-warning"><?= e__('monitors.review.warning.unchecked', ['count' => $uncheckedContactCount]) ?></div><?php endif; ?>
 			<?php if ($recipientMessageWarningCount > 0): ?><div class="review-warning"><?= e__('monitors.review.warning.recipient_configuration', ['count' => $recipientMessageWarningCount]) ?></div><?php endif; ?>
 			<?php if (!$hasCompleteMessageCoverage): ?><div class="review-warning"><?= e__('monitors.review.warning.no_message') ?></div><?php endif; ?>
-			<?php if ((string)$monitor['escalation_policy'] === 'safety_contact' && $safetyContactIds === []): ?><div class="review-warning"><?= e__('monitors.review.warning.no_safety_contacts') ?></div><?php endif; ?>
-			<?php if ($monitorContacts !== [] && $recipientConfigurationWarningCount === 0 && $hasCompleteMessageCoverage): ?><div class="review-ready"><?= e__('monitors.review.ready') ?></div><?php endif; ?>
+			<?php if ((string)$monitor['escalation_policy'] === 'safety_contact' && $safetyContactIds === []): ?><div class="review-warning"><?= e__('monitors.review.warning.no_safety_contacts') ?></div><?php elseif ($safetyConfigurationWarning): ?><div class="review-warning"><?= e__('monitors.review.warning.safety_confirmations', ['required' => $safetyRequiredConfirmations, 'available' => $eligibleSafetyContactCount]) ?></div><?php endif; ?>
+			<?php if ($monitorContacts !== [] && $recipientConfigurationWarningCount === 0 && $hasCompleteMessageCoverage && !$safetyConfigurationWarning): ?><div class="review-ready"><?= e__('monitors.review.ready') ?></div><?php endif; ?>
 		</div>
 
 		<div class="activation-card">

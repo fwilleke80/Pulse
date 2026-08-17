@@ -411,6 +411,41 @@ document.addEventListener('DOMContentLoaded', function ()
 		updateSafetyConfiguration();
 	}
 
+	const safetyRequiredConfirmations = document.querySelector('[data-safety-required-confirmations]');
+	const safetyContactInputs = Array.from(document.querySelectorAll('input[name="safety_contact_ids[]"]'));
+	const safetyConfirmationWarning = document.querySelector('[data-safety-confirmation-warning]');
+	const safetyConfirmationWarningMessage = safetyConfirmationWarning
+		? safetyConfirmationWarning.querySelector('[data-safety-confirmation-warning-message]')
+		: null;
+
+	if (safetyRequiredConfirmations && safetyConfirmationWarning && safetyConfirmationWarningMessage)
+	{
+		/** @brief Shows whether the requested quorum exceeds selected contacts with checked addresses. */
+		const updateSafetyConfirmationWarning = function ()
+		{
+			const selectedPolicy = escalationPolicyInputs.find((input) => input.checked);
+			const required = Math.max(1, Number.parseInt(safetyRequiredConfirmations.value, 10) || 1);
+			const available = safetyContactInputs.filter((input) => input.checked && input.dataset.safetyContactEligible === '1').length;
+			const needsAttention = Boolean(selectedPolicy && selectedPolicy.value === 'safety_contact' && required > available);
+			safetyConfirmationWarning.hidden = !needsAttention;
+
+			if (needsAttention)
+			{
+				safetyConfirmationWarningMessage.textContent = (safetyConfirmationWarning.dataset.messageTemplate || '')
+					.replace('{required}', String(required))
+					.replace('{available}', String(available));
+			}
+		};
+
+		for (const input of [...escalationPolicyInputs, ...safetyContactInputs, safetyRequiredConfirmations])
+		{
+			input.addEventListener('change', updateSafetyConfirmationWarning);
+			input.addEventListener('input', updateSafetyConfirmationWarning);
+		}
+
+		updateSafetyConfirmationWarning();
+	}
+
 	const domainSuggestions = {
 		'gamil.com': 'gmail.com',
 		'gmial.com': 'gmail.com',
@@ -449,6 +484,32 @@ document.addEventListener('DOMContentLoaded', function ()
 			const template = suggestion.dataset.suggestionTemplate || 'Did you mean {suggestion}?';
 			suggestion.textContent = suggestedEmail === '' ? '' : template.replace('{suggestion}', suggestedEmail);
 			suggestion.classList.toggle('is-hidden', suggestedEmail === '');
+		});
+	}
+
+	const mainEmail = document.querySelector('[data-main-email]');
+	const mainEmailError = document.querySelector('[data-main-email-error]');
+
+	if (mainEmail && mainEmailError)
+	{
+		/** @brief Exposes the mandatory primary-address error after native validation requests it. */
+		const showMainEmailRequired = function ()
+		{
+			const missing = mainEmail.validity.valueMissing;
+			mainEmail.classList.toggle('is-invalid', missing);
+			mainEmail.setAttribute('aria-invalid', missing ? 'true' : 'false');
+			mainEmailError.hidden = !missing;
+		};
+
+		mainEmail.addEventListener('invalid', showMainEmailRequired);
+		mainEmail.addEventListener('input', function ()
+		{
+			if (!mainEmail.validity.valueMissing)
+			{
+				mainEmail.classList.remove('is-invalid');
+				mainEmail.setAttribute('aria-invalid', 'false');
+				mainEmailError.hidden = true;
+			}
 		});
 	}
 });
