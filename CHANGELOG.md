@@ -1,4 +1,4 @@
-## 1.2.8 - 2026-08-17
+## 1.3.0 - 2026-08-17
 
 ### Profile and administration clarity
 - Labelled the first owner address **Main Email**, made that slot explicitly mandatory in both browser and server validation, and added a clear inline error state when it is empty. The three additional addresses remain optional, and all four stored addresses remain valid login aliases; each address's checked state still controls mail delivery independently.

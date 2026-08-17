@@ -2,7 +2,7 @@
 
 /**
  * @file UiClarityFollowupSourceTest.php
- * @brief Source regressions for the Pulse 1.2.8 interface follow-up.
+ * @brief Source regressions for the Pulse 1.3.0 interface follow-up.
  * @author Frank Willeke
  */
 

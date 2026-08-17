@@ -1,8 +1,8 @@
-# Pulse roadmap after 1.2.8
+# Pulse roadmap after 1.3.0
 
-This roadmap starts from the stable Pulse 1.2.8 baseline. It is directional rather than a promise of dates; privacy, migration safety, recovery behavior, and test coverage remain release gates. The next releases remain in the 1.2.x line while smaller features accumulate; Pulse moves to 1.3 only when the combined scope justifies a larger release.
+This roadmap starts from the stable Pulse 1.3.0 baseline. It is directional rather than a promise of dates; privacy, migration safety, recovery behavior, and test coverage remain release gates. The next releases remain in the 1.3.x line while smaller features accumulate; Pulse moves to 1.4 only when the combined scope justifies a larger release.
 
-## Current baseline — Pulse 1.2.8
+## Current baseline — Pulse 1.3.0
 
 Pulse 1.2.0 completed the location-aware check-in and portal-preview roadmap:
 
@@ -69,7 +69,7 @@ Pulse 1.2.7 simplifies the owner interface and adds recovery-readiness guidance:
 - TOTP-enabled accounts see warnings for a missing passkey and three or fewer unused recovery codes;
 - recovery guidance identifies passkey, unused recovery code, and a matching database-plus-`.env` restore as the supported routes, without adding a weaker email or security-question bypass.
 
-Pulse 1.2.8 follows through on that interface cleanup:
+Pulse 1.3.0 follows through on that interface cleanup:
 
 - the recipient silence explanation now sits inside the related Add recipient block;
 - every safety timing value has concise persistent help;
