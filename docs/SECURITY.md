@@ -96,7 +96,9 @@ It requires a random `PULSE_CRON_TOKEN` of at least 32 characters. The endpoint 
 
 The token is part of the URL and can appear in hosting, proxy, browser, or server logs. Treat the complete cron URL like a password and rotate the token if it is exposed.
 
-Pulse records **Last successful cron run** only after a complete combined scheduler and mail-queue run finishes successfully. Administration warns when no successful run has ever been recorded and marks the status stale after more than 24 hours without one.
+Pulse records **Last successful cron run** only after a complete combined scheduler and mail-queue run finishes successfully. Administration warns when no successful run has ever been recorded and marks the status stale after more than 24 hours without one. It also records the time of web-cron token changes made through Administration.
+
+For diagnosing cron failures, Pulse retains the latest 50 unsuccessful web-cron calls and displays the newest 20 to administrators with a failure reason. When token authentication fails, Pulse also stores and displays the token supplied by the caller; normal invalid tokens are retained exactly, while pathological values longer than 512 characters are truncated and marked as such. Valid configured tokens are not copied into diagnostics for non-token failures. This diagnostic history is sensitive because an old or mistyped credential may appear in plaintext in the database and Administration UI.
 
 A once-per-minute cron is recommended for predictable timing. A slower schedule is possible but directly adds latency to due detection, reminders, escalation, retries, and queued mail.
 

@@ -106,6 +106,8 @@ final class AdministrationController extends BaseController
 
 		$processOverrides = $this->ProcessOverrides(array_keys($settings));
 		$lastSuccessfulCronRun = $this->_systemStatusRepository->LastSuccessfulCronRun();
+		$cronTokenChangedAt = $this->_systemStatusRepository->CronTokenChangedAt();
+		$failedCronCalls = $this->_systemStatusRepository->RecentFailedCronCalls(20);
 		$cronStatus = $this->CronStatus($lastSuccessfulCronRun);
 		$issues = $this->ConfigurationIssues($settings, $processOverrides, $cronStatus);
 
@@ -126,6 +128,8 @@ final class AdministrationController extends BaseController
 			'debugEnabled' => $this->_debugEnabled,
 			'databaseConfig' => $this->_databaseConfig,
 			'lastSuccessfulCronRun' => $lastSuccessfulCronRun,
+			'cronTokenChangedAt' => $cronTokenChangedAt,
+			'failedCronCalls' => $failedCronCalls,
 			'cronStatus' => $cronStatus,
 		]);
 	}
@@ -166,9 +170,12 @@ final class AdministrationController extends BaseController
 		$fileSmtpPassword = array_key_exists('PULSE_SMTP_PASSWORD', $values)
 			? (string)$values['PULSE_SMTP_PASSWORD']
 			: (string)($fileValues['PULSE_SMTP_PASSWORD'] ?? '');
+		$previousFileCronToken = (string)($fileValues['PULSE_CRON_TOKEN'] ?? '');
 		$fileCronToken = array_key_exists('PULSE_CRON_TOKEN', $values)
 			? (string)$values['PULSE_CRON_TOKEN']
-			: (string)($fileValues['PULSE_CRON_TOKEN'] ?? '');
+			: $previousFileCronToken;
+		$cronTokenChanged = array_key_exists('PULSE_CRON_TOKEN', $values)
+			&& !hash_equals($previousFileCronToken, $fileCronToken);
 
 		try
 		{
@@ -209,6 +216,21 @@ final class AdministrationController extends BaseController
 			$this->Redirect('/administration?tab=' . rawurlencode($activeTab));
 		}
 
+		if ($cronTokenChanged)
+		{
+			try
+			{
+				$this->_systemStatusRepository->RecordCronTokenChanged();
+			}
+			catch (\Throwable $exception)
+			{
+				$this->_logger->Warning('Could not record web-cron token change timestamp', [
+					'user_id' => (int)$user['id'],
+					'error' => $exception->getMessage(),
+				]);
+			}
+		}
+
 		$this->_logger->Info('Administrator updated environment configuration', [
 			'user_id' => (int)$user['id'],
 			'keys' => array_values(array_filter(
@@ -216,7 +238,7 @@ final class AdministrationController extends BaseController
 				static fn (string $key): bool => !in_array($key, ['PULSE_SMTP_PASSWORD', 'PULSE_CRON_TOKEN'], true)
 			)),
 			'smtp_password_changed' => array_key_exists('PULSE_SMTP_PASSWORD', $values),
-			'cron_token_changed' => array_key_exists('PULSE_CRON_TOKEN', $values),
+			'cron_token_changed' => $cronTokenChanged,
 		]);
 		$this->Flash('success', __('administration.settings.saved'));
 		$this->Redirect('/administration?tab=' . rawurlencode($activeTab));

@@ -147,7 +147,11 @@ User
 └── Audit log
 
 System status
-└── latest successful combined cron run
+├── latest successful combined cron run
+└── latest recorded web-cron token change
+
+Cron failures
+└── bounded recent unsuccessful web-cron calls
 
 Login attempts
 └── throttling records
@@ -219,9 +223,11 @@ The SMTP transaction and database update cannot be atomic together. If SMTP acce
 
 Configuration remains in `.env`; operational runtime state does not.
 
-The singleton `system_status` row stores the timestamp of the latest **fully successful combined cron run**. Both scheduler and queue processing must complete before the timestamp advances.
+The singleton `system_status` row stores the timestamp of the latest **fully successful combined cron run** and the latest cron-token change made through Administration. Both scheduler and queue processing must complete before the successful-run timestamp advances.
 
-Administration uses this for **Last successful cron run** and its Never/Stale warning state.
+The bounded `cron_failures` table retains the latest 50 unsuccessful web-cron calls with a stable failure code and request method. For token-authentication failures it can also retain the caller-supplied invalid token, capped at 512 characters; valid configured tokens are not copied into non-token failure records.
+
+Administration uses this for **Last successful cron run**, its Never/Stale warning state, the token-change timestamp, and the newest 20 failure diagnostics.
 
 ## Safety-contact requests
 

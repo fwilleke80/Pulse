@@ -1,3 +1,17 @@
+## 1.3.2 - 2026-08-20
+
+### Recipient portal editor placement
+- Moved **Preview recipient portal** from the recipient editor’s Overview tab to the top of the Portal tab, directly before **Personal portal message**, so the preview action sits with the content it represents.
+- Updated the user guide and source regression coverage. No database migration is required.
+
+## 1.3.1 - 2026-08-18
+
+### Cron diagnostics
+- Added **Web-cron token last changed** under Administration → Cron. The timestamp advances only when the persisted token value actually changes through Administration; existing installations initially show that no change has been recorded yet.
+- Added a bounded history of unsuccessful web-cron calls. Administration displays the newest 20 entries with time, failure reason, HTTP method, and the supplied invalid token when token authentication failed, so stale or mismatched external cron configuration can be diagnosed directly.
+- Retain at most 50 failed calls. Invalid supplied tokens are stored exactly at normal lengths; pathological values longer than 512 characters are truncated and marked as such, and all displayed values remain HTML-escaped. Non-token failures do not copy the valid configured token into diagnostics.
+- Added migration `007_cron_diagnostics.sql`, updated the reference schema, all four interface languages, security/installation/user documentation, and regression coverage.
+
 ## 1.3.0 - 2026-08-17
 
 ### Profile and administration clarity

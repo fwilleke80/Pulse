@@ -582,7 +582,19 @@ CREATE TABLE system_status
 (
 	id TINYINT UNSIGNED NOT NULL PRIMARY KEY,
 	last_successful_cron_at DATETIME NULL,
+	cron_token_changed_at DATETIME NULL,
 	updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE cron_failures
+(
+	id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+	attempted_at DATETIME NOT NULL,
+	failure_code VARCHAR(32) NOT NULL,
+	request_method VARCHAR(16) NOT NULL,
+	provided_token VARCHAR(512) NULL,
+	token_truncated TINYINT(1) NOT NULL DEFAULT 0,
+	INDEX idx_cron_failures_attempted_at (attempted_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE login_attempts

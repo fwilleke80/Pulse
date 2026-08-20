@@ -4927,3 +4927,23 @@ button.portal-map-details-close
 		bottom: 1.8rem;
 	}
 }
+
+.cron-failure-table
+{
+	min-width: 680px;
+	font-size: 0.86rem;
+}
+
+.cron-failure-table time
+{
+	white-space: nowrap;
+}
+
+.cron-failure-token
+{
+	display: inline-block;
+	max-width: 42rem;
+	overflow-wrap: anywhere;
+	white-space: normal;
+	vertical-align: top;
+}

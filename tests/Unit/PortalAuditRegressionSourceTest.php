@@ -81,7 +81,7 @@ final class PortalAuditRegressionSourceTest extends TestCase
 		$migrations = glob($root . '/database/migrations/*.sql');
 
 		self::assertIsArray($migrations);
-		self::assertCount(6, $migrations);
+		self::assertCount(7, $migrations);
 		self::assertStringNotContainsString('CREATE TABLE access_tokens', $schema);
 		self::assertStringNotContainsString('CREATE TABLE app_settings', $schema);
 		self::assertStringContainsString('CREATE TABLE recipient_release_deliveries', $schema);

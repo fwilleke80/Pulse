@@ -39,7 +39,7 @@ python3 tools/write_version.py
 To set a release explicitly:
 
 ```bash
-PULSE_VERSION=1.3.0 python3 tools/write_version.py
+PULSE_VERSION=1.3.2 python3 tools/write_version.py
 ```
 
 Pulse still starts if the generated version file is missing, but displays **version unavailable**.
@@ -256,7 +256,7 @@ Use either web cron or command-line cron; normally there is no reason to configu
 
 After a complete scheduler and queue run finishes successfully, **Administration → Cron** displays **Last successful cron run**.
 
-A fresh installation shows **Never** until the first successful run. More than 24 hours without one is marked **Stale**.
+A fresh installation shows **Never** until the first successful run. More than 24 hours without one is marked **Stale**. Pulse also records when the web-cron token is changed through Administration. For diagnostics, the Cron tab shows the latest unsuccessful web-cron calls with their failure reason. If token authentication failed, the token supplied by the caller is shown. Only the latest 50 failed calls are retained, and the newest 20 are displayed.
 
 ## 8. Verify the installation
 

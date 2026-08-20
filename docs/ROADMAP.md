@@ -1,8 +1,8 @@
-# Pulse roadmap after 1.3.0
+# Pulse roadmap after 1.3.2
 
-This roadmap starts from the stable Pulse 1.3.0 baseline. It is directional rather than a promise of dates; privacy, migration safety, recovery behavior, and test coverage remain release gates. The next releases remain in the 1.3.x line while smaller features accumulate; Pulse moves to 1.4 only when the combined scope justifies a larger release.
+This roadmap starts from the stable Pulse 1.3.2 baseline. It is directional rather than a promise of dates; privacy, migration safety, recovery behavior, and test coverage remain release gates. The next releases remain in the 1.3.x line while smaller features accumulate; Pulse moves to 1.4 only when the combined scope justifies a larger release.
 
-## Current baseline — Pulse 1.3.0
+## Current baseline — Pulse 1.3.2
 
 Pulse 1.2.0 completed the location-aware check-in and portal-preview roadmap:
 
@@ -76,6 +76,9 @@ Pulse 1.3.0 follows through on that interface cleanup:
 - an insufficient eligible safety-contact quorum is shown as a live advisory warning instead of preventing an incomplete configuration from being saved;
 - the mandatory first owner address is identified and validated as **Main Email**, while all stored owner addresses continue to work as login aliases and each retains its independent checked-delivery state;
 - browser-generated cron-token guidance appears below its action.
+
+
+Pulse 1.3.1 adds operational cron diagnostics: Administration records when its persisted web-cron token actually changes and keeps a bounded administrator-visible history of unsuccessful cron calls, including the supplied invalid token when authentication fails, so stale external cron configuration can be identified without guessing.
 
 ## Later security-policy hardening
 

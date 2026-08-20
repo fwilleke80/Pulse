@@ -59,6 +59,31 @@ final class RecipientPortalPreviewSourceTest extends TestCase
 		self::assertStringNotContainsString('previewReturnUrl', $controller . $portalView);
 	}
 
+	/** @brief Ensures the preview action is shown in Portal before the personal portal message editor. */
+	public function testPreviewActionLivesAtTopOfPortalTab(): void
+	{
+		$root = dirname(__DIR__, 2);
+		$recipientView = (string)file_get_contents($root . '/app/Views/recipients/edit.php');
+
+		$overviewStart = strpos($recipientView, 'data-subtab-panel="overview"');
+		$notificationStart = strpos($recipientView, 'data-subtab-panel="notification"');
+		$portalStart = strpos($recipientView, 'data-subtab-panel="portal"');
+		$documentsStart = strpos($recipientView, 'data-subtab-panel="documents"');
+		$previewStart = strpos($recipientView, 'recipient-portal-preview-action');
+		$messageStart = strpos($recipientView, "e__('recipients.portal_message.heading')");
+
+		self::assertIsInt($overviewStart);
+		self::assertIsInt($notificationStart);
+		self::assertIsInt($portalStart);
+		self::assertIsInt($documentsStart);
+		self::assertIsInt($previewStart);
+		self::assertIsInt($messageStart);
+		self::assertTrue($previewStart > $portalStart);
+		self::assertTrue($previewStart < $documentsStart);
+		self::assertTrue($previewStart < $messageStart);
+		self::assertFalse(strpos(substr($recipientView, $overviewStart, $notificationStart - $overviewStart), 'recipient-portal-preview-action'));
+	}
+
 	/** @brief Ensures location preview follows the same explicit monitor sharing opt-in as a real release. */
 	public function testPreviewLocationsRespectPortalSharingSetting(): void
 	{

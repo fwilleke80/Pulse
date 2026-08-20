@@ -19,8 +19,10 @@ class WebCronAuthenticatorTest extends TestCase
 
 	public function testOnlyExactTokenOnGetIsAuthorized(): void
 	{
+		self::assertTrue(WebCronAuthenticator::IsTokenValid(self::TOKEN, self::TOKEN));
 		self::assertTrue(WebCronAuthenticator::IsAuthorized('GET', self::TOKEN, self::TOKEN));
 		self::assertFalse(WebCronAuthenticator::IsAuthorized('POST', self::TOKEN, self::TOKEN));
+		self::assertFalse(WebCronAuthenticator::IsTokenValid(self::TOKEN . 'x', self::TOKEN));
 		self::assertFalse(WebCronAuthenticator::IsAuthorized('GET', self::TOKEN . 'x', self::TOKEN));
 		self::assertFalse(WebCronAuthenticator::IsAuthorized('GET', null, self::TOKEN));
 	}
@@ -29,5 +31,22 @@ class WebCronAuthenticatorTest extends TestCase
 	{
 		self::assertFalse(WebCronAuthenticator::IsConfigured('too-short'));
 		self::assertFalse(WebCronAuthenticator::IsConfigured(self::TOKEN . "\n"));
+	}
+
+
+	/** @brief Ensures diagnostic logging preserves normal tokens but bounds hostile oversized values. */
+	public function testDiagnosticTokenIsBoundedAndHandlesNonScalarInput(): void
+	{
+		$normal = WebCronAuthenticator::DiagnosticToken('old-token-value');
+		self::assertSame('old-token-value', $normal['token']);
+		self::assertFalse($normal['truncated']);
+
+		$oversized = WebCronAuthenticator::DiagnosticToken(str_repeat('x', 600));
+		self::assertSame(512, strlen((string)$oversized['token']));
+		self::assertTrue($oversized['truncated']);
+
+		$nonScalar = WebCronAuthenticator::DiagnosticToken(['unexpected']);
+		self::assertNull($nonScalar['token']);
+		self::assertFalse($nonScalar['truncated']);
 	}
 }

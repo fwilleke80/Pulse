@@ -335,7 +335,7 @@ A simple unauthenticated page load is deliberately not treated as proof that the
 
 ### Previewing the authenticated portal
 
-Open a recipient’s **Overview** tab and select **Preview recipient portal**. Pulse opens an owner-only preview in a new browser tab using the recipient’s currently saved language, portal text, document assignments, and the monitor’s portal-location-sharing settings.
+Open a recipient’s **Portal** tab and select **Preview recipient portal** above **Personal portal message**. Pulse opens an owner-only preview in a new browser tab using the recipient’s currently saved language, portal text, document assignments, and the monitor’s portal-location-sharing settings.
 
 The preview URL is not a recipient invitation. It requires the monitor owner’s active Pulse login and checks ownership again on every request. Sharing the URL with somebody else does not let them view the preview. The preview also creates no release, email, access code, portal token, recipient session, or audit event. Inline document readers and media work for realistic presentation testing, while downloads and permanent access closure remain disabled.
 
@@ -491,14 +491,14 @@ Administration contains six tabs:
 - **Security** — session cookies/timeouts, HSTS, login throttling, and password policy.
 - **Files** — upload size and MIME allowlist.
 - **Mail** — SMTP, queue/retry settings, test mail, and the installation-wide mail queue.
-- **Cron** — web-cron token, endpoint example, and **Last successful cron run**.
+- **Cron** — web-cron token, endpoint example, **Last successful cron run**, token-change time, and recent unsuccessful cron calls.
 - **Installation** — read-only boot-critical information such as `.env` status, public base URL, and database connection details.
 
 Editable settings are saved directly to the root `.env` file. Pulse does not maintain a second database-backed configuration system.
 
 Secrets such as the SMTP password and web-cron token are never filled back into browser forms. Leaving a configured secret field blank keeps the saved value unless you explicitly clear or regenerate it.
 
-Configuration warnings appear at the top of Administration and on affected tabs. **Last successful cron run** is flagged if cron has never completed successfully or if more than 24 hours have passed since the last successful run. This is only a coarse warning; you remain free to choose the actual cron cadence.
+Configuration warnings appear at the top of Administration and on affected tabs. **Last successful cron run** is flagged if cron has never completed successfully or if more than 24 hours have passed since the last successful run. This is only a coarse warning; you remain free to choose the actual cron cadence. The Cron tab also records when the token is changed through Administration and lists recent unsuccessful web-cron calls with a failure reason. When token authentication fails, the supplied invalid token is shown so a mismatched external cron configuration can be diagnosed.
 
 ## Profile and languages
 

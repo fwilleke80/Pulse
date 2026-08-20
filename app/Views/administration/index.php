@@ -24,6 +24,8 @@ declare(strict_types=1);
 /** @var bool $debugEnabled */
 /** @var array<string, mixed> $databaseConfig */
 /** @var string|null $lastSuccessfulCronRun */
+/** @var string|null $cronTokenChangedAt */
+/** @var array<int, array<string, mixed>> $failedCronCalls */
 /** @var string $cronStatus */
 /** @var string $base_url */
 
@@ -355,8 +357,66 @@ ob_start();
 						<?php endif; ?>
 					</dd>
 				</div>
+				<div>
+					<dt><?= e__('administration.cron.token_changed') ?></dt>
+					<dd>
+						<?php if ($cronTokenChangedAt === null): ?>
+							<?= e__('administration.cron.token_changed_unknown') ?>
+						<?php else: ?>
+							<time datetime="<?= e($cronTokenChangedAt) ?>"><?= e(format_datetime($cronTokenChangedAt)) ?></time>
+						<?php endif; ?>
+					</dd>
+				</div>
 			</dl>
 			<small class="form-hint"><?= e__('administration.cron.status_hint') ?></small>
+		</div>
+
+		<div class="configuration-block">
+			<h3><?= e__('administration.cron.failures_heading') ?></h3>
+			<p><?= e__('administration.cron.failures_hint') ?></p>
+			<?php if ($failedCronCalls === []): ?>
+				<p class="form-hint"><?= e__('administration.cron.failures_none') ?></p>
+			<?php else: ?>
+				<div class="table-scroll"><table class="cron-failure-table"><thead><tr>
+					<th><?= e__('administration.cron.failures_time') ?></th>
+					<th><?= e__('administration.cron.failures_reason') ?></th>
+					<th><?= e__('administration.cron.failures_method') ?></th>
+					<th><?= e__('administration.cron.failures_token') ?></th>
+				</tr></thead><tbody>
+				<?php foreach ($failedCronCalls as $failedCronCall): ?>
+					<?php
+						$failureCode = (string)($failedCronCall['failure_code'] ?? '');
+						$failureTranslationKey = match ($failureCode)
+						{
+							'invalid_token' => 'administration.cron.failures_reason_invalid_token',
+							'invalid_method' => 'administration.cron.failures_reason_invalid_method',
+							'token_not_configured' => 'administration.cron.failures_reason_token_not_configured',
+							'mail_disabled' => 'administration.cron.failures_reason_mail_disabled',
+							'execution_error' => 'administration.cron.failures_reason_execution_error',
+							default => 'administration.cron.failures_reason_unknown',
+						};
+						$tokenFailure = in_array($failureCode, ['invalid_token', 'token_not_configured'], true);
+						$failedToken = $failedCronCall['provided_token'] ?? null;
+					?>
+					<tr>
+						<td><time datetime="<?= e((string)$failedCronCall['attempted_at']) ?>"><?= e(format_datetime((string)$failedCronCall['attempted_at'])) ?></time></td>
+						<td><?= e__($failureTranslationKey) ?></td>
+						<td><code><?= e((string)$failedCronCall['request_method']) ?></code></td>
+						<td>
+							<?php if (!$tokenFailure): ?>
+								<span aria-hidden="true">—</span>
+							<?php elseif ($failedToken === null): ?>
+								<span class="form-hint"><?= e__('administration.cron.failures_no_token') ?></span>
+							<?php elseif ((string)$failedToken === ''): ?>
+								<code><?= e__('administration.cron.failures_empty_token') ?></code>
+							<?php else: ?>
+								<code class="cron-failure-token"><?= e((string)$failedToken) ?></code><?php if ((bool)$failedCronCall['token_truncated']): ?> <small><?= e__('administration.cron.failures_truncated') ?></small><?php endif; ?>
+							<?php endif; ?>
+						</td>
+					</tr>
+				<?php endforeach; ?>
+				</tbody></table></div>
+			<?php endif; ?>
 		</div>
 
 		<div class="configuration-block">

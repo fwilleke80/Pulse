@@ -424,7 +424,7 @@ Check:
 - dates/timestamps;
 - status terminology.
 
-On Profile, also verify that the first owner address is labelled **Main Email**, an empty value is marked invalid and rejected even when an optional address is populated, and every stored owner address still works as a login alias. On Administration → Cron, verify that the generated-token help appears below its button.
+On Profile, also verify that the first owner address is labelled **Main Email**, an empty value is marked invalid and rejected even when an optional address is populated, and every stored owner address still works as a login alias. On Administration → Cron, verify that the generated-token help appears below its button, changing the token updates **Web-cron token last changed**, and a deliberately invalid web-cron token creates an unsuccessful-call entry that shows the supplied invalid token while still returning the opaque `Not found.` response.
 
 ## 29. Configuration and Administration
 
