@@ -43,8 +43,30 @@ final class MonitorOperationalOverviewSourceTest extends TestCase
 		self::assertStringContainsString('FindHistoryForMonitorForUser', $controller);
 		self::assertStringContainsString("'type' => 'owner_reminder'", $service);
 		self::assertStringContainsString("'type' => 'safety_reminder'", $service);
+		self::assertStringContainsString("'type' => 'safety_postpone'", $service);
+		self::assertStringContainsString("'condition' => 'safety_unconfirmed'", $service);
+		self::assertStringContainsString("'relative_safety_days'", $service);
+		self::assertStringContainsString('SafetyBranchPlan', $service);
 		self::assertStringContainsString('OwnerEscalationTime', $service);
+		self::assertStringContainsString('monitor_action_condition_label($plannedAction)', $view);
 	}
+
+
+	/** @brief Keeps edited reminder limits synchronized with an already-awaiting cycle. */
+	public function testAwaitingCycleUsesCurrentFutureStepSettings(): void
+	{
+		$root = dirname(__DIR__, 2);
+		$execution = (string)file_get_contents($root . '/app/Services/MonitorExecutionService.php');
+		$queue = (string)file_get_contents($root . '/app/Repositories/MailQueueRepository.php');
+
+		self::assertStringContainsString('SynchronizeAwaitingCycleSettings', $execution);
+		self::assertStringContainsString('$cycleStatus === MonitorStateMachine::AWAITING', $execution);
+		self::assertStringContainsString('\'max_reminders\' => (int)$monitor[\'max_reminders\']', $execution);
+		self::assertStringContainsString('$mailType === \'owner_reminder\'', $queue);
+		self::assertStringContainsString('$job[\'reminder_number\']', $queue);
+		self::assertStringContainsString('SELECT cc.max_reminders', $queue);
+	}
+
 
 	/** @brief Keeps recipients in one scrollable checkbox-card assignment list. */
 	public function testRecipientsUseUnifiedSortableAssignmentCards(): void

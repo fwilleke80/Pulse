@@ -124,7 +124,7 @@ Warnings appear directly on relevant tabs when configuration needs attention.
 
 ### 1. Status
 
-Status is a read-only operational view. It distinguishes an expected lifecycle state, such as **Awaiting check-in**, from a monitor-specific delivery or release problem that needs attention. The summary cards show the current state, the most recent meaningful lifecycle event, and the next automatic action. Below them, Pulse shows the remainder of the current cycle with calculated times and a typed event history for this monitor. Scheduled times are eligibility times; the actual action occurs on the next successful cron/mail-worker run. Installation-wide mail and cron health remain available in Administration rather than being duplicated on each monitor.
+Status is a read-only operational view. It distinguishes an expected lifecycle state, such as **Awaiting check-in**, from a monitor-specific delivery or release problem that needs attention. The summary cards show the current state, the most recent meaningful lifecycle event, and the next automatic action. Below them, **What happens next** follows the remainder of the current cycle through the safety-contact decision as well as final recipient release. Exact owner-stage times are shown directly. Before safety-contact invitations have actually been delivered, later safety reminders and expiry are shown as relative/conditional steps rather than pretending their final timestamps are already known. If enough safety contacts confirm, Pulse closes that cycle and schedules a new check-in; otherwise the safety window eventually expires and recipient release begins. Scheduled times are eligibility times; the actual action occurs on the next successful cron/mail-worker run. Installation-wide mail and cron health remain available in Administration rather than being duplicated on each monitor.
 
 Archived monitors can still be opened and inspected, but their monitor configuration is read-only. Use **Reset and reactivate** before changing an archived monitor.
 
@@ -142,6 +142,8 @@ The owner phase contains four settings:
 - **Maximum follow-up reminders** — number of reminders after the initial due notice.
 
 The initial due notice is not counted as a follow-up reminder.
+
+If a monitor is already **Awaiting check-in**, edits to the reminder interval, maximum follow-up reminders, escalation policy, and future safety-stage settings apply to the remainder of that current cycle immediately. The current cycle's due time and response deadline remain fixed; changes to the check-in interval or response window apply to later cycles.
 
 For example:
 
@@ -162,14 +164,14 @@ With those settings, the owner reminder phase ends four days after the monitor f
 Documents belong to the monitor's library. The Documents tab presents them as a compact list showing type, title, modification time, and useful size information. From the list you can:
 
 - create editable Markdown text documents with **Create text document**;
-- upload supported files from the collapsible upload area;
+- upload supported files with **Upload document**, directly beside **Create text document**;
 - open a document in its dedicated editor;
 - download uploaded source files;
 - delete documents.
 
-Creating a document does **not** automatically release it to every recipient. Assignment is done for each recipient separately under that recipient's **Documents** tab.
+**Create text document** and **Upload document** are the two primary ways to add material to the monitor and therefore appear together at the top of the Documents tab. The upload button expands the upload form directly below those actions. Creating or uploading a document does **not** automatically release it to every recipient. Assignment is done for each recipient separately under that recipient's **Documents** tab.
 
-Text documents are created and edited on a dedicated page rather than inline inside the Monitor Editor. Pulse text documents support a safe Markdown subset: headings, bold and italic text, ordered and unordered lists, links, blockquotes, horizontal rules, inline code, and fenced code blocks. Raw HTML is displayed as text rather than executed. The editor has **Edit** and **Preview** tabs; Preview renders the current unsaved source through Pulse's server-side Markdown renderer. Recipient downloads and **Download all** preserve the original Markdown source as `.md` files. Uploaded-file titles and descriptions are edited in the same dedicated document-editor workflow.
+Text documents are created and edited on a dedicated page rather than inline inside the Monitor Editor. Pulse text documents support a safe Markdown subset: headings, bold and italic text, ordered and unordered lists, links, blockquotes, horizontal rules, inline code, and fenced code blocks. Raw HTML is displayed as text rather than executed. The editor has **Edit** and **Preview** tabs; Preview renders the current unsaved source through Pulse's server-side Markdown renderer. Recipient downloads and **Download all** preserve the original Markdown source as `.md` files. Uploaded-file titles and descriptions are edited in the same dedicated document-editor workflow. For PDF, raster images, audio, video, Markdown, plain text, CSV, and JSON, that editor also shows the same safe inline preview used by the recipient portal. Download-only formats such as Word, OpenDocument, and RTF continue to show metadata and a download action without attempting an inline viewer.
 
 The default upload policy accepts PDF, RTF, OpenDocument Text, Word `.docx`, JSON, CSV, common raster images (JPEG, PNG, GIF, WebP, and AVIF), plain text and Markdown, and common browser audio/video formats including MP3, M4A/AAC, Ogg, WAV, FLAC, MP4, WebM, QuickTime, and Ogg video. The default Pulse limit is 25 MiB. Administrators can change Pulse's own limit and MIME allowlist under **Administration → Files**; PHP and web-server upload limits may impose lower limits. An untouched pre-1.2.6 stock MIME list is expanded automatically, while deliberately customized administrator lists are preserved.
 

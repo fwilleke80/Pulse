@@ -69,8 +69,14 @@ final class MonitorEditorObservabilitySourceTest extends TestCase
 		$view = (string)file_get_contents($root . '/app/Views/monitors/edit.php');
 		$editor = (string)file_get_contents($root . '/app/Views/documents/editor.php');
 		$routes = (string)file_get_contents($root . '/public/index.php');
+		$script = (string)file_get_contents($root . '/public/assets/app.js');
 
 		self::assertStringContainsString('document-library-list', $view);
+		self::assertStringContainsString('document-library-add-actions', $view);
+		self::assertStringContainsString('data-document-upload-toggle', $view);
+		self::assertStringContainsString('data-document-upload-panel', $view);
+		self::assertStringContainsString('data-document-upload-toggle', $script);
+		self::assertStringNotContainsString('document-upload-disclosure', $view);
 		self::assertStringContainsString('monitors.documents.list.modified', $view);
 		self::assertStringContainsString('monitors.documents.list.text_size', $view);
 		self::assertStringContainsString("Get('/monitors/documents/text/new'", $routes);

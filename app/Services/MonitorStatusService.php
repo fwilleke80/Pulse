@@ -376,7 +376,7 @@ final class MonitorStatusService
 	/**
 	 * @brief Builds the deterministic remainder of the current cycle.
 	 * @param array<string, mixed> $row Current-cycle row.
-	 * @return array<int, array{type: string, at: string|null, number?: int, total?: int}>
+	 * @return array<int, array<string, mixed>>
 	 */
 	private function FuturePlan(array $row): array
 	{
@@ -412,10 +412,17 @@ final class MonitorStatusService
 				];
 			}
 
+			$usesSafetyGate = (string)($row['escalation_policy_snapshot'] ?? '') === 'safety_contact';
 			$plan[] = [
-				'type' => (string)($row['escalation_policy_snapshot'] ?? '') === 'safety_contact' ? 'safety_start' : 'recipient_release',
+				'type' => $usesSafetyGate ? 'safety_start' : 'recipient_release',
 				'at' => $this->OwnerEscalationTime($row),
 			];
+
+			if ($usesSafetyGate)
+			{
+				$plan = array_merge($plan, $this->SafetyBranchPlan($row));
+			}
+
 			return $this->RemovePastCompletedPlanItems($plan, $row);
 		}
 
@@ -423,26 +430,11 @@ final class MonitorStatusService
 		{
 			if (empty($row['safety_gate_started_at']))
 			{
-				return [['type' => 'safety_invitation', 'at' => $this->NullableTimestamp($row['next_queued_mail_at'] ?? null)]];
+				$plan[] = ['type' => 'safety_invitation', 'at' => $this->NullableTimestamp($row['next_queued_mail_at'] ?? null)];
+				return array_merge($plan, $this->SafetyBranchPlan($row));
 			}
 
-			$minimumSent = $row['safety_min_reminders_sent'] === null ? 0 : (int)$row['safety_min_reminders_sent'];
-			$maximum = (int)($row['safety_max_reminders'] ?? 0);
-
-			for ($number = $minimumSent + 1; $number <= $maximum; $number++)
-			{
-				$days = (int)($row['safety_response_window_days'] ?? 0)
-					+ ((int)($row['safety_reminder_interval_days'] ?? 0) * max(0, $number - 1));
-				$plan[] = [
-					'type' => 'safety_reminder',
-					'at' => $this->AddDaysToTimestamp($this->NullableTimestamp($row['safety_gate_started_at'] ?? null), $days),
-					'number' => $number,
-					'total' => $maximum,
-				];
-			}
-
-			$plan[] = ['type' => 'safety_expiry', 'at' => $this->NullableTimestamp($row['safety_gate_deadline_at'] ?? null)];
-			return $plan;
+			return $this->SafetyBranchPlan($row);
 		}
 
 		if ($status === 'overdue')
@@ -451,6 +443,75 @@ final class MonitorStatusService
 		}
 
 		return [];
+	}
+
+	/**
+	 * @brief Builds the conditional safety-contact branch of the current cycle.
+	 * @param array<string, mixed> $row Current-cycle row.
+	 * @return array<int, array<string, mixed>> Conditional safety-stage plan.
+	 */
+	private function SafetyBranchPlan(array $row): array
+	{
+		$plan = [[
+			'type' => 'safety_postpone',
+			'at' => null,
+			'condition' => 'safety_confirmed',
+		]];
+		$gateStart = $this->NullableTimestamp($row['safety_gate_started_at'] ?? null);
+		$minimumSent = $row['safety_min_reminders_sent'] === null ? 0 : (int)$row['safety_min_reminders_sent'];
+		$maximum = (int)($row['safety_max_reminders'] ?? 0);
+		$hasPendingRequests = $gateStart === null || (int)($row['safety_pending_request_count'] ?? 0) > 0;
+
+		for ($number = $minimumSent + 1; $hasPendingRequests && $number <= $maximum; $number++)
+		{
+			$days = (int)($row['safety_response_window_days'] ?? 0)
+				+ ((int)($row['safety_reminder_interval_days'] ?? 0) * max(0, $number - 1));
+			$action = [
+				'type' => 'safety_reminder',
+				'at' => $gateStart === null ? null : $this->AddDaysToTimestamp($gateStart, $days),
+				'number' => $number,
+				'total' => $maximum,
+				'condition' => 'safety_pending',
+			];
+
+			if ($gateStart === null)
+			{
+				$action['relative_safety_days'] = $days;
+			}
+
+			$plan[] = $action;
+		}
+
+		$expiryDays = (int)($row['safety_response_window_days'] ?? 0)
+			+ ((int)($row['safety_reminder_interval_days'] ?? 0) * $maximum);
+		$expiryAt = $this->NullableTimestamp($row['safety_gate_deadline_at'] ?? null);
+
+		if ($expiryAt === null && $gateStart !== null)
+		{
+			$expiryAt = $this->AddDaysToTimestamp($gateStart, $expiryDays);
+		}
+
+		$expiry = [
+			'type' => 'safety_expiry',
+			'at' => $expiryAt,
+			'condition' => 'safety_unconfirmed',
+		];
+		$release = [
+			'type' => 'recipient_release',
+			'at' => $expiryAt,
+			'condition' => 'safety_unconfirmed',
+		];
+
+		if ($gateStart === null)
+		{
+			$expiry['relative_safety_days'] = $expiryDays;
+			$release['relative_safety_days'] = $expiryDays;
+		}
+
+		$plan[] = $expiry;
+		$plan[] = $release;
+
+		return $plan;
 	}
 
 	/**

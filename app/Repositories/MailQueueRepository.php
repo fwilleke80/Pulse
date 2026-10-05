@@ -243,17 +243,29 @@ final class MailQueueRepository
 		if (in_array($mailType, ['owner_due_notice', 'owner_reminder'], true))
 		{
 			$statement = $this->_database->GetConnection()->prepare('
-				SELECT COUNT(*)
+				SELECT cc.max_reminders
 				FROM check_cycles cc
 				INNER JOIN monitors m ON m.id = cc.monitor_id
 				WHERE cc.id = :cycle_id
 					AND cc.status = \'awaiting\'
 					AND m.is_paused = 0
 					AND m.is_archived = 0
+				LIMIT 1
 			');
 			$statement->execute(['cycle_id' => (int)$job['check_cycle_id']]);
+			$maximum = $statement->fetchColumn();
 
-			return (int)$statement->fetchColumn() === 1;
+			if ($maximum === false)
+			{
+				return false;
+			}
+
+			if ($mailType === 'owner_reminder' && (int)($job['reminder_number'] ?? 0) > (int)$maximum)
+			{
+				return false;
+			}
+
+			return true;
 		}
 
 		if (in_array($mailType, ['safety_invitation', 'safety_reminder'], true))

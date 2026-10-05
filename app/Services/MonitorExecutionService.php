@@ -775,9 +775,17 @@ final class MonitorExecutionService
 			$createdCycle = true;
 		}
 
-		if ((string)$cycle['status'] !== MonitorStateMachine::SCHEDULED)
+		$cycleStatus = (string)$cycle['status'];
+
+		if ($cycleStatus === MonitorStateMachine::AWAITING)
 		{
-			return $createdCycle && (string)$cycle['status'] === MonitorStateMachine::AWAITING;
+			$this->SynchronizeAwaitingCycleSettings($connection, $cycle, $monitor, $now);
+			return $createdCycle;
+		}
+
+		if ($cycleStatus !== MonitorStateMachine::SCHEDULED)
+		{
+			return false;
 		}
 
 		$startedAt = $this->ParseUtc((string)$cycle['started_at'], $now);
@@ -1438,6 +1446,70 @@ final class MonitorExecutionService
 			'cancelled_at' => $cancelledAt,
 			'updated_at' => $cancelledAt,
 			'cycle_id' => $cycleId,
+		]);
+	}
+
+
+	/**
+	 * @brief Applies edited future-step settings to a check-in cycle that is already awaiting confirmation.
+	 *
+	 * The due time and response deadline remain fixed once a cycle is awaiting. Reminder and
+	 * escalation settings describe future actions that have not happened yet, so edits to those
+	 * settings should immediately govern the remainder of the current owner phase.
+	 *
+	 * @param PDO $connection Active connection and transaction.
+	 * @param array<string, mixed> $cycle Locked awaiting cycle.
+	 * @param array<string, mixed> $monitor Locked monitor row.
+	 * @param DateTimeImmutable $now Shared UTC operation time.
+	 */
+	private function SynchronizeAwaitingCycleSettings(
+		PDO $connection,
+		array $cycle,
+		array $monitor,
+		DateTimeImmutable $now
+	): void
+	{
+		$safetyConfirmationDays = $this->SafetyConfirmationDays($monitor);
+		$changed = (int)$cycle['reminder_interval_days'] !== (int)$monitor['reminder_interval_days']
+			|| (int)$cycle['max_reminders'] !== (int)$monitor['max_reminders']
+			|| (string)$cycle['escalation_policy_snapshot'] !== (string)$monitor['escalation_policy']
+			|| (int)$cycle['safety_response_window_days'] !== (int)$monitor['safety_response_window_days']
+			|| (int)$cycle['safety_reminder_interval_days'] !== (int)$monitor['safety_reminder_interval_days']
+			|| (int)$cycle['safety_max_reminders'] !== (int)$monitor['safety_max_reminders']
+			|| (int)$cycle['safety_required_confirmations'] !== (int)$monitor['safety_required_confirmations']
+			|| (int)$cycle['safety_confirmation_days'] !== $safetyConfirmationDays;
+
+		if (!$changed)
+		{
+			return;
+		}
+
+		$statement = $connection->prepare('
+			UPDATE check_cycles
+			SET
+				reminder_interval_days = :reminder_interval_days,
+				max_reminders = :max_reminders,
+				escalation_policy_snapshot = :escalation_policy_snapshot,
+				safety_response_window_days = :safety_response_window_days,
+				safety_reminder_interval_days = :safety_reminder_interval_days,
+				safety_max_reminders = :safety_max_reminders,
+				safety_required_confirmations = :safety_required_confirmations,
+				safety_confirmation_days = :safety_confirmation_days,
+				updated_at = :updated_at
+			WHERE id = :id
+				AND status = \'awaiting\'
+		');
+		$statement->execute([
+			'reminder_interval_days' => (int)$monitor['reminder_interval_days'],
+			'max_reminders' => (int)$monitor['max_reminders'],
+			'escalation_policy_snapshot' => (string)$monitor['escalation_policy'],
+			'safety_response_window_days' => (int)$monitor['safety_response_window_days'],
+			'safety_reminder_interval_days' => (int)$monitor['safety_reminder_interval_days'],
+			'safety_max_reminders' => (int)$monitor['safety_max_reminders'],
+			'safety_required_confirmations' => (int)$monitor['safety_required_confirmations'],
+			'safety_confirmation_days' => $safetyConfirmationDays,
+			'updated_at' => $this->FormatUtc($now),
+			'id' => (int)$cycle['id'],
 		]);
 	}
 

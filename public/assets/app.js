@@ -29,6 +29,35 @@ document.addEventListener('DOMContentLoaded', function ()
 		});
 	}
 
+	for (const toggle of document.querySelectorAll('[data-document-upload-toggle]'))
+	{
+		const targetId = toggle.getAttribute('aria-controls') || '';
+		const panel = targetId === '' ? null : document.getElementById(targetId);
+
+		if (!panel)
+		{
+			continue;
+		}
+
+		/** @brief Opens or closes the monitor document-upload form. */
+		toggle.addEventListener('click', function ()
+		{
+			const opening = panel.hidden;
+			panel.hidden = !opening;
+			toggle.setAttribute('aria-expanded', opening ? 'true' : 'false');
+
+			if (opening)
+			{
+				const firstField = panel.querySelector('input:not([type="hidden"]), textarea, select');
+
+				if (firstField instanceof HTMLElement)
+				{
+					firstField.focus();
+				}
+			}
+		});
+	}
+
 	for (const form of document.querySelectorAll('[data-recipient-assignment-form]'))
 	{
 		const list = form.querySelector('[data-recipient-assignment-list]');

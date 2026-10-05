@@ -1,3 +1,27 @@
+## 1.3.8 - 2026-10-06
+
+### Complete status timeline and document actions
+- Extended **Status → What happens next** beyond **Safety-contact verification starts**. Safety-contact monitors now show both conditional branches: enough confirmations postpone the monitor and schedule a new check-in cycle, while an unconfirmed safety gate continues through safety reminders, expiry, and recipient release.
+- Kept timeline precision honest: before safety invitations have actually been delivered, later safety reminders and expiry are shown relative to invitation delivery instead of receiving invented absolute timestamps. Once the safety gate has started, persisted timestamps are shown normally.
+- Reorganized **Monitor → Documents** so **Create text document** and **Upload document** sit next to each other as the two primary ways to add documents. Upload now expands its form immediately below the action row instead of appearing as a separate folded section farther down the tab.
+- Updated all four interface languages, documentation, and regression coverage. No database migration is required.
+
+## 1.3.7 - 2026-10-06
+
+### Active reminder-setting synchronization
+- Fixed an awaiting monitor continuing to use the reminder limit and future escalation settings captured before the monitor was edited. Changing **Maximum follow-up reminders** now immediately updates the current awaiting cycle, so **Status → What happens next** and the scheduler use the same current value.
+- Awaiting cycles now adopt edited reminder interval, reminder maximum, escalation policy, and future safety-stage timing/confirmation settings while preserving the already-established due time and response deadline for that current cycle.
+- Added a delivery guard so an already queued owner reminder whose number is now above the reduced maximum is cancelled rather than sent.
+- Added regression coverage and documentation. No database migration is required.
+
+## 1.3.6 - 2026-10-06
+
+### Uploaded document previews
+- Added an owner-authenticated inline preview to the dedicated uploaded-document editor for the same passive formats Pulse already renders in recipient portals: PDF, raster images, audio, video, Markdown, plain text, CSV, and JSON.
+- Reused the existing `DocumentPreviewService` classification, bounded text rendering, and private range-capable streaming path so the editor and portal cannot drift onto different preview rules. Unsupported or potentially active formats remain metadata + download only.
+- Preview requests re-check the logged-in owner, monitor/document ownership, current file availability, and viewability before returning any content. No storage path is exposed and responses remain private/non-cacheable.
+- Updated all four interface languages, documentation, and source regression coverage. No database migration is required.
+
 ## 1.3.5 - 2026-10-06
 
 ### Monitor editor status cleanup

@@ -139,6 +139,63 @@ class MonitorExecutionServiceTest extends TestCase
 		self::assertSame('scheduled', $this->_connection?->query('SELECT status FROM check_cycles WHERE monitor_id = 1 ORDER BY id DESC LIMIT 1')->fetchColumn());
 	}
 
+
+	public function testAwaitingCycleAdoptsEditedFutureReminderSettings(): void
+	{
+		self::assertInstanceOf(MonitorExecutionService::class, $this->_service);
+		$this->_connection?->exec("UPDATE monitors SET max_reminders = 10 WHERE id = 1");
+		$this->_service->InitializeMonitorForUser(1, 1);
+		self::assertTrue($this->_service->ForceDueForUser(1, 1));
+		$this->_connection?->exec("
+			UPDATE check_cycles
+			SET due_notice_sent_at = UTC_TIMESTAMP(), reminders_sent = 1
+			WHERE monitor_id = 1 AND status = 'awaiting'
+		");
+		$before = $this->_connection?->query("
+			SELECT due_at, response_deadline_at, max_reminders
+			FROM check_cycles
+			WHERE monitor_id = 1 AND status = 'awaiting'
+		")->fetch(PDO::FETCH_ASSOC);
+		self::assertIsArray($before);
+		self::assertSame(10, (int)$before['max_reminders']);
+
+		$this->_connection?->exec("
+			UPDATE monitors
+			SET reminder_interval_days = 2,
+				max_reminders = 5,
+				escalation_policy = 'safety_contact',
+				safety_response_window_days = 4,
+				safety_reminder_interval_days = 2,
+				safety_max_reminders = 3,
+				safety_required_confirmations = 2,
+				safety_confirmation_days = 6
+			WHERE id = 1
+		");
+		$this->_service->SynchronizeMonitorForUser(1, 1);
+
+		$after = $this->_connection?->query("
+			SELECT status, due_at, response_deadline_at, reminder_interval_days, max_reminders,
+				escalation_policy_snapshot, safety_response_window_days,
+				safety_reminder_interval_days, safety_max_reminders,
+				safety_required_confirmations, safety_confirmation_days
+			FROM check_cycles
+			WHERE monitor_id = 1 AND status = 'awaiting'
+		")->fetch(PDO::FETCH_ASSOC);
+		self::assertIsArray($after);
+		self::assertSame('awaiting', $after['status']);
+		self::assertSame($before['due_at'], $after['due_at']);
+		self::assertSame($before['response_deadline_at'], $after['response_deadline_at']);
+		self::assertSame(2, (int)$after['reminder_interval_days']);
+		self::assertSame(5, (int)$after['max_reminders']);
+		self::assertSame('safety_contact', $after['escalation_policy_snapshot']);
+		self::assertSame(4, (int)$after['safety_response_window_days']);
+		self::assertSame(2, (int)$after['safety_reminder_interval_days']);
+		self::assertSame(3, (int)$after['safety_max_reminders']);
+		self::assertSame(2, (int)$after['safety_required_confirmations']);
+		self::assertSame(6, (int)$after['safety_confirmation_days']);
+	}
+
+
 	public function testOverdueRequiresTheInitialDueNoticeToHaveBeenSent(): void
 	{
 		self::assertInstanceOf(MonitorExecutionService::class, $this->_service);

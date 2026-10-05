@@ -70,4 +70,25 @@ final class PortalInlineDocumentsSourceTest extends TestCase
 		self::assertStringContainsString('.document-editor-form', $styles);
 	}
 
+	/** @brief Ensures the uploaded-document editor reuses portal-safe owner-authenticated previews. */
+	public function testUploadedDocumentEditorUsesPortalPreviewRules(): void
+	{
+		$root = dirname(__DIR__, 2);
+		$controller = (string)file_get_contents($root . '/app/Controllers/DocumentController.php');
+		$editor = (string)file_get_contents($root . '/app/Views/documents/editor.php');
+		$routes = (string)file_get_contents($root . '/public/index.php');
+		$styles = (string)file_get_contents($root . '/public/assets/style.css');
+
+		self::assertStringContainsString('DocumentPreviewService', $controller);
+		self::assertStringContainsString('PrepareDownloadForUser(', $controller);
+		self::assertStringContainsString('IsViewable(', $controller);
+		self::assertStringContainsString('BuildTextFrame(', $controller);
+		self::assertStringContainsString("Get('/monitors/documents/preview'", $routes);
+		self::assertStringContainsString('document-editor-preview', $editor);
+		self::assertStringContainsString('<audio controls preload="metadata"', $editor);
+		self::assertStringContainsString('<video controls preload="metadata" playsinline', $editor);
+		self::assertStringContainsString('document-editor-preview-frame', $editor);
+		self::assertStringContainsString('.document-editor-preview-surface', $styles);
+	}
+
 }

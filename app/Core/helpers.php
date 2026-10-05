@@ -464,6 +464,7 @@ function monitor_action_label(array $action): string
 			'number' => (int)($action['number'] ?? 1),
 			'total' => (int)($action['total'] ?? 1),
 		]),
+		'safety_postpone' => __('monitors.status.action.safety_postpone'),
 		'safety_expiry' => __('monitors.status.action.safety_expiry'),
 		'recipient_release' => __('monitors.status.action.recipient_release'),
 		'recipient_delivery' => __('monitors.status.action.recipient_delivery'),
@@ -489,13 +490,40 @@ function monitor_action_time_label(array $action): string
 		return format_datetime($timestamp);
 	}
 
+	if (isset($action['relative_safety_days']))
+	{
+		$days = max(0, (int)$action['relative_safety_days']);
+
+		return __(
+			$days === 1 ? 'monitors.status.next.relative_safety_day' : 'monitors.status.next.relative_safety_days',
+			['days' => $days]
+		);
+	}
+
 	return match ((string)($action['type'] ?? 'none'))
 	{
 		'due_notice', 'safety_invitation', 'recipient_release', 'recipient_delivery' => __('monitors.status.next_cron'),
+		'safety_postpone' => __('monitors.status.next.safety_any_time'),
 		'paused' => __('monitors.status.no_action.paused'),
 		'archived' => __('monitors.status.no_action.archived'),
 		'escalated' => __('monitors.status.no_action.escalated'),
 		'release_blocked' => __('monitors.status.no_action.blocked'),
 		default => '—',
+	};
+}
+
+/**
+ * @brief Returns an optional condition label for a conditional future action.
+ * @param array<string, mixed> $action Operational action descriptor.
+ * @return string Empty string for unconditional actions.
+ */
+function monitor_action_condition_label(array $action): string
+{
+	return match ((string)($action['condition'] ?? ''))
+	{
+		'safety_confirmed' => __('monitors.status.next.condition.safety_confirmed'),
+		'safety_pending' => __('monitors.status.next.condition.safety_pending'),
+		'safety_unconfirmed' => __('monitors.status.next.condition.safety_unconfirmed'),
+		default => '',
 	};
 }

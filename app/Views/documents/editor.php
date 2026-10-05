@@ -11,6 +11,8 @@ declare(strict_types=1);
 /** @var array<string, mixed> $monitor */
 /** @var array<string, mixed>|null $document */
 /** @var string $base_url */
+/** @var bool|null $previewAvailable */
+/** @var string|null $previewKind */
 
 ob_start();
 $isNew = $document === null;
@@ -19,6 +21,12 @@ $storageType = $isNew ? 'text' : (string)$document['storage_type'];
 $monitorId = (int)$monitor['id'];
 $documentId = $isNew ? 0 : (int)$document['id'];
 $isText = $storageType === 'text';
+$previewAvailable = !$isNew && !$isText && !empty($previewAvailable);
+$previewKind = (string)($previewKind ?? 'download');
+$previewUrl = $previewAvailable
+	? $base_url . '/monitors/documents/preview?monitor_id=' . $monitorId . '&document_id=' . $documentId
+	: '';
+$isFramedPreview = in_array($previewKind, ['pdf', 'markdown', 'text', 'csv', 'json'], true);
 $action = $isNew
 	? $base_url . '/monitors/documents/text/create'
 	: $base_url . '/monitors/documents/' . ($isText ? 'text' : 'file') . '/update';
@@ -65,6 +73,29 @@ $title = $isNew ? e__('monitors.documents.editor.new_title') : e__('monitors.doc
 				<div><span><?= e__('monitors.documents.editor.mime_type') ?></span><strong><?= e((string)($document['mime_type'] ?? '')) ?></strong></div>
 				<div><span><?= e__('monitors.documents.editor.file_size') ?></span><strong><?= number_format((int)($document['file_size_bytes'] ?? 0)) ?> <?= e__('monitors.documents.editor.bytes') ?></strong></div>
 			</div>
+
+			<?php if ($previewAvailable): ?>
+				<section class="document-editor-preview" aria-labelledby="document-editor-preview-heading">
+					<h2 id="document-editor-preview-heading"><?= e__('monitors.documents.editor.preview') ?></h2>
+					<div class="document-editor-preview-surface document-editor-preview-<?= e($previewKind) ?>">
+						<?php if ($previewKind === 'image'): ?>
+							<img src="<?= e($previewUrl) ?>" alt="<?= e((string)$document['title']) ?>" loading="lazy" decoding="async">
+						<?php elseif ($previewKind === 'audio'): ?>
+							<audio controls preload="metadata" src="<?= e($previewUrl) ?>"><?= e__('portal.documents.media_unsupported') ?></audio>
+						<?php elseif ($previewKind === 'video'): ?>
+							<video controls preload="metadata" playsinline src="<?= e($previewUrl) ?>"><?= e__('portal.documents.media_unsupported') ?></video>
+						<?php elseif ($isFramedPreview): ?>
+							<iframe
+								class="document-editor-preview-frame"
+								src="<?= e($previewUrl) ?>"
+								title="<?= e__('portal.documents.preview_named', ['name' => (string)$document['title']]) ?>"
+								loading="lazy"
+								referrerpolicy="no-referrer"<?= $previewKind === 'pdf' ? '' : ' sandbox="allow-same-origin"' ?>
+							></iframe>
+						<?php endif; ?>
+					</div>
+				</section>
+			<?php endif; ?>
 
 			<label for="document_editor_description"><?= e__('monitors.documents.description') ?></label>
 			<textarea id="document_editor_description" name="description" rows="5"><?= e((string)($document['description'] ?? '')) ?></textarea>

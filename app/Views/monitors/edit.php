@@ -261,11 +261,36 @@ ob_start();
 			<?php else: ?>
 				<ol class="monitor-status-timeline">
 					<?php foreach ($futurePlan as $index => $plannedAction): ?>
-						<li<?= $index === 0 ? ' class="is-next"' : '' ?>>
+						<?php
+						$conditionLabel = monitor_action_condition_label($plannedAction);
+						$itemClasses = [];
+						$plannedType = (string)($plannedAction['type'] ?? 'none');
+						$nextType = (string)($nextAction['type'] ?? 'none');
+						$isNextAction = $plannedType === $nextType;
+
+						if ($isNextAction && isset($plannedAction['number'], $nextAction['number']))
+						{
+							$isNextAction = (int)$plannedAction['number'] === (int)$nextAction['number'];
+						}
+
+						if ($isNextAction || ($index === 0 && $nextType === 'check_due'))
+						{
+							$itemClasses[] = 'is-next';
+						}
+
+						if ($conditionLabel !== '')
+						{
+							$itemClasses[] = 'is-conditional';
+						}
+						?>
+						<li<?= $itemClasses === [] ? '' : ' class="' . e(implode(' ', $itemClasses)) . '"' ?>>
 							<span class="monitor-status-timeline-marker" aria-hidden="true"></span>
 							<div>
 								<strong><?= e(monitor_action_label($plannedAction)) ?></strong>
-								<time><?= e(monitor_action_time_label($plannedAction)) ?></time>
+								<span class="monitor-status-timeline-time"><?= e(monitor_action_time_label($plannedAction)) ?></span>
+								<?php if ($conditionLabel !== ''): ?>
+									<small class="monitor-status-timeline-condition"><?= e($conditionLabel) ?></small>
+								<?php endif; ?>
 							</div>
 						</li>
 					<?php endforeach; ?>
@@ -391,17 +416,23 @@ ob_start();
 				<h2><?= e__('monitors.tabs.documents') ?></h2>
 				<p><?= e__('monitors.documents.library_hint') ?></p>
 			</div>
-			<?php if (!$isArchived): ?><a href="<?= e($base_url) ?>/monitors/documents/text/new?monitor_id=<?= (int)$monitor['id'] ?>" class="button-link"><?= e__('monitors.documents.text.create.action') ?></a><?php endif; ?>
-		</div>
-
-		<div class="privacy-note">
-			<strong><?= e__('monitors.documents.assignment_heading') ?></strong>
-			<?= e__('monitors.documents.assignment_hint') ?>
+			<?php if (!$isArchived): ?>
+				<div class="document-library-add-actions">
+					<a href="<?= e($base_url) ?>/monitors/documents/text/new?monitor_id=<?= (int)$monitor['id'] ?>" class="button-link"><?= e__('monitors.documents.text.create.action') ?></a>
+					<button
+						type="button"
+						class="button-link"
+						data-document-upload-toggle
+						aria-expanded="false"
+						aria-controls="monitor-document-upload"
+					><?= e__('monitors.documents.upload.heading') ?></button>
+				</div>
+			<?php endif; ?>
 		</div>
 
 		<?php if (!$isArchived): ?>
-		<details class="document-upload-disclosure configuration-block">
-			<summary><?= e__('monitors.documents.upload.heading') ?></summary>
+		<div id="monitor-document-upload" class="document-upload-panel configuration-block" data-document-upload-panel hidden>
+			<h3><?= e__('monitors.documents.upload.heading') ?></h3>
 			<form method="post" action="<?= e($base_url) ?>/monitors/documents/upload" enctype="multipart/form-data" class="document-upload-form">
 				<?= csrf_field() ?>
 				<input type="hidden" name="monitor_id" value="<?= (int)$monitor['id'] ?>">
@@ -414,8 +445,13 @@ ob_start();
 				<p class="form-hint"><?= e__('monitors.documents.upload.preview_hint', ['size' => $uploadSizeLabel]) ?></p>
 				<button type="submit"><?= e__('monitors.documents.upload.submit') ?></button>
 			</form>
-		</details>
+		</div>
 		<?php endif; ?>
+
+		<div class="privacy-note">
+			<strong><?= e__('monitors.documents.assignment_heading') ?></strong>
+			<?= e__('monitors.documents.assignment_hint') ?>
+		</div>
 
 		<?php if ($documents === []): ?>
 			<p><?= e__('monitors.documents.none') ?></p>

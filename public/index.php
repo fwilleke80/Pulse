@@ -217,7 +217,9 @@ $documentController = new DocumentController(
 	$request,
 	$documentService,
 	$documentRepository,
-	$monitorRepository
+	$monitorRepository,
+	$documentPreviewService,
+	$privateFileStreamer
 );
 $markdownController = new MarkdownController($view, $session, $auth, $logger, $request, $markdownRenderer);
 $recipientController = new RecipientController(
@@ -319,6 +321,7 @@ $router->Post('/monitors/recipients/remove', [$recipientController, 'Remove']);
 
 $router->Get('/monitors/documents/text/new', [$documentController, 'NewText']);
 $router->Get('/monitors/documents/edit', [$documentController, 'Edit']);
+$router->Get('/monitors/documents/preview', [$documentController, 'Preview']);
 $router->Post('/monitors/documents/upload', [$documentController, 'Upload']);
 $router->Post('/monitors/documents/text/create', [$documentController, 'CreateText']);
 $router->Post('/monitors/documents/text/update', [$documentController, 'UpdateText']);

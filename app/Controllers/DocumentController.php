@@ -12,12 +12,14 @@ namespace Pulse\Controllers;
 
 use Pulse\Core\DocumentException;
 use Pulse\Core\Logger;
+use Pulse\Core\PrivateFileStreamer;
 use Pulse\Core\Request;
 use Pulse\Core\Session;
 use Pulse\Core\View;
 use Pulse\Repositories\DocumentRepository;
 use Pulse\Repositories\MonitorRepository;
 use Pulse\Services\AuthService;
+use Pulse\Services\DocumentPreviewService;
 use Pulse\Services\DocumentService;
 
 /**
@@ -28,6 +30,8 @@ class DocumentController extends BaseController
 	private DocumentService $_documentService;
 	private DocumentRepository $_documentRepository;
 	private MonitorRepository $_monitorRepository;
+	private DocumentPreviewService $_documentPreviewService;
+	private PrivateFileStreamer $_privateFileStreamer;
 
 	/**
 	 * @brief Constructs the controller.
@@ -39,6 +43,8 @@ class DocumentController extends BaseController
 	 * @param DocumentService $documentService Document service.
 	 * @param DocumentRepository $documentRepository Document repository.
 	 * @param MonitorRepository $monitorRepository Monitor repository.
+	 * @param DocumentPreviewService $documentPreviewService Safe preview classifier.
+	 * @param PrivateFileStreamer $privateFileStreamer Authenticated private-file streamer.
 	 */
 	public function __construct(
 		View $view,
@@ -48,13 +54,17 @@ class DocumentController extends BaseController
 		Request $request,
 		DocumentService $documentService,
 		DocumentRepository $documentRepository,
-		MonitorRepository $monitorRepository
+		MonitorRepository $monitorRepository,
+		DocumentPreviewService $documentPreviewService,
+		PrivateFileStreamer $privateFileStreamer
 	)
 	{
 		parent::__construct($view, $session, $auth, $logger, $request);
 		$this->_documentService = $documentService;
 		$this->_documentRepository = $documentRepository;
 		$this->_monitorRepository = $monitorRepository;
+		$this->_documentPreviewService = $documentPreviewService;
+		$this->_privateFileStreamer = $privateFileStreamer;
 	}
 
 	/** @brief Displays the dedicated text-document creation editor. @return string */
@@ -98,11 +108,100 @@ class DocumentController extends BaseController
 			$this->Redirect($monitorId > 0 ? '/monitors/edit?id=' . $monitorId . '&tab=documents' : '/monitors');
 		}
 
+		$previewAvailable = false;
+		$previewKind = DocumentPreviewService::KIND_DOWNLOAD;
+
+		if ((string)($document['storage_type'] ?? '') === 'file')
+		{
+			$previewKind = $this->_documentPreviewService->Kind($document);
+
+			if ($this->_documentPreviewService->IsViewable($document))
+			{
+				try
+				{
+					$this->_documentService->PrepareDownloadForUser((int)$user['id'], $monitorId, $documentId);
+					$previewAvailable = true;
+				}
+				catch (DocumentException)
+				{
+					$previewAvailable = false;
+				}
+			}
+		}
+
 		return $this->_view->Render('documents.editor', [
 			'user' => $user,
 			'monitor' => $monitor,
 			'document' => $document,
+			'previewAvailable' => $previewAvailable,
+			'previewKind' => $previewKind,
 		]);
+	}
+
+	/** @brief Serves one owner-authenticated inline preview of an uploaded monitor document. */
+	public function Preview(): void
+	{
+		$user = $this->RequireUser();
+		$monitorId = $this->_request->QueryInt('monitor_id');
+		$documentId = $this->_request->QueryInt('document_id');
+
+		try
+		{
+			$download = $this->_documentService->PrepareDownloadForUser(
+				(int)$user['id'],
+				$monitorId,
+				$documentId
+			);
+		}
+		catch (DocumentException)
+		{
+			$this->PreviewNotFound();
+		}
+
+		$document = $download['document'];
+		$path = (string)$download['path'];
+
+		if (!$this->_documentPreviewService->IsViewable($document))
+		{
+			$this->PreviewNotFound();
+		}
+
+		if ($this->_documentPreviewService->IsTextFrame($document))
+		{
+			$preview = $this->_documentPreviewService->BuildTextFrame($document, $path);
+
+			if (!is_array($preview))
+			{
+				$this->PreviewNotFound();
+			}
+
+			$this->_privateFileStreamer->AllowSameOriginFrame();
+			header('Content-Type: text/html; charset=utf-8');
+			header('Cache-Control: no-store, private');
+			header('Pragma: no-cache');
+			echo $this->_view->Render('portal.document-preview', [
+				'document' => $document,
+				'preview' => $preview,
+			]);
+			exit;
+		}
+
+		$contentType = $this->_documentPreviewService->RawContentType($document);
+
+		if ($contentType === null)
+		{
+			$this->PreviewNotFound();
+		}
+
+		$filename = (string)($document['original_filename'] ?? $document['title'] ?? 'preview');
+		$this->_privateFileStreamer->Stream(
+			$path,
+			$filename,
+			$contentType,
+			'inline',
+			true,
+			$this->_documentPreviewService->Kind($document) === DocumentPreviewService::KIND_PDF
+		);
 	}
 
 	/** @brief Uploads a monitor document. */
@@ -303,6 +402,16 @@ class DocumentController extends BaseController
 		header('Pragma: no-cache');
 		header('X-Content-Type-Options: nosniff');
 		readfile($path);
+		exit;
+	}
+
+	/** @brief Emits a generic owner-only preview 404. */
+	private function PreviewNotFound(): never
+	{
+		http_response_code(404);
+		header('Content-Type: text/plain; charset=utf-8');
+		header('Cache-Control: no-store, private');
+		echo 'Document not found.';
 		exit;
 	}
 }
