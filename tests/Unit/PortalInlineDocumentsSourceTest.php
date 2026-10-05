@@ -50,22 +50,24 @@ final class PortalInlineDocumentsSourceTest extends TestCase
 		self::assertStringContainsString("media-src 'self'", $headers);
 	}
 
-	/** @brief Ensures changed document details are marked until their own form reloads after save. */
-	public function testDocumentEditorMarksUnsavedChanges(): void
+	/** @brief Ensures monitor documents use a compact list and dedicated editors. */
+	public function testMonitorDocumentsUseDedicatedEditors(): void
 	{
 		$root = dirname(__DIR__, 2);
 		$view = (string)file_get_contents($root . '/app/Views/monitors/edit.php');
+		$editor = (string)file_get_contents($root . '/app/Views/documents/editor.php');
 		$javascript = (string)file_get_contents($root . '/public/assets/app.js');
 		$styles = (string)file_get_contents($root . '/public/assets/style.css');
 
-		self::assertStringContainsString('data-document-editor', $view);
-		self::assertStringContainsString('data-document-unsaved-indicator', $view);
-		self::assertStringContainsString('data-document-tab-unsaved', $view);
-		self::assertStringContainsString('data-document-save-button', $view);
-		self::assertStringContainsString('formSignature() !== initialSignature', $javascript);
-		self::assertStringContainsString("card.classList.toggle('is-dirty', isDirty)", $javascript);
-		self::assertStringContainsString('updateDocumentTabDirtyState()', $javascript);
-		self::assertStringContainsString('.monitor-document-card.is-dirty', $styles);
-		self::assertStringContainsString('.document-unsaved-indicator', $styles);
+		self::assertStringContainsString('document-library-list', $view);
+		self::assertStringContainsString('/monitors/documents/text/new?monitor_id=', $view);
+		self::assertStringContainsString('/monitors/documents/edit?monitor_id=', $view);
+		self::assertStringContainsString('document_editor_content', $editor);
+		self::assertStringNotContainsString('data-document-editor', $view);
+		self::assertStringNotContainsString('data-document-tab-unsaved', $view);
+		self::assertStringNotContainsString('updateDocumentTabDirtyState', $javascript);
+		self::assertStringContainsString('.document-library-item', $styles);
+		self::assertStringContainsString('.document-editor-form', $styles);
 	}
+
 }

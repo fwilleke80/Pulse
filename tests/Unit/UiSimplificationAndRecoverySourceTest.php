@@ -63,9 +63,9 @@ final class UiSimplificationAndRecoverySourceTest extends TestCase
 			self::assertStringContainsString('monitors.edit.' . $key, $view);
 		}
 
-		self::assertStringContainsString("'text_document_content', 'text_content', '', 9", $view);
+		self::assertStringContainsString('/monitors/documents/text/new?monitor_id=', $view);
 		self::assertStringNotContainsString('monitors.escalation.authority.heading', $view);
-		self::assertStringContainsString('.document-create-grid .monitor-document-card form > button', $styles);
+		self::assertStringContainsString('.document-library-heading', $styles);
 		self::assertStringContainsString('margin: 1rem clamp(-1rem, -2vw, 0rem) 0;', $styles);
 	}
 

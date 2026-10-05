@@ -140,16 +140,17 @@ class CompleteConfigurationSourceTest extends TestCase
 		self::assertStringNotContainsString('recipients.overview.edit', $monitor);
 	}
 
-	public function testDocumentSaveAndDeleteActionsShareOneRow(): void
+	public function testDocumentListKeepsEditDownloadAndDeleteActionsTogether(): void
 	{
 		$root = dirname(__DIR__, 2);
 		$view = (string)file_get_contents($root . '/app/Views/monitors/edit.php');
 		$css = (string)file_get_contents($root . '/public/assets/style.css');
 
-		self::assertStringContainsString('class="document-card-actions"', $view);
-		self::assertStringContainsString('form="document-update-', $view);
-		self::assertStringContainsString('.document-card-actions', $css);
-		self::assertStringNotContainsString(".document-delete-form\n{\n\tdisplay: flex;\n\tjustify-content: flex-end;", $css);
+		self::assertStringContainsString('class="document-library-actions"', $view);
+		self::assertStringContainsString('/monitors/documents/edit?monitor_id=', $view);
+		self::assertStringContainsString('/monitors/documents/delete', $view);
+		self::assertStringContainsString('.document-library-actions', $css);
+		self::assertStringNotContainsString('form="document-update-', $view);
 	}
 
 }

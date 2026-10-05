@@ -15,6 +15,8 @@ use Pulse\Core\Logger;
 use Pulse\Core\Request;
 use Pulse\Core\Session;
 use Pulse\Core\View;
+use Pulse\Repositories\DocumentRepository;
+use Pulse\Repositories\MonitorRepository;
 use Pulse\Services\AuthService;
 use Pulse\Services\DocumentService;
 
@@ -24,19 +26,83 @@ use Pulse\Services\DocumentService;
 class DocumentController extends BaseController
 {
 	private DocumentService $_documentService;
+	private DocumentRepository $_documentRepository;
+	private MonitorRepository $_monitorRepository;
 
-	/** @brief Constructs the controller. @param View $view View. @param Session $session Session. @param AuthService $auth Authentication. @param Logger $logger Logger. @param Request $request Request. @param DocumentService $documentService Document service. */
+	/**
+	 * @brief Constructs the controller.
+	 * @param View $view View.
+	 * @param Session $session Session.
+	 * @param AuthService $auth Authentication.
+	 * @param Logger $logger Logger.
+	 * @param Request $request Request.
+	 * @param DocumentService $documentService Document service.
+	 * @param DocumentRepository $documentRepository Document repository.
+	 * @param MonitorRepository $monitorRepository Monitor repository.
+	 */
 	public function __construct(
 		View $view,
 		Session $session,
 		AuthService $auth,
 		Logger $logger,
 		Request $request,
-		DocumentService $documentService
+		DocumentService $documentService,
+		DocumentRepository $documentRepository,
+		MonitorRepository $monitorRepository
 	)
 	{
 		parent::__construct($view, $session, $auth, $logger, $request);
 		$this->_documentService = $documentService;
+		$this->_documentRepository = $documentRepository;
+		$this->_monitorRepository = $monitorRepository;
+	}
+
+	/** @brief Displays the dedicated text-document creation editor. @return string */
+	public function NewText(): string
+	{
+		$user = $this->RequireUser();
+		$monitorId = $this->_request->QueryInt('monitor_id');
+		$monitor = $this->_monitorRepository->FindByIdForUser($monitorId, (int)$user['id']);
+
+		if ($monitor === null)
+		{
+			$this->Flash('error', __('monitors.edit.flash.notfound'));
+			$this->Redirect('/monitors');
+		}
+
+		if (!empty($monitor['is_archived']))
+		{
+			$this->Flash('warning', __('monitors.archived.readonly.flash'));
+			$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=documents');
+		}
+
+		return $this->_view->Render('documents.editor', [
+			'user' => $user,
+			'monitor' => $monitor,
+			'document' => null,
+		]);
+	}
+
+	/** @brief Displays the dedicated editor for one owned monitor document. @return string */
+	public function Edit(): string
+	{
+		$user = $this->RequireUser();
+		$monitorId = $this->_request->QueryInt('monitor_id');
+		$documentId = $this->_request->QueryInt('document_id');
+		$monitor = $this->_monitorRepository->FindByIdForUser($monitorId, (int)$user['id']);
+		$document = $this->_documentRepository->FindByIdForMonitorAndUser($documentId, $monitorId, (int)$user['id']);
+
+		if ($monitor === null || $document === null)
+		{
+			$this->Flash('error', __('monitors.documents.flash.document_not_found'));
+			$this->Redirect($monitorId > 0 ? '/monitors/edit?id=' . $monitorId . '&tab=documents' : '/monitors');
+		}
+
+		return $this->_view->Render('documents.editor', [
+			'user' => $user,
+			'monitor' => $monitor,
+			'document' => $document,
+		]);
 	}
 
 	/** @brief Uploads a monitor document. */
@@ -89,7 +155,7 @@ class DocumentController extends BaseController
 		catch (DocumentException $exception)
 		{
 			$this->Flash('error', __($exception->TranslationKey()));
-			$this->Redirect($monitorId > 0 ? '/monitors/edit?id=' . $monitorId . '&tab=documents' : '/monitors');
+			$this->Redirect($monitorId > 0 ? '/monitors/documents/text/new?monitor_id=' . $monitorId : '/monitors');
 		}
 
 		$this->Flash('success', __('monitors.documents.flash.text_created', ['name' => $title]));
@@ -116,7 +182,10 @@ class DocumentController extends BaseController
 		catch (DocumentException $exception)
 		{
 			$this->Flash('error', __($exception->TranslationKey()));
-			$this->Redirect($monitorId > 0 ? '/monitors/edit?id=' . $monitorId . '&tab=documents' : '/monitors');
+			$documentId = $this->_request->PostInt('document_id');
+			$this->Redirect($monitorId > 0 && $documentId > 0
+				? '/monitors/documents/edit?monitor_id=' . $monitorId . '&document_id=' . $documentId
+				: '/monitors');
 		}
 
 		$this->Flash('success', __('monitors.documents.flash.text_updated'));
@@ -143,7 +212,10 @@ class DocumentController extends BaseController
 		catch (DocumentException $exception)
 		{
 			$this->Flash('error', __($exception->TranslationKey()));
-			$this->Redirect($monitorId > 0 ? '/monitors/edit?id=' . $monitorId . '&tab=documents' : '/monitors');
+			$documentId = $this->_request->PostInt('document_id');
+			$this->Redirect($monitorId > 0 && $documentId > 0
+				? '/monitors/documents/edit?monitor_id=' . $monitorId . '&document_id=' . $documentId
+				: '/monitors');
 		}
 
 		$this->Flash('success', __('monitors.documents.flash.file_updated'));

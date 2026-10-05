@@ -97,7 +97,7 @@ Verify:
 Verify the eight tabs:
 
 1. Status
-2. Details
+2. Basic
 3. Schedule
 4. Documents
 5. Recipients
@@ -107,7 +107,7 @@ Verify the eight tabs:
 
 Check warning indicators and responsive behavior.
 
-On **Status**, verify that an awaiting monitor whose due notice has already been delivered shows the next owner reminder rather than the original due date; verify the future-action timeline and monitor-specific history; and verify permanent delivery/release problems are visually distinguished from normal waiting states.
+On **Status**, verify that an awaiting monitor whose due notice has already been delivered shows the next owner reminder rather than the original due date. Verify the Monitor/Mail/Cron/Delivery health indicators, **Last event**, **Next action**, the future-action timeline, typed monitor-specific history, and that permanent delivery/release or system mail/cron problems are visually distinguished from normal waiting states.
 
 On **Recipients**, verify all contacts appear in one scrollable card list, checkbox state controls assignment, **Assigned first** and **Name A–Z** only reorder the visible cards, and saving after sorting alone does not change the persisted order of existing recipients. Unassigning an existing recipient must require confirmation.
 
@@ -243,7 +243,7 @@ Verify:
 
 Repeat the presentation through the owner-only recipient portal preview. Inline readers and media should work there, while **Download** remains disabled. Share or open the preview URL in a logged-out browser and confirm that neither the page nor an asset URL reveals content.
 
-In **Monitor Editor → Documents**, change a stored document title, description, and text. Confirm the card shows a textual **Unsaved changes** badge plus visible card/save-button emphasis; the **Documents** tab keeps a warning after switching sections; restoring all original values clears both warnings; and saving that document reloads it clean. Confirm the monitor-wide **Save changes** bar sits at the bottom of the editor in normal page flow instead of following the viewport.
+In **Monitor Editor → Documents**, verify that documents appear as a compact list rather than inline editors, with type, title, modification time, and appropriate size metadata. Create a text document with **Create text document**, edit an existing text document through its dedicated editor, and edit an uploaded file's title/description through the same dedicated workflow. Confirm the collapsible upload block still accepts files and that returning from a dedicated editor lands back on the monitor's Documents tab. Confirm the monitor-wide **Save changes** bar sits at the bottom of the editor in normal page flow instead of following the viewport.
 
 For a release containing shared check-in locations, also verify:
 

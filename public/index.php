@@ -205,11 +205,21 @@ $monitorController = new MonitorController(
 	$mailQueueWorker,
 	$escalationService,
 	$notificationComposer,
+	$container['systemStatusRepository'],
 	(array)$config['available_locales'],
 	(bool)$config['debug'],
 	(bool)$config['mail']['enabled']
 );
-$documentController = new DocumentController($view, $session, $auth, $logger, $request, $documentService);
+$documentController = new DocumentController(
+	$view,
+	$session,
+	$auth,
+	$logger,
+	$request,
+	$documentService,
+	$documentRepository,
+	$monitorRepository
+);
 $markdownController = new MarkdownController($view, $session, $auth, $logger, $request, $markdownRenderer);
 $recipientController = new RecipientController(
 	$view,
@@ -308,6 +318,8 @@ $router->Post('/monitors/recipients/delivery/portal/update', [$recipientControll
 $router->Post('/monitors/recipients/delivery/document/update', [$recipientController, 'UpdateReleasedDocument']);
 $router->Post('/monitors/recipients/remove', [$recipientController, 'Remove']);
 
+$router->Get('/monitors/documents/text/new', [$documentController, 'NewText']);
+$router->Get('/monitors/documents/edit', [$documentController, 'Edit']);
 $router->Post('/monitors/documents/upload', [$documentController, 'Upload']);
 $router->Post('/monitors/documents/text/create', [$documentController, 'CreateText']);
 $router->Post('/monitors/documents/text/update', [$documentController, 'UpdateText']);

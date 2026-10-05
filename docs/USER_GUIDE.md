@@ -112,7 +112,7 @@ After creation, Pulse opens the full Monitor Editor.
 The Monitor Editor has **eight top-level tabs**, in this order:
 
 1. **Status**
-2. **Details**
+2. **Basic**
 3. **Schedule**
 4. **Documents**
 5. **Recipients**
@@ -124,11 +124,11 @@ Warnings appear directly on relevant tabs when configuration needs attention.
 
 ### 1. Status
 
-Status is a read-only operational view. It distinguishes an expected lifecycle state, such as **Awaiting check-in**, from a delivery or release problem that needs attention. It shows the current state, the next automatic action, the remainder of the current cycle with calculated times, and recent lifecycle history for this monitor. Scheduled times are eligibility times; the actual action occurs on the next successful cron/mail-worker run.
+Status is a read-only operational view. It distinguishes an expected lifecycle state, such as **Awaiting check-in**, from a delivery or release problem that needs attention. A compact health summary shows the monitor state, mail availability, cron health, and delivery health. The summary cards then show the current state, the most recent meaningful lifecycle event, and the next automatic action. Below them, Pulse shows the remainder of the current cycle with calculated times and a typed event history for this monitor. Scheduled times are eligibility times; the actual action occurs on the next successful cron/mail-worker run.
 
 Archived monitors can still be opened and inspected, but their monitor configuration is read-only. Use **Reset and reactivate** before changing an archived monitor.
 
-### 2. Details
+### 2. Basic
 
 Set the monitor's name and optional description. The description is for your own reference in the monitor list and editor.
 
@@ -159,18 +159,17 @@ With those settings, the owner reminder phase ends four days after the monitor f
 
 ### 4. Documents
 
-Documents belong to the monitor's library. You can:
+Documents belong to the monitor's library. The Documents tab presents them as a compact list showing type, title, modification time, and useful size information. From the list you can:
 
-- create editable Markdown text documents directly in Pulse;
-- upload supported files;
-- edit recipient-facing titles and descriptions;
-- download or delete source documents.
+- create editable Markdown text documents with **Create text document**;
+- upload supported files from the collapsible upload area;
+- open a document in its dedicated editor;
+- download uploaded source files;
+- delete documents.
 
 Creating a document does **not** automatically release it to every recipient. Assignment is done for each recipient separately under that recipient's **Documents** tab.
 
-Pulse text documents support a safe Markdown subset: headings, bold and italic text, ordered and unordered lists, links, blockquotes, horizontal rules, inline code, and fenced code blocks. Raw HTML is displayed as text rather than executed. The editor has **Edit** and **Preview** tabs; Preview renders the current unsaved source through Pulse's server-side Markdown renderer. Recipient downloads and **Download all** preserve the original Markdown source as `.md` files.
-
-Each existing document has its own save button. Editing its title, description, or text marks that card with **Unsaved changes**, highlights the card and save button, and places a warning on the **Documents** tab so the state remains visible after switching sections. The warnings remain until the document is saved or every field is restored to its original value. The monitor-wide **Save changes** bar remains at the normal bottom of the editor and does not save these independent document forms.
+Text documents are created and edited on a dedicated page rather than inline inside the Monitor Editor. Pulse text documents support a safe Markdown subset: headings, bold and italic text, ordered and unordered lists, links, blockquotes, horizontal rules, inline code, and fenced code blocks. Raw HTML is displayed as text rather than executed. The editor has **Edit** and **Preview** tabs; Preview renders the current unsaved source through Pulse's server-side Markdown renderer. Recipient downloads and **Download all** preserve the original Markdown source as `.md` files. Uploaded-file titles and descriptions are edited in the same dedicated document-editor workflow.
 
 The default upload policy accepts PDF, RTF, OpenDocument Text, Word `.docx`, JSON, CSV, common raster images (JPEG, PNG, GIF, WebP, and AVIF), plain text and Markdown, and common browser audio/video formats including MP3, M4A/AAC, Ogg, WAV, FLAC, MP4, WebM, QuickTime, and Ogg video. The default Pulse limit is 25 MiB. Administrators can change Pulse's own limit and MIME allowlist under **Administration → Files**; PHP and web-server upload limits may impose lower limits. An untouched pre-1.2.6 stock MIME list is expanded automatically, while deliberately customized administrator lists are preserved.
 

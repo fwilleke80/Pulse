@@ -25,6 +25,7 @@ declare(strict_types=1);
 /** @var string $locale */
 /** @var array<string, mixed> $monitor */
 /** @var array<string, mixed>|null $monitorStatus */
+/** @var array<string, mixed> $monitorSystemHealth */
 /** @var array<int, array<string, mixed>> $monitorHistory */
 /** @var string $activeTab */
 /** @var string $activeMessageSection */
@@ -126,6 +127,27 @@ $statusHistoryTranslationKeys = [
 	'mail.recipient_sent' => 'dashboard.activity.recipient_sent',
 	'mail.recipient_failed' => 'dashboard.activity.recipient_failed',
 ];
+$statusHistoryCategories = [
+	'monitor.checked_in' => 'checkin',
+	'monitor.awaiting' => 'state',
+	'monitor.safety_requested' => 'safety',
+	'monitor.safety_expired' => 'safety',
+	'monitor.safety_confirmed' => 'safety',
+	'monitor.overdue' => 'escalation',
+	'monitor.escalated' => 'escalation',
+	'monitor.reset_reactivated' => 'state',
+	'monitor.archived' => 'state',
+	'monitor.paused' => 'state',
+	'monitor.resumed' => 'state',
+	'monitor.forced_due' => 'state',
+	'mail.due_notice_sent' => 'notification',
+	'mail.reminder_sent' => 'notification',
+	'mail.safety_invitation_sent' => 'safety',
+	'mail.safety_reminder_sent' => 'safety',
+	'mail.recipient_sent' => 'notification',
+	'mail.recipient_failed' => 'failure',
+];
+$lastMonitorEvent = $monitorHistory[0] ?? null;
 
 ob_start();
 ?>
@@ -151,7 +173,7 @@ ob_start();
 </form>
 
 <div class="monitor-editor" data-monitor-tabs data-active-tab="<?= e($activeTab) ?>">
-	<div class="monitor-tabs" role="tablist" aria-label="<?= e__('monitors.tabs.label') ?>">
+	<div class="monitor-tabs monitor-primary-tabs" role="tablist" aria-label="<?= e__('monitors.tabs.label') ?>">
 		<?php $tabNumber = 0; ?>
 		<?php foreach ($tabDefinitions as $tabName => $translationKey): ?>
 			<?php
@@ -176,9 +198,6 @@ ob_start();
 				<?php if ($tabHasWarning): ?>
 					<span class="tab-warning-indicator" title="<?= e__('monitors.tabs.configuration_warning') ?>" aria-label="<?= e__('monitors.tabs.configuration_warning') ?>">!</span>
 				<?php endif; ?>
-				<?php if ($tabName === 'documents'): ?>
-					<span class="tab-warning-indicator" title="<?= e__('monitors.documents.unsaved') ?>" aria-label="<?= e__('monitors.documents.unsaved') ?>" data-document-tab-unsaved hidden>!</span>
-				<?php endif; ?>
 			</a>
 		<?php endforeach; ?>
 	</div>
@@ -195,9 +214,20 @@ ob_start();
 		$statusIssues = is_array($operationalStatus['issues'] ?? null) ? $operationalStatus['issues'] : [];
 		$nextAction = is_array($operationalStatus['next_action'] ?? null) ? $operationalStatus['next_action'] : ['type' => 'none', 'at' => null];
 		$futurePlan = is_array($operationalStatus['plan'] ?? null) ? $operationalStatus['plan'] : [];
+		$systemHealth = is_array($monitorSystemHealth) ? $monitorSystemHealth : [];
+		$mailEnabled = !empty($systemHealth['mail_enabled']);
+		$cronStatus = (string)($systemHealth['cron_status'] ?? 'never');
+		$lastCronRun = isset($systemHealth['last_successful_cron_at']) ? (string)$systemHealth['last_successful_cron_at'] : null;
+		$deliveryFailed = in_array('delivery_failed', $statusIssues, true);
+		$releaseBlocked = in_array('release_blocked', $statusIssues, true);
+		$systemNeedsAttention = !$mailEnabled || $cronStatus !== 'recent';
+		$needsAttention = $statusIssues !== [] || $systemNeedsAttention;
+		$lastEventTranslationKey = is_array($lastMonitorEvent)
+			? ($statusHistoryTranslationKeys[(string)($lastMonitorEvent['event_type'] ?? '')] ?? null)
+			: null;
 		?>
 
-		<?php if ($statusIssues === []): ?>
+		<?php if (!$needsAttention): ?>
 			<div class="monitor-health-banner monitor-health-ok" role="status">
 				<strong><?= e__('monitors.status.health.ok.heading') ?></strong>
 				<span><?= e__('monitors.status.summary.' . $currentStatus) ?></span>
@@ -205,21 +235,52 @@ ob_start();
 		<?php else: ?>
 			<div class="monitor-health-banner monitor-health-warning" role="alert">
 				<strong><?= e__('monitors.status.health.attention.heading') ?></strong>
-				<?php if (in_array('delivery_failed', $statusIssues, true)): ?><span><?= e__('monitors.status.health.delivery_failed', ['count' => (int)($operationalStatus['failed_notification_count'] ?? 0)]) ?></span><?php endif; ?>
-				<?php if (in_array('release_blocked', $statusIssues, true)): ?><span><?= e__('monitors.status.health.release_blocked') ?></span><?php endif; ?>
+				<span><?= e__('monitors.status.summary.' . $currentStatus) ?></span>
 			</div>
 		<?php endif; ?>
 
+		<div class="monitor-health-check-grid" aria-label="<?= e__('monitors.status.health.summary_label') ?>">
+			<div class="monitor-health-check <?= in_array($currentStatus, ['paused', 'archived'], true) ? 'is-neutral' : ($currentStatus === 'escalated' ? 'is-warning' : 'is-ok') ?>">
+				<span><?= e__('monitors.status.health.monitor') ?></span>
+				<strong><?= e__('monitors.status.' . $currentStatus) ?></strong>
+			</div>
+			<div class="monitor-health-check <?= $mailEnabled ? 'is-ok' : 'is-warning' ?>">
+				<span><?= e__('monitors.status.health.mail') ?></span>
+				<strong><?= e__($mailEnabled ? 'monitors.status.health.mail_ok' : 'monitors.status.health.mail_disabled') ?></strong>
+			</div>
+			<div class="monitor-health-check <?= $cronStatus === 'recent' ? 'is-ok' : 'is-warning' ?>">
+				<span><?= e__('monitors.status.health.cron') ?></span>
+				<strong><?= e__('monitors.status.health.cron_' . $cronStatus) ?></strong>
+				<?php if ($lastCronRun !== null && $lastCronRun !== ''): ?><small><?= e(format_datetime($lastCronRun)) ?></small><?php endif; ?>
+			</div>
+			<div class="monitor-health-check <?= $deliveryFailed || $releaseBlocked ? 'is-warning' : 'is-ok' ?>">
+				<span><?= e__('monitors.status.health.delivery') ?></span>
+				<?php if ($deliveryFailed): ?>
+					<strong><?= e__('monitors.status.health.delivery_failed_short', ['count' => (int)($operationalStatus['failed_notification_count'] ?? 0)]) ?></strong>
+				<?php elseif ($releaseBlocked): ?>
+					<strong><?= e__('monitors.status.health.release_blocked_short') ?></strong>
+				<?php else: ?>
+					<strong><?= e__('monitors.status.health.delivery_ok') ?></strong>
+				<?php endif; ?>
+			</div>
+		</div>
+
 		<div class="monitor-status-summary-grid">
 			<div class="review-stat">
+				<span class="monitor-status-card-label"><?= e__('monitors.status.current') ?></span>
 				<strong><span class="status-badge status-<?= e($currentStatus) ?>"><?= e__('monitors.status.' . $currentStatus) ?></span></strong>
-				<span><?= e__('monitors.status.current') ?></span>
 			</div>
-			<div class="review-stat">
-				<strong><?= e(format_datetime(isset($monitor['last_confirmed_at']) ? (string)$monitor['last_confirmed_at'] : null)) ?></strong>
-				<span><?= e__('monitors.index.table.last_confirmed') ?></span>
+			<div class="review-stat monitor-status-last-event">
+				<span class="monitor-status-card-label"><?= e__('monitors.status.last_event') ?></span>
+				<?php if (is_array($lastMonitorEvent) && is_string($lastEventTranslationKey)): ?>
+					<strong><?= e__($lastEventTranslationKey, ['name' => (string)$monitor['name']]) ?></strong>
+					<span><?= e(format_datetime((string)$lastMonitorEvent['created_at'])) ?></span>
+				<?php else: ?>
+					<strong><?= e__('monitors.status.history.none_short') ?></strong>
+				<?php endif; ?>
 			</div>
 			<div class="review-stat monitor-status-next-action">
+				<span class="monitor-status-card-label"><?= e__('monitors.status.next_action') ?></span>
 				<strong><?= e(monitor_action_label($nextAction)) ?></strong>
 				<span><?= e(monitor_action_time_label($nextAction)) ?></span>
 			</div>
@@ -253,11 +314,16 @@ ob_start();
 				<p><?= e__('monitors.status.history.none') ?></p>
 			<?php else: ?>
 				<div class="monitor-status-history-scroll">
-					<ol class="activity-list activity-list-complete">
+					<ol class="monitor-status-history-list">
 						<?php foreach ($monitorHistory as $entry): ?>
-							<?php $translationKey = $statusHistoryTranslationKeys[(string)$entry['event_type']] ?? null; ?>
+							<?php
+							$eventType = (string)$entry['event_type'];
+							$translationKey = $statusHistoryTranslationKeys[$eventType] ?? null;
+							$eventCategory = $statusHistoryCategories[$eventType] ?? 'state';
+							?>
 							<?php if (is_string($translationKey)): ?>
-								<li>
+								<li class="monitor-history-event monitor-history-event-<?= e($eventCategory) ?>">
+									<span class="monitor-event-badge"><?= e__('monitors.status.history.category.' . $eventCategory) ?></span>
 									<span><?= e__($translationKey, ['name' => (string)$monitor['name']]) ?></span>
 									<time datetime="<?= e((string)$entry['created_at']) ?>"><?= e(format_datetime((string)$entry['created_at'])) ?></time>
 								</li>
@@ -353,9 +419,12 @@ ob_start();
 	</section>
 
 	<section id="monitor-tab-documents" class="monitor-tab-panel<?= $activeTab === 'documents' ? ' is-active' : '' ?>" role="tabpanel" data-tab-panel="documents"<?= $activeTab === 'documents' ? '' : ' hidden' ?>>
-		<div class="section-heading">
-			<h2><?= e__('monitors.tabs.documents') ?></h2>
-			<p><?= e__('monitors.documents.library_hint') ?></p>
+		<div class="section-heading document-library-heading">
+			<div>
+				<h2><?= e__('monitors.tabs.documents') ?></h2>
+				<p><?= e__('monitors.documents.library_hint') ?></p>
+			</div>
+			<?php if (!$isArchived): ?><a href="<?= e($base_url) ?>/monitors/documents/text/new?monitor_id=<?= (int)$monitor['id'] ?>" class="button-link"><?= e__('monitors.documents.text.create.action') ?></a><?php endif; ?>
 		</div>
 
 		<div class="privacy-note">
@@ -363,87 +432,55 @@ ob_start();
 			<?= e__('monitors.documents.assignment_hint') ?>
 		</div>
 
-		<div class="document-create-grid">
-			<div class="monitor-document-card">
-				<h3><?= e__('monitors.documents.text.create.heading') ?></h3>
-				<form method="post" action="<?= e($base_url) ?>/monitors/documents/text/create">
-					<?= csrf_field() ?>
-					<input type="hidden" name="monitor_id" value="<?= (int)$monitor['id'] ?>">
-					<label for="text_document_title"><?= e__('monitors.documents.upload.title') ?></label>
-					<input type="text" id="text_document_title" name="title" required>
-					<label for="text_document_content"><?= e__('monitors.documents.text.content') ?></label>
-					<?= markdown_editor($base_url, 'text_document_content', 'text_content', '', 9, 'web', ['required' => true]) ?>
-					<button type="submit"><?= e__('monitors.documents.text.create.submit') ?></button>
-				</form>
-			</div>
-
-			<div class="monitor-document-card">
-				<h3><?= e__('monitors.documents.upload.heading') ?></h3>
-				<form method="post" action="<?= e($base_url) ?>/monitors/documents/upload" enctype="multipart/form-data">
-					<?= csrf_field() ?>
-					<input type="hidden" name="monitor_id" value="<?= (int)$monitor['id'] ?>">
-					<label for="document_title"><?= e__('monitors.documents.upload.title') ?></label>
-					<input type="text" id="document_title" name="title">
-					<label for="document_description"><?= e__('monitors.documents.description') ?></label>
-					<textarea id="document_description" name="description" rows="3"></textarea>
-					<p class="form-hint"><?= e__('monitors.documents.description_hint') ?></p>
-					<label for="document_file"><?= e__('monitors.documents.upload.file') ?></label>
-					<input type="file" id="document_file" name="document_file" required>
-					<p class="form-hint"><?= e__('monitors.documents.upload.preview_hint', ['size' => $uploadSizeLabel]) ?></p>
-					<button type="submit"><?= e__('monitors.documents.upload.submit') ?></button>
-				</form>
-			</div>
-		</div>
+		<?php if (!$isArchived): ?>
+		<details class="document-upload-disclosure configuration-block">
+			<summary><?= e__('monitors.documents.upload.heading') ?></summary>
+			<form method="post" action="<?= e($base_url) ?>/monitors/documents/upload" enctype="multipart/form-data" class="document-upload-form">
+				<?= csrf_field() ?>
+				<input type="hidden" name="monitor_id" value="<?= (int)$monitor['id'] ?>">
+				<div class="field-grid field-grid-two">
+					<label><?= e__('monitors.documents.upload.title') ?><input type="text" name="title"></label>
+					<label><?= e__('monitors.documents.upload.file') ?><input type="file" name="document_file" required></label>
+				</div>
+				<label><?= e__('monitors.documents.description') ?><textarea name="description" rows="3"></textarea></label>
+				<p class="form-hint"><?= e__('monitors.documents.description_hint') ?></p>
+				<p class="form-hint"><?= e__('monitors.documents.upload.preview_hint', ['size' => $uploadSizeLabel]) ?></p>
+				<button type="submit"><?= e__('monitors.documents.upload.submit') ?></button>
+			</form>
+		</details>
+		<?php endif; ?>
 
 		<?php if ($documents === []): ?>
 			<p><?= e__('monitors.documents.none') ?></p>
 		<?php else: ?>
-			<div class="monitor-document-list">
+			<div class="document-library-list">
 				<?php foreach ($documents as $document): ?>
-					<article class="monitor-document-card" data-document-editor>
-						<div class="document-card-heading">
+					<?php
+					$isTextDocument = (string)$document['storage_type'] === 'text';
+					$textContent = (string)($document['text_content'] ?? '');
+					$textLength = strlen(preg_replace('/[\x80-\xBF]/', '', $textContent) ?? $textContent);
+					?>
+					<article class="document-library-item">
+						<div class="document-library-main">
+							<span class="document-type-badge"><?= e__('monitors.documents.type.' . (string)$document['storage_type']) ?></span>
 							<div>
-								<span class="document-type-badge"><?= e__('monitors.documents.type.' . (string)$document['storage_type']) ?></span>
 								<h3><?= e((string)$document['title']) ?></h3>
-							</div>
-							<div class="document-card-heading-actions">
-								<span class="document-unsaved-indicator" role="status" aria-live="polite" data-document-unsaved-indicator hidden><?= e__('monitors.documents.unsaved') ?></span>
-								<?php if ((string)$document['storage_type'] === 'file'): ?>
-									<a href="<?= e($base_url) ?>/monitors/documents/download?monitor_id=<?= (int)$monitor['id'] ?>&amp;document_id=<?= (int)$document['id'] ?>" class="button-link"><?= e__('monitors.documents.download.submit') ?></a>
-								<?php endif; ?>
+								<div class="document-library-meta">
+									<span><?= e__('monitors.documents.list.modified') ?>: <?= e(format_datetime((string)$document['updated_at'])) ?></span>
+									<?php if ($isTextDocument): ?>
+										<span><?= e__('monitors.documents.list.text_size', ['count' => number_format($textLength)]) ?></span>
+									<?php else: ?>
+										<span><?= e((string)($document['original_filename'] ?? '')) ?></span>
+										<span><?= e__('monitors.documents.list.file_size', ['count' => number_format((int)($document['file_size_bytes'] ?? 0))]) ?></span>
+									<?php endif; ?>
+								</div>
 							</div>
 						</div>
-
-						<?php if ((string)$document['storage_type'] === 'text'): ?>
-							<form id="document-update-<?= (int)$document['id'] ?>" method="post" action="<?= e($base_url) ?>/monitors/documents/text/update" data-document-edit-form>
-								<?= csrf_field() ?>
-								<input type="hidden" name="monitor_id" value="<?= (int)$monitor['id'] ?>">
-								<input type="hidden" name="document_id" value="<?= (int)$document['id'] ?>">
-								<label for="text_title_<?= (int)$document['id'] ?>"><?= e__('monitors.documents.upload.title') ?></label>
-								<input type="text" id="text_title_<?= (int)$document['id'] ?>" name="title" value="<?= e((string)$document['title']) ?>" required>
-								<label for="text_content_<?= (int)$document['id'] ?>"><?= e__('monitors.documents.text.content') ?></label>
-								<?= markdown_editor($base_url, 'text_content_' . (int)$document['id'], 'text_content', (string)($document['text_content'] ?? ''), 8, 'web', ['required' => true]) ?>
-							</form>
-						<?php else: ?>
-							<div class="document-metadata">
-								<span><?= e((string)($document['original_filename'] ?? '')) ?></span>
-								<span><?= e((string)($document['mime_type'] ?? '')) ?></span>
-								<span><?= number_format((int)($document['file_size_bytes'] ?? 0)) ?> bytes</span>
-							</div>
-							<form id="document-update-<?= (int)$document['id'] ?>" method="post" action="<?= e($base_url) ?>/monitors/documents/file/update" data-document-edit-form>
-								<?= csrf_field() ?>
-								<input type="hidden" name="monitor_id" value="<?= (int)$monitor['id'] ?>">
-								<input type="hidden" name="document_id" value="<?= (int)$document['id'] ?>">
-								<label for="file_title_<?= (int)$document['id'] ?>"><?= e__('monitors.documents.upload.title') ?></label>
-								<input type="text" id="file_title_<?= (int)$document['id'] ?>" name="title" value="<?= e((string)$document['title']) ?>" required>
-								<label for="file_description_<?= (int)$document['id'] ?>"><?= e__('monitors.documents.description') ?></label>
-								<textarea id="file_description_<?= (int)$document['id'] ?>" name="description" rows="3"><?= e((string)($document['description'] ?? '')) ?></textarea>
-								<p class="form-hint"><?= e__('monitors.documents.description_hint') ?></p>
-							</form>
-						<?php endif; ?>
-
-						<div class="document-card-actions">
-							<button type="submit" form="document-update-<?= (int)$document['id'] ?>" data-document-save-button><?= e__('monitors.documents.' . ((string)$document['storage_type'] === 'text' ? 'text' : 'file') . '.update.submit') ?></button>
+						<div class="document-library-actions">
+							<a href="<?= e($base_url) ?>/monitors/documents/edit?monitor_id=<?= (int)$monitor['id'] ?>&amp;document_id=<?= (int)$document['id'] ?>" class="button-link"><?= e__('monitors.documents.list.edit') ?></a>
+							<?php if (!$isTextDocument): ?>
+								<a href="<?= e($base_url) ?>/monitors/documents/download?monitor_id=<?= (int)$monitor['id'] ?>&amp;document_id=<?= (int)$document['id'] ?>" class="button-link"><?= e__('monitors.documents.download.submit') ?></a>
+							<?php endif; ?>
 							<form method="post" action="<?= e($base_url) ?>/monitors/documents/delete" data-confirm="<?= e__('monitors.documents.flash.delete_confirm') ?>" class="document-delete-form">
 								<?= csrf_field() ?>
 								<input type="hidden" name="monitor_id" value="<?= (int)$monitor['id'] ?>">
@@ -609,16 +646,12 @@ ob_start();
 		</div>
 	</section>
 
-	<section id="monitor-tab-messages" class="monitor-tab-panel<?= $activeTab === 'messages' ? ' is-active' : '' ?>" role="tabpanel" data-tab-panel="messages"<?= $activeTab === 'messages' ? '' : ' hidden' ?>>
+	<section id="monitor-tab-messages" class="monitor-tab-panel monitor-messages-panel<?= $activeTab === 'messages' ? ' is-active' : '' ?>" role="tabpanel" data-tab-panel="messages"<?= $activeTab === 'messages' ? '' : ' hidden' ?>>
 		<div class="section-heading">
 			<h2><?= e__('monitors.tabs.messages_content') ?></h2>
 			<p><?= e__('monitors.messages_content.hint') ?></p>
 		</div>
 
-		<div class="unencrypted-warning">
-			<strong><?= e__('monitors.storage.warning.heading') ?></strong>
-			<?= e__('monitors.storage.warning.message') ?>
-		</div>
 
 		<form id="monitor-messages-form" method="post" action="<?= e($base_url) ?>/monitors/messages/update" data-monitor-messages-form data-save-error="<?= e__('monitors.messages.save_error') ?>">
 			<?= csrf_field() ?>

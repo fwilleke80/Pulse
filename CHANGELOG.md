@@ -1,3 +1,16 @@
+## 1.3.4 - 2026-10-06
+
+### Monitor editor cleanup and document workflow
+- Renamed the sparse **Details** tab to **Basic** while retaining the existing internal tab key and links for compatibility. The top-level monitor tabs no longer wrap individual labels; on narrower desktop widths complete tabs flow into stable additional rows instead.
+- Replaced the space-heavy inline document editors with a compact document library showing type, title, modification time, and text/file size metadata. Text documents are created and edited in a dedicated editor, and uploaded-file metadata uses the same separate editing workflow. File upload remains available from a collapsible block on the Documents tab.
+- Removed the **Not encrypted yet** note from **Messages & content** and tightened that tab's spacing/grouping. No document storage or encryption behavior changed.
+
+### Status and operational confidence
+- Expanded the monitor **Status** tab with compact health indicators for monitor state, mail availability, cron health, and delivery health. Installation-wide mail or cron problems now prevent the page from presenting the monitor as fully healthy.
+- Replaced **Last confirmed** with **Last event**, showing the newest meaningful monitor lifecycle event, and promoted **Next action** to a summary card beside the current status.
+- Added lightweight event-type badges to the monitor history so check-ins, notifications, safety actions, escalations, failures, and state changes can be scanned quickly without turning the page into a large visual timeline.
+- Updated all four interface languages, user/tutorial documentation, and source regression coverage. No database migration is required.
+
 ## 1.3.3 - 2026-10-05
 
 ### Operational monitor overview

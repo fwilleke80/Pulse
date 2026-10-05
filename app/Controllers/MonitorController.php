@@ -10,6 +10,8 @@ declare(strict_types=1);
 
 namespace Pulse\Controllers;
 
+use DateTimeImmutable;
+use DateTimeZone;
 use Pulse\Core\CheckInLocation;
 use Pulse\Core\EmailAddressCollection;
 use Pulse\Core\Logger;
@@ -20,6 +22,7 @@ use Pulse\Repositories\ContactRepository;
 use Pulse\Repositories\DocumentRepository;
 use Pulse\Repositories\MessageRepository;
 use Pulse\Repositories\MonitorRepository;
+use Pulse\Repositories\SystemStatusRepository;
 use Pulse\Services\AuthService;
 use Pulse\Services\DocumentService;
 use Pulse\Services\EscalationService;
@@ -46,6 +49,7 @@ class MonitorController extends BaseController
 	private MailQueueWorker $_mailQueueWorker;
 	private EscalationService $_escalationService;
 	private NotificationComposer $_notificationComposer;
+	private SystemStatusRepository $_systemStatusRepository;
 	/** @var array<int, string> */
 	private array $_availableLocales;
 	private bool $_debugEnabled;
@@ -69,6 +73,7 @@ class MonitorController extends BaseController
 	 * @param MailQueueWorker $mailQueueWorker Transactional mail worker.
 	 * @param EscalationService $escalationService Safety and recipient escalation service.
 	 * @param NotificationComposer $notificationComposer Mail template composer.
+	 * @param SystemStatusRepository $systemStatusRepository Installation runtime-status repository.
 	 * @param array<int, string> $availableLocales Configured UI/mail locales.
 	 * @param bool $debugEnabled Whether development actions are enabled.
 	 * @param bool $mailEnabled Whether mail delivery is enabled.
@@ -90,6 +95,7 @@ class MonitorController extends BaseController
 		MailQueueWorker $mailQueueWorker,
 		EscalationService $escalationService,
 		NotificationComposer $notificationComposer,
+		SystemStatusRepository $systemStatusRepository,
 		array $availableLocales,
 		bool $debugEnabled,
 		bool $mailEnabled
@@ -107,6 +113,7 @@ class MonitorController extends BaseController
 		$this->_mailQueueWorker = $mailQueueWorker;
 		$this->_escalationService = $escalationService;
 		$this->_notificationComposer = $notificationComposer;
+		$this->_systemStatusRepository = $systemStatusRepository;
 		$this->_availableLocales = array_values(array_filter($availableLocales, 'is_string'));
 		$this->_debugEnabled = $debugEnabled;
 		$this->_mailEnabled = $mailEnabled;
@@ -243,6 +250,8 @@ class MonitorController extends BaseController
 		$monitorContacts = $this->_monitorRepository->FindMonitorContactsByMonitorIdForUser($monitorId, (int)$user['id']);
 		$recipientConfigurationIssues = $this->RecipientConfigurationIssues($monitorContacts, $messageOverrides, $mailTemplates);
 
+		$lastSuccessfulCronRun = $this->_systemStatusRepository->LastSuccessfulCronRun();
+
 		return $this->_view->Render('monitors.edit', [
 			'user' => $user,
 			'monitor' => $monitor,
@@ -261,6 +270,11 @@ class MonitorController extends BaseController
 			'ownerNotificationLocale' => $ownerNotificationLocale,
 			'availableLocales' => $this->_availableLocales,
 			'monitorStatus' => $this->_monitorStatusService->FindForMonitorForUser($monitorId, (int)$user['id']),
+			'monitorSystemHealth' => [
+				'mail_enabled' => $this->_mailEnabled,
+				'last_successful_cron_at' => $lastSuccessfulCronRun,
+				'cron_status' => $this->CronStatus($lastSuccessfulCronRun),
+			],
 			'monitorHistory' => $this->_monitorStatusService->FindHistoryForMonitorForUser($monitorId, (int)$user['id'], 100),
 			'activeTab' => $this->ActiveEditorTab(),
 			'activeMessageSection' => $this->ActiveMessageSection(),
@@ -1268,6 +1282,31 @@ class MonitorController extends BaseController
 		}
 
 		return preg_match('/^\/monitors\/edit\?id=\d+&tab=review$/', $target) === 1 ? $target : '/monitors';
+	}
+
+	/**
+	 * @brief Classifies installation cron recency for the monitor health summary.
+	 * @param string|null $lastSuccessfulCronRun UTC database timestamp.
+	 * @return string One of never, recent, or stale.
+	 */
+	private function CronStatus(?string $lastSuccessfulCronRun): string
+	{
+		if ($lastSuccessfulCronRun === null || trim($lastSuccessfulCronRun) === '')
+		{
+			return 'never';
+		}
+
+		try
+		{
+			$lastRun = new DateTimeImmutable($lastSuccessfulCronRun, new DateTimeZone('UTC'));
+			$now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
+
+			return ($now->getTimestamp() - $lastRun->getTimestamp()) > 86400 ? 'stale' : 'recent';
+		}
+		catch (\Throwable)
+		{
+			return 'never';
+		}
 	}
 
 	/** @brief Returns a supported monitor editor tab from the query. @return string */

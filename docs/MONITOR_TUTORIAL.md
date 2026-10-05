@@ -255,7 +255,7 @@ The practical construction sequence is the same for both examples:
 1. Create the people you need under **Contacts** and mark every email address you intend Pulse to use as checked.
 2. Choose each contact’s **Pulse interface language**.
 3. Create the monitor. A new monitor starts active immediately; pause it while preparing if necessary.
-4. Under **Details**, give it a clear name and description.
+4. Under **Basic**, give it a clear name and description.
 5. Under **Schedule**, choose the check-in and owner-reminder timing.
 6. Under **Documents**, create or upload the material that may be released.
 7. Under **Recipients**, add each final recipient.
