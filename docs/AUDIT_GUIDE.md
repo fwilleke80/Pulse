@@ -94,17 +94,22 @@ Verify:
 
 ## 7. Monitor editor structure
 
-Verify the seven tabs:
+Verify the eight tabs:
 
-1. Details
-2. Schedule
-3. Documents
-4. Recipients
-5. Safety & escalation
-6. Messages & content
-7. Review & activation
+1. Status
+2. Details
+3. Schedule
+4. Documents
+5. Recipients
+6. Safety & escalation
+7. Messages & content
+8. Review & activation
 
 Check warning indicators and responsive behavior.
+
+On **Status**, verify that an awaiting monitor whose due notice has already been delivered shows the next owner reminder rather than the original due date; verify the future-action timeline and monitor-specific history; and verify permanent delivery/release problems are visually distinguished from normal waiting states.
+
+On **Recipients**, verify all contacts appear in one scrollable card list, checkbox state controls assignment, **Assigned first** and **Name A–Z** only reorder the visible cards, and saving after sorting alone does not change the persisted order of existing recipients. Unassigning an existing recipient must require confirmation.
 
 Create an archived monitor and verify its configuration is read-only with no Save bar. **Reset and reactivate** must restore editability.
 

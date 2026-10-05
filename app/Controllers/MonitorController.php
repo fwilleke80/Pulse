@@ -25,6 +25,7 @@ use Pulse\Services\DocumentService;
 use Pulse\Services\EscalationService;
 use Pulse\Services\MailQueueWorker;
 use Pulse\Services\MonitorExecutionService;
+use Pulse\Services\MonitorStatusService;
 use Pulse\Services\NotificationComposer;
 use Pulse\Services\NotificationScheduler;
 use Pulse\Services\RecipientMessageValidator;
@@ -40,6 +41,7 @@ class MonitorController extends BaseController
 	private MessageRepository $_messageRepository;
 	private DocumentService $_documentService;
 	private MonitorExecutionService $_monitorExecutionService;
+	private MonitorStatusService $_monitorStatusService;
 	private NotificationScheduler $_notificationScheduler;
 	private MailQueueWorker $_mailQueueWorker;
 	private EscalationService $_escalationService;
@@ -62,6 +64,7 @@ class MonitorController extends BaseController
 	 * @param MessageRepository $messageRepository Message repository.
 	 * @param DocumentService $documentService Document service.
 	 * @param MonitorExecutionService $monitorExecutionService Check-in lifecycle service.
+	 * @param MonitorStatusService $monitorStatusService Read-only operational monitor status service.
 	 * @param NotificationScheduler $notificationScheduler Owner-notification scheduler.
 	 * @param MailQueueWorker $mailQueueWorker Transactional mail worker.
 	 * @param EscalationService $escalationService Safety and recipient escalation service.
@@ -82,6 +85,7 @@ class MonitorController extends BaseController
 		MessageRepository $messageRepository,
 		DocumentService $documentService,
 		MonitorExecutionService $monitorExecutionService,
+		MonitorStatusService $monitorStatusService,
 		NotificationScheduler $notificationScheduler,
 		MailQueueWorker $mailQueueWorker,
 		EscalationService $escalationService,
@@ -98,6 +102,7 @@ class MonitorController extends BaseController
 		$this->_messageRepository = $messageRepository;
 		$this->_documentService = $documentService;
 		$this->_monitorExecutionService = $monitorExecutionService;
+		$this->_monitorStatusService = $monitorStatusService;
 		$this->_notificationScheduler = $notificationScheduler;
 		$this->_mailQueueWorker = $mailQueueWorker;
 		$this->_escalationService = $escalationService;
@@ -255,6 +260,8 @@ class MonitorController extends BaseController
 			'portalDefaults' => $portalDefaults,
 			'ownerNotificationLocale' => $ownerNotificationLocale,
 			'availableLocales' => $this->_availableLocales,
+			'monitorStatus' => $this->_monitorStatusService->FindForMonitorForUser($monitorId, (int)$user['id']),
+			'monitorHistory' => $this->_monitorStatusService->FindHistoryForMonitorForUser($monitorId, (int)$user['id'], 100),
 			'activeTab' => $this->ActiveEditorTab(),
 			'activeMessageSection' => $this->ActiveMessageSection(),
 		]);
@@ -329,6 +336,60 @@ class MonitorController extends BaseController
 		}
 
 		$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=' . $returnTab);
+	}
+
+
+	/** @brief Replaces monitor recipient assignments from the unified recipient card list. */
+	public function UpdateRecipientAssignments(): void
+	{
+		$user = $this->RequireUser();
+		$userId = (int)$user['id'];
+		$monitorId = $this->_request->PostInt('monitor_id');
+		$monitor = $this->_monitorRepository->FindByIdForUser($monitorId, $userId);
+
+		if ($monitor === null)
+		{
+			$this->Flash('error', __('monitors.edit.flash.notfound'));
+			$this->Redirect('/monitors');
+		}
+
+		if (!empty($monitor['is_archived']))
+		{
+			$this->Flash('warning', __('monitors.archived.readonly.flash'));
+			$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=recipients');
+		}
+
+		$contactIds = $this->AllowedContactIds($userId, $this->_request->PostIntArray('contact_ids'));
+		$existingContactIds = $this->_monitorRepository->FindContactIdsByMonitorId($monitorId);
+		$contactNames = [];
+
+		foreach ($this->_contactRepository->FindAllByUserId($userId) as $contact)
+		{
+			$contactNames[(int)$contact['id']] = (string)$contact['name'];
+		}
+
+		$retainedContactIds = array_values(array_filter(
+			$existingContactIds,
+			static fn (int $contactId): bool => in_array($contactId, $contactIds, true)
+		));
+		$newContactIds = array_values(array_filter(
+			$contactIds,
+			static fn (int $contactId): bool => !in_array($contactId, $existingContactIds, true)
+		));
+		usort($newContactIds, static function (int $leftId, int $rightId) use ($contactNames): int
+		{
+			return strcasecmp($contactNames[$leftId] ?? '', $contactNames[$rightId] ?? '');
+		});
+		$contactIds = [...$retainedContactIds, ...$newContactIds];
+
+		$this->_monitorRepository->ReplaceContactsForMonitor($monitorId, $userId, $contactIds);
+		$this->_logger->Info('Monitor recipient assignments updated', [
+			'user_id' => $userId,
+			'monitor_id' => $monitorId,
+			'assigned_count' => count($contactIds),
+		]);
+		$this->Flash('success', __('recipients.assignments.flash.updated', ['count' => count($contactIds)]));
+		$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=recipients');
 	}
 
 	/** @brief Updates the monitor's language-specific default recipient messages. */
@@ -1130,7 +1191,7 @@ class MonitorController extends BaseController
 	private function PostedEditorTab(): string
 	{
 		$tab = $this->_request->PostString('active_tab', 20);
-		return in_array($tab, ['details', 'schedule', 'documents', 'recipients', 'escalation', 'messages', 'review'], true) ? $tab : 'details';
+		return in_array($tab, ['status', 'details', 'schedule', 'documents', 'recipients', 'escalation', 'messages', 'review'], true) ? $tab : 'details';
 	}
 
 	/** @brief Returns a whitelisted Messages & content subsection posted by its form. */
@@ -1214,6 +1275,6 @@ class MonitorController extends BaseController
 	{
 		$tab = $this->_request->QueryString('tab', 20);
 
-		return in_array($tab, ['details', 'schedule', 'documents', 'recipients', 'escalation', 'messages', 'review'], true) ? $tab : 'details';
+		return in_array($tab, ['status', 'details', 'schedule', 'documents', 'recipients', 'escalation', 'messages', 'review'], true) ? $tab : 'details';
 	}
 }

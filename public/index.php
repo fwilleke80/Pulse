@@ -58,6 +58,7 @@ $recipientRepository = $container['recipientRepository'];
 $documentRepository = $container['documentRepository'];
 $messageRepository = $container['messageRepository'];
 $monitorExecutionService = $container['monitorExecutionService'];
+$monitorStatusService = $container['monitorStatusService'];
 $documentService = $container['documentService'];
 $documentPreviewService = $container['documentPreviewService'];
 $privateFileStreamer = $container['privateFileStreamer'];
@@ -117,7 +118,8 @@ $homeController = new HomeController(
 	$config,
 	$contactRepository,
 	$monitorRepository,
-	$monitorExecutionService
+	$monitorExecutionService,
+	$monitorStatusService
 );
 $authController = new AuthController(
 	$view,
@@ -198,6 +200,7 @@ $monitorController = new MonitorController(
 	$messageRepository,
 	$documentService,
 	$monitorExecutionService,
+	$monitorStatusService,
 	$notificationScheduler,
 	$mailQueueWorker,
 	$escalationService,
@@ -282,6 +285,7 @@ $router->Get('/monitors/new', [$monitorController, 'New']);
 $router->Get('/monitors/edit', [$monitorController, 'Edit']);
 $router->Post('/monitors/create', [$monitorController, 'Create']);
 $router->Post('/monitors/update', [$monitorController, 'Update']);
+$router->Post('/monitors/recipients/assignments', [$monitorController, 'UpdateRecipientAssignments']);
 $router->Post('/monitors/messages/update', [$monitorController, 'UpdateMessages']);
 $router->Post('/monitors/delete', [$monitorController, 'Delete']);
 $router->Post('/monitors/check-in', [$monitorController, 'CheckIn']);

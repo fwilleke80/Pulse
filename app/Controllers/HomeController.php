@@ -11,6 +11,7 @@ use Pulse\Core\Logger;
 use Pulse\Core\Request;
 use Pulse\Services\AuthService;
 use Pulse\Services\MonitorExecutionService;
+use Pulse\Services\MonitorStatusService;
 
 /**
  * @brief Controller for home and utility routes.
@@ -25,6 +26,7 @@ class HomeController extends BaseController
 	private \Pulse\Repositories\ContactRepository $_contactRepository;
 	private \Pulse\Repositories\MonitorRepository $_monitorRepository;
 	private MonitorExecutionService $_monitorExecutionService;
+	private MonitorStatusService $_monitorStatusService;
 
 	/**
 	 * @brief Constructs the home controller.
@@ -38,6 +40,7 @@ class HomeController extends BaseController
 	 * @param \Pulse\Repositories\ContactRepository $contactRepository Contact repository.
 	 * @param \Pulse\Repositories\MonitorRepository $monitorRepository Monitor repository.
 	 * @param MonitorExecutionService $monitorExecutionService Check-in lifecycle service.
+	 * @param MonitorStatusService $monitorStatusService Read-only operational monitor status service.
 	 */
 	public function __construct(
 		View $view,
@@ -49,7 +52,8 @@ class HomeController extends BaseController
 		array $config,
 		\Pulse\Repositories\ContactRepository $contactRepository,
 		\Pulse\Repositories\MonitorRepository $monitorRepository,
-		MonitorExecutionService $monitorExecutionService
+		MonitorExecutionService $monitorExecutionService,
+		MonitorStatusService $monitorStatusService
 	)
 	{
 		parent::__construct($view, $session, $auth, $logger, $request);
@@ -58,6 +62,7 @@ class HomeController extends BaseController
 		$this->_contactRepository = $contactRepository;
 		$this->_monitorRepository = $monitorRepository;
 		$this->_monitorExecutionService = $monitorExecutionService;
+		$this->_monitorStatusService = $monitorStatusService;
 	}
 
 	/**
@@ -71,6 +76,13 @@ class HomeController extends BaseController
 		$contactCount = $this->_contactRepository->CountByUserId((int)$user['id']);
 		$monitorCount = $this->_monitorRepository->CountByUserId((int)$user['id']);
 		$monitors = $this->_monitorRepository->FindAllByUserId((int)$user['id']);
+		$monitorStatuses = $this->_monitorStatusService->FindAllForUser((int)$user['id']);
+
+		foreach ($monitors as &$monitor)
+		{
+			$monitor['operational_status'] = $monitorStatuses[(int)$monitor['id']] ?? null;
+		}
+		unset($monitor);
 
 		$this->_logger->Info('User ID ' . $user['id'] . ' accessed dashboard');
 

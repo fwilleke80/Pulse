@@ -1,3 +1,16 @@
+## 1.3.3 - 2026-10-05
+
+### Operational monitor overview
+- Replaced the Dashboard monitor table's stale **Next due** display with **Next action**, derived from the persisted current cycle. Awaiting monitors now show the next reminder or escalation step and its eligibility time instead of continuing to display the original due date.
+- Added a read-only **Status** tab to each monitor with a normal-vs-attention health summary, the current lifecycle state, a deterministic **What happens next** timeline, cron timing guidance, and recent monitor-specific lifecycle/mail history.
+- Kept the overview tied to the same persisted timing snapshots and counters used by the scheduler, including owner reminders, safety-contact reminders/windows, recipient release, queued delivery, and blocked/failed delivery states. No database migration is required.
+
+### Recipient and contact UI
+- Replaced the split assigned-recipient list plus small **Add recipient** selector with one scrollable card list containing all contacts. Checkboxes control assignment, existing assignments expose **Configure**, and the list can be sorted by **Assigned first** or **Name A–Z** without changing persisted recipient order.
+- Recipient assignment changes are saved explicitly as a batch. Removing an existing assignment requires confirmation because its monitor-specific message, portal, and document configuration is deleted.
+- Added a little more vertical separation between the **Name** field and email-address fields in the contact editor.
+- Updated all four interface languages, the user/release documentation, and source regression coverage.
+
 ## 1.3.2 - 2026-08-20
 
 ### Recipient portal editor placement

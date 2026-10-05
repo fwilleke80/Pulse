@@ -440,3 +440,62 @@ function monitor_status(array $monitor): string
 
 	return 'awaiting';
 }
+
+/**
+ * @brief Returns the localized label for a monitor's next operational action.
+ * @param array<string, mixed> $action Operational action descriptor.
+ * @return string User-facing action label.
+ */
+function monitor_action_label(array $action): string
+{
+	$type = (string)($action['type'] ?? 'none');
+
+	return match ($type)
+	{
+		'check_due' => __('monitors.status.action.check_due'),
+		'due_notice' => __('monitors.status.action.due_notice'),
+		'owner_reminder' => __('monitors.status.action.owner_reminder', [
+			'number' => (int)($action['number'] ?? 1),
+			'total' => (int)($action['total'] ?? 1),
+		]),
+		'safety_start' => __('monitors.status.action.safety_start'),
+		'safety_invitation' => __('monitors.status.action.safety_invitation'),
+		'safety_reminder' => __('monitors.status.action.safety_reminder', [
+			'number' => (int)($action['number'] ?? 1),
+			'total' => (int)($action['total'] ?? 1),
+		]),
+		'safety_expiry' => __('monitors.status.action.safety_expiry'),
+		'recipient_release' => __('monitors.status.action.recipient_release'),
+		'recipient_delivery' => __('monitors.status.action.recipient_delivery'),
+		'release_blocked' => __('monitors.status.action.release_blocked'),
+		'escalated' => __('monitors.status.action.escalated'),
+		'paused' => __('monitors.status.action.paused'),
+		'archived' => __('monitors.status.action.archived'),
+		default => __('monitors.status.action.none'),
+	};
+}
+
+/**
+ * @brief Returns a user-facing time label for an operational action.
+ * @param array<string, mixed> $action Operational action descriptor.
+ * @return string Formatted timestamp or a lifecycle-specific fallback.
+ */
+function monitor_action_time_label(array $action): string
+{
+	$timestamp = $action['at'] ?? null;
+
+	if (is_string($timestamp) && $timestamp !== '')
+	{
+		return format_datetime($timestamp);
+	}
+
+	return match ((string)($action['type'] ?? 'none'))
+	{
+		'due_notice', 'safety_invitation', 'recipient_release', 'recipient_delivery' => __('monitors.status.next_cron'),
+		'paused' => __('monitors.status.no_action.paused'),
+		'archived' => __('monitors.status.no_action.archived'),
+		'escalated' => __('monitors.status.no_action.escalated'),
+		'release_blocked' => __('monitors.status.no_action.blocked'),
+		default => '—',
+	};
+}

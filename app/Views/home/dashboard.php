@@ -134,7 +134,7 @@ ob_start();
 						<th><?= e__('monitors.index.table.name') ?></th>
 						<th><?= e__('monitors.index.table.status') ?></th>
 						<th><?= e__('monitors.index.table.last_confirmed') ?></th>
-						<th><?= e__('monitors.index.table.next_due') ?></th>
+						<th><?= e__('monitors.index.table.next_action') ?></th>
 						<th><?= e__('monitors.index.table.actions') ?></th>
 					</tr>
 				</thead>
@@ -149,7 +149,7 @@ ob_start();
 						?>
 						<tr class="monitor-row monitor-row-<?= e($monitorStatus) ?>">
 							<td class="monitor-name">
-								<a href="<?= e($base_url) ?>/monitors/edit?id=<?= (int)$monitor['id'] ?>"><strong><?= e(abbrev((string)$monitor['name'], 60)) ?></strong></a>
+								<a href="<?= e($base_url) ?>/monitors/edit?id=<?= (int)$monitor['id'] ?>&amp;tab=status"><strong><?= e(abbrev((string)$monitor['name'], 60)) ?></strong></a>
 							</td>
 							<td class="monitor-status-cell">
 								<span class="status-badge status-<?= e($monitorStatus) ?>"><?= e__('monitors.status.' . $monitorStatus) ?></span>
@@ -161,7 +161,14 @@ ob_start();
 								<?php endif; ?>
 							</td>
 							<td class="monitor-datetime"><?= e(format_datetime(isset($monitor['last_confirmed_at']) ? (string)$monitor['last_confirmed_at'] : null)) ?></td>
-							<td class="monitor-datetime"><?= e(format_datetime(isset($monitor['next_check_due_at']) ? (string)$monitor['next_check_due_at'] : null, __('dashboard.monitors.suspended'))) ?></td>
+							<?php
+							$operationalStatus = is_array($monitor['operational_status'] ?? null) ? $monitor['operational_status'] : [];
+							$nextAction = is_array($operationalStatus['next_action'] ?? null) ? $operationalStatus['next_action'] : ['type' => 'none', 'at' => null];
+							?>
+							<td class="monitor-datetime monitor-next-action">
+								<strong><?= e(monitor_action_time_label($nextAction)) ?></strong>
+								<small><?= e(monitor_action_label($nextAction)) ?></small>
+							</td>
 							<td class="monitor-actions-cell">
 								<?php
 								$actionStatus = $monitorStatus;

@@ -14,16 +14,19 @@ use PHPUnit\Framework\TestCase;
 
 final class UiClarityFollowupSourceTest extends TestCase
 {
-	/** @brief Keeps the silent-addition note with the recipient action it explains. */
-	public function testRecipientSilenceNoteLivesInsideAddRecipientBlock(): void
+	/** @brief Keeps the silent-assignment note beside the unified recipient assignment list. */
+	public function testRecipientSilenceNoteLivesInsideRecipientAssignmentSection(): void
 	{
 		$view = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Views/monitors/edit.php');
-		$blockPosition = strpos($view, 'configuration-block recipient-add-block');
-		$notePosition = strpos($view, 'privacy-note recipient-add-note');
+		$sectionPosition = strpos($view, 'id="monitor-tab-recipients"');
+		$notePosition = strpos($view, 'privacy-note recipient-assignment-note');
+		$listPosition = strpos($view, 'data-recipient-assignment-list');
 
-		self::assertNotFalse($blockPosition);
+		self::assertNotFalse($sectionPosition);
 		self::assertNotFalse($notePosition);
-		self::assertGreaterThan($blockPosition, $notePosition);
+		self::assertNotFalse($listPosition);
+		self::assertGreaterThan($sectionPosition, $notePosition);
+		self::assertGreaterThan($notePosition, $listPosition);
 	}
 
 	/** @brief Keeps all safety timing help visible and treats an incomplete quorum as advisory. */

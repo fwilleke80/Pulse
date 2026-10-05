@@ -29,6 +29,98 @@ document.addEventListener('DOMContentLoaded', function ()
 		});
 	}
 
+	for (const form of document.querySelectorAll('[data-recipient-assignment-form]'))
+	{
+		const list = form.querySelector('[data-recipient-assignment-list]');
+		const cards = list ? Array.from(list.querySelectorAll('[data-recipient-assignment-card]')) : [];
+		const sortButtons = Array.from(form.querySelectorAll('[data-recipient-sort]'));
+
+		/** @brief Sorts recipient assignment cards by current assignment or contact name. */
+		const sortCards = function (mode)
+		{
+			if (!list)
+			{
+				return;
+			}
+
+			cards.sort(function (left, right)
+			{
+				const leftCheckbox = left.querySelector('[data-recipient-assignment-checkbox]');
+				const rightCheckbox = right.querySelector('[data-recipient-assignment-checkbox]');
+				const leftAssigned = leftCheckbox ? leftCheckbox.checked : false;
+				const rightAssigned = rightCheckbox ? rightCheckbox.checked : false;
+				const leftName = left.dataset.recipientName || '';
+				const rightName = right.dataset.recipientName || '';
+
+				if (mode === 'assigned' && leftAssigned !== rightAssigned)
+				{
+					return leftAssigned ? -1 : 1;
+				}
+
+				return leftName.localeCompare(rightName, undefined, {sensitivity: 'base'});
+			});
+
+			for (const card of cards)
+			{
+				list.appendChild(card);
+			}
+
+			for (const button of sortButtons)
+			{
+				button.classList.toggle('is-active', button.dataset.recipientSort === mode);
+			}
+		};
+
+		for (const card of cards)
+		{
+			const checkbox = card.querySelector('[data-recipient-assignment-checkbox]');
+			const state = card.querySelector('[data-recipient-assignment-state]');
+
+			if (!checkbox)
+			{
+				continue;
+			}
+
+			/** @brief Reflects pending assignment changes before they are saved. */
+			const updateCardState = function ()
+			{
+				card.dataset.assigned = checkbox.checked ? '1' : '0';
+				card.classList.toggle('is-assigned', checkbox.checked);
+
+				if (state)
+				{
+					state.textContent = checkbox.checked ? state.dataset.labelAssigned : state.dataset.labelUnassigned;
+					state.classList.toggle('mini-status-ok', checkbox.checked);
+					state.classList.toggle('recipient-assignment-unassigned', !checkbox.checked);
+				}
+			};
+
+			checkbox.addEventListener('change', updateCardState);
+		}
+
+		for (const button of sortButtons)
+		{
+			button.addEventListener('click', function ()
+			{
+				sortCards(button.dataset.recipientSort || 'assigned');
+			});
+		}
+
+		form.addEventListener('submit', function (event)
+		{
+			const removesExistingRecipient = cards.some(function (card)
+			{
+				const checkbox = card.querySelector('[data-recipient-assignment-checkbox]');
+				return checkbox && checkbox.dataset.initiallyAssigned === '1' && !checkbox.checked;
+			});
+
+			if (removesExistingRecipient && !window.confirm(form.dataset.removalConfirm || 'Remove selected recipients?'))
+			{
+				event.preventDefault();
+			}
+		});
+	}
+
 	const toggle = document.getElementById('show_passwords');
 	const currentPassword = document.getElementById('current_password');
 	const newPassword = document.getElementById('new_password');

@@ -33,7 +33,7 @@ A single contact can be a recipient on one monitor, a safety contact on another,
 
 ## Dashboard and check-ins
 
-The dashboard gives you the operational overview: monitor counts, monitor states, the next due times, the **Check in now** action, and recent activity.
+The dashboard gives you the operational overview: monitor counts, monitor states, each monitor's **Next action**, the **Check in now** action, and recent activity. When a monitor is already awaiting confirmation, **Next action** advances beyond the original due date and shows the next reminder or escalation step that Pulse will attempt, together with its eligibility time.
 
 **Check in now** confirms every monitor that currently participates in normal monitoring. Each of those monitors starts a fresh interval from the time of the check-in.
 
@@ -109,25 +109,30 @@ After creation, Pulse opens the full Monitor Editor.
 
 ## The Monitor Editor
 
-The Monitor Editor has **seven top-level tabs**, in this order:
+The Monitor Editor has **eight top-level tabs**, in this order:
 
-1. **Details**
-2. **Schedule**
-3. **Documents**
-4. **Recipients**
-5. **Safety & escalation**
-6. **Messages & content**
-7. **Review & activation**
+1. **Status**
+2. **Details**
+3. **Schedule**
+4. **Documents**
+5. **Recipients**
+6. **Safety & escalation**
+7. **Messages & content**
+8. **Review & activation**
 
 Warnings appear directly on relevant tabs when configuration needs attention.
 
+### 1. Status
+
+Status is a read-only operational view. It distinguishes an expected lifecycle state, such as **Awaiting check-in**, from a delivery or release problem that needs attention. It shows the current state, the next automatic action, the remainder of the current cycle with calculated times, and recent lifecycle history for this monitor. Scheduled times are eligibility times; the actual action occurs on the next successful cron/mail-worker run.
+
 Archived monitors can still be opened and inspected, but their monitor configuration is read-only. Use **Reset and reactivate** before changing an archived monitor.
 
-### 1. Details
+### 2. Details
 
 Set the monitor's name and optional description. The description is for your own reference in the monitor list and editor.
 
-### 2. Schedule
+### 3. Schedule
 
 The owner phase contains four settings:
 
@@ -152,7 +157,7 @@ Escalation stage
 
 With those settings, the owner reminder phase ends four days after the monitor first becomes due.
 
-### 3. Documents
+### 4. Documents
 
 Documents belong to the monitor's library. You can:
 
@@ -173,17 +178,15 @@ Acceptance does not guarantee playback in every browser. MP3 audio and H.264/AAC
 
 Uploaded files are stored outside the public web directory under private storage and receive internal storage names. Pulse inspects file content using Fileinfo rather than trusting the browser-supplied filename or MIME type.
 
-### 4. Recipients
+### 5. Recipients
 
-The Recipients tab shows the contacts that would receive the final notification if this monitor escalates. It summarizes each recipient's language, whether the notification email uses the monitor default or a personal override, and the number of assigned documents.
+The Recipients tab is one scrollable assignment list containing all contacts. A checked card means that contact is assigned as a final recipient for this monitor; an unchecked card is available but not assigned. The list can be sorted with **Assigned first** or **Name A–Z** without changing the monitor's persisted recipient order.
 
-Select a recipient's **name** to open the recipient editor. Add additional recipients from the same tab.
+Assigned cards summarize the recipient's language and document count and provide **Configure** to open the dedicated recipient editor. You can check or uncheck several cards and then apply them together with **Save recipient assignments**.
 
-Configuration warnings here can identify problems such as an unchecked address or a recipient email template that does not contain the required portal URL.
+Configuration warnings here can identify problems such as an unchecked address or a recipient email template that does not contain the required portal URL. Removing an existing assignment requires confirmation because its monitor-specific recipient message, portal, and document configuration is deleted. Historical deliveries that were already released remain independent snapshots.
 
-Removing a recipient affects the current monitor configuration only. Historical deliveries that were already released remain independent snapshots.
-
-### 5. Safety & escalation
+### 6. Safety & escalation
 
 Choose one of two escalation policies:
 
@@ -209,7 +212,7 @@ If a safety contact explicitly says they cannot confirm recent contact, the exis
 
 Simply opening a safety-contact link does nothing. The contact must deliberately submit a response.
 
-### 6. Messages & content
+### 7. Messages & content
 
 This tab contains four secondary sections:
 
@@ -266,7 +269,7 @@ The generic Page introduction remains plain text and supports `{name}`, `{owner}
 
 In Markdown-capable fields, ending a source line with **two spaces** forces a line break without starting a new paragraph.
 
-### 7. Review & activation
+### 8. Review & activation
 
 Use this tab as the final configuration summary. It shows counts, escalation policy, next due time, and important warnings.
 

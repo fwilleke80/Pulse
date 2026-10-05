@@ -1,8 +1,8 @@
-# Pulse roadmap after 1.3.2
+# Pulse roadmap after 1.3.3
 
-This roadmap starts from the stable Pulse 1.3.2 baseline. It is directional rather than a promise of dates; privacy, migration safety, recovery behavior, and test coverage remain release gates. The next releases remain in the 1.3.x line while smaller features accumulate; Pulse moves to 1.4 only when the combined scope justifies a larger release.
+This roadmap starts from the stable Pulse 1.3.3 baseline. It is directional rather than a promise of dates; privacy, migration safety, recovery behavior, and test coverage remain release gates. The next releases remain in the 1.3.x line while smaller features accumulate; Pulse moves to 1.4 only when the combined scope justifies a larger release.
 
-## Current baseline — Pulse 1.3.2
+## Current baseline — Pulse 1.3.3
 
 Pulse 1.2.0 completed the location-aware check-in and portal-preview roadmap:
 
@@ -71,7 +71,7 @@ Pulse 1.2.7 simplifies the owner interface and adds recovery-readiness guidance:
 
 Pulse 1.3.0 follows through on that interface cleanup:
 
-- the recipient silence explanation now sits inside the related Add recipient block;
+- the recipient silence explanation remains colocated with recipient assignment controls;
 - every safety timing value has concise persistent help;
 - an insufficient eligible safety-contact quorum is shown as a live advisory warning instead of preventing an incomplete configuration from being saved;
 - the mandatory first owner address is identified and validated as **Main Email**, while all stored owner addresses continue to work as login aliases and each retains its independent checked-delivery state;
@@ -79,6 +79,10 @@ Pulse 1.3.0 follows through on that interface cleanup:
 
 
 Pulse 1.3.1 adds operational cron diagnostics: Administration records when its persisted web-cron token actually changes and keeps a bounded administrator-visible history of unsuccessful cron calls, including the supplied invalid token when authentication fails, so stale external cron configuration can be identified without guessing.
+
+Pulse 1.3.2 moves the owner-only recipient portal preview into the recipient editor’s Portal tab, directly above the personal portal message it previews.
+
+Pulse 1.3.3 adds operational monitor transparency: Dashboard shows the next lifecycle action instead of a stale due date, every monitor gains a read-only Status timeline/history, recipient assignment becomes one sortable card list, and contact-editor spacing is refined.
 
 ## Later security-policy hardening
 

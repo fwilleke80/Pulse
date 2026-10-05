@@ -47,6 +47,7 @@ use Pulse\Services\EscalationService;
 use Pulse\Services\LoginThrottleService;
 use Pulse\Services\MailQueueWorker;
 use Pulse\Services\MonitorExecutionService;
+use Pulse\Services\MonitorStatusService;
 use Pulse\Services\MonitorStateMachine;
 use Pulse\Services\NotificationComposer;
 use Pulse\Services\NotificationScheduler;
@@ -157,6 +158,7 @@ $totpProtector = new TotpSecretProtector((string)$appConfig['security']['totp_en
 $totpService = new TotpService($totpCredentialRepository, new TotpAlgorithm(), $totpProtector, $session);
 $monitorStateMachine = new MonitorStateMachine();
 $monitorExecutionService = new MonitorExecutionService($database, $monitorStateMachine, $logger);
+$monitorStatusService = new MonitorStatusService($database);
 $auth = new AuthService($userRepository, $session, $logger);
 $documentService = new DocumentService(
 	$documentRepository,
@@ -283,6 +285,7 @@ return [
 	'mailQueueRepository' => $mailQueueRepository,
 	'systemStatusRepository' => $systemStatusRepository,
 	'monitorExecutionService' => $monitorExecutionService,
+	'monitorStatusService' => $monitorStatusService,
 	'documentService' => $documentService,
 	'documentPreviewService' => $documentPreviewService,
 	'privateFileStreamer' => $privateFileStreamer,

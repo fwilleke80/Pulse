@@ -24,6 +24,8 @@ declare(strict_types=1);
 /** @var array<int, string> $availableLocales */
 /** @var string $locale */
 /** @var array<string, mixed> $monitor */
+/** @var array<string, mixed>|null $monitorStatus */
+/** @var array<int, array<string, mixed>> $monitorHistory */
 /** @var string $activeTab */
 /** @var string $activeMessageSection */
 /** @var string $base_url */
@@ -67,6 +69,7 @@ $hasCompleteMessageCoverage = $recipientMessageWarningCount === 0;
 $uploadSizeMegabytes = max(0.1, $uploadMaximumBytes / 1048576);
 $uploadSizeLabel = number_format($uploadSizeMegabytes, $uploadSizeMegabytes >= 10 || floor($uploadSizeMegabytes) === $uploadSizeMegabytes ? 0 : 1) . ' MB';
 $tabDefinitions = [
+	'status' => 'monitors.tabs.status',
 	'details' => 'monitors.tabs.details',
 	'schedule' => 'monitors.tabs.schedule',
 	'documents' => 'monitors.tabs.documents',
@@ -80,6 +83,48 @@ $messageSections = [
 	'recipient' => 'monitors.messages.sections.recipient',
 	'safety' => 'monitors.messages.sections.safety',
 	'portal' => 'monitors.messages.sections.portal',
+];
+
+$monitorContactByContactId = [];
+
+foreach ($monitorContacts as $monitorContact)
+{
+	$monitorContactByContactId[(int)$monitorContact['contact_id']] = $monitorContact;
+}
+
+$recipientAssignmentContacts = $contacts;
+usort($recipientAssignmentContacts, static function (array $left, array $right) use ($assignedContactIds): int
+{
+	$leftAssigned = in_array((int)$left['id'], $assignedContactIds, true);
+	$rightAssigned = in_array((int)$right['id'], $assignedContactIds, true);
+
+	if ($leftAssigned !== $rightAssigned)
+	{
+		return $leftAssigned ? -1 : 1;
+	}
+
+	return strcasecmp((string)$left['name'], (string)$right['name']);
+});
+
+$statusHistoryTranslationKeys = [
+	'monitor.checked_in' => 'dashboard.activity.checked_in',
+	'monitor.awaiting' => 'dashboard.activity.awaiting',
+	'monitor.safety_requested' => 'dashboard.activity.safety_requested',
+	'monitor.safety_expired' => 'dashboard.activity.safety_expired',
+	'monitor.safety_confirmed' => 'dashboard.activity.safety_confirmed',
+	'monitor.overdue' => 'dashboard.activity.overdue',
+	'monitor.escalated' => 'dashboard.activity.escalated',
+	'monitor.reset_reactivated' => 'dashboard.activity.reset_reactivated',
+	'monitor.archived' => 'dashboard.activity.archived',
+	'monitor.paused' => 'dashboard.activity.paused',
+	'monitor.resumed' => 'dashboard.activity.resumed',
+	'monitor.forced_due' => 'dashboard.activity.forced_due',
+	'mail.due_notice_sent' => 'dashboard.activity.due_notice_sent',
+	'mail.reminder_sent' => 'dashboard.activity.reminder_sent',
+	'mail.safety_invitation_sent' => 'dashboard.activity.safety_invitation_sent',
+	'mail.safety_reminder_sent' => 'dashboard.activity.safety_reminder_sent',
+	'mail.recipient_sent' => 'dashboard.activity.recipient_sent',
+	'mail.recipient_failed' => 'dashboard.activity.recipient_failed',
 ];
 
 ob_start();
@@ -139,6 +184,91 @@ ob_start();
 	</div>
 
 	<fieldset class="monitor-readonly-fieldset"<?= $isArchived ? ' disabled' : '' ?>>
+	<section id="monitor-tab-status" class="monitor-tab-panel<?= $activeTab === 'status' ? ' is-active' : '' ?>" role="tabpanel" data-tab-panel="status"<?= $activeTab === 'status' ? '' : ' hidden' ?>>
+		<div class="section-heading">
+			<h2><?= e__('monitors.status.heading') ?></h2>
+			<p><?= e__('monitors.status.hint') ?></p>
+		</div>
+
+		<?php
+		$operationalStatus = is_array($monitorStatus) ? $monitorStatus : [];
+		$statusIssues = is_array($operationalStatus['issues'] ?? null) ? $operationalStatus['issues'] : [];
+		$nextAction = is_array($operationalStatus['next_action'] ?? null) ? $operationalStatus['next_action'] : ['type' => 'none', 'at' => null];
+		$futurePlan = is_array($operationalStatus['plan'] ?? null) ? $operationalStatus['plan'] : [];
+		?>
+
+		<?php if ($statusIssues === []): ?>
+			<div class="monitor-health-banner monitor-health-ok" role="status">
+				<strong><?= e__('monitors.status.health.ok.heading') ?></strong>
+				<span><?= e__('monitors.status.summary.' . $currentStatus) ?></span>
+			</div>
+		<?php else: ?>
+			<div class="monitor-health-banner monitor-health-warning" role="alert">
+				<strong><?= e__('monitors.status.health.attention.heading') ?></strong>
+				<?php if (in_array('delivery_failed', $statusIssues, true)): ?><span><?= e__('monitors.status.health.delivery_failed', ['count' => (int)($operationalStatus['failed_notification_count'] ?? 0)]) ?></span><?php endif; ?>
+				<?php if (in_array('release_blocked', $statusIssues, true)): ?><span><?= e__('monitors.status.health.release_blocked') ?></span><?php endif; ?>
+			</div>
+		<?php endif; ?>
+
+		<div class="monitor-status-summary-grid">
+			<div class="review-stat">
+				<strong><span class="status-badge status-<?= e($currentStatus) ?>"><?= e__('monitors.status.' . $currentStatus) ?></span></strong>
+				<span><?= e__('monitors.status.current') ?></span>
+			</div>
+			<div class="review-stat">
+				<strong><?= e(format_datetime(isset($monitor['last_confirmed_at']) ? (string)$monitor['last_confirmed_at'] : null)) ?></strong>
+				<span><?= e__('monitors.index.table.last_confirmed') ?></span>
+			</div>
+			<div class="review-stat monitor-status-next-action">
+				<strong><?= e(monitor_action_label($nextAction)) ?></strong>
+				<span><?= e(monitor_action_time_label($nextAction)) ?></span>
+			</div>
+		</div>
+
+		<section class="configuration-block monitor-status-plan">
+			<h3><?= e__('monitors.status.next.heading') ?></h3>
+			<p class="form-hint"><?= e__('monitors.status.next.hint') ?></p>
+			<?php if ($futurePlan === []): ?>
+				<p><?= e__('monitors.status.next.none') ?></p>
+			<?php else: ?>
+				<ol class="monitor-status-timeline">
+					<?php foreach ($futurePlan as $index => $plannedAction): ?>
+						<li<?= $index === 0 ? ' class="is-next"' : '' ?>>
+							<span class="monitor-status-timeline-marker" aria-hidden="true"></span>
+							<div>
+								<strong><?= e(monitor_action_label($plannedAction)) ?></strong>
+								<time><?= e(monitor_action_time_label($plannedAction)) ?></time>
+							</div>
+						</li>
+					<?php endforeach; ?>
+				</ol>
+			<?php endif; ?>
+			<p class="form-hint"><?= e__('monitors.status.next.cron_note') ?></p>
+		</section>
+
+		<section class="configuration-block monitor-status-history">
+			<h3><?= e__('monitors.status.history.heading') ?></h3>
+			<p class="form-hint"><?= e__('monitors.status.history.hint', ['count' => 100]) ?></p>
+			<?php if ($monitorHistory === []): ?>
+				<p><?= e__('monitors.status.history.none') ?></p>
+			<?php else: ?>
+				<div class="monitor-status-history-scroll">
+					<ol class="activity-list activity-list-complete">
+						<?php foreach ($monitorHistory as $entry): ?>
+							<?php $translationKey = $statusHistoryTranslationKeys[(string)$entry['event_type']] ?? null; ?>
+							<?php if (is_string($translationKey)): ?>
+								<li>
+									<span><?= e__($translationKey, ['name' => (string)$monitor['name']]) ?></span>
+									<time datetime="<?= e((string)$entry['created_at']) ?>"><?= e(format_datetime((string)$entry['created_at'])) ?></time>
+								</li>
+							<?php endif; ?>
+						<?php endforeach; ?>
+					</ol>
+				</div>
+			<?php endif; ?>
+		</section>
+	</section>
+
 	<section id="monitor-tab-details" class="monitor-tab-panel<?= $activeTab === 'details' ? ' is-active' : '' ?>" role="tabpanel" data-tab-panel="details"<?= $activeTab === 'details' ? '' : ' hidden' ?>>
 		<div class="section-heading">
 			<h2><?= e__('monitors.tabs.details') ?></h2>
@@ -330,82 +460,97 @@ ob_start();
 	<section id="monitor-tab-recipients" class="monitor-tab-panel<?= $activeTab === 'recipients' ? ' is-active' : '' ?>" role="tabpanel" data-tab-panel="recipients"<?= $activeTab === 'recipients' ? '' : ' hidden' ?>>
 		<div class="section-heading">
 			<h2><?= e__('monitors.tabs.recipients') ?></h2>
-			<p><?= e__('monitors.contacts.hint') ?></p>
+			<p><?= e__('monitors.recipients.assignment_hint') ?></p>
 		</div>
 
-		<?php if ($monitorContacts === []): ?>
-			<p><?= e__('monitors.recipients.none_assigned') ?></p>
+		<div class="privacy-note recipient-assignment-note">
+			<strong><?= e__('monitors.contacts.silent.heading') ?></strong>
+			<?= e__('monitors.contacts.silent.message') ?>
+		</div>
+
+		<?php if ($contacts === []): ?>
+			<p><?= e__('monitors.contacts.none') ?></p>
 		<?php else: ?>
-			<div class="recipient-overview-list">
-				<?php foreach ($monitorContacts as $monitorContact): ?>
-					<?php
-					$override = $messageOverrides[(int)$monitorContact['id']] ?? null;
-					$configurationIssue = $recipientConfigurationIssues[(int)$monitorContact['id']] ?? null;
-					?>
-					<article class="recipient-overview-card">
-						<div class="recipient-overview-identity">
-							<strong><a href="<?= e($base_url) ?>/monitors/recipients/edit?id=<?= (int)$monitorContact['id'] ?>"><?= e((string)$monitorContact['name']) ?></a></strong>
-							<small><?= e(implode(', ', array_column(\Pulse\Core\EmailAddressCollection::FromRow($monitorContact), 'email'))) ?></small>
-						</div>
-						<div class="recipient-overview-meta">
-							<span class="recipient-overview-language"><strong><?= e__('recipients.overview.language') ?>:</strong> <?= e(notification_language_name(isset($monitorContact['notification_locale']) ? (string)$monitorContact['notification_locale'] : null)) ?></span>
-							<span class="recipient-overview-message"><strong><?= e__('recipients.overview.message') ?>:</strong> <?= e__(is_array($override) ? 'recipients.overview.personal' : 'recipients.overview.default') ?></span>
-							<span class="recipient-overview-documents"><?= e__('recipients.overview.documents', ['count' => (int)$monitorContact['document_count']]) ?></span>
-						</div>
-						<?php if (is_array($configurationIssue)): ?>
-							<div class="recipient-overview-warning" role="alert">
-								<?php foreach ((array)$configurationIssue['issues'] as $issueCode): ?>
-									<?php if ($issueCode === 'recipient_portal_url_missing'): ?>
-										<span><?= e__((string)$configurationIssue['source'] === 'personal' ? 'recipients.overview.issue.url_missing.personal' : 'recipients.overview.issue.url_missing.default', ['language' => notification_language_name((string)$configurationIssue['locale'])]) ?></span>
-									<?php elseif ($issueCode === 'unchecked_recipient'): ?>
-										<span><?= e__('recipients.overview.issue.unchecked') ?></span>
-									<?php elseif ($issueCode === 'incomplete_message'): ?>
-										<span><?= e__('recipients.overview.issue.incomplete') ?></span>
-									<?php elseif ($issueCode === 'recipient_portal_url_in_subject'): ?>
-										<span><?= e__('recipients.overview.issue.url_in_subject') ?></span>
-									<?php endif; ?>
-								<?php endforeach; ?>
+			<form method="post" action="<?= e($base_url) ?>/monitors/recipients/assignments" class="recipient-assignment-form" data-recipient-assignment-form data-removal-confirm="<?= e__('recipients.assignments.remove_confirm') ?>">
+				<?= csrf_field() ?>
+				<input type="hidden" name="monitor_id" value="<?= (int)$monitor['id'] ?>">
+
+				<div class="recipient-assignment-toolbar" aria-label="<?= e__('recipients.assignments.sort.label') ?>">
+					<span><?= e__('recipients.assignments.sort.label') ?></span>
+					<div class="recipient-assignment-sort-buttons">
+						<button type="button" class="button-link is-active" data-recipient-sort="assigned"><?= e__('recipients.assignments.sort.assigned') ?></button>
+						<button type="button" class="button-link" data-recipient-sort="name"><?= e__('recipients.assignments.sort.name') ?></button>
+					</div>
+				</div>
+
+				<div class="recipient-assignment-list" data-recipient-assignment-list>
+					<?php foreach ($recipientAssignmentContacts as $contact): ?>
+						<?php
+						$contactId = (int)$contact['id'];
+						$isAssigned = in_array($contactId, $assignedContactIds, true);
+						$monitorContact = $monitorContactByContactId[$contactId] ?? null;
+						$configurationIssue = is_array($monitorContact) ? ($recipientConfigurationIssues[(int)$monitorContact['id']] ?? null) : null;
+						$addresses = \Pulse\Core\EmailAddressCollection::FromRow($contact);
+						?>
+						<article class="recipient-assignment-card<?= $isAssigned ? ' is-assigned' : '' ?>" data-recipient-assignment-card data-recipient-name="<?= e((string)$contact['name']) ?>" data-assigned="<?= $isAssigned ? '1' : '0' ?>">
+							<div class="recipient-assignment-main">
+								<input
+									type="checkbox"
+									id="recipient_assignment_<?= $contactId ?>"
+									name="contact_ids[]"
+									value="<?= $contactId ?>"
+									data-recipient-assignment-checkbox
+									data-initially-assigned="<?= $isAssigned ? '1' : '0' ?>"
+									<?= $isAssigned ? 'checked' : '' ?>
+								>
+								<label for="recipient_assignment_<?= $contactId ?>" class="recipient-assignment-identity">
+									<strong><?= e((string)$contact['name']) ?></strong>
+									<small><?= e(implode(', ', array_column($addresses, 'email'))) ?></small>
+								</label>
 							</div>
-						<?php endif; ?>
-					</article>
-				<?php endforeach; ?>
-			</div>
+
+							<div class="recipient-assignment-meta">
+								<span><strong><?= e__('recipients.overview.language') ?>:</strong> <?= e(notification_language_name(isset($contact['notification_locale']) ? (string)$contact['notification_locale'] : null)) ?></span>
+								<?php if ($isAssigned && is_array($monitorContact)): ?>
+									<span><?= e__('recipients.overview.documents', ['count' => (int)$monitorContact['document_count']]) ?></span>
+								<?php endif; ?>
+							</div>
+
+							<div class="recipient-assignment-actions">
+								<span class="mini-status <?= $isAssigned ? 'mini-status-ok' : 'recipient-assignment-unassigned' ?>" data-recipient-assignment-state data-label-assigned="<?= e__('recipients.assignments.assigned') ?>" data-label-unassigned="<?= e__('recipients.assignments.not_assigned') ?>"><?= e__($isAssigned ? 'recipients.assignments.assigned' : 'recipients.assignments.not_assigned') ?></span>
+								<?php if ($isAssigned && is_array($monitorContact)): ?>
+									<a href="<?= e($base_url) ?>/monitors/recipients/edit?id=<?= (int)$monitorContact['id'] ?>" class="button-link recipient-assignment-configure"><?= e__('recipients.assignments.configure') ?></a>
+								<?php endif; ?>
+							</div>
+
+							<?php if (is_array($configurationIssue)): ?>
+								<div class="recipient-overview-warning" role="alert">
+									<?php foreach ((array)$configurationIssue['issues'] as $issueCode): ?>
+										<?php if ($issueCode === 'recipient_portal_url_missing'): ?>
+											<span><?= e__((string)$configurationIssue['source'] === 'personal' ? 'recipients.overview.issue.url_missing.personal' : 'recipients.overview.issue.url_missing.default', ['language' => notification_language_name((string)$configurationIssue['locale'])]) ?></span>
+										<?php elseif ($issueCode === 'unchecked_recipient'): ?>
+											<span><?= e__('recipients.overview.issue.unchecked') ?></span>
+										<?php elseif ($issueCode === 'incomplete_message'): ?>
+											<span><?= e__('recipients.overview.issue.incomplete') ?></span>
+										<?php elseif ($issueCode === 'recipient_portal_url_in_subject'): ?>
+											<span><?= e__('recipients.overview.issue.url_in_subject') ?></span>
+										<?php endif; ?>
+									<?php endforeach; ?>
+								</div>
+							<?php endif; ?>
+						</article>
+					<?php endforeach; ?>
+				</div>
+
+				<p class="form-hint recipient-assignment-removal-hint"><?= e__('recipients.assignments.removal_hint') ?></p>
+				<button type="submit"><?= e__('recipients.assignments.save') ?></button>
+			</form>
 		<?php endif; ?>
 
 		<p class="form-hint recipient-safety-hint">
 			<?= e__('recipients.overview.safety_hint') ?>
 			<a href="<?= e($base_url) ?>/monitors/edit?id=<?= (int)$monitor['id'] ?>&amp;tab=escalation"><?= e__('recipients.overview.safety_action') ?></a>
 		</p>
-
-		<div class="configuration-block recipient-add-block">
-			<h3><?= e__('recipients.add.heading') ?></h3>
-			<div class="privacy-note recipient-add-note">
-				<strong><?= e__('monitors.contacts.silent.heading') ?></strong>
-				<?= e__('monitors.contacts.silent.message') ?>
-			</div>
-			<?php
-			$availableContacts = array_values(array_filter(
-				$contacts,
-				static fn (array $contact): bool => !in_array((int)$contact['id'], $assignedContactIds, true)
-			));
-			?>
-			<?php if ($availableContacts === []): ?>
-				<p><?= e__('recipients.add.none') ?></p>
-			<?php else: ?>
-				<form method="post" action="<?= e($base_url) ?>/monitors/recipients/add">
-					<?= csrf_field() ?>
-					<input type="hidden" name="monitor_id" value="<?= (int)$monitor['id'] ?>">
-					<label for="add_recipient_contact"><?= e__('recipients.add.contact') ?></label>
-					<select id="add_recipient_contact" name="contact_id" required>
-						<option value=""><?= e__('recipients.add.choose') ?></option>
-						<?php foreach ($availableContacts as $contact): ?>
-							<option value="<?= (int)$contact['id'] ?>"><?= e((string)$contact['name']) ?> — <?= e(implode(', ', array_column(\Pulse\Core\EmailAddressCollection::FromRow($contact), 'email'))) ?></option>
-						<?php endforeach; ?>
-					</select>
-					<button type="submit"><?= e__('recipients.add.submit') ?></button>
-				</form>
-			<?php endif; ?>
-		</div>
 	</section>
 
 	<section id="monitor-tab-escalation" class="monitor-tab-panel<?= $activeTab === 'escalation' ? ' is-active' : '' ?>" role="tabpanel" data-tab-panel="escalation"<?= $activeTab === 'escalation' ? '' : ' hidden' ?>>

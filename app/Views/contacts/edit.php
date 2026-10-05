@@ -26,13 +26,15 @@ $addresses = \Pulse\Core\EmailAddressCollection::FromRow($contact);
 		<input type="hidden" name="return_monitor_id" value="<?= $returnMonitorId ?>">
 	<?php endif; ?>
 
-	<label for="name"><?= e__('contacts.edit.name') ?></label>
-	<input
-		type="text"
-		id="name"
-		name="name"
-		value="<?= htmlspecialchars((string)$contact['name'], ENT_QUOTES, 'UTF-8') ?>"
-		required>
+	<div class="contact-name-field">
+		<label for="name"><?= e__('contacts.edit.name') ?></label>
+		<input
+			type="text"
+			id="name"
+			name="name"
+			value="<?= htmlspecialchars((string)$contact['name'], ENT_QUOTES, 'UTF-8') ?>"
+			required>
+	</div>
 
 	<div class="email-address-grid">
 		<?php for ($slot = 1; $slot <= \Pulse\Core\EmailAddressCollection::MAX_ADDRESSES; $slot++): ?>
