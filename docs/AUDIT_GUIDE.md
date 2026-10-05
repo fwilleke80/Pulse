@@ -107,7 +107,7 @@ Verify the eight tabs:
 
 Check warning indicators and responsive behavior.
 
-On **Status**, verify that an awaiting monitor whose due notice has already been delivered shows the next owner reminder rather than the original due date. Verify the Monitor/Mail/Cron/Delivery health indicators, **Last event**, **Next action**, the future-action timeline, typed monitor-specific history, and that permanent delivery/release or system mail/cron problems are visually distinguished from normal waiting states.
+On **Status**, verify that an awaiting monitor whose due notice has already been delivered shows the next owner reminder rather than the original due date. Verify **Last event**, **Next action**, the future-action timeline, typed monitor-specific history, and that permanent monitor-specific delivery/release problems are visually distinguished from normal waiting states. Installation-wide mail and cron health belong in Administration and should not be duplicated here.
 
 On **Recipients**, verify all contacts appear in one scrollable card list, checkbox state controls assignment, **Assigned first** and **Name A–Z** only reorder the visible cards, and saving after sorting alone does not change the persisted order of existing recipients. Unassigning an existing recipient must require confirmation.
 

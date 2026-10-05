@@ -1,3 +1,11 @@
+## 1.3.5 - 2026-10-06
+
+### Monitor editor status cleanup
+- Removed the four installation-wide Monitor/Mail/Cron/Delivery health indicator cards from the monitor **Status** tab and stopped fetching installation-wide cron health for that page. The existing status banner now reflects monitor-specific lifecycle/delivery issues only; installation-wide health remains in Administration.
+- Reduced the **Last event** event-title size to match the **Next action** title size for a more balanced summary row.
+- Removed the positive **The core delivery configuration is complete.** note from **Review & activation**. Configuration problems still produce warnings; a valid configuration remains deliberately quiet.
+- Updated all four interface languages, documentation, and source regression coverage. No database migration is required.
+
 ## 1.3.4 - 2026-10-06
 
 ### Monitor editor cleanup and document workflow

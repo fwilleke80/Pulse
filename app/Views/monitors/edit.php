@@ -25,7 +25,6 @@ declare(strict_types=1);
 /** @var string $locale */
 /** @var array<string, mixed> $monitor */
 /** @var array<string, mixed>|null $monitorStatus */
-/** @var array<string, mixed> $monitorSystemHealth */
 /** @var array<int, array<string, mixed>> $monitorHistory */
 /** @var string $activeTab */
 /** @var string $activeMessageSection */
@@ -214,14 +213,7 @@ ob_start();
 		$statusIssues = is_array($operationalStatus['issues'] ?? null) ? $operationalStatus['issues'] : [];
 		$nextAction = is_array($operationalStatus['next_action'] ?? null) ? $operationalStatus['next_action'] : ['type' => 'none', 'at' => null];
 		$futurePlan = is_array($operationalStatus['plan'] ?? null) ? $operationalStatus['plan'] : [];
-		$systemHealth = is_array($monitorSystemHealth) ? $monitorSystemHealth : [];
-		$mailEnabled = !empty($systemHealth['mail_enabled']);
-		$cronStatus = (string)($systemHealth['cron_status'] ?? 'never');
-		$lastCronRun = isset($systemHealth['last_successful_cron_at']) ? (string)$systemHealth['last_successful_cron_at'] : null;
-		$deliveryFailed = in_array('delivery_failed', $statusIssues, true);
-		$releaseBlocked = in_array('release_blocked', $statusIssues, true);
-		$systemNeedsAttention = !$mailEnabled || $cronStatus !== 'recent';
-		$needsAttention = $statusIssues !== [] || $systemNeedsAttention;
+		$needsAttention = $statusIssues !== [];
 		$lastEventTranslationKey = is_array($lastMonitorEvent)
 			? ($statusHistoryTranslationKeys[(string)($lastMonitorEvent['event_type'] ?? '')] ?? null)
 			: null;
@@ -239,31 +231,6 @@ ob_start();
 			</div>
 		<?php endif; ?>
 
-		<div class="monitor-health-check-grid" aria-label="<?= e__('monitors.status.health.summary_label') ?>">
-			<div class="monitor-health-check <?= in_array($currentStatus, ['paused', 'archived'], true) ? 'is-neutral' : ($currentStatus === 'escalated' ? 'is-warning' : 'is-ok') ?>">
-				<span><?= e__('monitors.status.health.monitor') ?></span>
-				<strong><?= e__('monitors.status.' . $currentStatus) ?></strong>
-			</div>
-			<div class="monitor-health-check <?= $mailEnabled ? 'is-ok' : 'is-warning' ?>">
-				<span><?= e__('monitors.status.health.mail') ?></span>
-				<strong><?= e__($mailEnabled ? 'monitors.status.health.mail_ok' : 'monitors.status.health.mail_disabled') ?></strong>
-			</div>
-			<div class="monitor-health-check <?= $cronStatus === 'recent' ? 'is-ok' : 'is-warning' ?>">
-				<span><?= e__('monitors.status.health.cron') ?></span>
-				<strong><?= e__('monitors.status.health.cron_' . $cronStatus) ?></strong>
-				<?php if ($lastCronRun !== null && $lastCronRun !== ''): ?><small><?= e(format_datetime($lastCronRun)) ?></small><?php endif; ?>
-			</div>
-			<div class="monitor-health-check <?= $deliveryFailed || $releaseBlocked ? 'is-warning' : 'is-ok' ?>">
-				<span><?= e__('monitors.status.health.delivery') ?></span>
-				<?php if ($deliveryFailed): ?>
-					<strong><?= e__('monitors.status.health.delivery_failed_short', ['count' => (int)($operationalStatus['failed_notification_count'] ?? 0)]) ?></strong>
-				<?php elseif ($releaseBlocked): ?>
-					<strong><?= e__('monitors.status.health.release_blocked_short') ?></strong>
-				<?php else: ?>
-					<strong><?= e__('monitors.status.health.delivery_ok') ?></strong>
-				<?php endif; ?>
-			</div>
-		</div>
 
 		<div class="monitor-status-summary-grid">
 			<div class="review-stat">
@@ -855,7 +822,6 @@ ob_start();
 			<?php if ($recipientMessageWarningCount > 0): ?><div class="review-warning"><?= e__('monitors.review.warning.recipient_configuration', ['count' => $recipientMessageWarningCount]) ?></div><?php endif; ?>
 			<?php if (!$hasCompleteMessageCoverage): ?><div class="review-warning"><?= e__('monitors.review.warning.no_message') ?></div><?php endif; ?>
 			<?php if ((string)$monitor['escalation_policy'] === 'safety_contact' && $safetyContactIds === []): ?><div class="review-warning"><?= e__('monitors.review.warning.no_safety_contacts') ?></div><?php elseif ($safetyConfigurationWarning): ?><div class="review-warning"><?= e__('monitors.review.warning.safety_confirmations', ['required' => $safetyRequiredConfirmations, 'available' => $eligibleSafetyContactCount]) ?></div><?php endif; ?>
-			<?php if ($monitorContacts !== [] && $recipientConfigurationWarningCount === 0 && $hasCompleteMessageCoverage && !$safetyConfigurationWarning): ?><div class="review-ready"><?= e__('monitors.review.ready') ?></div><?php endif; ?>
 		</div>
 
 		<div class="activation-card">

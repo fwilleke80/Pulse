@@ -2,7 +2,7 @@
 
 /**
  * @file MonitorEditorObservabilitySourceTest.php
- * @brief Source regressions for the Pulse 1.3.4 monitor editor cleanup and observability pass.
+ * @brief Source regressions for the Pulse 1.3.5 monitor editor status cleanup pass.
  * @author Frank Willeke
  */
 
@@ -29,21 +29,37 @@ final class MonitorEditorObservabilitySourceTest extends TestCase
 		self::assertStringContainsString("'monitors.tabs.details' => 'Basic'", $english);
 	}
 
-	/** @brief Keeps the Status tab tied to system health and meaningful monitor events. */
-	public function testStatusShowsHealthLastEventAndTypedHistory(): void
+	/** @brief Keeps Status monitor-specific, compact, and centred on lifecycle events. */
+	public function testStatusShowsLastEventNextActionAndTypedHistoryWithoutSystemHealthCards(): void
 	{
 		$root = dirname(__DIR__, 2);
 		$controller = (string)file_get_contents($root . '/app/Controllers/MonitorController.php');
 		$view = (string)file_get_contents($root . '/app/Views/monitors/edit.php');
+		$styles = (string)file_get_contents($root . '/public/assets/style.css');
 
-		self::assertStringContainsString('LastSuccessfulCronRun()', $controller);
-		self::assertStringContainsString("'mail_enabled' => \$this->_mailEnabled", $controller);
-		self::assertStringContainsString("'cron_status' => \$this->CronStatus", $controller);
-		self::assertStringContainsString('monitor-health-check-grid', $view);
+		self::assertStringNotContainsString('monitorSystemHealth', $view);
+		self::assertStringNotContainsString('monitorSystemHealth', $controller);
+		self::assertStringNotContainsString('monitor-health-check-grid', $view);
+		self::assertStringNotContainsString('.monitor-health-check-grid', $styles);
 		self::assertStringContainsString('monitors.status.last_event', $view);
 		self::assertStringContainsString('monitors.status.next_action', $view);
+		self::assertStringContainsString('.monitor-status-last-event strong,', $styles);
+		self::assertStringContainsString('font-size: 1rem;', $styles);
 		self::assertStringContainsString('monitor-event-badge', $view);
 		self::assertStringNotContainsString("monitor['last_confirmed_at']", $view);
+	}
+
+	/** @brief Keeps Review & activation silent when the configuration is valid. */
+	public function testReviewShowsWarningsOnlyAndNoPositiveReadyNote(): void
+	{
+		$root = dirname(__DIR__, 2);
+		$view = (string)file_get_contents($root . '/app/Views/monitors/edit.php');
+		$english = (string)file_get_contents($root . '/app/Lang/en.php');
+
+		self::assertStringContainsString('review-warning', $view);
+		self::assertStringNotContainsString('review-ready', $view);
+		self::assertStringNotContainsString('monitors.review.ready', $view);
+		self::assertStringNotContainsString('The core delivery configuration is complete.', $english);
 	}
 
 	/** @brief Keeps the document tab compact and routes content editing to its own page. */

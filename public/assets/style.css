@@ -1478,8 +1478,7 @@ small
 
 .privacy-note,
 .unencrypted-warning,
-.review-warning,
-.review-ready
+.review-warning
 {
 	margin: 1rem 0;
 	padding: 0.8rem 1rem;
@@ -1507,12 +1506,6 @@ small
 	color: var(--warning);
 }
 
-.review-ready
-{
-	border-color: color-mix(in srgb, var(--success) 35%, var(--border));
-	background: color-mix(in srgb, var(--success) 8%, var(--surface));
-	color: var(--success);
-}
 
 .configuration-block
 {
@@ -5002,6 +4995,7 @@ button.portal-map-details-close
 	margin-bottom: 1.2rem;
 }
 
+.monitor-status-last-event strong,
 .monitor-status-next-action strong
 {
 	font-size: 1rem;
@@ -5314,61 +5308,6 @@ button.portal-map-details-close
 	min-width: 0;
 }
 
-.monitor-health-check-grid
-{
-	display: grid;
-	grid-template-columns: repeat(4, minmax(0, 1fr));
-	gap: 0.65rem;
-	margin: 0 0 1rem;
-}
-
-.monitor-health-check
-{
-	display: flex;
-	min-width: 0;
-	flex-direction: column;
-	gap: 0.2rem;
-	padding: 0.75rem 0.85rem;
-	border: 1px solid var(--border);
-	border-radius: 9px;
-	background: var(--surface-subtle);
-}
-
-.monitor-health-check > span
-{
-	color: var(--muted);
-	font-size: 0.78rem;
-	font-weight: 650;
-	text-transform: uppercase;
-}
-
-.monitor-health-check > strong
-{
-	font-size: 0.92rem;
-}
-
-.monitor-health-check > small
-{
-	color: var(--muted);
-}
-
-.monitor-health-check.is-ok
-{
-	border-color: color-mix(in srgb, var(--success) 32%, var(--border));
-	background: color-mix(in srgb, var(--success) 5%, var(--surface));
-}
-
-.monitor-health-check.is-warning
-{
-	border-color: color-mix(in srgb, var(--warning) 40%, var(--border));
-	background: color-mix(in srgb, var(--warning) 7%, var(--surface));
-}
-
-.monitor-health-check.is-neutral
-{
-	background: var(--surface-subtle);
-}
-
 .monitor-status-summary-grid .review-stat
 {
 	display: flex;
@@ -5651,16 +5590,11 @@ button.portal-map-details-close
 		grid-template-columns: repeat(2, minmax(0, 1fr));
 	}
 
-	.monitor-health-check-grid
-	{
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-	}
 }
 
 @media (max-width: 680px)
 {
 	.monitor-primary-tabs,
-	.monitor-health-check-grid,
 	.document-editor-file-meta
 	{
 		grid-template-columns: 1fr;

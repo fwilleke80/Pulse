@@ -124,7 +124,7 @@ Warnings appear directly on relevant tabs when configuration needs attention.
 
 ### 1. Status
 
-Status is a read-only operational view. It distinguishes an expected lifecycle state, such as **Awaiting check-in**, from a delivery or release problem that needs attention. A compact health summary shows the monitor state, mail availability, cron health, and delivery health. The summary cards then show the current state, the most recent meaningful lifecycle event, and the next automatic action. Below them, Pulse shows the remainder of the current cycle with calculated times and a typed event history for this monitor. Scheduled times are eligibility times; the actual action occurs on the next successful cron/mail-worker run.
+Status is a read-only operational view. It distinguishes an expected lifecycle state, such as **Awaiting check-in**, from a monitor-specific delivery or release problem that needs attention. The summary cards show the current state, the most recent meaningful lifecycle event, and the next automatic action. Below them, Pulse shows the remainder of the current cycle with calculated times and a typed event history for this monitor. Scheduled times are eligibility times; the actual action occurs on the next successful cron/mail-worker run. Installation-wide mail and cron health remain available in Administration rather than being duplicated on each monitor.
 
 Archived monitors can still be opened and inspected, but their monitor configuration is read-only. Use **Reset and reactivate** before changing an archived monitor.
 

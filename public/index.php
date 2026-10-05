@@ -205,7 +205,6 @@ $monitorController = new MonitorController(
 	$mailQueueWorker,
 	$escalationService,
 	$notificationComposer,
-	$container['systemStatusRepository'],
 	(array)$config['available_locales'],
 	(bool)$config['debug'],
 	(bool)$config['mail']['enabled']
