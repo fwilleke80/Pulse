@@ -1,3 +1,18 @@
+## 1.3.9 - 2026-10-19
+
+### Safety-contact postponement allowance
+- Added optional per-monitor **Maximum consecutive safety postponements** (0 = unlimited/backward-compatible). Successful safety-contact quorums consume one postponement; a personal owner check-in or explicit reset/reactivation restores the allowance. Pausing and resuming retains the counter.
+- Once the finite allowance is exhausted, the next overdue cycle skips the safety stage and continues toward recipient release. Existing safety-contact rounds remain valid if a limit is changed in progress. Status and **What happens next** reflect the active allowance.
+
+### Recipient configuration without activation
+- Unassigning a recipient now deactivates rather than deletes their monitor-specific record; custom message, portal settings and document selections survive later reactivation. **Configure** remains available for inactive records, and previously unassigned contacts can be configured into inactive drafts.
+- Consolidated recipient checkboxes into the main **Save changes** action. Future recipient releases select only active assignments, while immutable released portal history remains unchanged.
+
+### Document editing and activity history
+- Added explicit confirmation for leaving a document editor with unsaved changes, plus browser navigation protection. The existing shared Markdown **Edit / Preview** component continues previewing the unsaved draft server-side.
+- Persisted each delivered owner follow-up reminder's ordinal and configured maximum in its audit entry; dashboard, full activity history and monitor status show **N of M** where both numbers are recorded.
+- Added migrations `008_consecutive_safety_postponements.sql` and `009_inactive_recipient_configurations.sql`, all four UI languages, and source/integration regressions. Deploy against a backup and test on a non-production installation before relying on its lifecycle.
+
 ## 1.3.8 - 2026-10-06
 
 ### Complete status timeline and document actions

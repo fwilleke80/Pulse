@@ -53,7 +53,7 @@ $title = $isNew ? e__('monitors.documents.editor.new_title') : e__('monitors.doc
 	</div>
 <?php endif; ?>
 
-<form method="post" action="<?= e($action) ?>" class="document-editor-form">
+<form method="post" action="<?= e($action) ?>" class="document-editor-form" data-document-dirty-guard data-unsaved-confirm="<?= e__('monitors.documents.editor.unsaved_confirm') ?>">
 	<?= csrf_field() ?>
 	<input type="hidden" name="monitor_id" value="<?= $monitorId ?>">
 	<?php if (!$isNew): ?>
@@ -107,7 +107,7 @@ $title = $isNew ? e__('monitors.documents.editor.new_title') : e__('monitors.doc
 		<?php if (!$isArchived): ?>
 			<button type="submit"><?= e__($isNew ? 'monitors.documents.text.create.submit' : ($isText ? 'monitors.documents.text.update.submit' : 'monitors.documents.file.update.submit')) ?></button>
 		<?php endif; ?>
-		<a href="<?= e($base_url) ?>/monitors/edit?id=<?= $monitorId ?>&amp;tab=documents" class="button-link"><?= e__('monitors.documents.editor.back') ?></a>
+		<a href="<?= e($base_url) ?>/monitors/edit?id=<?= $monitorId ?>&amp;tab=documents" class="button-link" data-document-back><?= e__('monitors.documents.editor.back') ?></a>
 		<?php if (!$isNew && !$isText): ?>
 			<a href="<?= e($base_url) ?>/monitors/documents/download?monitor_id=<?= $monitorId ?>&amp;document_id=<?= $documentId ?>" class="button-link"><?= e__('monitors.documents.download.submit') ?></a>
 		<?php endif; ?>

@@ -129,6 +129,29 @@ function markdown_editor(
 		. '<p class="form-hint markdown-editor-hint">' . e__('markdown.editor.hint') . '</p>';
 }
 
+/**
+ * @brief Formats an activity event, including the archived reminder number/total when recorded.
+ * @param string $eventType Persisted event type.
+ * @param string $translationKey Generic event translation key.
+ * @param string $monitorName Monitor display name.
+ * @param array<string, mixed> $context Persisted audit context.
+ * @return string Localized activity description.
+ */
+function activity_event_text(string $eventType, string $translationKey, string $monitorName, array $context = []): string
+{
+	$number = (int)($context['reminder_number'] ?? 0);
+	$total = (int)($context['max_reminders'] ?? 0);
+	if ($eventType === 'mail.reminder_sent' && $number > 0 && $total >= $number)
+	{
+		return __('dashboard.activity.reminder_sent_numbered', [
+			'name' => $monitorName,
+			'number' => $number,
+			'total' => $total,
+		]);
+	}
+	return __($translationKey, ['name' => $monitorName]);
+}
+
 /** @brief Registers the global CSRF token manager. @param CsrfTokenManager $manager Token manager. */
 function setCsrfTokenManager(CsrfTokenManager $manager): void
 {

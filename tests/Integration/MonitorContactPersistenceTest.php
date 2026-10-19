@@ -75,8 +75,15 @@ class MonitorContactPersistenceTest extends TestCase
 		self::assertSame(1, (int)$this->_connection?->query('SELECT COUNT(*) FROM contact_messages')->fetchColumn());
 		self::assertSame(1, (int)$this->_connection?->query('SELECT COUNT(*) FROM document_monitor_contacts')->fetchColumn());
 
-		$this->_repository->ReplaceContactsForMonitor(1, 1, [1]);
+		$this->_repository->ReplaceContactsForMonitor(1, 1, [2]);
 		self::assertSame($retainedId, $this->AssignmentIds()[1]);
+		self::assertSame([2], $this->_repository->FindContactIdsByMonitorId(1));
+		self::assertSame(0, (int)$this->_connection?->query('SELECT is_assigned FROM monitor_contacts WHERE contact_id = 1')->fetchColumn());
+		self::assertSame(1, (int)$this->_connection?->query('SELECT COUNT(*) FROM contact_messages')->fetchColumn());
+		self::assertSame(1, (int)$this->_connection?->query('SELECT COUNT(*) FROM document_monitor_contacts')->fetchColumn());
+		$this->_repository->ReplaceContactsForMonitor(1, 1, [1, 2]);
+		self::assertSame($retainedId, $this->AssignmentIds()[1]);
+		self::assertSame([1, 2], $this->_repository->FindContactIdsByMonitorId(1));
 		self::assertSame(1, (int)$this->_connection?->query('SELECT COUNT(*) FROM contact_messages')->fetchColumn());
 		self::assertSame(1, (int)$this->_connection?->query('SELECT COUNT(*) FROM document_monitor_contacts')->fetchColumn());
 	}
@@ -102,7 +109,7 @@ class MonitorContactPersistenceTest extends TestCase
 		$this->_connection->exec('CREATE TABLE users (id BIGINT UNSIGNED PRIMARY KEY) ENGINE=InnoDB');
 		$this->_connection->exec('CREATE TABLE contacts (id BIGINT UNSIGNED PRIMARY KEY, user_id BIGINT UNSIGNED NOT NULL) ENGINE=InnoDB');
 		$this->_connection->exec('CREATE TABLE monitors (id BIGINT UNSIGNED PRIMARY KEY, user_id BIGINT UNSIGNED NOT NULL) ENGINE=InnoDB');
-		$this->_connection->exec('CREATE TABLE monitor_contacts (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, monitor_id BIGINT UNSIGNED NOT NULL, contact_id BIGINT UNSIGNED NOT NULL, sort_order INT NOT NULL, UNIQUE KEY (monitor_id, contact_id), FOREIGN KEY (monitor_id) REFERENCES monitors(id) ON DELETE CASCADE, FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE) ENGINE=InnoDB');
+		$this->_connection->exec('CREATE TABLE monitor_contacts (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, monitor_id BIGINT UNSIGNED NOT NULL, contact_id BIGINT UNSIGNED NOT NULL, sort_order INT NOT NULL, is_assigned TINYINT(1) NOT NULL DEFAULT 1, UNIQUE KEY (monitor_id, contact_id), FOREIGN KEY (monitor_id) REFERENCES monitors(id) ON DELETE CASCADE, FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE) ENGINE=InnoDB');
 		$this->_connection->exec('CREATE TABLE contact_messages (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, monitor_contact_id BIGINT UNSIGNED NOT NULL, subject VARCHAR(255) NOT NULL, body_text LONGTEXT NOT NULL, FOREIGN KEY (monitor_contact_id) REFERENCES monitor_contacts(id) ON DELETE CASCADE) ENGINE=InnoDB');
 		$this->_connection->exec("CREATE TABLE documents (id BIGINT UNSIGNED PRIMARY KEY, monitor_id BIGINT UNSIGNED NOT NULL, title VARCHAR(255) NOT NULL, storage_type ENUM('text','file') NOT NULL, FOREIGN KEY (monitor_id) REFERENCES monitors(id) ON DELETE CASCADE) ENGINE=InnoDB");
 		$this->_connection->exec('CREATE TABLE document_monitor_contacts (document_id BIGINT UNSIGNED NOT NULL, monitor_contact_id BIGINT UNSIGNED NOT NULL, PRIMARY KEY (document_id, monitor_contact_id), FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE CASCADE, FOREIGN KEY (monitor_contact_id) REFERENCES monitor_contacts(id) ON DELETE CASCADE) ENGINE=InnoDB');

@@ -206,6 +206,7 @@ final class MonitorExecutionService
 					UPDATE monitors
 					SET
 						last_confirmed_at = :confirmed_at,
+						consecutive_safety_postponements = 0,
 						next_check_due_at = :next_due_at,
 						paused_at = NULL,
 						updated_at = :updated_at
@@ -467,6 +468,7 @@ final class MonitorExecutionService
 					is_archived = 0,
 					archived_at = NULL,
 					last_confirmed_at = :confirmed_at,
+					consecutive_safety_postponements = 0,
 					next_check_due_at = :next_due_at,
 					updated_at = :updated_at
 				WHERE id = :id
@@ -720,8 +722,18 @@ final class MonitorExecutionService
 		');
 		$statement->execute(['user_id' => $userId]);
 		$rows = $statement->fetchAll(PDO::FETCH_ASSOC);
+		if (!is_array($rows))
+		{
+			return [];
+		}
 
-		return is_array($rows) ? $rows : [];
+		foreach ($rows as &$row)
+		{
+			$context = json_decode((string)($row['context_json'] ?? ''), true);
+			$row['context'] = is_array($context) ? $context : [];
+		}
+		unset($row);
+		return $rows;
 	}
 
 	/** @brief Counts complete lifecycle activity for pagination. */

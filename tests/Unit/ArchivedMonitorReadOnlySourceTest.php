@@ -25,7 +25,7 @@ final class ArchivedMonitorReadOnlySourceTest extends TestCase
 		self::assertStringContainsString('monitor-readonly-fieldset', $view);
 		self::assertStringContainsString('$isArchived ? \' disabled\' : \'\'', $view);
 		self::assertStringContainsString('if (!$isArchived):', $view);
-		self::assertStringContainsString('data-settings-tabs="details,schedule,escalation,messages,review"', $view);
+		self::assertStringContainsString('data-settings-tabs="details,schedule,recipients,escalation,messages,review"', $view);
 		self::assertStringContainsString('monitors/reset-reactivate', $view);
 		self::assertStringContainsString('$actionAllowDelete && $actionStatus !== \'archived\'', $actions);
 	}

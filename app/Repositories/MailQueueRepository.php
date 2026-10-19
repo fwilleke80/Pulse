@@ -846,6 +846,9 @@ final class MailQueueRepository
 			return;
 		}
 
+		$maximum = $connection->prepare('SELECT max_reminders FROM check_cycles WHERE id = :cycle_id');
+		$maximum->execute(['cycle_id' => $cycleId]);
+		$maxReminders = (int)$maximum->fetchColumn();
 		$audit = $connection->prepare('
 			INSERT INTO audit_log
 			(user_id, event_type, entity_type, entity_id, message, context_json, created_at)
@@ -859,6 +862,7 @@ final class MailQueueRepository
 				'cycle_id' => $cycleId,
 				'queue_id' => (int)$job['id'],
 				'reminder_number' => $reminderNumber,
+				'max_reminders' => $maxReminders,
 			], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES),
 			'created_at' => $now,
 		]);

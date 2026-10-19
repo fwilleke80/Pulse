@@ -54,6 +54,8 @@ class MonitorRepository
 				safety_max_reminders,
 				safety_required_confirmations,
 				safety_confirmation_days,
+				safety_postponement_limit,
+				consecutive_safety_postponements,
 				safety_invitation_subject,
 				safety_invitation_body,
 				safety_reminder_subject,
@@ -111,6 +113,7 @@ class MonitorRepository
 					FROM monitor_contacts warning_mc
 					INNER JOIN contacts warning_c ON warning_c.id = warning_mc.contact_id
 					WHERE warning_mc.monitor_id = monitors.id
+					  AND warning_mc.is_assigned = 1
 					  AND warning_c.email_checked_at IS NULL
 					  AND warning_c.email_2_checked_at IS NULL
 					  AND warning_c.email_3_checked_at IS NULL
@@ -185,6 +188,8 @@ class MonitorRepository
 				safety_max_reminders,
 				safety_required_confirmations,
 				safety_confirmation_days,
+				safety_postponement_limit,
+				consecutive_safety_postponements,
 				safety_invitation_subject,
 				safety_invitation_body,
 				safety_reminder_subject,
@@ -237,7 +242,7 @@ class MonitorRepository
 		$sql = '
 			SELECT contact_id
 			FROM monitor_contacts
-			WHERE monitor_id = :monitor_id
+			WHERE monitor_id = :monitor_id AND is_assigned = 1
 			ORDER BY sort_order ASC, id ASC
 		';
 
@@ -378,26 +383,20 @@ class MonitorRepository
 				$existingByContactId[(int)$row['contact_id']] = (int)$row['id'];
 			}
 
-			$removedContactIds = array_diff(array_keys($existingByContactId), $contactIds);
-
-			if ($removedContactIds !== [])
-			{
-				$placeholders = implode(',', array_fill(0, count($removedContactIds), '?'));
-				$deleteStatement = $connection->prepare('
-					DELETE FROM monitor_contacts
-					WHERE monitor_id = ?
-					  AND contact_id IN (' . $placeholders . ')
-				');
-				$deleteStatement->execute([$monitorId, ...array_values($removedContactIds)]);
-			}
+			// Deactivate rather than delete: personal templates, portal messages and
+			// document selections remain available for later reactivation.
+			$deactivate = $connection->prepare('
+				UPDATE monitor_contacts SET is_assigned = 0 WHERE monitor_id = :monitor_id
+			');
+			$deactivate->execute(['monitor_id' => $monitorId]);
 
 			$insertStatement = $connection->prepare('
-				INSERT INTO monitor_contacts (monitor_id, contact_id, sort_order)
-				VALUES (:monitor_id, :contact_id, :sort_order)
+				INSERT INTO monitor_contacts (monitor_id, contact_id, sort_order, is_assigned)
+				VALUES (:monitor_id, :contact_id, :sort_order, 1)
 			');
 			$updateStatement = $connection->prepare('
 				UPDATE monitor_contacts
-				SET sort_order = :sort_order
+				SET sort_order = :sort_order, is_assigned = 1
 				WHERE id = :id
 			');
 
@@ -505,6 +504,31 @@ class MonitorRepository
 			'safety_invitation_body' => $safetyInvitationBody,
 			'safety_reminder_subject' => $safetyReminderSubject,
 			'safety_reminder_body' => $safetyReminderBody,
+		]);
+	}
+
+	/**
+	 * @brief Changes the safety postponement allowance for an owned monitor.
+	 * @param int $monitorId Monitor ID.
+	 * @param int $userId Owner ID.
+	 * @param int $limit Zero for unlimited; a positive finite limit otherwise.
+	 */
+	public function UpdateSafetyPostponementLimitForUser(int $monitorId, int $userId, int $limit): void
+	{
+		$statement = $this->_database->GetConnection()->prepare('
+			UPDATE monitors
+			SET consecutive_safety_postponements = CASE
+				WHEN :reset_limit = 0 OR safety_postponement_limit = 0 THEN 0
+				ELSE consecutive_safety_postponements
+			END,
+			safety_postponement_limit = :limit_value, updated_at = UTC_TIMESTAMP()
+			WHERE id = :id AND user_id = :user_id
+		');
+		$statement->execute([
+			'reset_limit' => $limit,
+			'limit_value' => $limit,
+			'id' => $monitorId,
+			'user_id' => $userId,
 		]);
 	}
 
@@ -715,6 +739,7 @@ class MonitorRepository
 				mc.monitor_id,
 				mc.contact_id,
 				mc.sort_order,
+				mc.is_assigned,
 				c.name,
 				c.email,
 				c.email_checked_at,

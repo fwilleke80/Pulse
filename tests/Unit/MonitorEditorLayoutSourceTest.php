@@ -28,7 +28,7 @@ final class MonitorEditorLayoutSourceTest extends TestCase
 
 		self::assertStringContainsString('<?php if (!$isArchived): ?>', $view);
 		self::assertStringContainsString('class="editor-save-bar"', $view);
-		self::assertStringContainsString('data-settings-tabs="details,schedule,escalation,messages,review"', $view);
+		self::assertStringContainsString('data-settings-tabs="details,schedule,recipients,escalation,messages,review"', $view);
 		self::assertStringNotContainsString('position: sticky', $saveBarStyles);
 		self::assertStringNotContainsString('bottom:', $saveBarStyles);
 	}

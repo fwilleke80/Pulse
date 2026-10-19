@@ -72,7 +72,7 @@ ob_start();
 						?>
 						<span><?= e__('dashboard.activity.checked_in_from', ['name' => $monitorName]) ?> <a href="<?= e(openstreetmap_location_url($openStreetMapUrl, $latitude, $longitude)) ?>" target="_blank" rel="noopener noreferrer"><?= e($locationLabel) ?></a>.</span>
 					<?php else: ?>
-						<span><?= e__($key, ['name' => $monitorName]) ?></span>
+						<span><?= e(activity_event_text((string)$entry['event_type'], $key, $monitorName, (array)($entry['context'] ?? []))) ?></span>
 					<?php endif; ?>
 					<time datetime="<?= e((string)$entry['created_at']) ?>"><?= e(format_datetime((string)$entry['created_at'])) ?></time>
 				</li>

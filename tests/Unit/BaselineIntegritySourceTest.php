@@ -26,10 +26,12 @@ final class BaselineIntegritySourceTest extends TestCase
 		$portalMessageMigration = (string)file_get_contents($root . '/database/migrations/005_recipient_portal_message_state.sql');
 		$totpMigration = (string)file_get_contents($root . '/database/migrations/006_totp_two_factor_authentication.sql');
 		$cronDiagnosticsMigration = (string)file_get_contents($root . '/database/migrations/007_cron_diagnostics.sql');
+		$safetyMigration = (string)file_get_contents($root . '/database/migrations/008_consecutive_safety_postponements.sql');
+		$recipientsMigration = (string)file_get_contents($root . '/database/migrations/009_inactive_recipient_configurations.sql');
 
 		self::assertIsArray($migrations);
 		sort($migrations);
-		self::assertCount(7, $migrations);
+		self::assertCount(9, $migrations);
 		self::assertStringEndsWith('/001_initial_schema.sql', str_replace('\\', '/', $migrations[0]));
 		self::assertStringEndsWith('/002_security_methods_and_owner_mail.sql', str_replace('\\', '/', $migrations[1]));
 		self::assertStringEndsWith('/003_check_in_locations.sql', str_replace('\\', '/', $migrations[2]));
@@ -37,6 +39,8 @@ final class BaselineIntegritySourceTest extends TestCase
 		self::assertStringEndsWith('/005_recipient_portal_message_state.sql', str_replace('\\', '/', $migrations[4]));
 		self::assertStringEndsWith('/006_totp_two_factor_authentication.sql', str_replace('\\', '/', $migrations[5]));
 		self::assertStringEndsWith('/007_cron_diagnostics.sql', str_replace('\\', '/', $migrations[6]));
+		self::assertStringEndsWith('/008_consecutive_safety_postponements.sql', str_replace('\\', '/', $migrations[7]));
+		self::assertStringEndsWith('/009_inactive_recipient_configurations.sql', str_replace('\\', '/', $migrations[8]));
 		self::assertStringContainsString('CREATE TABLE recipient_release_deliveries', $schema);
 		self::assertStringContainsString('is_archived TINYINT(1) NOT NULL DEFAULT 0', $schema);
 		self::assertStringContainsString('CREATE TABLE system_status', $schema);
@@ -53,6 +57,8 @@ final class BaselineIntegritySourceTest extends TestCase
 		self::assertStringContainsString('CREATE TABLE recipient_release_locations', $locationMigration);
 		self::assertStringContainsString('CREATE TABLE cron_failures', $cronDiagnosticsMigration);
 		self::assertStringContainsString('cron_token_changed_at', $cronDiagnosticsMigration);
+		self::assertStringContainsString('consecutive_safety_postponements', $safetyMigration);
+		self::assertStringContainsString('ADD COLUMN is_assigned', $recipientsMigration);
 	}
 
 	/** @brief Ensures contact deletion cannot silently mutate monitor assignments. */

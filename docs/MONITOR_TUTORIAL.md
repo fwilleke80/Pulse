@@ -86,7 +86,7 @@ A safety contact provides a human check before the final release. They should co
 
 Requiring two of three confirmations reduces the chance that one mistaken response postpones a real escalation. The trade-off is that the safety stage continues to its deadline if only one person is available.
 
-A safety contact does not receive your final documents and cannot trigger an earlier escalation. Their only role is to confirm that you were recently responsive and postpone the monitor, or to say that they cannot confirm.
+A safety contact does not receive your final documents and cannot trigger an earlier escalation. Their only role is to confirm that you were recently responsive and postpone the monitor, or to say that they cannot confirm. You can optionally limit how many such postponements are allowed in succession: **0** means unlimited (the current default), while a positive limit requires a personal owner check-in to replenish the allowance.
 
 ### Decide who receives what
 

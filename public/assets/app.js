@@ -29,6 +29,51 @@ document.addEventListener('DOMContentLoaded', function ()
 		});
 	}
 
+	for (const form of document.querySelectorAll('[data-document-dirty-guard]'))
+	{
+		const fields = Array.from(form.querySelectorAll('input:not([type="hidden"]), textarea, select'));
+		const original = fields.map(function (field)
+		{
+			return field.type === 'checkbox' ? field.checked : field.value;
+		});
+		let saving = false;
+		const dirty = function ()
+		{
+			return fields.some(function (field, index)
+			{
+				return (field.type === 'checkbox' ? field.checked : field.value) !== original[index];
+			});
+		};
+
+		form.addEventListener('submit', function ()
+		{
+			saving = true;
+		});
+		for (const link of form.querySelectorAll('[data-document-back]'))
+		{
+			link.addEventListener('click', function (event)
+			{
+				if (!saving && dirty() && !window.confirm(form.dataset.unsavedConfirm || 'Discard unsaved changes?'))
+				{
+					event.preventDefault();
+				}
+				else
+				{
+					saving = true;
+				}
+			});
+		}
+		window.addEventListener('beforeunload', function (event)
+		{
+			if (saving || !dirty())
+			{
+				return;
+			}
+			event.preventDefault();
+			event.returnValue = '';
+		});
+	}
+
 	for (const toggle of document.querySelectorAll('[data-document-upload-toggle]'))
 	{
 		const targetId = toggle.getAttribute('aria-controls') || '';
@@ -135,19 +180,7 @@ document.addEventListener('DOMContentLoaded', function ()
 			});
 		}
 
-		form.addEventListener('submit', function (event)
-		{
-			const removesExistingRecipient = cards.some(function (card)
-			{
-				const checkbox = card.querySelector('[data-recipient-assignment-checkbox]');
-				return checkbox && checkbox.dataset.initiallyAssigned === '1' && !checkbox.checked;
-			});
 
-			if (removesExistingRecipient && !window.confirm(form.dataset.removalConfirm || 'Remove selected recipients?'))
-			{
-				event.preventDefault();
-			}
-		});
 	}
 
 	const toggle = document.getElementById('show_passwords');
@@ -819,6 +852,36 @@ document.addEventListener('DOMContentLoaded', function ()
 	}
 
 
+	const recipientAssignmentControls = Array.from(document.querySelectorAll('[data-recipient-assignment-checkbox]'));
+	if (recipientAssignmentControls.length > 0)
+	{
+		let savingAssignments = false;
+		const settingsForm = document.querySelector('[data-monitor-settings-form]');
+		if (settingsForm)
+		{
+			settingsForm.addEventListener('submit', function ()
+			{
+				savingAssignments = true;
+			});
+			settingsForm.addEventListener('pulse:save-failed', function ()
+			{
+				savingAssignments = false;
+			});
+		}
+		window.addEventListener('beforeunload', function (event)
+		{
+			if (savingAssignments || !recipientAssignmentControls.some(function (checkbox)
+			{
+				return checkbox.checked !== (checkbox.dataset.initiallyAssigned === '1');
+			}))
+			{
+				return;
+			}
+			event.preventDefault();
+			event.returnValue = '';
+		});
+	}
+
 	const monitorSettingsForm = document.querySelector('[data-monitor-settings-form]');
 	const monitorMessagesForm = document.querySelector('[data-monitor-messages-form]');
 
@@ -919,6 +982,7 @@ document.addEventListener('DOMContentLoaded', function ()
 
 			if (!monitorSettingsForm.reportValidity() || !monitorMessagesForm.reportValidity())
 			{
+				monitorSettingsForm.dispatchEvent(new Event('pulse:save-failed'));
 				return;
 			}
 
@@ -953,6 +1017,7 @@ document.addEventListener('DOMContentLoaded', function ()
 			}
 			catch (error)
 			{
+				monitorSettingsForm.dispatchEvent(new Event('pulse:save-failed'));
 				window.alert(error instanceof Error ? error.message : (monitorMessagesForm.dataset.saveError || 'Message changes could not be saved.'));
 
 				if (submitter)

@@ -40,6 +40,7 @@ final class RecipientRepository
 				mc.monitor_id,
 				mc.contact_id,
 				mc.sort_order,
+				mc.is_assigned,
 				m.name AS monitor_name,
 				m.is_archived AS monitor_is_archived,
 				m.portal_location_sharing_enabled,
@@ -98,7 +99,7 @@ final class RecipientRepository
 	 * @brief Adds an existing owned contact as a monitor recipient.
 	 * @return int Monitor-contact assignment ID.
 	 */
-	public function AddForMonitor(int $monitorId, int $contactId, int $userId): int
+	public function AddForMonitor(int $monitorId, int $contactId, int $userId, bool $assign = true): int
 	{
 		$connection = $this->_database->GetConnection();
 		$connection->beginTransaction();
@@ -123,16 +124,18 @@ final class RecipientRepository
 			}
 
 			$insert = $connection->prepare('
-				INSERT INTO monitor_contacts (monitor_id, contact_id, sort_order)
-				SELECT :monitor_id, :contact_id, COALESCE(MAX(sort_order), 0) + 1
+				INSERT INTO monitor_contacts (monitor_id, contact_id, sort_order, is_assigned)
+				SELECT :monitor_id, :contact_id, COALESCE(MAX(sort_order), 0) + 1, :is_assigned
 				FROM monitor_contacts
 				WHERE monitor_id = :sort_monitor_id
-				ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)
+				ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id),
+					is_assigned = IF(VALUES(is_assigned) = 1, 1, is_assigned)
 			');
 			$insert->execute([
 				'monitor_id' => $monitorId,
 				'contact_id' => $contactId,
 				'sort_monitor_id' => $monitorId,
+				'is_assigned' => $assign ? 1 : 0,
 			]);
 
 			$lookup = $connection->prepare('
@@ -158,13 +161,13 @@ final class RecipientRepository
 		}
 	}
 
-	/** @brief Removes a monitor recipient while preserving immutable release snapshots. */
+	/** @brief Deactivates a monitor recipient without deleting personalized settings or portal history. */
 	public function RemoveForUser(int $monitorContactId, int $userId): bool
 	{
 		$statement = $this->_database->GetConnection()->prepare('
-			DELETE mc
-			FROM monitor_contacts mc
+			UPDATE monitor_contacts mc
 			INNER JOIN monitors m ON m.id = mc.monitor_id
+			SET mc.is_assigned = 0
 			WHERE mc.id = :id AND m.user_id = :user_id
 		');
 		$statement->execute(['id' => $monitorContactId, 'user_id' => $userId]);

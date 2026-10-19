@@ -66,7 +66,9 @@ final class EscalationService
 				return 0;
 			}
 
-			if ((string)$cycle['escalation_policy_snapshot'] !== 'safety_contact')
+			if ((string)$cycle['escalation_policy_snapshot'] !== 'safety_contact'
+				|| ((int)$cycle['safety_postponement_limit'] > 0
+					&& (int)$cycle['consecutive_safety_postponements'] >= (int)$cycle['safety_postponement_limit']))
 			{
 				$connection->commit();
 				return 0;
@@ -514,7 +516,8 @@ final class EscalationService
 					m.max_reminders, m.escalation_policy, m.safety_response_window_days,
 					m.safety_reminder_interval_days, m.safety_max_reminders,
 					m.safety_required_confirmations AS monitor_required_confirmations,
-					m.safety_confirmation_days AS monitor_confirmation_days
+					m.safety_confirmation_days AS monitor_confirmation_days,
+					m.safety_postponement_limit, m.consecutive_safety_postponements
 				FROM safety_contact_requests scr
 				INNER JOIN safety_request_tokens srt ON srt.safety_request_id = scr.id
 				INNER JOIN check_cycles cc ON cc.id = scr.check_cycle_id
@@ -1072,7 +1075,7 @@ final class EscalationService
 			LEFT JOIN monitor_portal_templates mpt
 				ON mpt.monitor_id = m.id
 				AND mpt.locale = c.notification_locale
-			WHERE mc.monitor_id = :monitor_id
+			WHERE mc.monitor_id = :monitor_id AND mc.is_assigned = 1
 			ORDER BY mc.sort_order ASC, mc.id ASC
 		');
 		$statement->execute(['monitor_id' => $monitorId]);
@@ -1199,6 +1202,10 @@ final class EscalationService
 		$updateMonitor = $connection->prepare('
 			UPDATE monitors
 			SET last_safety_confirmed_at = :confirmed_at, last_safety_contact_id = :contact_id,
+				consecutive_safety_postponements = CASE
+					WHEN safety_postponement_limit = 0 THEN 0
+					ELSE consecutive_safety_postponements + 1
+				END,
 				next_check_due_at = :next_due_at, updated_at = :updated_at
 			WHERE id = :id
 		');
@@ -1212,6 +1219,7 @@ final class EscalationService
 		$this->WriteAudit($connection, $request, 'monitor.safety_confirmed', [
 			'contact_id' => $request['contact_id'],
 			'confirmation_count' => $confirmations,
+			'consecutive_postponements' => (int)$request['safety_postponement_limit'] === 0 ? 0 : (int)$request['consecutive_safety_postponements'] + 1,
 			'next_due_at' => $dueAt->format('Y-m-d H:i:s'),
 		]);
 	}

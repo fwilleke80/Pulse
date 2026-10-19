@@ -152,6 +152,8 @@ final class MonitorStatusService
 				m.is_paused,
 				m.is_archived,
 				m.next_check_due_at,
+				m.safety_postponement_limit,
+				m.consecutive_safety_postponements,
 				cc.id AS cycle_id,
 				cc.status AS cycle_status,
 				cc.started_at,
@@ -253,6 +255,8 @@ final class MonitorStatusService
 			'release_blocked_reason' => isset($row['release_blocked_reason']) ? (string)$row['release_blocked_reason'] : null,
 			'next_action' => $nextAction,
 			'plan' => $this->FuturePlan($row),
+			'safety_postponement_limit' => (int)($row['safety_postponement_limit'] ?? 0),
+			'consecutive_safety_postponements' => (int)($row['consecutive_safety_postponements'] ?? 0),
 			'cycle' => [
 				'started_at' => $row['started_at'] ?? null,
 				'due_at' => $row['due_at'] ?? null,
@@ -318,7 +322,7 @@ final class MonitorStatusService
 			}
 
 			return [
-				'type' => (string)($row['escalation_policy_snapshot'] ?? '') === 'safety_contact' ? 'safety_start' : 'recipient_release',
+				'type' => $this->SafetyGateAvailable($row) ? 'safety_start' : 'recipient_release',
 				'at' => $this->OwnerEscalationTime($row),
 			];
 		}
@@ -412,7 +416,7 @@ final class MonitorStatusService
 				];
 			}
 
-			$usesSafetyGate = (string)($row['escalation_policy_snapshot'] ?? '') === 'safety_contact';
+			$usesSafetyGate = $this->SafetyGateAvailable($row);
 			$plan[] = [
 				'type' => $usesSafetyGate ? 'safety_start' : 'recipient_release',
 				'at' => $this->OwnerEscalationTime($row),
@@ -443,6 +447,19 @@ final class MonitorStatusService
 		}
 
 		return [];
+	}
+
+	/** @brief Whether the current cycle may enter another safety-contact confirmation stage. */
+	private function SafetyGateAvailable(array $row): bool
+	{
+		// Existing verification rounds are honored even if the owner changes the limit meanwhile.
+		if ((string)($row['cycle_status'] ?? '') === 'safety_pending')
+		{
+			return true;
+		}
+		$limit = (int)($row['safety_postponement_limit'] ?? 0);
+		return (string)($row['escalation_policy_snapshot'] ?? '') === 'safety_contact'
+			&& ($limit === 0 || (int)($row['consecutive_safety_postponements'] ?? 0) < $limit);
 	}
 
 	/**

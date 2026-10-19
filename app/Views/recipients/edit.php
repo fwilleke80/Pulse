@@ -43,6 +43,7 @@ ob_start();
 		<p class="editor-breadcrumb"><a href="<?= e($base_url) ?>/monitors/edit?id=<?= (int)$recipient['monitor_id'] ?>&amp;tab=recipients"><?= e((string)$recipient['monitor_name']) ?></a> <span aria-hidden="true">›</span> <?= e__('monitors.tabs.recipients') ?></p>
 		<h1><?= e__('recipients.edit.heading', ['name' => (string)$recipient['name']]) ?></h1>
 		<p class="form-hint"><?= e__('recipients.edit.intro', ['monitor' => (string)$recipient['monitor_name']]) ?></p>
+		<span class="mini-status <?= !empty($recipient['is_assigned']) ? 'mini-status-ok' : 'recipient-assignment-unassigned' ?>"><?= e__(!empty($recipient['is_assigned']) ? 'recipients.assignments.assigned' : 'recipients.assignments.not_assigned') ?></span>
 	</div>
 	<a href="<?= e($base_url) ?>/monitors/edit?id=<?= (int)$recipient['monitor_id'] ?>&amp;tab=recipients" class="button-link"><?= e__('recipients.edit.back') ?></a>
 </div>
@@ -90,7 +91,7 @@ ob_start();
 			<div class="dashboard-system-warning" role="alert"><div><strong><?= e__('recipients.snapshot.heading') ?></strong><p><?= e__('recipients.snapshot.message') ?></p></div></div>
 		<?php endif; ?>
 
-		<?php if (!$isArchivedMonitor): ?>
+		<?php if (!$isArchivedMonitor && !empty($recipient['is_assigned'])): ?>
 			<form method="post" action="<?= e($base_url) ?>/monitors/recipients/remove" data-confirm="<?= e__('recipients.remove.confirm', ['name' => (string)$recipient['name']]) ?>">
 				<?= csrf_field() ?>
 				<input type="hidden" name="id" value="<?= (int)$recipient['id'] ?>">

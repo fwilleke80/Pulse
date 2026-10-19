@@ -30,7 +30,7 @@ $selectedRecipientIds = isset($assignedMonitorContactIds) && is_array($assignedM
 						value="<?= $recipientId ?>"
 						<?= in_array($recipientId, $selectedRecipientIds, true) ? 'checked' : '' ?>
 					>
-					<span><?= e((string)$recipient['name']) ?></span>
+					<span><?= e((string)$recipient['name']) ?><?= empty($recipient['is_assigned']) ? ' · ' . e__('recipients.assignments.not_assigned') : '' ?></span>
 				</label>
 			<?php endforeach; ?>
 		</div>

@@ -171,7 +171,7 @@ Documents belong to the monitor's library. The Documents tab presents them as a 
 
 **Create text document** and **Upload document** are the two primary ways to add material to the monitor and therefore appear together at the top of the Documents tab. The upload button expands the upload form directly below those actions. Creating or uploading a document does **not** automatically release it to every recipient. Assignment is done for each recipient separately under that recipient's **Documents** tab.
 
-Text documents are created and edited on a dedicated page rather than inline inside the Monitor Editor. Pulse text documents support a safe Markdown subset: headings, bold and italic text, ordered and unordered lists, links, blockquotes, horizontal rules, inline code, and fenced code blocks. Raw HTML is displayed as text rather than executed. The editor has **Edit** and **Preview** tabs; Preview renders the current unsaved source through Pulse's server-side Markdown renderer. Recipient downloads and **Download all** preserve the original Markdown source as `.md` files. Uploaded-file titles and descriptions are edited in the same dedicated document-editor workflow. For PDF, raster images, audio, video, Markdown, plain text, CSV, and JSON, that editor also shows the same safe inline preview used by the recipient portal. Download-only formats such as Word, OpenDocument, and RTF continue to show metadata and a download action without attempting an inline viewer.
+Text documents are created and edited on a dedicated page rather than inline inside the Monitor Editor. Pulse text documents support a safe Markdown subset: headings, bold and italic text, ordered and unordered lists, links, blockquotes, horizontal rules, inline code, and fenced code blocks. Raw HTML is displayed as text rather than executed. The editor has **Edit** and **Preview** tabs; Preview renders the current unsaved source through Pulse's server-side Markdown renderer. If you choose **Back to documents** with unsaved edits, Pulse asks before discarding them; browser navigation and reload also warn. Recipient downloads and **Download all** preserve the original Markdown source as `.md` files. Uploaded-file titles and descriptions are edited in the same dedicated document-editor workflow. For PDF, raster images, audio, video, Markdown, plain text, CSV, and JSON, that editor also shows the same safe inline preview used by the recipient portal. Download-only formats such as Word, OpenDocument, and RTF continue to show metadata and a download action without attempting an inline viewer.
 
 The default upload policy accepts PDF, RTF, OpenDocument Text, Word `.docx`, JSON, CSV, common raster images (JPEG, PNG, GIF, WebP, and AVIF), plain text and Markdown, and common browser audio/video formats including MP3, M4A/AAC, Ogg, WAV, FLAC, MP4, WebM, QuickTime, and Ogg video. The default Pulse limit is 25 MiB. Administrators can change Pulse's own limit and MIME allowlist under **Administration → Files**; PHP and web-server upload limits may impose lower limits. An untouched pre-1.2.6 stock MIME list is expanded automatically, while deliberately customized administrator lists are preserved.
 
@@ -183,9 +183,9 @@ Uploaded files are stored outside the public web directory under private storage
 
 The Recipients tab is one scrollable assignment list containing all contacts. A checked card means that contact is assigned as a final recipient for this monitor; an unchecked card is available but not assigned. The list can be sorted with **Assigned first** or **Name A–Z** without changing the monitor's persisted recipient order.
 
-Assigned cards summarize the recipient's language and document count and provide **Configure** to open the dedicated recipient editor. You can check or uncheck several cards and then apply them together with **Save recipient assignments**.
+Every contact can be **Configured** in advance, even while unassigned. When configuring a never-assigned contact, Pulse creates an inactive recipient profile. Personal email templates, portal messages, and document selections remain attached to that monitor profile when the assignment checkbox is cleared. Re-checking it reactivates exactly the same configuration.
 
-Configuration warnings here can identify problems such as an unchecked address or a recipient email template that does not contain the required portal URL. Removing an existing assignment requires confirmation because its monitor-specific recipient message, portal, and document configuration is deleted. Historical deliveries that were already released remain independent snapshots.
+Recipient assignments save with the main **Save changes** button, alongside the other monitor settings. Deactivating a recipient only affects future releases; it does not automatically revoke recipient portals already released, which remain independently manageable. Configuration warnings consider only active recipients. Because inactive profiles retain configurations, a contact used by such a profile remains protected from accidental deletion.
 
 ### 6. Safety & escalation
 
@@ -202,12 +202,13 @@ For a safety-contact gate, configure:
 - **Maximum safety reminders**
 - **Confirmations required**
 - **Postpone by days**
+- **Maximum consecutive safety postponements** (`0` = unlimited, the existing default)
 
 Pulse explains each timing value directly below its field. If **Confirmations required** is greater than the number of selected safety contacts that currently have at least one checked email address, the editor and Review tab show an advisory warning. You may still save an incomplete setup and return to finish it, but it cannot reach that confirmation threshold until enough eligible contacts are selected.
 
 A safety contact can only postpone escalation. They cannot make recipient notification happen sooner, see recipient messages, or access documents.
 
-If the required confirmation count is reached, Pulse closes the current cycle and starts a new scheduled cycle. Setting **Postpone by days** to `0` uses the monitor's normal check-in interval.
+If the required confirmation count is reached, Pulse closes the current cycle and starts a new scheduled cycle. Setting **Postpone by days** to `0` uses the monitor's normal check-in interval. Each successful round consumes one safety postponement if a finite maximum is configured. A personal owner check-in resets the allowance. Once exhausted, the next overdue cycle skips the safety-contact stage and proceeds through the established release process. Existing in-progress safety verification rounds remain valid; pausing and resuming does not replenish the allowance.
 
 If a safety contact explicitly says they cannot confirm recent contact, the existing timetable remains unchanged. If the confirmation requirement is not reached before the safety window finishes, Pulse continues toward recipient notification.
 

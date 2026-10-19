@@ -127,6 +127,8 @@ CREATE TABLE monitors
 	safety_max_reminders INT UNSIGNED NOT NULL DEFAULT 1,
 	safety_required_confirmations INT UNSIGNED NOT NULL DEFAULT 1,
 	safety_confirmation_days INT UNSIGNED NULL,
+	safety_postponement_limit INT UNSIGNED NOT NULL DEFAULT 0,
+	consecutive_safety_postponements INT UNSIGNED NOT NULL DEFAULT 0,
 	safety_invitation_subject VARCHAR(255) NULL,
 	safety_invitation_body LONGTEXT NULL,
 	safety_reminder_subject VARCHAR(255) NULL,
@@ -196,6 +198,8 @@ CREATE TABLE monitor_contacts
 	monitor_id BIGINT UNSIGNED NOT NULL,
 	contact_id BIGINT UNSIGNED NOT NULL,
 	sort_order INT DEFAULT 1,
+	is_assigned TINYINT(1) NOT NULL DEFAULT 1,
+	INDEX idx_monitor_contacts_active (monitor_id, is_assigned, sort_order),
 	FOREIGN KEY (monitor_id) REFERENCES monitors(id) ON DELETE CASCADE,
 	FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE RESTRICT,
 	UNIQUE(monitor_id, contact_id)

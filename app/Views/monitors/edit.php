@@ -33,7 +33,7 @@ declare(strict_types=1);
 
 $uncheckedContactCount = count(array_filter(
 	$monitorContacts,
-	static fn (array $contact): bool => !\Pulse\Core\EmailAddressCollection::HasChecked($contact)
+	static fn (array $contact): bool => (int)$contact['is_assigned'] === 1 && !\Pulse\Core\EmailAddressCollection::HasChecked($contact)
 ));
 $currentStatus = monitor_status($monitor);
 $isArchived = !empty($monitor['is_archived']);
@@ -240,7 +240,7 @@ ob_start();
 			<div class="review-stat monitor-status-last-event">
 				<span class="monitor-status-card-label"><?= e__('monitors.status.last_event') ?></span>
 				<?php if (is_array($lastMonitorEvent) && is_string($lastEventTranslationKey)): ?>
-					<strong><?= e__($lastEventTranslationKey, ['name' => (string)$monitor['name']]) ?></strong>
+					<strong><?= e(activity_event_text((string)$lastMonitorEvent['event_type'], $lastEventTranslationKey, (string)$monitor['name'], (array)($lastMonitorEvent['context'] ?? []))) ?></strong>
 					<span><?= e(format_datetime((string)$lastMonitorEvent['created_at'])) ?></span>
 				<?php else: ?>
 					<strong><?= e__('monitors.status.history.none_short') ?></strong>
@@ -253,6 +253,14 @@ ob_start();
 			</div>
 		</div>
 
+		<?php if ((string)$monitor['escalation_policy'] === 'safety_contact'): ?>
+			<?php $safetyLimit = (int)($monitor['safety_postponement_limit'] ?? 0); ?>
+			<p class="form-hint monitor-safety-postponement-status"><?= e__($safetyLimit === 0 ? 'monitors.status.postponements.unlimited' : 'monitors.status.postponements.limited', [
+				'used' => min($safetyLimit, (int)($monitor['consecutive_safety_postponements'] ?? 0)),
+				'limit' => $safetyLimit,
+				'remaining' => max(0, $safetyLimit - (int)($monitor['consecutive_safety_postponements'] ?? 0)),
+			]) ?></p>
+		<?php endif; ?>
 		<section class="configuration-block monitor-status-plan">
 			<h3><?= e__('monitors.status.next.heading') ?></h3>
 			<p class="form-hint"><?= e__('monitors.status.next.hint') ?></p>
@@ -316,7 +324,7 @@ ob_start();
 							<?php if (is_string($translationKey)): ?>
 								<li class="monitor-history-event monitor-history-event-<?= e($eventCategory) ?>">
 									<span class="monitor-event-badge"><?= e__('monitors.status.history.category.' . $eventCategory) ?></span>
-									<span><?= e__($translationKey, ['name' => (string)$monitor['name']]) ?></span>
+									<span><?= e(activity_event_text($eventType, $translationKey, (string)$monitor['name'], (array)($entry['context'] ?? []))) ?></span>
 									<time datetime="<?= e((string)$entry['created_at']) ?>"><?= e(format_datetime((string)$entry['created_at'])) ?></time>
 								</li>
 							<?php endif; ?>
@@ -511,9 +519,8 @@ ob_start();
 		<?php if ($contacts === []): ?>
 			<p><?= e__('monitors.contacts.none') ?></p>
 		<?php else: ?>
-			<form method="post" action="<?= e($base_url) ?>/monitors/recipients/assignments" class="recipient-assignment-form" data-recipient-assignment-form data-removal-confirm="<?= e__('recipients.assignments.remove_confirm') ?>">
-				<?= csrf_field() ?>
-				<input type="hidden" name="monitor_id" value="<?= (int)$monitor['id'] ?>">
+			<div class="recipient-assignment-form" data-recipient-assignment-form>
+				<input type="hidden" name="recipient_assignments_present" value="1" form="monitor-settings-form">
 
 				<div class="recipient-assignment-toolbar" aria-label="<?= e__('recipients.assignments.sort.label') ?>">
 					<span><?= e__('recipients.assignments.sort.label') ?></span>
@@ -538,6 +545,7 @@ ob_start();
 									type="checkbox"
 									id="recipient_assignment_<?= $contactId ?>"
 									name="contact_ids[]"
+							form="monitor-settings-form"
 									value="<?= $contactId ?>"
 									data-recipient-assignment-checkbox
 									data-initially-assigned="<?= $isAssigned ? '1' : '0' ?>"
@@ -551,15 +559,23 @@ ob_start();
 
 							<div class="recipient-assignment-meta">
 								<span><strong><?= e__('recipients.overview.language') ?>:</strong> <?= e(notification_language_name(isset($contact['notification_locale']) ? (string)$contact['notification_locale'] : null)) ?></span>
-								<?php if ($isAssigned && is_array($monitorContact)): ?>
+								<?php if (is_array($monitorContact)): ?>
 									<span><?= e__('recipients.overview.documents', ['count' => (int)$monitorContact['document_count']]) ?></span>
 								<?php endif; ?>
 							</div>
 
 							<div class="recipient-assignment-actions">
 								<span class="mini-status <?= $isAssigned ? 'mini-status-ok' : 'recipient-assignment-unassigned' ?>" data-recipient-assignment-state data-label-assigned="<?= e__('recipients.assignments.assigned') ?>" data-label-unassigned="<?= e__('recipients.assignments.not_assigned') ?>"><?= e__($isAssigned ? 'recipients.assignments.assigned' : 'recipients.assignments.not_assigned') ?></span>
-								<?php if ($isAssigned && is_array($monitorContact)): ?>
+								<?php if (is_array($monitorContact)): ?>
 									<a href="<?= e($base_url) ?>/monitors/recipients/edit?id=<?= (int)$monitorContact['id'] ?>" class="button-link recipient-assignment-configure"><?= e__('recipients.assignments.configure') ?></a>
+								<?php elseif (!$isArchived): ?>
+									<form method="post" action="<?= e($base_url) ?>/monitors/recipients/add">
+										<?= csrf_field() ?>
+										<input type="hidden" name="monitor_id" value="<?= (int)$monitor['id'] ?>">
+										<input type="hidden" name="contact_id" value="<?= $contactId ?>">
+										<input type="hidden" name="configure_only" value="1">
+										<button type="submit" class="button-link recipient-assignment-configure"><?= e__('recipients.assignments.configure') ?></button>
+									</form>
 								<?php endif; ?>
 							</div>
 
@@ -583,8 +599,7 @@ ob_start();
 				</div>
 
 				<p class="form-hint recipient-assignment-removal-hint"><?= e__('recipients.assignments.removal_hint') ?></p>
-				<button type="submit"><?= e__('recipients.assignments.save') ?></button>
-			</form>
+			</div>
 		<?php endif; ?>
 
 		<p class="form-hint recipient-safety-hint">
@@ -640,6 +655,7 @@ ob_start();
 					<label><?= e__('monitors.escalation.max_reminders') ?><input type="number" name="safety_max_reminders" form="monitor-settings-form" min="0" max="100" value="<?= (int)$monitor['safety_max_reminders'] ?>" required><small><?= e__('monitors.escalation.max_reminders_hint') ?></small></label>
 					<label><?= e__('monitors.escalation.required_confirmations') ?><input type="number" name="safety_required_confirmations" form="monitor-settings-form" min="1" max="100" value="<?= $safetyRequiredConfirmations ?>" data-safety-required-confirmations required><small><?= e__('monitors.escalation.required_confirmations_hint') ?></small></label>
 					<label><?= e__('monitors.escalation.confirmation_days') ?><input type="number" name="safety_confirmation_days" form="monitor-settings-form" min="0" max="3650" value="<?= (int)($monitor['safety_confirmation_days'] ?? 0) ?>"><small><?= e__('monitors.escalation.confirmation_days_hint') ?></small></label>
+					<label><?= e__('monitors.escalation.postponement_limit') ?><input type="number" name="safety_postponement_limit" form="monitor-settings-form" min="0" max="10000" value="<?= (int)($monitor['safety_postponement_limit'] ?? 0) ?>" required><small><?= e__('monitors.escalation.postponement_limit_hint') ?></small></label>
 				</div>
 				<div class="template-validation-warning safety-confirmation-warning" role="alert" data-safety-confirmation-warning data-message-template="<?= e__('monitors.escalation.confirmation_warning.message', ['required' => '{required}', 'available' => '{available}']) ?>"<?= $safetyConfigurationWarning ? '' : ' hidden' ?>>
 					<strong><?= e__('monitors.escalation.confirmation_warning.heading') ?></strong>
@@ -896,7 +912,7 @@ ob_start();
 </div>
 
 <?php if (!$isArchived): ?>
-	<div class="editor-save-bar" data-settings-save-bar data-settings-tabs="details,schedule,escalation,messages,review"<?= in_array($activeTab, ['details', 'schedule', 'escalation', 'messages', 'review'], true) ? '' : ' hidden' ?>>
+	<div class="editor-save-bar" data-settings-save-bar data-settings-tabs="details,schedule,recipients,escalation,messages,review"<?= in_array($activeTab, ['details', 'schedule', 'recipients', 'escalation', 'messages', 'review'], true) ? '' : ' hidden' ?>>
 		<span><?= e__('monitors.edit.save_hint') ?></span>
 		<div class="editor-save-actions">
 			<a href="<?= e($base_url) ?>/monitors" class="button-link editor-cancel-button"><?= e__('monitors.edit.cancel') ?></a>

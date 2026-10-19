@@ -128,7 +128,10 @@ class MonitorController extends BaseController
 			$monitorContacts = $this->_monitorRepository->FindMonitorContactsByMonitorIdForUser($monitorId, $userId);
 			$messageOverrides = $this->_messageRepository->FindByMonitorIdForUser($monitorId, $userId);
 			$mailTemplates = $this->_messageRepository->FindLocalizedTemplatesForMonitor($monitorId, $userId);
-			$issues = $this->RecipientConfigurationIssues($monitorContacts, $messageOverrides, $mailTemplates);
+			$activeRecipients = array_values(array_filter(
+				$monitorContacts, static fn (array $contact): bool => (int)$contact['is_assigned'] === 1
+			));
+			$issues = $this->RecipientConfigurationIssues($activeRecipients, $messageOverrides, $mailTemplates);
 			$monitor['recipient_configuration_issue_count'] = count($issues) + $this->LocalizedRecipientDefaultIssueCount($mailTemplates);
 		}
 		unset($monitor);
@@ -241,7 +244,9 @@ class MonitorController extends BaseController
 		unset($document);
 
 		$monitorContacts = $this->_monitorRepository->FindMonitorContactsByMonitorIdForUser($monitorId, (int)$user['id']);
-		$recipientConfigurationIssues = $this->RecipientConfigurationIssues($monitorContacts, $messageOverrides, $mailTemplates);
+		$recipientConfigurationIssues = $this->RecipientConfigurationIssues(array_values(array_filter(
+			$monitorContacts, static fn (array $contact): bool => (int)$contact['is_assigned'] === 1
+		)), $messageOverrides, $mailTemplates);
 
 		return $this->_view->Render('monitors.edit', [
 			'user' => $user,
@@ -322,7 +327,13 @@ class MonitorController extends BaseController
 			$values['portal_location_sharing_enabled'],
 			$values['portal_location_history_limit']
 		);
+		$this->_monitorRepository->UpdateSafetyPostponementLimitForUser($monitorId, (int)$user['id'], $values['safety_postponement_limit']);
 		$this->_monitorExecutionService->SynchronizeMonitorForUser($monitorId, (int)$user['id']);
+		if ($this->_request->PostBool('recipient_assignments_present'))
+		{
+			$recipientIds = $this->AllowedContactIds((int)$user['id'], $this->_request->PostIntArray('contact_ids'));
+			$this->_monitorRepository->ReplaceContactsForMonitor($monitorId, (int)$user['id'], $recipientIds);
+		}
 		$this->_monitorRepository->ReplaceSafetyContactsForMonitor($monitorId, (int)$user['id'], $safetyContactIds);
 		$this->_logger->Info('Monitor updated', ['user_id' => (int)$user['id'], 'monitor_id' => $monitorId]);
 
@@ -990,6 +1001,7 @@ class MonitorController extends BaseController
 			'safety_max_reminders' => $this->_request->PostInt('safety_max_reminders', 1),
 			'safety_required_confirmations' => $this->_request->PostInt('safety_required_confirmations', 1),
 			'safety_confirmation_days' => $this->_request->PostInt('safety_confirmation_days', 0),
+			'safety_postponement_limit' => $this->_request->PostInt('safety_postponement_limit', 0),
 			'location_check_in_enabled' => $this->_request->PostBool('location_check_in_enabled'),
 			'portal_location_sharing_enabled' => $this->_request->PostBool('portal_location_sharing_enabled'),
 			'portal_location_history_limit' => $this->_request->PostInt('portal_location_history_limit', 5),
@@ -1234,6 +1246,7 @@ class MonitorController extends BaseController
 			|| (int)$values['safety_max_reminders'] < 0 || (int)$values['safety_max_reminders'] > 100
 			|| (int)$values['safety_required_confirmations'] < 1 || (int)$values['safety_required_confirmations'] > 100
 			|| (int)$values['safety_confirmation_days'] < 0 || (int)$values['safety_confirmation_days'] > 3650
+			|| (int)$values['safety_postponement_limit'] < 0 || (int)$values['safety_postponement_limit'] > 10000
 			|| (int)$values['portal_location_history_limit'] < 1 || (int)$values['portal_location_history_limit'] > 20
 		)
 		{

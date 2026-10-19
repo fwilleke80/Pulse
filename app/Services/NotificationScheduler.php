@@ -124,7 +124,9 @@ final class NotificationScheduler
 
 			$eligibleAt = $this->OverdueTime($cycle);
 
-			if ($eligibleAt <= $now && (string)$cycle['escalation_policy_snapshot'] === 'safety_contact')
+			if ($eligibleAt <= $now && (string)$cycle['escalation_policy_snapshot'] === 'safety_contact'
+				&& ((int)$cycle['safety_postponement_limit'] === 0
+					|| (int)$cycle['consecutive_safety_postponements'] < (int)$cycle['safety_postponement_limit']))
 			{
 				if ($this->_escalation->StartSafetyGate((int)$cycle['id']) > 0)
 				{
@@ -243,6 +245,8 @@ final class NotificationScheduler
 				cc.reminders_sent,
 				cc.due_notice_sent_at,
 				m.user_id,
+				m.safety_postponement_limit,
+				m.consecutive_safety_postponements,
 				m.name AS monitor_name,
 				m.response_window_days,
 				u.email, u.email_checked_at,
@@ -284,6 +288,8 @@ final class NotificationScheduler
 				cc.reminders_sent,
 				cc.due_notice_sent_at,
 				m.user_id,
+				m.safety_postponement_limit,
+				m.consecutive_safety_postponements,
 				m.name AS monitor_name,
 				m.response_window_days,
 				u.email, u.email_checked_at,

@@ -282,7 +282,8 @@ final class RecipientController extends BaseController
 			$monitorContactId = $this->_recipientRepository->AddForMonitor(
 				$monitorId,
 				$this->_request->PostInt('contact_id'),
-				(int)$user['id']
+				(int)$user['id'],
+				!$this->_request->PostBool('configure_only')
 			);
 		}
 		catch (Throwable)
@@ -291,7 +292,7 @@ final class RecipientController extends BaseController
 			$this->Redirect('/monitors');
 		}
 
-		$this->Flash('success', __('recipients.flash.added'));
+		$this->Flash('success', __($this->_request->PostBool('configure_only') ? 'recipients.flash.draft_created' : 'recipients.flash.added'));
 		$this->Redirect('/monitors/recipients/edit?id=' . $monitorContactId . '&section=overview');
 	}
 
