@@ -18,6 +18,23 @@ header('Referrer-Policy: no-referrer');
 header('X-Content-Type-Options: nosniff');
 
 $projectRoot = dirname(__DIR__, 2);
+$__pulseOperationGate = @fopen($projectRoot . '/storage/maintenance.operation', 'c');
+if ($__pulseOperationGate === false || !flock($__pulseOperationGate, LOCK_SH | LOCK_NB))
+{
+	http_response_code(503);
+	header('Retry-After: 10');
+	echo "Pulse maintenance is in progress.\n";
+	exit;
+}
+
+if (is_file($projectRoot . '/storage/maintenance.lock'))
+{
+	http_response_code(503);
+	header('Retry-After: 3600');
+	echo "Pulse is in maintenance mode.\n";
+	exit;
+}
+
 
 if (is_file(dirname(__DIR__) . '/install.php'))
 {

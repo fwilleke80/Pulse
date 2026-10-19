@@ -21,6 +21,19 @@ if (PHP_SAPI !== 'cli')
 	exit(1);
 }
 
+$__pulseOperationGate = @fopen(dirname(__DIR__) . '/storage/maintenance.operation', 'c');
+if ($__pulseOperationGate === false || !flock($__pulseOperationGate, LOCK_SH | LOCK_NB))
+{
+	fwrite(STDERR, "Pulse maintenance is in progress.\n");
+	exit(1);
+}
+
+if (is_file(dirname(__DIR__) . '/storage/maintenance.lock'))
+{
+	fwrite(STDERR, "Pulse is in maintenance mode; background jobs are paused.\n");
+	exit(1);
+}
+
 if (is_file(dirname(__DIR__) . '/public/install.php'))
 {
 	fwrite(STDERR, "Pulse installation is not finalized. Remove public/install.php before running background commands.\n");

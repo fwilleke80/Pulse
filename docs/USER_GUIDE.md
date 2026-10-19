@@ -10,8 +10,8 @@ Pulse is not an emergency-response service. Its timing depends on cron, email de
 
 For any monitor that matters, do these things before treating it as operational:
 
-1. Send a successful test from **Administration → Mail**.
-2. Confirm that **Administration → Cron** shows a recent successful cron run.
+1. Send a successful test from **Administration → Configuration → Mail**.
+2. Confirm that **Administration → Configuration → Cron** shows a recent successful cron run.
 3. Add the configured Pulse sender address or domain to safe-sender/allowlist rules on mail systems you control.
 4. Carefully mark every recipient and safety-contact address you intend Pulse to use as checked.
 5. Rehearse the workflow with harmless wording and test addresses.
@@ -173,7 +173,7 @@ Documents belong to the monitor's library. The Documents tab presents them as a 
 
 Text documents are created and edited on a dedicated page rather than inline inside the Monitor Editor. Pulse text documents support a safe Markdown subset: headings, bold and italic text, ordered and unordered lists, links, blockquotes, horizontal rules, inline code, and fenced code blocks. Raw HTML is displayed as text rather than executed. The editor has **Edit** and **Preview** tabs; Preview renders the current unsaved source through Pulse's server-side Markdown renderer. If you choose **Back to documents** with unsaved edits, Pulse asks before discarding them; browser navigation and reload also warn. Recipient downloads and **Download all** preserve the original Markdown source as `.md` files. Uploaded-file titles and descriptions are edited in the same dedicated document-editor workflow. For PDF, raster images, audio, video, Markdown, plain text, CSV, and JSON, that editor also shows the same safe inline preview used by the recipient portal. Download-only formats such as Word, OpenDocument, and RTF continue to show metadata and a download action without attempting an inline viewer.
 
-The default upload policy accepts PDF, RTF, OpenDocument Text, Word `.docx`, JSON, CSV, common raster images (JPEG, PNG, GIF, WebP, and AVIF), plain text and Markdown, and common browser audio/video formats including MP3, M4A/AAC, Ogg, WAV, FLAC, MP4, WebM, QuickTime, and Ogg video. The default Pulse limit is 25 MiB. Administrators can change Pulse's own limit and MIME allowlist under **Administration → Files**; PHP and web-server upload limits may impose lower limits. An untouched pre-1.2.6 stock MIME list is expanded automatically, while deliberately customized administrator lists are preserved.
+The default upload policy accepts PDF, RTF, OpenDocument Text, Word `.docx`, JSON, CSV, common raster images (JPEG, PNG, GIF, WebP, and AVIF), plain text and Markdown, and common browser audio/video formats including MP3, M4A/AAC, Ogg, WAV, FLAC, MP4, WebM, QuickTime, and Ogg video. The default Pulse limit is 25 MiB. Administrators can change Pulse's own limit and MIME allowlist under **Administration → Configuration → Files**; PHP and web-server upload limits may impose lower limits. An untouched pre-1.2.6 stock MIME list is expanded automatically, while deliberately customized administrator lists are preserved.
 
 Acceptance does not guarantee playback in every browser. MP3 audio and H.264/AAC video in MP4 are the safest compatibility targets. Word, OpenDocument, and RTF files remain downloadable but are not converted or rendered by Pulse.
 
@@ -233,7 +233,7 @@ The initial due notice and the later owner follow-up reminder each have one opti
 
 Owner mail bodies support optional Markdown and the shared **Edit / Preview** editor. Available placeholders include `{name}`, `{monitor}`, `{due}`, and `{url}`. The initial due notice also supports `{deadline}`, `{response_window}`, and `{max_followup_reminders}`; follow-up reminders support `{number}` and `{total}`.
 
-`{quickcheckin}` is the recommended placeholder for the optional shortcut. It expands to Pulse's localized Markdown quick-check-in link when **Administration → Security → Enable passkey quick check-in** is enabled, and to nothing when the feature is disabled. This is also how the built-in owner templates expose the feature, so the default text now shows exactly where the quick-check-in link will appear.
+`{quickcheckin}` is the recommended placeholder for the optional shortcut. It expands to Pulse's localized Markdown quick-check-in link when **Administration → Configuration → Security → Enable passkey quick check-in** is enabled, and to nothing when the feature is disabled. This is also how the built-in owner templates expose the feature, so the default text now shows exactly where the quick-check-in link will appear.
 
 `{quickurl}` remains available when you want to write your own link text. It expands to the authenticated quick-check-in URL when enabled and safely falls back to the normal `{url}` login URL when disabled. Quick check-in still requires authentication and, once authenticated, checks in all active monitors.
 
@@ -434,7 +434,7 @@ Recipient-specific delivery and portal activity is shown in the recipient editor
 
 Owner notices, safety-contact messages, access codes, and recipient messages all use Pulse's mail queue. Each queued body remains an immutable text/Markdown snapshot. At delivery time Pulse creates a `multipart/alternative` message with a readable plain-text part and a sanitized HTML part with conservative inline CSS.
 
-Administrators can open **Administration → Mail** to:
+Administrators can open **Administration → Configuration → Mail** to:
 
 - configure SMTP
 - enable or disable automatic delivery
@@ -490,14 +490,15 @@ Because quick check-in is intended to remove friction, do not wait for an urgent
 
 Users with the **administrator** role see **Administration** in the navigation. Access is also enforced server-side.
 
-Administration contains six tabs:
+Administration starts with an **Overview**, then dedicated **Configuration**, **Maintenance**, and read-only **System Information** pages. Configuration has five tabs:
 
 - **General** — deployment environment, default language, display timezone, trusted hosts, and debug behavior.
 - **Security** — session cookies/timeouts, HSTS, login throttling, and password policy.
 - **Files** — upload size and MIME allowlist.
 - **Mail** — SMTP, queue/retry settings, test mail, and the installation-wide mail queue.
 - **Cron** — web-cron token, endpoint example, **Last successful cron run**, token-change time, and recent unsuccessful cron calls.
-- **Installation** — read-only boot-critical information such as `.env` status, public base URL, and database connection details.
+
+The separate **System Information** page shows read-only boot-critical information such as `.env` status, public base URL, and database connection details. **Maintenance** contains Backup & Restore and Updates, and has no global Save settings action.
 
 Editable settings are saved directly to the root `.env` file. Pulse does not maintain a second database-backed configuration system.
 
@@ -557,3 +558,14 @@ See [Choosing a monitor setup](MONITOR_TUTORIAL.md#rehearse-before-relying-on-it
 Pulse 1.2 does not encrypt stored messages or documents at the application level. A compromise of the hosting account, database, filesystem, or an unencrypted backup can therefore expose those contents.
 
 Do not use the current release as the only storage location for passwords, cryptographic recovery keys, or similarly high-value secrets. See the [Security model](SECURITY.md) for details.
+
+
+## Backup, document export and restoration (1.4.0)
+
+Open **Administration → Maintenance → Backup & Restore** to create a complete ZIP of the database, private files and installation secrets. Encryption with a password is optional. If you do not encrypt the backup, store the ZIP like a password vault. Keep a copy away from the Pulse server.
+
+**Export text documents** downloads the signed-in account's current Markdown documents grouped by monitor in a separate ZIP. This is for reading/editing outside Pulse; it is **not a restorable backup**. Historical released document snapshots are not included.
+
+**Restore backup** overwrites current users, monitors, documents and activity with data from a matching-version full backup. Reenter your administrator password, type RESTORE, and upload the ZIP (and password, if encrypted). After a successful restore, log in with the credentials saved in that backup. Monitoring and sending remain paused until an administrator reviews deadlines, queued emails and recipients and selects **Resume monitoring**. If maintenance reports manual recovery is necessary, do not bypass the lock.
+
+**Administration → Maintenance → Updates** accepts a newer application ZIP and applies code and database migrations in one operation. Only install ZIPs obtained from a trusted source: this release cannot cryptographically authenticate their publisher. A recovery snapshot is taken first, but a failed database migration may still require manual recovery.

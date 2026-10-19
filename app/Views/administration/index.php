@@ -27,68 +27,91 @@ declare(strict_types=1);
 /** @var string|null $cronTokenChangedAt */
 /** @var array<int, array<string, mixed>> $failedCronCalls */
 /** @var string $cronStatus */
+/** @var bool $maintenancePaused */
+/** @var array<string,mixed>|null $updatePreflight */
+/** @var array<string,mixed>|null $restorePreflight */
+/** @var bool $maintenanceCanResume */
 /** @var string $base_url */
 
+/** @var string $section One of overview, configuration, backups, updates, system. */
 $tabs = [
 	'general' => 'administration.tabs.general',
 	'security' => 'administration.tabs.security',
 	'files' => 'administration.tabs.files',
 	'mail' => 'administration.tabs.mail',
 	'cron' => 'administration.tabs.cron',
-	'installation' => 'administration.tabs.installation',
 ];
 $issueTabs = [];
-
 foreach ($configurationIssues as $issue)
 {
 	$issueTabs[(string)$issue['tab']] = true;
 }
-
+$sections = [
+	'overview' => ['administration.section.overview', '/administration'],
+	'configuration' => ['administration.section.configuration', '/administration/configuration'],
+	'backups' => ['administration.section.maintenance', '/administration/maintenance/backups'],
+	'system' => ['administration.section.system', '/administration/system'],
+];
+$sectionHeading = $section === 'backups' || $section === 'updates' ? 'administration.section.maintenance' :
+	($section === 'system' ? 'administration.section.system' :
+	($section === 'configuration' ? 'administration.section.configuration' : 'administration.heading'));
 ob_start();
 ?>
-
 <div class="editor-heading">
-	<div>
-		<h1><?= e__('administration.heading') ?></h1>
-		<p class="form-hint"><?= e__('administration.intro') ?></p>
-	</div>
-	<span class="status-badge status-<?= $configurationIssues === [] ? 'verified' : 'due' ?>">
-		<?= e__($configurationIssues === [] ? 'administration.health.ready' : 'administration.health.attention', ['count' => count($configurationIssues)]) ?>
-	</span>
+	<div><h1><?= e__($sectionHeading) ?></h1><p class="form-hint"><?= e__('administration.intro') ?></p></div>
+	<?php if ($section === 'overview' || $section === 'configuration'): ?>
+		<span class="status-badge status-<?= $configurationIssues === [] ? 'verified' : 'due' ?>"><?= e__($configurationIssues === [] ? 'administration.health.ready' : 'administration.health.attention', ['count' => count($configurationIssues)]) ?></span>
+	<?php endif; ?>
 </div>
-
+<nav class="administration-section-nav" aria-label="<?= e__('administration.sections.label') ?>">
+	<?php foreach ($sections as $sectionKey => $item): ?>
+		<a href="<?= e($base_url . $item[1]) ?>" class="administration-section-link<?= ($section === $sectionKey || ($section === 'updates' && $sectionKey === 'backups')) ? ' is-active' : '' ?>"<?= ($section === $sectionKey) ? ' aria-current="page"' : '' ?>><?= e__($item[0]) ?></a>
+	<?php endforeach; ?>
+</nav>
+<?php if ($section === 'overview'): ?>
+<div class="administration-overview-grid">
+	<a class="administration-overview-card" href="<?= e($base_url) ?>/administration/configuration">
+		<strong><?= e__('administration.section.configuration') ?></strong><span><?= e__('administration.section.configuration_hint') ?></span>
+	</a>
+	<a class="administration-overview-card" href="<?= e($base_url) ?>/administration/maintenance/backups">
+		<strong><?= e__('administration.section.maintenance') ?></strong><span><?= e__('administration.section.maintenance_hint') ?></span>
+	</a>
+	<a class="administration-overview-card" href="<?= e($base_url) ?>/administration/system">
+		<strong><?= e__('administration.section.system') ?></strong><span><?= e__('administration.section.system_hint') ?></span>
+	</a>
+</div>
 <?php if ($configurationIssues !== []): ?>
-	<div class="administration-health-summary" role="status">
-		<strong><?= e__('administration.health.heading') ?></strong>
-		<ul>
-			<?php foreach ($configurationIssues as $issue): ?>
-				<li class="configuration-issue configuration-issue-<?= e((string)$issue['type']) ?>">
-					<a href="<?= e($base_url) ?>/administration?tab=<?= e((string)$issue['tab']) ?>"><?= e__((string)$issue['key']) ?></a>
-				</li>
-			<?php endforeach; ?>
-		</ul>
-	</div>
+<div class="administration-health-summary" role="status">
+	<strong><?= e__('administration.health.heading') ?></strong>
+	<ul><?php foreach ($configurationIssues as $issue): ?>
+		<li><a href="<?= e($base_url) ?>/administration/configuration?tab=<?= e((string)$issue['tab']) ?>"><?= e__((string)$issue['key']) ?></a></li>
+	<?php endforeach; ?></ul>
+</div>
 <?php endif; ?>
-
-<form id="administration-settings-form" method="post" action="<?= e($base_url) ?>/administration/update" class="form-carrier">
+<?php elseif ($section === 'configuration'): ?>
+<?php if ($configurationIssues !== []): ?>
+<div class="administration-health-summary" role="status">
+	<strong><?= e__('administration.health.heading') ?></strong>
+	<ul><?php foreach ($configurationIssues as $issue): ?>
+		<li class="configuration-issue configuration-issue-<?= e((string)$issue['type']) ?>"><a href="<?= e($base_url) ?>/administration/configuration?tab=<?= e((string)$issue['tab']) ?>"><?= e__((string)$issue['key']) ?></a></li>
+	<?php endforeach; ?></ul>
+</div>
+<?php endif; ?>
+<form id="administration-settings-form" data-administration-configuration method="post" action="<?= e($base_url) ?>/administration/update" class="form-carrier">
 	<?= csrf_field() ?>
 	<input type="hidden" name="active_tab" value="<?= e($activeTab) ?>" data-active-tab-input>
 </form>
-
 <div class="monitor-editor administration-editor" data-monitor-tabs data-active-tab="<?= e($activeTab) ?>">
-	<div class="monitor-tabs" role="tablist" aria-label="<?= e__('administration.tabs.label') ?>">
+	<div class="monitor-tabs monitor-primary-tabs" role="tablist" aria-label="<?= e__('administration.tabs.label') ?>">
 		<?php $tabNumber = 0; ?>
 		<?php foreach ($tabs as $tabName => $translationKey): ?>
 			<?php $tabNumber++; ?>
-			<a
-				href="<?= e($base_url) ?>/administration?tab=<?= e($tabName) ?>"
-				class="monitor-tab-link<?= $activeTab === $tabName ? ' is-active' : '' ?>"
-				role="tab"
-				data-tab-target="<?= e($tabName) ?>"
-				aria-controls="administration-tab-<?= e($tabName) ?>"
-				aria-selected="<?= $activeTab === $tabName ? 'true' : 'false' ?>"
-				tabindex="<?= $activeTab === $tabName ? '0' : '-1' ?>"
-			>
+			<a href="<?= e($base_url) ?>/administration/configuration?tab=<?= e($tabName) ?>"
+			   class="monitor-tab-link<?= $activeTab === $tabName ? ' is-active' : '' ?>"
+			   role="tab" data-tab-target="<?= e($tabName) ?>"
+			   aria-controls="administration-tab-<?= e($tabName) ?>"
+			   aria-selected="<?= $activeTab === $tabName ? 'true' : 'false' ?>"
+			   tabindex="<?= $activeTab === $tabName ? '0' : '-1' ?>">
 				<span class="tab-number"><?= $tabNumber ?></span>
 				<span class="tab-label"><?= e__($translationKey) ?></span>
 				<?php if (isset($issueTabs[$tabName])): ?>
@@ -97,7 +120,6 @@ ob_start();
 			</a>
 		<?php endforeach; ?>
 	</div>
-
 	<section id="administration-tab-general" class="monitor-tab-panel<?= $activeTab === 'general' ? ' is-active' : '' ?>" role="tabpanel" data-tab-panel="general"<?= $activeTab === 'general' ? '' : ' hidden' ?>>
 		<div class="section-heading">
 			<h2><?= e__('administration.general.heading') ?></h2>
@@ -426,8 +448,119 @@ ob_start();
 		</div>
 	</section>
 
-	<section id="administration-tab-installation" class="monitor-tab-panel<?= $activeTab === 'installation' ? ' is-active' : '' ?>" role="tabpanel" data-tab-panel="installation"<?= $activeTab === 'installation' ? '' : ' hidden' ?>>
+</div>
+<div class="editor-save-bar" data-settings-save-bar data-settings-tabs="general,security,files,mail,cron">
+	<span><?= e__('administration.save_hint') ?></span>
+	<div class="editor-save-actions"><button type="submit" form="administration-settings-form"><?= e__('administration.save') ?></button></div>
+</div>
+<?php elseif ($section === 'backups' || $section === 'updates'): ?>
+<nav class="administration-maintenance-tabs" aria-label="<?= e__('administration.section.maintenance') ?>">
+	<a href="<?= e($base_url) ?>/administration/maintenance/backups"<?= $section === 'backups' ? ' class="is-active" aria-current="page"' : '' ?>><?= e__('administration.tabs.backup') ?></a>
+	<a href="<?= e($base_url) ?>/administration/maintenance/updates"<?= $section === 'updates' ? ' class="is-active" aria-current="page"' : '' ?>><?= e__('administration.tabs.updates') ?></a>
+</nav>
+<?php if ($section === 'backups'): ?>
+	<section class="administration-page-panel">
+		<div class="section-heading"><h2><?= e__('administration.backup.heading') ?></h2><p><?= e__('administration.backup.intro') ?></p></div>
+		<div class="configuration-block">
+			<h3><?= e__('administration.backup.create') ?></h3>
+			<p><?= e__('administration.backup.create_hint') ?></p>
+			<form method="post" action="<?= e($base_url) ?>/administration/backup/create">
+				<?= csrf_field() ?>
+				<div class="checkbox-row"><label><input type="checkbox" name="encrypt_backup" value="1" checked data-backup-encrypt><?= e__('administration.backup.encrypt') ?></label></div>
+				<label><?= e__('administration.backup.password') ?><input type="password" name="backup_password" minlength="12" autocomplete="new-password" data-backup-password><small><?= e__('administration.backup.password_hint') ?></small></label>
+				<p class="form-hint"><?= e__('administration.backup.unencrypted_warning') ?></p>
+				<div class="editor-save-actions"><button type="submit"><?= e__('administration.backup.download') ?></button></div>
+			</form>
+		</div>
+		<div class="configuration-block">
+			<h3><?= e__('administration.backup.text_heading') ?></h3>
+			<p><?= e__('administration.backup.text_hint') ?></p>
+			<form method="post" action="<?= e($base_url) ?>/administration/text-documents/export">
+				<?= csrf_field() ?>
+				<button type="submit" class="button-link"><?= e__('administration.backup.text_download') ?></button>
+			</form>
+		</div>
+		<div class="configuration-block">
+			<h3><?= e__('administration.backup.restore_heading') ?></h3>
+			<p><?= e__('administration.backup.restore_hint') ?></p>
+			<div class="review-warning"><strong><?= e__('administration.backup.restore_warning') ?></strong></div>
+			<form method="post" action="<?= e($base_url) ?>/administration/backup/preflight" enctype="multipart/form-data">
+				<?= csrf_field() ?>
+				<label><?= e__('administration.backup.restore_file') ?><input type="file" name="backup_file" accept=".zip,application/zip" required></label>
+				<label><?= e__('administration.backup.password_optional') ?><input type="password" name="restore_password" autocomplete="off"></label>
+				<button type="submit"><?= e__('administration.preflight.button') ?></button>
+			</form>
+			<?php if ($restorePreflight !== null): ?>
+				<div class="configuration-block pulse-preflight-report">
+					<h3><?= e__('administration.preflight.passed') ?></h3>
+					<p><?= e__('administration.preflight.backup_from') ?>: <strong><?= e((string)$restorePreflight['created_at']) ?></strong></p>
+					<p><?= e__('administration.preflight.version') ?>: <?= e((string)$restorePreflight['pulse_version']) ?> · <?= (int)$restorePreflight['file_count'] ?> <?= e__('administration.preflight.files') ?></p>
+					<ul class="pulse-preflight-checks"><?php foreach ($restorePreflight['checks'] as $check): ?><li><?= e((string)$check) ?></li><?php endforeach; ?></ul>
+					<?php if ($restorePreflight['grant_warning'] ?? false): ?><p class="form-hint"><?= e__('administration.preflight.grant_warning') ?></p><?php endif; ?>
+					<p class="form-hint"><?= e__('administration.preflight.limits') ?></p>
+					<form method="post" action="<?= e($base_url) ?>/administration/backup/restore" data-confirm="<?= e__('administration.backup.final_question') ?>">
+						<?= csrf_field() ?>
+						<label><?= e__('administration.backup.password_optional') ?><input type="password" name="restore_password" autocomplete="off"></label>
+						<label><?= e__('administration.backup.admin_password') ?><input type="password" name="administrator_password" autocomplete="current-password" required></label>
+						<div class="checkbox-row"><label><input type="checkbox" name="confirm_restore" value="1" required><?= e__('administration.backup.acknowledge') ?></label></div>
+						<div class="editor-save-actions"><button type="submit" class="button-danger"><?= e__('administration.backup.restore_button') ?></button></div>
+					</form>
+				</div>
+			<?php endif; ?>
+		</div>
+		<?php if ($maintenancePaused): ?>
+			<div class="review-warning"><strong><?= e__('administration.backup.paused') ?></strong><p><?= e__('administration.backup.paused_hint') ?></p>
+				<?php if ($maintenanceCanResume): ?>
+				<form method="post" action="<?= e($base_url) ?>/administration/backup/resume">
+					<?= csrf_field() ?>
+					<input type="hidden" name="resume_confirmation" value="RESUME">
+					<button type="submit"><?= e__('administration.backup.resume') ?></button>
+				</form>
+				<?php else: ?><p><?= e__('administration.backup.manual_recovery') ?></p><?php endif; ?>
+			</div>
+		<?php endif; ?>
+	</section>
+
+<?php else: ?>
+	<section class="administration-page-panel">
+		<div class="section-heading"><h2><?= e__('administration.updates.heading') ?></h2><p><?= e__('administration.updates.intro') ?></p></div>
+		<div class="configuration-block">
+			<h3><?= e__('administration.updates.install') ?></h3>
+			<p><?= e__('administration.updates.install_hint') ?></p>
+			<form method="post" action="<?= e($base_url) ?>/administration/updates/preflight" enctype="multipart/form-data">
+				<?= csrf_field() ?>
+				<label><?= e__('administration.updates.file') ?><input type="file" name="update_file" accept=".zip,application/zip" required></label>
+				<div class="editor-save-actions"><button type="submit"><?= e__('administration.preflight.button') ?></button></div>
+			</form>
+			<?php if ($updatePreflight !== null): ?>
+				<div class="configuration-block pulse-preflight-report">
+					<h3><?= e__('administration.preflight.passed') ?></h3>
+					<p><?= e((string)$updatePreflight['installed_version']) ?> → <strong><?= e((string)$updatePreflight['new_version']) ?></strong> · <?= (int)$updatePreflight['file_count'] ?> <?= e__('administration.preflight.files') ?></p>
+					<ul class="pulse-preflight-checks"><?php foreach ($updatePreflight['checks'] as $check): ?><li><?= e((string)$check) ?></li><?php endforeach; ?></ul>
+					<p class="form-hint"><?= e__('administration.preflight.limits') ?></p>
+					<h3><?= e__('administration.updates.release_notes') ?></h3>
+					<div class="markdown-content"><?= $updatePreflight['notes'] !== '' ? markdown_html((string)$updatePreflight['notes']) : '<p>' . e__('administration.updates.no_release_notes') . '</p>' ?></div>
+					<form method="post" action="<?= e($base_url) ?>/administration/updates/install" data-confirm="<?= e__('administration.updates.final_question') ?>">
+						<?= csrf_field() ?>
+						<label><?= e__('administration.backup.admin_password') ?><input type="password" name="administrator_password" autocomplete="current-password" required></label>
+						<div class="editor-save-actions"><button type="submit"><?= e__('administration.updates.button') ?></button></div>
+					</form>
+				</div>
+			<?php endif; ?>
+		</div>
+	</section>
+
+<?php endif; ?>
+<?php elseif ($section === 'system'): ?>
+	<section class="administration-page-panel">
 		<div class="section-heading"><h2><?= e__('administration.installation.heading') ?></h2><p><?= e__('administration.installation.hint') ?></p></div>
+		<div class="configuration-block">
+			<h3><?= e__('administration.section.system') ?></h3>
+			<dl class="administration-definition-list">
+				<div><dt><?= e__('administration.preflight.version') ?></dt><dd><?= e($appVersion) ?></dd></div>
+				<div><dt>PHP</dt><dd><?= e(PHP_VERSION) ?></dd></div>
+			</dl>
+		</div>
 		<div class="configuration-block">
 			<h3><?= e__('administration.installation.env_heading') ?></h3>
 			<dl class="administration-definition-list">
@@ -456,14 +589,7 @@ ob_start();
 				<div><dt><?= e__('administration.installation.database_password') ?></dt><dd><?= e__((string)($databaseConfig['password'] ?? '') !== '' ? 'administration.secret.configured' : 'administration.secret.not_configured') ?></dd></div>
 			</dl>
 		</div>
-	</section>
-</div>
-
-<div class="editor-save-bar" data-settings-save-bar data-settings-tabs="general,security,files,mail,cron"<?= $activeTab === 'installation' ? ' hidden' : '' ?>>
-	<span><?= e__('administration.save_hint') ?></span>
-	<div class="editor-save-actions"><button type="submit" form="administration-settings-form"><?= e__('administration.save') ?></button></div>
-</div>
-
+	</section><?php endif; ?>
 <?php
 $content = ob_get_clean();
 $title = __('administration.title');

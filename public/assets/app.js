@@ -7,6 +7,19 @@
 
 document.addEventListener('DOMContentLoaded', function ()
 {
+	const backupEncrypt = document.querySelector('[data-backup-encrypt]');
+	const backupPassword = document.querySelector('[data-backup-password]');
+	if (backupEncrypt && backupPassword)
+	{
+		const syncBackupEncryption = function ()
+		{
+			backupPassword.disabled = !backupEncrypt.checked;
+			backupPassword.required = backupEncrypt.checked;
+		};
+		backupEncrypt.addEventListener('change', syncBackupEncryption);
+		syncBackupEncryption();
+	}
+
 	for (const localeSelect of document.querySelectorAll('[data-language-autosubmit]'))
 	{
 		localeSelect.addEventListener('change', function ()
@@ -237,6 +250,33 @@ document.addEventListener('DOMContentLoaded', function ()
 			cronTokenField.type = 'text';
 			cronTokenField.focus();
 			cronTokenField.select();
+		});
+	}
+
+	// Warn on actual unsaved configuration changes when navigating to another page.
+	// Tab changes are purely visual and must not count as changed settings.
+	const administrationForm = document.querySelector('[data-administration-configuration]');
+	if (administrationForm)
+	{
+		const snapshot = function ()
+		{
+			const fields = new FormData(administrationForm);
+			fields.delete('active_tab');
+			return Array.from(fields.entries()).map(([key, value]) => [key, String(value)]);
+		};
+		const baseline = JSON.stringify(snapshot());
+		let submitting = false;
+		administrationForm.addEventListener('submit', function ()
+		{
+			submitting = true;
+		});
+		window.addEventListener('beforeunload', function (event)
+		{
+			if (!submitting && JSON.stringify(snapshot()) !== baseline)
+			{
+				event.preventDefault();
+				event.returnValue = '';
+			}
 		});
 	}
 
@@ -671,6 +711,19 @@ document.addEventListener('DOMContentLoaded', function ()
 /** @brief Positions and dismisses compact monitor row action menus. */
 document.addEventListener('DOMContentLoaded', function ()
 {
+	const backupEncrypt = document.querySelector('[data-backup-encrypt]');
+	const backupPassword = document.querySelector('[data-backup-password]');
+	if (backupEncrypt && backupPassword)
+	{
+		const syncBackupEncryption = function ()
+		{
+			backupPassword.disabled = !backupEncrypt.checked;
+			backupPassword.required = backupEncrypt.checked;
+		};
+		backupEncrypt.addEventListener('change', syncBackupEncryption);
+		syncBackupEncryption();
+	}
+
 	const menus = Array.from(document.querySelectorAll('[data-row-action-menu]'));
 
 	/** @brief Closes every row menu except an optional retained menu. */
@@ -1052,6 +1105,19 @@ document.addEventListener('DOMContentLoaded', function ()
 /** @brief Progressive enhancement for optional, one-shot check-in geolocation. */
 document.addEventListener('DOMContentLoaded', function ()
 {
+	const backupEncrypt = document.querySelector('[data-backup-encrypt]');
+	const backupPassword = document.querySelector('[data-backup-password]');
+	if (backupEncrypt && backupPassword)
+	{
+		const syncBackupEncryption = function ()
+		{
+			backupPassword.disabled = !backupEncrypt.checked;
+			backupPassword.required = backupEncrypt.checked;
+		};
+		backupEncrypt.addEventListener('change', syncBackupEncryption);
+		syncBackupEncryption();
+	}
+
 	/** @brief Shows a non-blocking location collection or permission status. */
 	const setLocationStatus = function (container, message, isError, selector)
 	{
@@ -1312,6 +1378,19 @@ document.addEventListener('DOMContentLoaded', function ()
 /** @brief Closes an auxiliary preview or map tab without opening a duplicate parent page. */
 document.addEventListener('DOMContentLoaded', function ()
 {
+	const backupEncrypt = document.querySelector('[data-backup-encrypt]');
+	const backupPassword = document.querySelector('[data-backup-password]');
+	if (backupEncrypt && backupPassword)
+	{
+		const syncBackupEncryption = function ()
+		{
+			backupPassword.disabled = !backupEncrypt.checked;
+			backupPassword.required = backupEncrypt.checked;
+		};
+		backupEncrypt.addEventListener('change', syncBackupEncryption);
+		syncBackupEncryption();
+	}
+
 	const closeButton = document.querySelector('[data-window-close]');
 
 	if (!closeButton)
@@ -1328,6 +1407,19 @@ document.addEventListener('DOMContentLoaded', function ()
 /** @brief Expands private document previews in place and loads framed content only on demand. */
 document.addEventListener('DOMContentLoaded', function ()
 {
+	const backupEncrypt = document.querySelector('[data-backup-encrypt]');
+	const backupPassword = document.querySelector('[data-backup-password]');
+	if (backupEncrypt && backupPassword)
+	{
+		const syncBackupEncryption = function ()
+		{
+			backupPassword.disabled = !backupEncrypt.checked;
+			backupPassword.required = backupEncrypt.checked;
+		};
+		backupEncrypt.addEventListener('change', syncBackupEncryption);
+		syncBackupEncryption();
+	}
+
 	for (const toggle of document.querySelectorAll('[data-document-preview-toggle]'))
 	{
 		const card = toggle.closest('[data-document-card]');
@@ -1383,6 +1475,19 @@ document.addEventListener('DOMContentLoaded', function ()
 /** @brief Reveals and renders an on-demand OpenStreetMap tile view with local Pulse overlays. */
 document.addEventListener('DOMContentLoaded', function ()
 {
+	const backupEncrypt = document.querySelector('[data-backup-encrypt]');
+	const backupPassword = document.querySelector('[data-backup-password]');
+	if (backupEncrypt && backupPassword)
+	{
+		const syncBackupEncryption = function ()
+		{
+			backupPassword.disabled = !backupEncrypt.checked;
+			backupPassword.required = backupEncrypt.checked;
+		};
+		backupEncrypt.addEventListener('change', syncBackupEncryption);
+		syncBackupEncryption();
+	}
+
 	const map = document.querySelector('[data-interactive-location-map]');
 	const mapPanel = document.querySelector('[data-map-panel]');
 	const mapToggle = document.querySelector('[data-map-toggle]');
@@ -1928,6 +2033,19 @@ document.addEventListener('DOMContentLoaded', function ()
 /** @brief Renders TOTP enrollment QR codes and supports one-time recovery-code copying locally. */
 document.addEventListener('DOMContentLoaded', function ()
 {
+	const backupEncrypt = document.querySelector('[data-backup-encrypt]');
+	const backupPassword = document.querySelector('[data-backup-password]');
+	if (backupEncrypt && backupPassword)
+	{
+		const syncBackupEncryption = function ()
+		{
+			backupPassword.disabled = !backupEncrypt.checked;
+			backupPassword.required = backupEncrypt.checked;
+		};
+		backupEncrypt.addEventListener('change', syncBackupEncryption);
+		syncBackupEncryption();
+	}
+
 	for (const canvas of document.querySelectorAll('[data-totp-qr-code]'))
 	{
 		const value = canvas.dataset.totpUri || '';
@@ -2015,6 +2133,19 @@ document.addEventListener('DOMContentLoaded', function ()
 /** @brief Progressive enhancement for WebAuthn passkey registration, login, and quick check-in. */
 document.addEventListener('DOMContentLoaded', function ()
 {
+	const backupEncrypt = document.querySelector('[data-backup-encrypt]');
+	const backupPassword = document.querySelector('[data-backup-password]');
+	if (backupEncrypt && backupPassword)
+	{
+		const syncBackupEncryption = function ()
+		{
+			backupPassword.disabled = !backupEncrypt.checked;
+			backupPassword.required = backupEncrypt.checked;
+		};
+		backupEncrypt.addEventListener('change', syncBackupEncryption);
+		syncBackupEncryption();
+	}
+
 	/** @brief Decodes a base64url string into a browser BufferSource. */
 	const base64UrlToBytes = function (value)
 	{

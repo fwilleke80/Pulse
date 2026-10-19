@@ -280,3 +280,12 @@ Before relying on a production Pulse installation:
 - tell safety contacts what their role means;
 - rehearse consequential monitors with non-sensitive messages before relying on them;
 - periodically recheck that cron, SMTP, addresses, messages, and documents are still current.
+
+
+## Archive security and maintenance operations (1.4.0)
+
+Full backups contain user hashes, authentication metadata, TOTP encryption keys, monitor data and sensitive files. Password encryption is optional, not mandatory. With encryption enabled, the archive's inner ZIP is encrypted in bounded chunks with AES-256-GCM, a fresh salt/nonce sequence and a PBKDF2-SHA256-derived key; passwords are not persisted. The outer ZIP's encryption descriptor is nonsecret. Lost backup passwords cannot be recovered. Unencrypted backups must be protected as highly sensitive secrets.
+
+The updater accepts an administrator-uploaded ZIP containing executable PHP. This version has **no publisher-signature verification**. An administrator must reconfirm their password and explicitly acknowledge the origin-trust risk. The package is validated for safe paths, code layout, strictly increasing version, and immutable existing migration hashes. ZIP checksums alone do not guarantee developer authenticity. Hosting writable PHP under the administrative web-server account increases the effect of any administrator compromise.
+
+Restore and update require a maintenance lock coordinated with web, cron and CLI jobs. Restore invalidates existing authenticated sessions and requires deliberate post-restore resume. MySQL DDL is nontransactional; a pre-change recovery snapshot is retained and an interrupted operation may need manual recovery. The system must never automatically resume from an incomplete restore/update lock.

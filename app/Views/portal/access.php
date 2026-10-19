@@ -125,7 +125,7 @@ ob_start();
 				<article class="portal-document-card" data-document-card data-preview-kind="<?= e($previewKind) ?>">
 					<?php if ((string)($document['storage_type'] ?? '') === 'text'): ?>
 						<div class="portal-document-preview portal-document-preview-text markdown-content" aria-label="<?= e__('portal.documents.preview_named', ['name' => (string)$document['title']]) ?>">
-							<div><?= markdown_html((string)($document['text_content'] ?? '')) ?></div>
+							<div><?= e(\Pulse\Services\DocumentExcerptService::FromMarkdown((string)($document['text_content'] ?? ''))) ?></div>
 						</div>
 					<?php elseif ($previewKind === 'image' && !empty($document['view_available'])): ?>
 						<div id="<?= e($previewId) ?>" class="portal-document-preview portal-document-preview-image">

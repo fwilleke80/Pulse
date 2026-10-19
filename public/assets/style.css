@@ -5721,3 +5721,82 @@ button.portal-map-details-close
 		grid-column: 2;
 	}
 }
+
+/* Pulse 1.4.1: Administration uses the same wrapping grid as the Monitor Editor. */
+.administration-editor .monitor-primary-tabs
+{
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.pulse-preflight-report
+{
+	margin-top: 1.25rem;
+}
+
+.pulse-preflight-checks
+{
+	margin: 0.75rem 0 1.25rem;
+}
+
+.pulse-preflight-checks li
+{
+	margin-block: 0.4rem;
+}
+
+@media (max-width: 1000px)
+{
+	.administration-editor .monitor-primary-tabs
+	{
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+
+@media (max-width: 680px)
+{
+	.administration-editor .monitor-primary-tabs
+	{
+		grid-template-columns: 1fr;
+	}
+}
+
+/* Administration 1.4.2: task-oriented navigation independent of configuration form. */
+.administration-section-nav, .administration-maintenance-tabs {
+	display: flex;
+	flex-wrap: wrap;
+	gap: .55rem;
+	margin-block: 1rem 1.35rem;
+}
+.administration-section-link, .administration-maintenance-tabs a {
+	display: inline-flex;
+	align-items: center;
+	padding: .65rem .9rem;
+	border: 1px solid var(--border);
+	border-radius: .5rem;
+	text-decoration: none;
+	color: inherit;
+}
+.administration-section-link.is-active, .administration-maintenance-tabs a.is-active {
+	background: var(--surface-subtle);
+	font-weight: 700;
+	border-color: currentColor;
+}
+.administration-overview-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+	gap: 1rem;
+	margin-block: 1rem;
+}
+.administration-overview-card {
+	display: flex;
+	flex-direction: column;
+	gap: .6rem;
+	padding: 1.3rem;
+	border-radius: .6rem;
+	border: 1px solid var(--border);
+	color: inherit;
+	text-decoration: none;
+}
+.administration-overview-card:hover, .administration-section-link:hover, .administration-maintenance-tabs a:hover {
+	border-color: currentColor;
+}
+.administration-overview-card span { font-size: .9rem; opacity: .8; }

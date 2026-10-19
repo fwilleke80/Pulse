@@ -170,7 +170,7 @@ The account receives the `administrator` role.
 
 ### Mail
 
-SMTP configuration is optional during installation. You can configure it now or skip it and finish under **Administration → Mail** after logging in.
+SMTP configuration is optional during installation. You can configure it now or skip it and finish under **Administration → Configuration → Mail** after logging in.
 
 Even when SMTP is configured during installation, send a test from Administration before relying on Pulse.
 
@@ -190,7 +190,7 @@ If deletion fails, remove `public/install.php` manually. Pulse deliberately refu
 
 ## 6. Configure and test mail
 
-Log in as the administrator and open **Administration → Mail**.
+Log in as the administrator and open **Administration → Configuration → Mail**.
 
 Configure or review:
 
@@ -226,7 +226,7 @@ Administration intentionally marks cron **Stale** only after more than 24 hours 
 
 ### Option A: web cron
 
-The installer generates a secret token and shows the web-cron URL. You can later regenerate the token under **Administration → Cron**.
+The installer generates a secret token and shows the web-cron URL. You can later regenerate the token under **Administration → Configuration → Cron**.
 
 The URL has this form:
 
@@ -254,7 +254,7 @@ Use either web cron or command-line cron; normally there is no reason to configu
 
 ### Verify cron
 
-After a complete scheduler and queue run finishes successfully, **Administration → Cron** displays **Last successful cron run**.
+After a complete scheduler and queue run finishes successfully, **Administration → Configuration → Cron** displays **Last successful cron run**.
 
 A fresh installation shows **Never** until the first successful run. More than 24 hours without one is marked **Stale**. Pulse also records when the web-cron token is changed through Administration. For diagnostics, the Cron tab shows the latest unsuccessful web-cron calls with their failure reason. If token authentication failed, the token supplied by the caller is shown. Only the latest 50 failed calls are retained, and the newest 20 are displayed.
 
@@ -264,7 +264,7 @@ Before creating a real consequential monitor:
 
 1. Sign in with the administrator account.
 2. Open **Administration** and resolve configuration warnings.
-3. Send a successful test from **Administration → Mail**.
+3. Send a successful test from **Administration → Configuration → Mail**.
 4. Run cron and verify that **Last successful cron run** updates.
 5. Open `/health` and, while signed in, `/health/readiness`.
 6. Add non-sensitive test contacts.
@@ -301,8 +301,23 @@ Do not remove the existing `.env`, enter the fresh-install workflow, or import `
 Finally:
 
 - log in
-- send a test from **Administration → Mail**
+- send a test from **Administration → Configuration → Mail**
 - verify **Last successful cron run**
 - check the changelog for release-specific notes
 
 `database/schema.sql` is reference documentation and must not be imported over a running installation.
+
+
+## Administrative ZIP updates (since 1.4.0)
+
+Once at least 1.4.0 is installed, open Administration → Maintenance → Updates, choose a newer Pulse update ZIP and run preflight. In 1.4.1 and later, review the package inventory, integrity checks, and release notes, then enter the current administrator password and confirm installation. The installer stages files, creates an unencrypted emergency recovery archive in private `storage/rollbacks/`, replaces application code (excluding `.env`, `storage/`, and the installation endpoint), and applies new numbered SQL migrations. Back up your installation independently before using it. The first upgrade from 1.3.9 to 1.4.0 still uses the earlier FTP procedure.
+
+**Source authentication:** This release does not ship a trusted publisher-signature validation key. ZIP integrity and a version file cannot prove authorship. Never install untrusted ZIPs. On failure, a manually restored database from the pre-update archive may be required; do not remove the maintenance lock until the installation is recovered.
+
+## Backup & Restore (since 1.4.0)
+
+Administration → Maintenance → Backup & Restore allows complete manual backup downloads, optional password encryption, owner-scoped Markdown exports, and destructive restoration of a **matching-version** full backup. Retain your backup ZIP and encryption password off-server. Encrypted ZIPs contain a password-encrypted inner ZIP payload (`payload.enc`), not an ordinary individually encrypted ZIP file; decrypt/restore through Pulse.
+
+Restoring replaces users and all Pulse database records, restores private uploads, and restores application secrets while retaining the destination database connection and server host settings. An emergency backup remains in `storage/rollbacks/`. Old sessions are invalidated. Sign in with the restored administrator credentials, review overdue schedules and pending mail, then use **Resume monitoring**. The web cron and `tools/pulse.php` job runner respect the maintenance lock; scheduled emails will not resume before explicit approval.
+
+PHP must have the Phar extension enabled and `storage/` must be writable. Web uploads remain subject to `upload_max_filesize`, `post_max_size`, and web-server request limits. For very large databases, broken installations or backup archives of a different Pulse version, a carefully planned CLI/server-side restoration may still be required. Test the full backup/restore cycle on a separate instance before relying on it.

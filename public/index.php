@@ -8,6 +8,37 @@
 
 declare(strict_types=1);
 
+$maintenanceFlag = dirname(__DIR__) . '/storage/maintenance.lock';
+if (is_file($maintenanceFlag))
+{
+	$path = parse_url((string)($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH);
+	$method = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET'));
+	$state = json_decode((string)file_get_contents($maintenanceFlag), true);
+	$reviewReady = is_array($state) && ($state['reason'] ?? '') === 'restore'
+		&& ($state['status'] ?? '') === 'awaiting_review';
+	$permitted = ['/login', '/login/totp', '/login/passkey/options', '/login/passkey/verify',
+		'/logout', '/administration', '/administration/maintenance/backups', '/administration/system', '/administration/backup/resume', '/administration/backup/restore',
+		'/language/set'];
+	if ($reviewReady && $method === 'GET')
+	{
+		$permitted = array_merge($permitted, ['/', '/activity', '/monitors', '/monitors/edit',
+			'/monitors/documents/edit', '/monitors/documents/preview', '/contacts', '/contacts/edit', '/profile']);
+	}
+	if ($reviewReady && $method === 'POST')
+	{
+		$permitted[] = '/monitors/check-in';
+	}
+	if (!is_string($path) || !in_array($path, $permitted, true))
+	{
+		http_response_code(503);
+		header('Cache-Control: no-store');
+		header('Retry-After: 3600');
+		header('Content-Type: text/plain; charset=utf-8');
+		echo "Pulse is in maintenance mode.\n";
+		exit;
+	}
+}
+
 $installerPath = __DIR__ . '/install.php';
 
 if (is_file($installerPath))
@@ -22,6 +53,23 @@ if (is_file($installerPath))
 	exit;
 }
 
+// Ordinary requests hold a shared gate; backup restores and ZIP updates acquire exclusive access.
+$operationPath = parse_url((string)($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH);
+$maintenanceMutation = (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST')
+	&& in_array($operationPath, ['/administration/backup/restore', '/administration/updates/install'], true);
+if (!$maintenanceMutation)
+{
+	$__pulseOperationGate = @fopen(dirname(__DIR__) . '/storage/maintenance.operation', 'c');
+	if ($__pulseOperationGate === false || !flock($__pulseOperationGate, LOCK_SH | LOCK_NB))
+	{
+		http_response_code(503);
+		header('Cache-Control: no-store');
+		header('Retry-After: 10');
+		echo "Pulse maintenance is in progress.\n";
+		exit;
+	}
+}
+
 use Pulse\Controllers\AdministrationController;
 use Pulse\Controllers\AuthController;
 use Pulse\Controllers\ContactController;
@@ -29,6 +77,7 @@ use Pulse\Controllers\DocumentController;
 use Pulse\Controllers\HomeController;
 use Pulse\Controllers\LanguageController;
 use Pulse\Controllers\MarkdownController;
+use Pulse\Controllers\MaintenanceController;
 use Pulse\Controllers\MonitorController;
 use Pulse\Controllers\ProfileController;
 use Pulse\Controllers\RecipientController;
@@ -283,7 +332,32 @@ $router->Get('/profile', [$profileController, 'Index']);
 $router->Post('/profile/update', [$profileController, 'Update']);
 $router->Post('/profile/password', [$profileController, 'ChangePassword']);
 
+$maintenanceController = new MaintenanceController(
+	$view, $session, $auth, $logger, $request,
+	new \Pulse\Services\BackupService($db->GetConnection(), dirname(__DIR__)),
+	new \Pulse\Services\TextDocumentExportService($db->GetConnection()),
+	new \Pulse\Services\BackupRestoreService(
+		new \Pulse\Services\BackupService($db->GetConnection(), dirname(__DIR__)),
+		$db->GetConnection(), dirname(__DIR__), $environmentFile, $session
+	),
+	new \Pulse\Services\UpdateInstallerService(
+		new \Pulse\Services\BackupService($db->GetConnection(), dirname(__DIR__)), $db, dirname(__DIR__)
+	),
+	$appVersion
+);
+
 $router->Get('/administration', [$administrationController, 'Index']);
+$router->Get('/administration/configuration', [$administrationController, 'Configuration']);
+$router->Get('/administration/maintenance/backups', [$administrationController, 'Backups']);
+$router->Get('/administration/maintenance/updates', [$administrationController, 'Updates']);
+$router->Get('/administration/system', [$administrationController, 'SystemInformation']);
+$router->Post('/administration/text-documents/export', [$maintenanceController, 'ExportTextDocuments']);
+$router->Post('/administration/backup/create', [$maintenanceController, 'CreateBackup']);
+$router->Post('/administration/backup/preflight', [$maintenanceController, 'PreflightRestore']);
+$router->Post('/administration/backup/restore', [$maintenanceController, 'RestoreBackup']);
+$router->Post('/administration/backup/resume', [$maintenanceController, 'ResumeAfterRestore']);
+$router->Post('/administration/updates/preflight', [$maintenanceController, 'PreflightUpdate']);
+$router->Post('/administration/updates/install', [$maintenanceController, 'InstallUpdate']);
 $router->Post('/administration/update', [$administrationController, 'Update']);
 $router->Post('/administration/mail/test', [$administrationController, 'SendTestNotification']);
 $router->Post('/administration/mail/retry', [$administrationController, 'RetryFailedNotifications']);

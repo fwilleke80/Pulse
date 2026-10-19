@@ -30,7 +30,7 @@ use RuntimeException;
  */
 final class AdministrationController extends BaseController
 {
-	private const TABS = ['general', 'security', 'files', 'mail', 'cron', 'installation'];
+	private const TABS = ['general', 'security', 'files', 'mail', 'cron'];
 
 	private EnvironmentFile $_environmentFile;
 	private MailQueueRepository $_mailQueueRepository;
@@ -94,6 +94,36 @@ final class AdministrationController extends BaseController
 	 */
 	public function Index(): string
 	{
+		return $this->RenderSection('overview');
+	}
+
+	/** @brief Displays editable configuration only. */
+	public function Configuration(): string
+	{
+		return $this->RenderSection('configuration');
+	}
+
+	/** @brief Displays backup, restore, and owner-scoped exports. */
+	public function Backups(): string
+	{
+		return $this->RenderSection('backups');
+	}
+
+	/** @brief Displays the in-app update page. */
+	public function Updates(): string
+	{
+		return $this->RenderSection('updates');
+	}
+
+	/** @brief Displays read-only installation/system information. */
+	public function SystemInformation(): string
+	{
+		return $this->RenderSection('system');
+	}
+
+	/** @brief Render one independently routed Administration section. */
+	private function RenderSection(string $section): string
+	{
 		$user = $this->RequireAdministrator();
 		$activeTab = $this->NormalizeTab($this->_request->QueryString('tab', 32));
 		$settings = $this->CurrentSettings();
@@ -114,6 +144,7 @@ final class AdministrationController extends BaseController
 		return $this->_view->Render('administration.index', [
 			'user' => $user,
 			'activeTab' => $activeTab,
+			'section' => $section,
 			'settings' => $settings,
 			'availableLocales' => $this->_availableLocales,
 			'availableTimezones' => $availableTimezones,
@@ -131,7 +162,34 @@ final class AdministrationController extends BaseController
 			'cronTokenChangedAt' => $cronTokenChangedAt,
 			'failedCronCalls' => $failedCronCalls,
 			'cronStatus' => $cronStatus,
+			'maintenancePaused' => is_file(dirname(__DIR__, 2) . '/storage/maintenance.lock'),
+			'maintenanceCanResume' => $this->MayResumeMaintenance(),
+			'updatePreflight' => $this->PreviewMaintenancePreflight('update', (int)$user['id']),
+			'restorePreflight' => $this->PreviewMaintenancePreflight('restore', (int)$user['id']),
 		]);
+	}
+
+	/** @brief Read only recent owner-bound, intact staged preflight results. */
+	private function PreviewMaintenancePreflight(string $kind, int $userId): ?array
+	{
+		$state = $this->_session->Get('pulse_' . $kind . '_preflight');
+		if (!is_array($state) || (int)($state['user_id'] ?? -1) !== $userId
+			|| (int)($state['expires_at'] ?? 0) <= time()
+			|| !is_string($state['path'] ?? null) || !is_file($state['path'])
+			|| !hash_equals((string)($state['sha256'] ?? ''), hash_file('sha256', $state['path'])))
+		{
+			return null;
+		}
+		return is_array($state['report'] ?? null) ? $state['report'] : null;
+	}
+
+	/** @brief Returns whether a completed restore is waiting for authenticated administrator approval. */
+	private function MayResumeMaintenance(): bool
+	{
+		$path = dirname(__DIR__, 2) . '/storage/maintenance.lock';
+		$state = is_file($path) ? json_decode((string)file_get_contents($path), true) : null;
+		return is_array($state) && ($state['reason'] ?? '') === 'restore'
+			&& ($state['status'] ?? '') === 'awaiting_review';
 	}
 
 	/**
@@ -213,7 +271,7 @@ final class AdministrationController extends BaseController
 				'error' => $exception->getMessage(),
 			]);
 			$this->Flash('error', __('administration.settings.invalid', ['message' => $exception->getMessage()]));
-			$this->Redirect('/administration?tab=' . rawurlencode($activeTab));
+			$this->Redirect('/administration/configuration?tab=' . rawurlencode($activeTab));
 		}
 
 		if ($cronTokenChanged)
@@ -241,7 +299,7 @@ final class AdministrationController extends BaseController
 			'cron_token_changed' => $cronTokenChanged,
 		]);
 		$this->Flash('success', __('administration.settings.saved'));
-		$this->Redirect('/administration?tab=' . rawurlencode($activeTab));
+		$this->Redirect('/administration/configuration?tab=' . rawurlencode($activeTab));
 	}
 
 	/** @brief Sends a test notification to the current administrator. */
@@ -259,7 +317,7 @@ final class AdministrationController extends BaseController
 		};
 		$type = $status === 'sent' ? 'success' : ($status === 'disabled' || $status === 'failed' ? 'error' : 'warning');
 		$this->Flash($type, __($key));
-		$this->Redirect('/administration?tab=mail#mail-operations');
+		$this->Redirect('/administration/configuration?tab=mail#mail-operations');
 	}
 
 	/** @brief Requeues failed installation-wide mail jobs for another cron attempt. */
@@ -271,7 +329,7 @@ final class AdministrationController extends BaseController
 			$count > 0 ? 'success' : 'warning',
 			__($count > 0 ? 'profile.notifications.retry.success' : 'profile.notifications.retry.none', ['count' => $count])
 		);
-		$this->Redirect('/administration?tab=mail#mail-queue');
+		$this->Redirect('/administration/configuration?tab=mail#mail-queue');
 	}
 
 	/** @brief Clears safe unsent installation-wide mail jobs while debug mode is enabled. */
@@ -294,7 +352,7 @@ final class AdministrationController extends BaseController
 			$count > 0 ? 'success' : 'warning',
 			__($count > 0 ? 'profile.notifications.clear.success' : 'profile.notifications.clear.none', ['count' => $count])
 		);
-		$this->Redirect('/administration?tab=mail#mail-queue');
+		$this->Redirect('/administration/configuration?tab=mail#mail-queue');
 	}
 
 	/**

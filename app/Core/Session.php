@@ -16,6 +16,7 @@ namespace Pulse\Core;
 class Session
 {
 	private const USER_ID_KEY = 'pulse_user_id';
+	private const AUTH_EPOCH_KEY = 'pulse_auth_epoch';
 	private const CREATED_AT_KEY = 'pulse_session_created_at';
 	private const LAST_ACTIVITY_KEY = 'pulse_session_last_activity_at';
 	private const LAST_REGENERATION_KEY = 'pulse_session_last_regeneration_at';
@@ -73,6 +74,7 @@ class Session
 	{
 		$this->Start();
 		$_SESSION[self::USER_ID_KEY] = $userId;
+		$_SESSION[self::AUTH_EPOCH_KEY] = $this->CurrentAuthEpoch();
 	}
 
 	/**
@@ -83,12 +85,34 @@ class Session
 	{
 		$this->Start();
 
-		if (!isset($_SESSION[self::USER_ID_KEY]))
+		if (!isset($_SESSION[self::USER_ID_KEY]) || !hash_equals($this->CurrentAuthEpoch(), (string)($_SESSION[self::AUTH_EPOCH_KEY] ?? '')))
 		{
 			return null;
 		}
 
 		return (int)$_SESSION[self::USER_ID_KEY];
+	}
+
+	/** @brief Rotates a server-side token so no previously authenticated PHP session is trusted. */
+	public function InvalidateAllAuthenticatedSessions(): void
+	{
+		$path = dirname(__DIR__, 2) . '/storage/session_epoch';
+		$next = bin2hex(random_bytes(32));
+		$temp = $path . '.tmp-' . bin2hex(random_bytes(8));
+		if (file_put_contents($temp, $next, LOCK_EX) === false || !rename($temp, $path))
+		{
+			throw new \RuntimeException('Could not rotate authentication epoch.');
+		}
+		@chmod($path, 0600);
+		$this->Logout();
+	}
+
+	/** @brief Reads the installation-local authentication epoch. */
+	private function CurrentAuthEpoch(): string
+	{
+		$path = dirname(__DIR__, 2) . '/storage/session_epoch';
+		$value = is_file($path) ? file_get_contents($path) : '';
+		return is_string($value) ? trim($value) : '';
 	}
 
 	/**

@@ -128,7 +128,9 @@ $csrf = new CsrfTokenManager($session);
 
 $database = new Database($dbConfig);
 $migrationRunner = new MigrationRunner($database, __DIR__ . '/database/migrations');
-$appliedMigrations = $migrationRunner->Migrate();
+// Never perform automatic migrations while a restore/update is paused or incomplete.
+// The updater explicitly invokes MigrationRunner after staging replacement files.
+$appliedMigrations = is_file(__DIR__ . '/storage/maintenance.lock') ? [] : $migrationRunner->Migrate();
 
 if ($appliedMigrations !== [])
 {

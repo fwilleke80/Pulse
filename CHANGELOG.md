@@ -1,3 +1,43 @@
+## 1.4.2 - 2026-10-19
+
+### Administration pages
+- Reorganize Administration into an Overview, independent Configuration (General, Security, Files, Mail, Cron), Maintenance (Backup & Restore, Updates), and read-only System Information pages. Save settings now appears only on Configuration; maintenance operations keep their own forms.
+- Add dedicated URLs for each area and update internal links and four-language navigation. Do not add redirects for obsolete `/administration?tab=` bookmarks. Reserve user management for the future multi-user release.
+- Allow Backup & Restore and System Information access during post-restore review. No database migration required.
+
+### Root-level update manifest
+- Add canonical ZIP-root `manifest.json` with complete SHA-256 inventory. Include a transitional `docs/update-manifest.json` that also hashes the root manifest so Pulse 1.4.1 can verify and install this update.
+- The 1.4.2 inspector prefers the root manifest, verifies the compatibility manifest when supplied, and also supports 1.4.1-era legacy-only packages.
+- Update the deterministic Python package builder (`tools/build_update_package.py`) to produce root-only manifests by default, or both manifests using `--include-legacy-manifest` for this transition release. No database migration required.
+
+## 1.4.1 - 2026-10-19
+
+### Installer preflight and release notes
+- Add manifest-inventory checks with full SHA-256 file digests, migration hashes, version compatibility, writable destination preflight, PHP requirements, and initial staging-space checks. Preflight displays changelog sections newer than the currently installed release.
+- Distribute `tools/build_update_package.py` and `docs/UPDATE_PACKAGES.md` in the complete source; the manifest is in `docs/update-manifest.json` to remain installable by the 1.4.0 updater.
+- Stage archives privately for a separate review step and revalidate when installation starts. Retain admin password reauthentication; remove typed INSTALL confirmation, trust checkbox and prominent unsigned-package warning.
+
+### Restore preflight and Administration tabs
+- Validate a backup's checksum manifest, SQL import format, TOTP secret, installed version, storage permissions and initial disk space before offering the restore action. Keep password reauthentication, replace typed RESTORE with an explicit replacement-acknowledgement checkbox and final Yes/No confirmation.
+- Make Administration tabs wrap to additional rows like Monitor Editor tabs. No database migration is required.
+
+## 1.4.0 - 2026-10-19
+
+### Backup & Restore (new Administration tab)
+- Export complete, checksum-manifested database SQL plus uploaded private files and installation environment secrets into one ZIP. Optionally encrypt the actual recovery payload using password-derived AES-256-GCM authenticated chunks; unencrypted backup remains an explicit option with privacy warning.
+- Restore a verified same-version backup after administrator password reauthentication and explicit destructive-operation confirmation. Stage files, create an emergency rollback archive, restore database/settings/uploads, rotate the global authentication epoch, and leave monitoring and mail paused until a restored administrator deliberately resumes.
+- Reject unexpected/traversal archive members, stage private uploads outside the document root, and coordinate restore/update with web and CLI notification jobs using a maintenance gate. Interrupted or failed operations retain the maintenance lock when manual recovery is required.
+
+### Markdown exports and recipient document excerpts
+- Export the current user's editable database-stored text documents as UTF-8 Markdown files grouped by monitor, with metadata and SHA-256 hashes in `manifest.json`; do not include other users' documents or historical delivery snapshots.
+- Replace complete small-font recipient text-document previews with ~200-character plain-text excerpts; the complete Markdown still appears in the expanded document reader. Owner portal preview uses the same card.
+
+### In-app updates (new Administration tab)
+- Accept manually uploaded newer Pulse release ZIPs, enforce a conservative file allowlist, preserve `.env` and private storage, stage replacements and save originals, then run checksummed numbered migrations. An emergency full backup is retained under `storage/rollbacks/`.
+- Require administrator password confirmation and explicit acknowledgement that uploaded update PHP code is **not publisher-signature verified**. A failed migration may require manual database recovery; the maintenance lock stays active rather than resuming the monitor automatically.
+- Added four-language interface strings, installation/security notes and archive tests.
+- No new database migration is required by 1.4.0 itself.
+
 ## 1.3.9 - 2026-10-19
 
 ### Safety-contact postponement allowance

@@ -40,7 +40,8 @@ final class AdministrationSourceTest extends TestCase
 		$installation = (string)file_get_contents($root . '/app/Installation/InstallationService.php');
 
 		self::assertStringContainsString("!== 'administrator'", $baseController);
-		self::assertGreaterThanOrEqual(4, substr_count($administrationController, 'RequireAdministrator()'));
+		self::assertStringContainsString('private function RenderSection(string $section)', $administrationController);
+		self::assertStringContainsString('$user = $this->RequireAdministrator()', $administrationController);
 		self::assertStringContainsString("role ENUM('user','administrator')", $schema);
 		self::assertStringContainsString("\'administrator\'", $installation);
 	}
@@ -52,7 +53,7 @@ final class AdministrationSourceTest extends TestCase
 		$view = (string)file_get_contents($root . '/app/Views/administration/index.php');
 
 		self::assertStringContainsString('data-monitor-tabs', $view);
-		self::assertStringContainsString('class="monitor-tabs"', $view);
+		self::assertStringContainsString('class="monitor-tabs monitor-primary-tabs"', $view);
 		self::assertStringContainsString('tab-warning-indicator', $view);
 		self::assertStringContainsString('administration-health-summary', $view);
 	}
