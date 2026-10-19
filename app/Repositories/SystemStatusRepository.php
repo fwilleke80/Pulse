@@ -28,6 +28,54 @@ final class SystemStatusRepository
 	}
 
 	/**
+	 * @brief Read-only database/server and schema migration health for the Administration dashboard.
+	 * @param string $migrationDirectory Absolute directory containing shipped migrations.
+	 * @return array{server:string, applied:int, total:int, current:bool} Current migration status.
+	 */
+	public function DatabaseSummary(string $migrationDirectory): array
+	{
+		$connection = $this->_database->GetConnection();
+		$server = (string)$connection->query('SELECT VERSION()')->fetchColumn();
+		$files = glob(rtrim($migrationDirectory, '/') . '/*.sql');
+		if ($files === false)
+		{
+			return ['server' => $server, 'applied' => 0, 'total' => 0, 'current' => false];
+		}
+		$expected = [];
+		foreach ($files as $path)
+		{
+			$contents = file_get_contents($path);
+			if ($contents === false)
+			{
+				return ['server' => $server, 'applied' => 0, 'total' => count($files), 'current' => false];
+			}
+			$expected[basename($path)] = hash('sha256', $contents);
+		}
+		try
+		{
+			$rows = $connection->query('SELECT migration, checksum FROM schema_migrations')->fetchAll();
+		}
+		catch (\Throwable $exception)
+		{
+			return ['server' => $server, 'applied' => 0, 'total' => count($expected), 'current' => false];
+		}
+		$applied = [];
+		foreach ($rows as $row)
+		{
+			$applied[(string)$row['migration']] = (string)$row['checksum'];
+		}
+		$current = count($expected) === count($applied);
+		foreach ($expected as $name => $checksum)
+		{
+			if (!isset($applied[$name]) || !hash_equals($checksum, $applied[$name]))
+			{
+				$current = false;
+			}
+		}
+		return ['server' => $server, 'applied' => count($applied), 'total' => count($expected), 'current' => $current];
+	}
+
+	/**
 	 * @brief Returns the UTC timestamp of the latest fully successful combined cron run.
 	 * @return string|null UTC database timestamp or null when cron has never completed successfully.
 	 */

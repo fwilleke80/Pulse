@@ -5722,10 +5722,10 @@ button.portal-map-details-close
 	}
 }
 
-/* Pulse 1.4.1: Administration uses the same wrapping grid as the Monitor Editor. */
-.administration-editor .monitor-primary-tabs
+/* Pulse 1.4.3: the five short Configuration tabs fit on one desktop row. */
+.administration-editor .administration-configuration-tabs
 {
-	grid-template-columns: repeat(4, minmax(0, 1fr));
+	grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
 .pulse-preflight-report
@@ -5743,60 +5743,111 @@ button.portal-map-details-close
 	margin-block: 0.4rem;
 }
 
-@media (max-width: 1000px)
+@media (max-width: 800px)
 {
-	.administration-editor .monitor-primary-tabs
+	.administration-editor .administration-configuration-tabs
 	{
 		grid-template-columns: repeat(2, minmax(0, 1fr));
 	}
 }
 
-@media (max-width: 680px)
+@media (max-width: 560px)
 {
-	.administration-editor .monitor-primary-tabs
+	.administration-editor .administration-configuration-tabs
 	{
 		grid-template-columns: 1fr;
 	}
 }
 
-/* Administration 1.4.2: task-oriented navigation independent of configuration form. */
-.administration-section-nav, .administration-maintenance-tabs {
-	display: flex;
-	flex-wrap: wrap;
+/* Pulse 1.4.3: Administration system dashboard and two maintenance tabs. */
+.administration-section-nav
+{
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
 	gap: .55rem;
 	margin-block: 1rem 1.35rem;
 }
-.administration-section-link, .administration-maintenance-tabs a {
-	display: inline-flex;
+.administration-section-link
+{
+	display: flex;
 	align-items: center;
+	justify-content: center;
 	padding: .65rem .9rem;
 	border: 1px solid var(--border);
 	border-radius: .5rem;
 	text-decoration: none;
 	color: inherit;
+	text-align: center;
 }
-.administration-section-link.is-active, .administration-maintenance-tabs a.is-active {
+.administration-section-link.is-active
+{
 	background: var(--surface-subtle);
 	font-weight: 700;
 	border-color: currentColor;
 }
-.administration-overview-grid {
-	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
-	gap: 1rem;
-	margin-block: 1rem;
-}
-.administration-overview-card {
-	display: flex;
-	flex-direction: column;
-	gap: .6rem;
-	padding: 1.3rem;
-	border-radius: .6rem;
-	border: 1px solid var(--border);
-	color: inherit;
-	text-decoration: none;
-}
-.administration-overview-card:hover, .administration-section-link:hover, .administration-maintenance-tabs a:hover {
+.administration-section-link:hover
+{
 	border-color: currentColor;
 }
-.administration-overview-card span { font-size: .9rem; opacity: .8; }
+.administration-maintenance-tabs
+{
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	margin-bottom: 1.25rem;
+}
+.administration-status-grid
+{
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: .8rem;
+	margin-block: 1rem 1.3rem;
+}
+.administration-status-card
+{
+	display: flex;
+	flex-direction: column;
+	gap: .35rem;
+	padding: 1rem 1.1rem;
+	border: 1px solid var(--border);
+	border-radius: .65rem;
+	min-width: 0;
+}
+.administration-status-card span
+{
+	font-size: .8rem;
+	color: var(--muted);
+}
+.administration-status-card strong
+{
+	font-size: 1.25rem;
+	overflow-wrap: anywhere;
+}
+.administration-status-card small
+{
+	color: var(--muted);
+	line-height: 1.45;
+}
+.administration-system-details
+{
+	margin-top: 1.35rem;
+	border: 1px solid var(--border);
+	border-radius: .65rem;
+	padding: .9rem 1rem;
+}
+.administration-system-details > summary
+{
+	cursor: pointer;
+	font-weight: 700;
+}
+.administration-system-details .administration-page-panel
+{
+	margin-top: 1rem;
+}
+.administration-change-package
+{
+	margin-top: 1rem;
+}
+@media (max-width: 680px)
+{
+	.administration-section-nav { grid-template-columns: 1fr; }
+	.administration-status-grid { grid-template-columns: 1fr; }
+}

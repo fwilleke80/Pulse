@@ -273,7 +273,7 @@ final class UpdateInstallerService
 				return false;
 			}
 		}
-		if ($path === '.env' || str_starts_with($path, '.git/')
+		if ($path === '.env' || $path === 'docs/update-manifest.json' || str_starts_with($path, '.git/')
 			|| str_starts_with($path, 'vendor/') || str_starts_with($path, 'tests/'))
 		{
 			return false;

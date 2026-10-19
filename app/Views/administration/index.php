@@ -33,7 +33,8 @@ declare(strict_types=1);
 /** @var bool $maintenanceCanResume */
 /** @var string $base_url */
 
-/** @var string $section One of overview, configuration, backups, updates, system. */
+/** @var string $section One of overview, configuration, backups, updates. */
+/** @var array{server:string,applied:int,total:int,current:bool}|null $databaseSummary */
 $tabs = [
 	'general' => 'administration.tabs.general',
 	'security' => 'administration.tabs.security',
@@ -50,11 +51,9 @@ $sections = [
 	'overview' => ['administration.section.overview', '/administration'],
 	'configuration' => ['administration.section.configuration', '/administration/configuration'],
 	'backups' => ['administration.section.maintenance', '/administration/maintenance/backups'],
-	'system' => ['administration.section.system', '/administration/system'],
 ];
 $sectionHeading = $section === 'backups' || $section === 'updates' ? 'administration.section.maintenance' :
-	($section === 'system' ? 'administration.section.system' :
-	($section === 'configuration' ? 'administration.section.configuration' : 'administration.heading'));
+	($section === 'configuration' ? 'administration.section.configuration' : 'administration.heading');
 ob_start();
 ?>
 <div class="editor-heading">
@@ -69,16 +68,27 @@ ob_start();
 	<?php endforeach; ?>
 </nav>
 <?php if ($section === 'overview'): ?>
-<div class="administration-overview-grid">
-	<a class="administration-overview-card" href="<?= e($base_url) ?>/administration/configuration">
-		<strong><?= e__('administration.section.configuration') ?></strong><span><?= e__('administration.section.configuration_hint') ?></span>
-	</a>
-	<a class="administration-overview-card" href="<?= e($base_url) ?>/administration/maintenance/backups">
-		<strong><?= e__('administration.section.maintenance') ?></strong><span><?= e__('administration.section.maintenance_hint') ?></span>
-	</a>
-	<a class="administration-overview-card" href="<?= e($base_url) ?>/administration/system">
-		<strong><?= e__('administration.section.system') ?></strong><span><?= e__('administration.section.system_hint') ?></span>
-	</a>
+<div class="administration-status-grid" aria-label="<?= e__('administration.overview.status_heading') ?>">
+	<div class="administration-status-card">
+		<span><?= e__('administration.overview.pulse_version') ?></span>
+		<strong><?= e($appVersion) ?></strong>
+		<small><?= e__('administration.overview.installed') ?></small>
+	</div>
+	<div class="administration-status-card">
+		<span><?= e__('administration.overview.database') ?></span>
+		<strong><?= e__('administration.overview.connected') ?></strong>
+		<small><?= e__($databaseSummary !== null && $databaseSummary['current'] ? 'administration.overview.schema_current' : 'administration.overview.schema_attention') ?><?= $databaseSummary !== null ? ' (' . (int)$databaseSummary['applied'] . '/' . (int)$databaseSummary['total'] . ')' : '' ?></small>
+	</div>
+	<div class="administration-status-card">
+		<span><?= e__('administration.overview.cron') ?></span>
+		<strong><?= e__($cronStatus === 'recent' ? 'administration.overview.healthy' : ($cronStatus === 'stale' ? 'administration.cron.stale' : 'administration.cron.never')) ?></strong>
+		<small><?= $lastSuccessfulCronRun !== null ? e(format_datetime($lastSuccessfulCronRun)) : e__('administration.overview.no_cron_run') ?></small>
+	</div>
+	<div class="administration-status-card">
+		<span><?= e__('administration.overview.maintenance') ?></span>
+		<strong><?= e__($maintenancePaused ? 'administration.overview.paused' : 'administration.overview.normal') ?></strong>
+		<small><?= e__($maintenancePaused ? 'administration.overview.monitoring_paused' : 'administration.overview.monitoring_active') ?></small>
+	</div>
 </div>
 <?php if ($configurationIssues !== []): ?>
 <div class="administration-health-summary" role="status">
@@ -88,6 +98,49 @@ ob_start();
 	<?php endforeach; ?></ul>
 </div>
 <?php endif; ?>
+<details class="administration-system-details">
+	<summary><?= e__('administration.overview.technical_details') ?></summary>
+	<section class="administration-page-panel">
+		<div class="section-heading"><h2><?= e__('administration.installation.heading') ?></h2><p><?= e__('administration.installation.hint') ?></p></div>
+		<div class="configuration-block">
+			<h3><?= e__('administration.section.system') ?></h3>
+			<dl class="administration-definition-list">
+				<div><dt><?= e__('administration.preflight.version') ?></dt><dd><?= e($appVersion) ?></dd></div>
+				<div><dt>PHP</dt><dd><?= e(PHP_VERSION) ?></dd></div>
+				<div><dt><?= e__('administration.overview.db_engine') ?></dt><dd><?= e((string)($databaseSummary['server'] ?? '—')) ?></dd></div>
+				<div><dt><?= e__('administration.overview.schema_migrations') ?></dt><dd><?= $databaseSummary !== null ? (int)$databaseSummary['applied'] . ' / ' . (int)$databaseSummary['total'] : '—' ?></dd></div>
+			</dl>
+		</div>
+		<div class="configuration-block">
+			<h3><?= e__('administration.installation.env_heading') ?></h3>
+			<dl class="administration-definition-list">
+				<div><dt><?= e__('administration.installation.env_exists') ?></dt><dd><?= e__($environmentExists ? 'administration.value.yes' : 'administration.value.no') ?></dd></div>
+				<div><dt><?= e__('administration.installation.env_writable') ?></dt><dd><?= e__($environmentWritable ? 'administration.value.yes' : 'administration.value.no') ?></dd></div>
+			</dl>
+			<?php if ($processOverrides !== []): ?><div class="review-warning"><strong><?= e__('administration.installation.overrides_heading') ?></strong><p><?= e__('administration.installation.overrides_hint') ?></p><code><?= e(implode(', ', $processOverrides)) ?></code></div><?php endif; ?>
+		</div>
+
+		<div class="configuration-block">
+			<h3><?= e__('administration.installation.base_url_heading') ?></h3>
+			<p><?= e__('administration.installation.base_url_hint') ?></p>
+			<dl class="administration-definition-list">
+				<div><dt><?= e__('administration.field.base_url') ?></dt><dd><code><?= e($settings['PULSE_BASE_URL']) ?></code></dd></div>
+			</dl>
+		</div>
+
+		<div class="configuration-block">
+			<h3><?= e__('administration.installation.database_heading') ?></h3>
+			<p><?= e__('administration.installation.database_hint') ?></p>
+			<dl class="administration-definition-list">
+				<div><dt><?= e__('administration.installation.database_host') ?></dt><dd><code><?= e((string)($databaseConfig['host'] ?? '')) ?></code></dd></div>
+				<div><dt><?= e__('administration.installation.database_port') ?></dt><dd><code><?= (int)($databaseConfig['port'] ?? 0) ?></code></dd></div>
+				<div><dt><?= e__('administration.installation.database_name') ?></dt><dd><code><?= e((string)($databaseConfig['database'] ?? '')) ?></code></dd></div>
+				<div><dt><?= e__('administration.installation.database_username') ?></dt><dd><code><?= e((string)($databaseConfig['username'] ?? '')) ?></code></dd></div>
+				<div><dt><?= e__('administration.installation.database_password') ?></dt><dd><?= e__((string)($databaseConfig['password'] ?? '') !== '' ? 'administration.secret.configured' : 'administration.secret.not_configured') ?></dd></div>
+			</dl>
+		</div>
+	</section>
+</details>
 <?php elseif ($section === 'configuration'): ?>
 <?php if ($configurationIssues !== []): ?>
 <div class="administration-health-summary" role="status">
@@ -102,7 +155,7 @@ ob_start();
 	<input type="hidden" name="active_tab" value="<?= e($activeTab) ?>" data-active-tab-input>
 </form>
 <div class="monitor-editor administration-editor" data-monitor-tabs data-active-tab="<?= e($activeTab) ?>">
-	<div class="monitor-tabs monitor-primary-tabs" role="tablist" aria-label="<?= e__('administration.tabs.label') ?>">
+	<div class="monitor-tabs monitor-primary-tabs administration-configuration-tabs" role="tablist" aria-label="<?= e__('administration.tabs.label') ?>">
 		<?php $tabNumber = 0; ?>
 		<?php foreach ($tabs as $tabName => $translationKey): ?>
 			<?php $tabNumber++; ?>
@@ -454,9 +507,9 @@ ob_start();
 	<div class="editor-save-actions"><button type="submit" form="administration-settings-form"><?= e__('administration.save') ?></button></div>
 </div>
 <?php elseif ($section === 'backups' || $section === 'updates'): ?>
-<nav class="administration-maintenance-tabs" aria-label="<?= e__('administration.section.maintenance') ?>">
-	<a href="<?= e($base_url) ?>/administration/maintenance/backups"<?= $section === 'backups' ? ' class="is-active" aria-current="page"' : '' ?>><?= e__('administration.tabs.backup') ?></a>
-	<a href="<?= e($base_url) ?>/administration/maintenance/updates"<?= $section === 'updates' ? ' class="is-active" aria-current="page"' : '' ?>><?= e__('administration.tabs.updates') ?></a>
+<nav class="monitor-tabs administration-maintenance-tabs" aria-label="<?= e__('administration.section.maintenance') ?>">
+	<a class="monitor-tab-link<?= $section === 'backups' ? ' is-active' : '' ?>" href="<?= e($base_url) ?>/administration/maintenance/backups"<?= $section === 'backups' ? ' aria-current="page"' : '' ?>><?= e__('administration.tabs.backup') ?></a>
+	<a class="monitor-tab-link<?= $section === 'updates' ? ' is-active' : '' ?>" href="<?= e($base_url) ?>/administration/maintenance/updates"<?= $section === 'updates' ? ' aria-current="page"' : '' ?>><?= e__('administration.tabs.updates') ?></a>
 </nav>
 <?php if ($section === 'backups'): ?>
 	<section class="administration-page-panel">
@@ -527,12 +580,13 @@ ob_start();
 		<div class="configuration-block">
 			<h3><?= e__('administration.updates.install') ?></h3>
 			<p><?= e__('administration.updates.install_hint') ?></p>
+			<?php if ($updatePreflight === null): ?>
 			<form method="post" action="<?= e($base_url) ?>/administration/updates/preflight" enctype="multipart/form-data">
 				<?= csrf_field() ?>
 				<label><?= e__('administration.updates.file') ?><input type="file" name="update_file" accept=".zip,application/zip" required></label>
 				<div class="editor-save-actions"><button type="submit"><?= e__('administration.preflight.button') ?></button></div>
 			</form>
-			<?php if ($updatePreflight !== null): ?>
+			<?php else: ?>
 				<div class="configuration-block pulse-preflight-report">
 					<h3><?= e__('administration.preflight.passed') ?></h3>
 					<p><?= e((string)$updatePreflight['installed_version']) ?> → <strong><?= e((string)$updatePreflight['new_version']) ?></strong> · <?= (int)$updatePreflight['file_count'] ?> <?= e__('administration.preflight.files') ?></p>
@@ -540,10 +594,14 @@ ob_start();
 					<p class="form-hint"><?= e__('administration.preflight.limits') ?></p>
 					<h3><?= e__('administration.updates.release_notes') ?></h3>
 					<div class="markdown-content"><?= $updatePreflight['notes'] !== '' ? markdown_html((string)$updatePreflight['notes']) : '<p>' . e__('administration.updates.no_release_notes') . '</p>' ?></div>
-					<form method="post" action="<?= e($base_url) ?>/administration/updates/install" data-confirm="<?= e__('administration.updates.final_question') ?>">
+					<form method="post" action="<?= e($base_url) ?>/administration/updates/install">
 						<?= csrf_field() ?>
 						<label><?= e__('administration.backup.admin_password') ?><input type="password" name="administrator_password" autocomplete="current-password" required></label>
 						<div class="editor-save-actions"><button type="submit"><?= e__('administration.updates.button') ?></button></div>
+					</form>
+					<form method="post" action="<?= e($base_url) ?>/administration/updates/change" class="administration-change-package">
+						<?= csrf_field() ?>
+						<button type="submit" class="button-link"><?= e__('administration.updates.choose_different') ?></button>
 					</form>
 				</div>
 			<?php endif; ?>
@@ -551,45 +609,7 @@ ob_start();
 	</section>
 
 <?php endif; ?>
-<?php elseif ($section === 'system'): ?>
-	<section class="administration-page-panel">
-		<div class="section-heading"><h2><?= e__('administration.installation.heading') ?></h2><p><?= e__('administration.installation.hint') ?></p></div>
-		<div class="configuration-block">
-			<h3><?= e__('administration.section.system') ?></h3>
-			<dl class="administration-definition-list">
-				<div><dt><?= e__('administration.preflight.version') ?></dt><dd><?= e($appVersion) ?></dd></div>
-				<div><dt>PHP</dt><dd><?= e(PHP_VERSION) ?></dd></div>
-			</dl>
-		</div>
-		<div class="configuration-block">
-			<h3><?= e__('administration.installation.env_heading') ?></h3>
-			<dl class="administration-definition-list">
-				<div><dt><?= e__('administration.installation.env_exists') ?></dt><dd><?= e__($environmentExists ? 'administration.value.yes' : 'administration.value.no') ?></dd></div>
-				<div><dt><?= e__('administration.installation.env_writable') ?></dt><dd><?= e__($environmentWritable ? 'administration.value.yes' : 'administration.value.no') ?></dd></div>
-			</dl>
-			<?php if ($processOverrides !== []): ?><div class="review-warning"><strong><?= e__('administration.installation.overrides_heading') ?></strong><p><?= e__('administration.installation.overrides_hint') ?></p><code><?= e(implode(', ', $processOverrides)) ?></code></div><?php endif; ?>
-		</div>
-
-		<div class="configuration-block">
-			<h3><?= e__('administration.installation.base_url_heading') ?></h3>
-			<p><?= e__('administration.installation.base_url_hint') ?></p>
-			<dl class="administration-definition-list">
-				<div><dt><?= e__('administration.field.base_url') ?></dt><dd><code><?= e($settings['PULSE_BASE_URL']) ?></code></dd></div>
-			</dl>
-		</div>
-
-		<div class="configuration-block">
-			<h3><?= e__('administration.installation.database_heading') ?></h3>
-			<p><?= e__('administration.installation.database_hint') ?></p>
-			<dl class="administration-definition-list">
-				<div><dt><?= e__('administration.installation.database_host') ?></dt><dd><code><?= e((string)($databaseConfig['host'] ?? '')) ?></code></dd></div>
-				<div><dt><?= e__('administration.installation.database_port') ?></dt><dd><code><?= (int)($databaseConfig['port'] ?? 0) ?></code></dd></div>
-				<div><dt><?= e__('administration.installation.database_name') ?></dt><dd><code><?= e((string)($databaseConfig['database'] ?? '')) ?></code></dd></div>
-				<div><dt><?= e__('administration.installation.database_username') ?></dt><dd><code><?= e((string)($databaseConfig['username'] ?? '')) ?></code></dd></div>
-				<div><dt><?= e__('administration.installation.database_password') ?></dt><dd><?= e__((string)($databaseConfig['password'] ?? '') !== '' ? 'administration.secret.configured' : 'administration.secret.not_configured') ?></dd></div>
-			</dl>
-		</div>
-	</section><?php endif; ?>
+<?php endif; ?>
 <?php
 $content = ob_get_clean();
 $title = __('administration.title');

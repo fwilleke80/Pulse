@@ -17,7 +17,6 @@ use RuntimeException;
 final class UpdatePackageInspector
 {
 	private const MANIFEST_PATH = 'manifest.json';
-	private const LEGACY_MANIFEST_PATH = 'docs/update-manifest.json';
 	private string $_root;
 
 	/** @param string $root Absolute Pulse installation root. */
@@ -55,19 +54,20 @@ final class UpdatePackageInspector
 			}
 			$entries[$path] = $item->getPathname();
 		}
-		// The canonical manifest is root-level from 1.4.2. The earlier location
-		// is accepted only for previously produced packages.
-		$manifestPath = isset($entries[self::MANIFEST_PATH]) ? self::MANIFEST_PATH : self::LEGACY_MANIFEST_PATH;
-		$manifestPaths = isset($entries[self::MANIFEST_PATH])
-			? [self::MANIFEST_PATH, ...(isset($entries[self::LEGACY_MANIFEST_PATH]) ? [self::LEGACY_MANIFEST_PATH] : [])]
-			: [self::LEGACY_MANIFEST_PATH];
-		foreach (['bootstrap.php', 'public/index.php', 'config/version.php', 'database/schema.sql', 'CHANGELOG.md', $manifestPath] as $required)
+		// Only the root-level release manifest is supported from Pulse 1.4.3.
+		// Legacy compatibility archives must be installed through 1.4.2 first.
+		if (isset($entries['docs/update-manifest.json']))
+		{
+			throw new RuntimeException('Legacy docs/update-manifest.json is no longer supported.');
+		}
+		foreach (['bootstrap.php', 'public/index.php', 'config/version.php', 'database/schema.sql', 'CHANGELOG.md', self::MANIFEST_PATH] as $required)
 		{
 			if (!isset($entries[$required]))
 			{
 				throw new RuntimeException('Incomplete update: required member missing: ' . $required);
 			}
 		}
+		$manifestPath = self::MANIFEST_PATH;
 		$manifest = json_decode((string)file_get_contents($entries[$manifestPath]), true, 512, JSON_THROW_ON_ERROR);
 		if (!is_array($manifest) || ($manifest['format'] ?? null) !== 'pulse-update-v1'
 			|| !is_array($manifest['files'] ?? null) || !is_array($manifest['migrations'] ?? null))
@@ -85,13 +85,13 @@ final class UpdatePackageInspector
 			throw new RuntimeException('Update version does not match the manifest or is not newer than the installed version.');
 		}
 		$inventory = $manifest['files'];
-		if (count($inventory) !== count($entries) - count($manifestPaths))
+		if (count($inventory) !== count($entries) - 1)
 		{
 			throw new RuntimeException('Update manifest does not list every packaged file.');
 		}
 		foreach ($entries as $path => $member)
 		{
-			if (in_array($path, $manifestPaths, true))
+			if ($path === self::MANIFEST_PATH)
 			{
 				continue;
 			}
@@ -114,27 +114,6 @@ final class UpdatePackageInspector
 			if (!is_string($path) || !isset($entries[$path]))
 			{
 				throw new RuntimeException('Update manifest contains unexpected file inventory entries.');
-			}
-		}
-		// During 1.4.2 migration, the legacy manifest must validate the same
-		// application inventory AND the root manifest's own checksum. This lets
-		// the 1.4.1 updater check the new root member before installing it.
-		if (count($manifestPaths) === 2)
-		{
-			$legacy = json_decode((string)file_get_contents($entries[self::LEGACY_MANIFEST_PATH]), true, 512, JSON_THROW_ON_ERROR);
-			$rootMember = $entries[self::MANIFEST_PATH];
-			$expectedFiles = $inventory;
-			$expectedFiles[self::MANIFEST_PATH] = [
-				'size' => filesize($rootMember),
-				'sha256' => hash_file('sha256', $rootMember),
-			];
-			ksort($expectedFiles, SORT_STRING);
-			if (!is_array($legacy) || ($legacy['format'] ?? null) !== $manifest['format']
-				|| ($legacy['version'] ?? null) !== $manifest['version']
-				|| ($legacy['migrations'] ?? null) !== $manifest['migrations']
-				|| ($legacy['files'] ?? null) !== $expectedFiles)
-			{
-				throw new RuntimeException('Legacy update manifest is inconsistent with the root manifest.');
 			}
 		}
 		$migrations = [];

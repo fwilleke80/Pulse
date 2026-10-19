@@ -17,7 +17,7 @@ if (is_file($maintenanceFlag))
 	$reviewReady = is_array($state) && ($state['reason'] ?? '') === 'restore'
 		&& ($state['status'] ?? '') === 'awaiting_review';
 	$permitted = ['/login', '/login/totp', '/login/passkey/options', '/login/passkey/verify',
-		'/logout', '/administration', '/administration/maintenance/backups', '/administration/system', '/administration/backup/resume', '/administration/backup/restore',
+		'/logout', '/administration', '/administration/maintenance/backups', '/administration/backup/resume', '/administration/backup/restore',
 		'/language/set'];
 	if ($reviewReady && $method === 'GET')
 	{
@@ -350,13 +350,13 @@ $router->Get('/administration', [$administrationController, 'Index']);
 $router->Get('/administration/configuration', [$administrationController, 'Configuration']);
 $router->Get('/administration/maintenance/backups', [$administrationController, 'Backups']);
 $router->Get('/administration/maintenance/updates', [$administrationController, 'Updates']);
-$router->Get('/administration/system', [$administrationController, 'SystemInformation']);
 $router->Post('/administration/text-documents/export', [$maintenanceController, 'ExportTextDocuments']);
 $router->Post('/administration/backup/create', [$maintenanceController, 'CreateBackup']);
 $router->Post('/administration/backup/preflight', [$maintenanceController, 'PreflightRestore']);
 $router->Post('/administration/backup/restore', [$maintenanceController, 'RestoreBackup']);
 $router->Post('/administration/backup/resume', [$maintenanceController, 'ResumeAfterRestore']);
 $router->Post('/administration/updates/preflight', [$maintenanceController, 'PreflightUpdate']);
+$router->Post('/administration/updates/change', [$maintenanceController, 'ChangeUpdatePackage']);
 $router->Post('/administration/updates/install', [$maintenanceController, 'InstallUpdate']);
 $router->Post('/administration/update', [$administrationController, 'Update']);
 $router->Post('/administration/mail/test', [$administrationController, 'SendTestNotification']);

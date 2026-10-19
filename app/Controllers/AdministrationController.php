@@ -115,12 +115,6 @@ final class AdministrationController extends BaseController
 		return $this->RenderSection('updates');
 	}
 
-	/** @brief Displays read-only installation/system information. */
-	public function SystemInformation(): string
-	{
-		return $this->RenderSection('system');
-	}
-
 	/** @brief Render one independently routed Administration section. */
 	private function RenderSection(string $section): string
 	{
@@ -162,6 +156,9 @@ final class AdministrationController extends BaseController
 			'cronTokenChangedAt' => $cronTokenChangedAt,
 			'failedCronCalls' => $failedCronCalls,
 			'cronStatus' => $cronStatus,
+			'databaseSummary' => $section === 'overview'
+				? $this->_systemStatusRepository->DatabaseSummary(dirname(__DIR__, 2) . '/database/migrations')
+				: null,
 			'maintenancePaused' => is_file(dirname(__DIR__, 2) . '/storage/maintenance.lock'),
 			'maintenanceCanResume' => $this->MayResumeMaintenance(),
 			'updatePreflight' => $this->PreviewMaintenancePreflight('update', (int)$user['id']),

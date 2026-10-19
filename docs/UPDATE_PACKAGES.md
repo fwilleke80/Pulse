@@ -1,25 +1,24 @@
 # Pulse update packages
 
-From Pulse 1.4.2 onward the canonical update manifest is `manifest.json` at
-**the ZIP root**. To install 1.4.2 from Pulse 1.4.1, this transition package
-also includes `docs/update-manifest.json`: the legacy verifier expects that
-second manifest to enumerate all other members, including the root manifest.
-Pulse 1.4.2 validates both when present. Beginning with 1.4.3, update packages
-can include only root `manifest.json`.
+Starting with Pulse 1.4.3, update packages MUST contain a root-level
+`manifest.json` with a complete SHA-256 inventory of every other package member.
+`docs/update-manifest.json` is no longer accepted. The Pulse 1.4.2 updater
+supports root-only manifests and can install 1.4.3 directly. Older installations
+must upgrade through 1.4.2 before using root-only update packages.
 
 Build a release from a complete source checkout:
 
 ```bash
-python3 tools/build_update_package.py --root . --output ../Pulse_1.4.2_update.zip --include-legacy-manifest
+python3 tools/build_update_package.py --root . --output ../Pulse_1.4.3_update.zip
 ```
 
-For subsequent versions, omit `--include-legacy-manifest`. The Python 3 script (included in the complete source ZIP) automatically creates
-a deterministic ZIP and the matching manifest, with the package format, exact
-Pulse version, full file list, uncompressed size and SHA-256 digest for each
-member, plus a migration inventory. It excludes private `.env`, uploaded files,
-tests, development vendor libraries and git metadata.
+The Python 3 builder (included in the complete source ZIP) automatically creates
+a deterministic ZIP and matching root-level manifest, with the package format,
+Pulse version, complete file inventory, uncompressed size and SHA-256 hash for
+all members, plus exact migration checksums. It excludes `.env`, private uploads,
+tests, development vendor libraries and Git metadata.
 
-The 1.4.2 preflight validates every file hash and migration identity, safe
+The 1.4.3 preflight validates every file hash and migration identity, safe
 paths, version compatibility, destination directory permissions, approximate
 staging disk space and required PHP extensions. It displays the applicable
 `CHANGELOG.md` sections. After approval, the updater repeats these validations.

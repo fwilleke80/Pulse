@@ -490,7 +490,7 @@ Because quick check-in is intended to remove friction, do not wait for an urgent
 
 Users with the **administrator** role see **Administration** in the navigation. Access is also enforced server-side.
 
-Administration starts with an **Overview**, then dedicated **Configuration**, **Maintenance**, and read-only **System Information** pages. Configuration has five tabs:
+Administration has **Overview**, **Configuration**, and **Maintenance**. Overview is a read-only system dashboard with version, database/schema, cron and maintenance health, plus expandable technical installation details. Configuration has five tabs that fit in one row on sufficiently wide screens:
 
 - **General** — deployment environment, default language, display timezone, trusted hosts, and debug behavior.
 - **Security** — session cookies/timeouts, HSTS, login throttling, and password policy.
@@ -498,7 +498,7 @@ Administration starts with an **Overview**, then dedicated **Configuration**, **
 - **Mail** — SMTP, queue/retry settings, test mail, and the installation-wide mail queue.
 - **Cron** — web-cron token, endpoint example, **Last successful cron run**, token-change time, and recent unsuccessful cron calls.
 
-The separate **System Information** page shows read-only boot-critical information such as `.env` status, public base URL, and database connection details. **Maintenance** contains Backup & Restore and Updates, and has no global Save settings action.
+The **Overview** technical-details section shows read-only boot-critical information such as `.env` status, public base URL, and database connection details. **Maintenance** contains matching Backup & Restore and Updates tabs, and has no global Save settings action.
 
 Editable settings are saved directly to the root `.env` file. Pulse does not maintain a second database-backed configuration system.
 

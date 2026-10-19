@@ -1,6 +1,6 @@
 # Pulse
 
-**Current release: 1.4.2**
+**Current release: 1.4.3**
 
 Pulse is a private, self-hosted check-in and notification system for situations in which something could happen to you and the people who need to know might otherwise not be informed for some time. You might use it to make sure family, friends, or other trusted people are contacted if you die or become seriously ill, or as an additional safety measure while travelling alone, going on an expedition, or spending time somewhere where help may be difficult to reach.
 
@@ -57,7 +57,7 @@ The [User guide](docs/USER_GUIDE.md) explains the interface and lifecycle. The [
 
 ## Administration
 
-Users with the `administrator` role have access to **Administration**, organized into an Overview and separate **Configuration**, **Maintenance**, and read-only **System Information** pages. Configuration contains responsive **General**, **Security**, **Files**, **Mail**, and **Cron** tabs; only Configuration displays **Save settings**. Maintenance contains **Backup & Restore** and **Updates**, each with its own independent actions. A **Users** page will be introduced when multi-user management is implemented. Runtime settings are written directly to the root `.env` file and warnings link to the affected configuration tab. These are new URLs, with no redirects for the former combined Administration tabs.
+Users with the `administrator` role have access to **Administration**, organized into **Overview**, **Configuration**, and **Maintenance**. Overview is a read-only system dashboard, including the former System Information details and live database/schema, cron, and maintenance status. Configuration displays **General**, **Security**, **Files**, **Mail**, and **Cron** in a single row when space permits; only Configuration displays **Save settings**. Maintenance uses matching **Backup & Restore** and **Updates** tabs, each with its own independent actions. A **Users** page will be introduced when multi-user management is implemented. Runtime settings are written directly to the root `.env` file and warnings link to the affected configuration tab. The former dedicated System Information page has been merged into Overview.
 
 ## Account security and quick check-in
 
@@ -87,7 +87,7 @@ The authenticated recipient portal presents documents inline whenever the format
 
 Pulse does not send private files to Google, Microsoft, or another external preview service. Word, OpenDocument, RTF, HTML, SVG, unknown, and potentially active formats remain download-only. Actual audio/video playback depends on the codecs supported by the recipient's browser; MP3 and H.264/AAC in MP4 are the recommended compatibility choices.
 
-## Backup, Restore and Updates (1.4.2)
+## Backup, Restore and Updates (1.4.3)
 
 In **Administration → Maintenance → Backup & Restore**, an administrator can download a complete snapshot containing all Pulse database tables, private uploads, and installation `.env` secrets. Encryption is **optional**. With a password, Pulse encrypts the actual snapshot in authenticated AES-256-GCM chunks inside a ZIP wrapper; it can be decrypted by Pulse, but standard ZIP utilities cannot directly browse the encrypted inner contents. Without encryption, the ZIP can be inspected with ordinary ZIP programs and **contains private secrets in plaintext**. Safeguard the archive.
 
@@ -95,9 +95,9 @@ In **Administration → Maintenance → Backup & Restore**, an administrator can
 
 **Restore backup** requires the current administrator password, a replacement acknowledgement checkbox, and final Yes/No confirmation after preflight. For safety, the full backup must come from the **same installed Pulse version**. Pulse verifies every member and SHA-256 hash, stages private uploads, writes an emergency snapshot to `storage/rollbacks/`, replaces database contents, and restores installation settings while preserving destination database connectivity, hostname, trusted hosts, and session-cookie name. All previously authenticated sessions are invalidated. After signing back in using credentials from the backup, review overdue monitors and pending mail before manually resuming monitoring from Administration. Previously delivered email is not undone.
 
-In **Administration → Maintenance → Updates**, an administrator can upload a newer Pulse release ZIP, review preflight results and release notes, then authorize installation with the current administrator password and a final confirmation. Updates install any pending SQL migrations. A pre-update database/private-file snapshot is preserved under `storage/rollbacks/`. The code update uses staged files and keeps `.env` and `storage/` intact. **The updater does not currently verify a publisher signature**: only upload update ZIPs from a trusted source. If a migration fails, maintenance remains locked and a **manual recovery from the emergency snapshot may be necessary**. Keep backups off-server.
+In **Administration → Maintenance → Updates**, an administrator can upload a newer Pulse release ZIP, review preflight results and release notes without a second file selector, then authorize installation with the current administrator password (no redundant JavaScript confirmation). Updates install any pending SQL migrations. A pre-update database/private-file snapshot is preserved under `storage/rollbacks/`. The code update uses staged files and keeps `.env` and `storage/` intact. **The updater does not currently verify a publisher signature**: only upload update ZIPs from a trusted source. If a migration fails, maintenance remains locked and a **manual recovery from the emergency snapshot may be necessary**. Keep backups off-server.
 
-**Important:** The 1.4.2 update ZIP includes a root-level `manifest.json` plus a transitional compatibility manifest at `docs/update-manifest.json` so the 1.4.1 updater can install it. The bundled manifest builder produces root-only manifests by default for subsequent releases. The complete MySQL restore and updater have not yet been tested against a live production-scale database. Test both on a disposable installation first; do not rely on them as your only recovery method until verified in your environment.
+**Important:** Update archives now require exactly one root-level `manifest.json`. The earlier `docs/update-manifest.json` format is no longer accepted. To upgrade from 1.4.1, first install 1.4.2; 1.4.2 can directly install 1.4.3. The bundled manifest builder produces root-only archives. The complete MySQL restore and updater have not yet been tested against a live production-scale database. Test both on a disposable installation first; do not rely on them as your only recovery method until verified in your environment.
 
 ## Documentation
 

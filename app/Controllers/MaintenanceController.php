@@ -229,6 +229,14 @@ final class MaintenanceController extends BaseController
 		$this->Redirect('/administration/maintenance/updates');
 	}
 
+	/** @brief Discard a verified staged ZIP before selecting another package. */
+	public function ChangeUpdatePackage(): void
+	{
+		$this->RequireAdministrator();
+		$this->DiscardPreflight('update');
+		$this->Redirect('/administration/maintenance/updates');
+	}
+
 	/** @brief Apply the previously inspected and unchanged release ZIP after fresh authentication. */
 	public function InstallUpdate(): void
 	{

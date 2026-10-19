@@ -1,9 +1,7 @@
 """@file build_update_package.py
 @brief Build a deterministic, checksum-manifested Pulse update ZIP.
 
-The canonical manifest lives at the root of the ZIP. Pulse 1.4.2 includes an
-additional legacy docs/update-manifest.json for upgrading from Pulse 1.4.1.
-Subsequent releases should omit the legacy manifest by default.
+The canonical manifest lives at the root of the ZIP. No legacy manifest is generated.
 """
 
 from __future__ import annotations
@@ -28,7 +26,6 @@ ALLOWED_PREFIXES: tuple[str, ...] = (
     "app/", "config/", "database/", "docs/", "public/", "tools/",
 )
 MANIFEST_PATH: str = "manifest.json"
-LEGACY_MANIFEST_PATH: str = "docs/update-manifest.json"
 
 
 def AllowedPackageFile(path: str) -> bool:
@@ -37,6 +34,8 @@ def AllowedPackageFile(path: str) -> bool:
     @param path Relative POSIX-style archive path.
     @return Whether the installed 1.4.0 updater accepts this file.
     """
+    if path == "docs/update-manifest.json":
+        return False
     if path in ROOT_FILES or path in ("manifest.json", "public/install.php", "storage/.htaccess"):
         return True
     return (
@@ -47,12 +46,11 @@ def AllowedPackageFile(path: str) -> bool:
     )
 
 
-def Build(root: Path, output: Path, include_legacy_manifest: bool = False) -> dict[str, Any]:
+def Build(root: Path, output: Path) -> dict[str, Any]:
     """@brief Package all allowed source files plus a stable SHA-256 inventory.
 
     @param root Checked-out source root.
     @param output Output ZIP path (outside the source root recommended).
-    @param include_legacy_manifest Include a compatibility manifest for the 1.4.1 installer.
     @return Canonical manifest dictionary embedded in the ZIP.
     """
     match: re.Match[str] | None = re.search(
@@ -68,7 +66,7 @@ def Build(root: Path, output: Path, include_legacy_manifest: bool = False) -> di
             or "__pycache__" in source.parts or source.suffix == ".pyc"):
             continue
         relative: str = source.relative_to(root).as_posix()
-        if relative in (MANIFEST_PATH, LEGACY_MANIFEST_PATH) or relative.startswith((".git/", "vendor/", "tests/", "storage/")):
+        if relative in (MANIFEST_PATH, "docs/update-manifest.json") or relative.startswith((".git/", "vendor/", "tests/", "storage/")):
             continue
         if AllowedPackageFile(relative) and (
             relative in ROOT_FILES
@@ -100,20 +98,6 @@ def Build(root: Path, output: Path, include_legacy_manifest: bool = False) -> di
         "migrations": dict(sorted(migrations.items())),
     }
     canonical_content: bytes = (json.dumps(manifest, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
-    legacy_manifest: dict[str, Any] | None = None
-    if include_legacy_manifest:
-        # Pulse 1.4.1 considers docs/update-manifest.json the sole excluded
-        # manifest and therefore needs the NEW root manifest in its inventory.
-        legacy_manifest = {
-            **manifest,
-            "files": dict(sorted({
-                **files,
-                MANIFEST_PATH: {
-                    "size": len(canonical_content),
-                    "sha256": hashlib.sha256(canonical_content).hexdigest(),
-                },
-            }.items())),
-        }
     output.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
         for source in file_paths:
@@ -126,11 +110,6 @@ def Build(root: Path, output: Path, include_legacy_manifest: bool = False) -> di
         info.compress_type = zipfile.ZIP_DEFLATED
         info.external_attr = 0o100644 << 16
         archive.writestr(info, canonical_content)
-        if legacy_manifest is not None:
-            info = zipfile.ZipInfo(LEGACY_MANIFEST_PATH, (1980, 1, 1, 0, 0, 0))
-            info.compress_type = zipfile.ZIP_DEFLATED
-            info.external_attr = 0o100644 << 16
-            archive.writestr(info, (json.dumps(legacy_manifest, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
     return manifest
 
 
@@ -139,9 +118,8 @@ def main() -> None:
     parser: argparse.ArgumentParser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parent.parent)
     parser.add_argument("--output", required=True, type=Path)
-    parser.add_argument("--include-legacy-manifest", action="store_true", help="Compatibility with the Pulse 1.4.1 updater (needed for 1.4.2).")
     args: argparse.Namespace = parser.parse_args()
-    manifest: dict[str, Any] = Build(args.root.resolve(), args.output.resolve(), args.include_legacy_manifest)
+    manifest: dict[str, Any] = Build(args.root.resolve(), args.output.resolve())
     print(f"Created {args.output}: Pulse {manifest['version']}, {len(manifest['files'])} files, {len(manifest['migrations'])} migrations")
 
 

@@ -13,13 +13,15 @@ use PHPUnit\Framework\TestCase;
 use Pulse\Services\UpdateInstallerService;
 use Pulse\Services\UpdatePackageInspector;
 
-/** @brief Verify manifest compatibility, selected changelog versions, and confirmation steps. */
+/** @brief Verify root-only manifest support, selected changelog versions and safe confirmation steps. */
 final class UpdatePreflightSourceTest extends TestCase
 {
-	/** @brief Both manifest paths are allowed during the transition to a root manifest. */
-	public function testManifestUsesLegacyCompatiblePath(): void
+	/** @brief Only the root manifest is acceptable to the 1.4.3 inspector. */
+	public function testOnlyRootManifestIsSupported(): void
 	{
-		self::assertTrue(UpdateInstallerService::AllowedPackageFile('docs/update-manifest.json'));
+		self::assertFalse(UpdateInstallerService::AllowedPackageFile('docs/update-manifest.json'));
+		$inspector = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Services/UpdatePackageInspector.php');
+		self::assertStringContainsString('Legacy docs/update-manifest.json is no longer supported', $inspector);
 		self::assertTrue(UpdateInstallerService::AllowedPackageFile('manifest.json'));
 		self::assertFalse(UpdateInstallerService::AllowedPackageFile('storage/uploads/manifest.json'));
 	}
@@ -49,5 +51,8 @@ final class UpdatePreflightSourceTest extends TestCase
 		self::assertStringNotContainsString('name="restore_confirmation"', $view);
 		self::assertStringContainsString('VerifyFreshPassword', $controller);
 		self::assertStringContainsString('PendingArchive', $controller);
+		self::assertStringContainsString('administration/updates/change', $view);
+		self::assertStringContainsString('function ChangeUpdatePackage()', $controller);
+		self::assertStringNotContainsString('administration.updates.final_question', $view);
 	}
 }

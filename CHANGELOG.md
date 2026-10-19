@@ -1,3 +1,15 @@
+## 1.4.3 - 2026-10-19
+
+### Administration overview and navigation
+- Replace duplicate Administration Overview navigation cards with a read-only system dashboard showing Pulse version, database/schema migration status, last successful cron run and maintenance state. Move the former System Information page into expandable technical details on Overview. Do not retain the obsolete `/administration/system` route.
+- Display all five short Configuration tabs on one row where space allows, with responsive layout on narrow screens. Use matching two-tab navigation for Maintenance (Backup & Restore and Updates).
+
+### Simplified update installation
+- After a successful update preflight, hide the ZIP selector and validation action. Show the already-staged, verified release, its checks and release notes, administrator password field and Install action; provide a separate CSRF-protected Change package action.
+- Remove the redundant JavaScript Install now question. Keep administrator password reauthentication, staged-file checksum checks and server-side preflight at installation.
+- Require a single ZIP-root `manifest.json` with complete file inventory, and reject packages containing the deprecated `docs/update-manifest.json`. Remove legacy output support from the deterministic source ZIP manifest generator. Pulse 1.4.2 can install this root-only release without FTP.
+- No database migration is required.
+
 ## 1.4.2 - 2026-10-19
 
 ### Administration pages
