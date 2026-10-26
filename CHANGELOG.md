@@ -1,3 +1,9 @@
+## 1.4.7 - 2026-10-26
+
+### Monitor escalation spacing
+- Restore the standard 1.25rem vertical gap between the Final release grace period card and the escalation-policy choices in Monitor Editor → Safety & escalation.
+- CSS-only layout correction. No database migration or behavioral changes.
+
 ## 1.4.6 - 2026-10-26
 
 ### Recipient portal document cards
@@ -26,6 +32,23 @@
 
 ### Deployment and validation
 - Includes the numbered schema migration, source and language regression coverage. Live MySQL/scheduler/mail and browser regression testing is still required before production reliance on the new release controls.
+
+## 1.4.5 - 2026-10-26
+
+### Emergency Stop
+- Added an always-available Dashboard Emergency Stop action and explicit authenticated reactivation. Emergency Stop suspends every owned monitor, cancels queued/processing notifications, revokes existing recipient portals, invalidates unused portal codes and audit-logs the action for each monitor. Monitors previously paused remain paused after reactivation. Already-delivered SMTP messages and downloaded files cannot be recalled.
+- Added a high-entropy, expiring, one-use emergency link in the owner release-warning email. Link GET is read-only; a separate CSRF-protected POST confirms the stop, avoiding unintended activation by email-link scanners. No ordinary sign-in is required to exercise the token's stop-only authority.
+
+### Owner-first recipient release and optional final grace period
+- Added `release_grace_hours` (0–720) per monitor and `release_warnings` release barrier in forward migration `010_release_emergency_safeguards.sql`.
+- Prioritize owner release-warning jobs in the mail queue. Block new recipient releases until all owner warnings have finished processing, at least one was accepted by the configured transport, and the grace period (counted from acceptance) has elapsed. Block release if no checked owner email exists or all warning deliveries fail.
+- Prevent the debug release action from bypassing this barrier, and show the warning and grace stage in monitor status and audit history. New owner-warning mail content and emergency controls are localized in all four supported languages.
+
+### Responsive recipient portal documents
+- Present two equal-width document cards per row when space permits and one column in narrow containers, both on actual recipient portals and owner previews. Expanded readers continue spanning the whole section.
+
+### Verification note
+- Syntax, translation and static checks are included; live MySQL/SMTP integration and concurrency tests remain required before production reliance.
 
 ## 1.4.4 - 2026-10-26
 

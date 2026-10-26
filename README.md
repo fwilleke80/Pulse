@@ -1,3 +1,7 @@
+## Pulse 1.4.7 — Escalation spacing hotfix
+
+Version 1.4.7 fixes the missing vertical spacing below the Final release grace period card in Monitor Editor → Safety & escalation. No database migration is required.
+
 ## Pulse 1.4.6 — Portal and editor presentation
 
 Version 1.4.6 rearranges portal document cards into title/metadata, preview and actions, expands full document content inside the original preview region with Open/Close controls, and improves monitor escalation spacing and named browser titles. It does not change monitoring or delivery state transitions and requires no new database migration.
@@ -14,7 +18,7 @@ This version adds database migration `010_release_emergency_safeguards.sql`. Upg
 
 # Pulse
 
-**Current release: 1.4.6**
+**Current release: 1.4.7**
 
 Pulse is a private, self-hosted check-in and notification system for situations in which something could happen to you and the people who need to know might otherwise not be informed for some time. You might use it to make sure family, friends, or other trusted people are contacted if you die or become seriously ill, or as an additional safety measure while travelling alone, going on an expedition, or spending time somewhere where help may be difficult to reach.
 

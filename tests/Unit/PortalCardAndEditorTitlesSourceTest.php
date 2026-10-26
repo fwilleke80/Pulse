@@ -54,6 +54,16 @@ final class PortalCardAndEditorTitlesSourceTest extends TestCase
 		self::assertStringContainsString("__('monitors.documents.editor.new_title')", $document);
 	}
 
+	/** @brief Ensures a normal section gap after the release grace-period card. */
+	public function testGracePeriodCardHasStandardSpaceBeforeEscalationPolicy(): void
+	{
+		$css = (string)file_get_contents(dirname(__DIR__, 2) . '/public/assets/style.css');
+		self::assertMatchesRegularExpression(
+			'/\.escalation-policy-grid\s*\{[^}]*margin-top:\s*1\.25rem\s*;/s',
+			$css
+		);
+	}
+
 	/** @brief Ensures release grace settings precede the escalation-mode selector. */
 	public function testGracePeriodComesBeforeEscalationPolicy(): void
 	{
