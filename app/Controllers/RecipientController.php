@@ -44,6 +44,7 @@ final class RecipientController extends BaseController
 	private RecipientPortalService $_portalService;
 	private NotificationLanguage $_languages;
 	private string $_languagePath;
+	private int $_uploadMaximumBytes;
 
 	/** @brief Constructs the monitor-recipient controller. */
 	public function __construct(
@@ -61,7 +62,8 @@ final class RecipientController extends BaseController
 		NotificationComposer $composer,
 		RecipientPortalService $portalService,
 		NotificationLanguage $languages,
-		string $languagePath
+		string $languagePath,
+		int $uploadMaximumBytes
 	)
 	{
 		parent::__construct($view, $session, $auth, $logger, $request);
@@ -75,6 +77,7 @@ final class RecipientController extends BaseController
 		$this->_portalService = $portalService;
 		$this->_languages = $languages;
 		$this->_languagePath = $languagePath;
+		$this->_uploadMaximumBytes = $uploadMaximumBytes;
 	}
 
 	/** @brief Displays one dedicated monitor-recipient page. */
@@ -145,6 +148,7 @@ final class RecipientController extends BaseController
 			'activeDelivery' => $activeDelivery,
 			'activeDeliveryDocuments' => $activeDeliveryDocuments,
 			'activeSection' => $this->ActiveSection(),
+			'uploadMaximumBytes' => $this->_uploadMaximumBytes,
 		]);
 	}
 

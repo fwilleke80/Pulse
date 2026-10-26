@@ -44,6 +44,7 @@ use Pulse\Services\AuthService;
 use Pulse\Services\DocumentService;
 use Pulse\Services\DocumentPreviewService;
 use Pulse\Services\EscalationService;
+use Pulse\Services\EmergencyStopService;
 use Pulse\Services\LoginThrottleService;
 use Pulse\Services\MailQueueWorker;
 use Pulse\Services\MonitorExecutionService;
@@ -200,6 +201,7 @@ $recipientPortalService = new RecipientPortalService(
 	$logger,
 	(int)$appConfig['mail']['max_attempts']
 );
+$emergencyStopService = new EmergencyStopService($database, $monitorExecutionService, $logger);
 $escalationService = new EscalationService(
 	$database,
 	$monitorStateMachine,
@@ -302,5 +304,6 @@ return [
 	'mailQueueWorker' => $mailQueueWorker,
 	'notificationScheduler' => $notificationScheduler,
 	'escalationService' => $escalationService,
+	'emergencyStopService' => $emergencyStopService,
 	'testNotificationService' => $testNotificationService,
 ];

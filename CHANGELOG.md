@@ -1,3 +1,48 @@
+## 1.4.6 - 2026-10-26
+
+### Recipient portal document cards
+- Order each document card as title, file type and size, preview, then action buttons. Keep the optional description with the card header.
+- Rename the expansion control to localized Open / Close. When expanded, the existing preview region becomes the full viewer for text/Markdown, PDF, CSV and JSON, or the enlarged media area for images and videos; there is no second preview below the buttons.
+- Apply the same responsive layout to the authenticated recipient portal and owner portal preview, keeping lazy loading of embedded files and immutable released-document snapshots.
+
+### Monitor and editor polish
+- Move Final release grace period above the escalation-policy choices, using the same configuration-block spacing as other settings.
+- Show descriptive, localized browser tab titles containing the actual monitor, recipient or document name, including named documents opened from the recipient editor. New document pages retain a descriptive Create text document title.
+- No schema migration is required.
+
+## 1.4.5 - 2026-10-26
+
+### Final release warning and optional grace period
+- Add a per-monitor final release grace period of 0–720 hours, defaulting to zero. Recipient releases wait for at least one verified owner-warning email to be accepted by the mail transport before staging recipient notifications. The configured timer starts after that first successful transport acceptance. If no checked owner email can be notified or all attempts fail, release remains blocked rather than proceeding without warning.
+- Introduce an owner-warning queue type with highest dispatch priority, per-cycle idempotency, one-use hashed emergency bearer tokens, expiring links and all four localized warning texts. The warning includes a link to a confirmation page; merely visiting the link cannot stop Pulse.
+
+### Emergency stops
+- Add an account-wide Emergency Stop button on the Dashboard. It suspends monitoring, cancels outstanding monitor-related mail and check cycles, revokes existing recipient portals and invalidates unused portal access codes. Already-sent emails or downloaded files cannot be retracted.
+- The email emergency link instead stops only the monitor named in the warning. The owner can later explicitly reactivate suspended monitors; existing revoked portal deliveries remain revoked. Authenticated Dashboard stops require CSRF validation; email-based stops require a one-use expiring token plus explicit POST confirmation and CSRF validation.
+- Add audit events, status indicators, protection against resetting emergency suspension through ordinary resume, and migration `010_release_emergency_safeguards.sql`.
+
+### Responsive recipient portal document cards
+- Present document cards in a two-column responsive grid on sufficiently wide screens, falling back to one column on narrow screens. Expanded full-document viewers span the whole grid. The recipient portal and owner preview share the same view.
+
+### Deployment and validation
+- Includes the numbered schema migration, source and language regression coverage. Live MySQL/scheduler/mail and browser regression testing is still required before production reliance on the new release controls.
+
+## 1.4.4 - 2026-10-26
+
+### Document management from Recipient Editor
+- Add Create text document, Upload document and Edit actions to Recipient Editor → Documents, using the existing monitor-owned document editors and upload service. A newly created or uploaded document is automatically assigned only to the recipient being edited; existing assignments and previously released immutable copies are untouched.
+- Preserve the recipient context in document editor links, validated hidden form fields and post-save/error redirects. A mismatched monitor-contact ID is rejected server-side to prevent cross-monitor assignments.
+- Guard pending recipient document-checkbox changes when entering document editors, uploading a file or navigating away. Keep uploaded file forms separate from the recipient-assignment form and disable editing when the monitor is archived.
+
+### Crash-resistant local drafts for text documents
+- Auto-save unsaved title and Markdown text changes in browser-local storage under an owner/monitor/document-specific draft key. The editor shows whether changes are server-saved, saved only locally, or could not be cached.
+- Offer Restore draft and Discard draft on reopening a document with a different saved local draft. Do not silently overwrite newer server data. Local drafts are unencrypted and should not be used on shared devices.
+- Save text documents asynchronously with an explicit authenticated success response; clear the local draft only after the server confirms success. Preserve the draft on network errors and server rejections. Maintain the existing normal POST behavior as a fallback.
+
+### Less crowded Safety contacts
+- Remove the redundant per-contact email-address and language list from Monitor Editor → Safety & escalation. Keep the selected contact's name and checked-address availability status; notification eligibility and sending behavior are unchanged.
+- Update all four language catalogs and UI tests. No database migration is required.
+
 ## 1.4.3 - 2026-10-19
 
 ### Administration overview and navigation

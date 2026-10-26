@@ -286,6 +286,20 @@ final class MailQueueRepository
 			return (int)$statement->fetchColumn() === 1;
 		}
 
+
+		if ($mailType === 'owner_release_warning')
+		{
+			$statement = $this->_database->GetConnection()->prepare('
+				SELECT COUNT(*) FROM release_warnings rw
+				INNER JOIN check_cycles cc ON cc.id = rw.check_cycle_id
+				INNER JOIN monitors m ON m.id = rw.monitor_id
+				WHERE rw.check_cycle_id = :cycle_id AND rw.stopped_at IS NULL
+					AND cc.status = \'overdue\' AND m.is_paused = 0 AND m.emergency_stopped_at IS NULL
+			');
+			$statement->execute(['cycle_id' => (int)$job['check_cycle_id']]);
+			return (int)$statement->fetchColumn() === 1;
+		}
+
 		if ($mailType === 'recipient_notification')
 		{
 			$statement = $this->_database->GetConnection()->prepare('
@@ -358,6 +372,7 @@ final class MailQueueRepository
 					status = \'sent\',
 					body_text = CASE
 						WHEN mail_type IN (\'safety_invitation\', \'safety_reminder\') THEN \'[Safety link redacted after delivery]\'
+						WHEN mail_type = \'owner_release_warning\' THEN \'[Emergency link redacted after delivery]\'
 						WHEN mail_type = \'recipient_notification\' THEN \'[Recipient portal link redacted after delivery]\'
 						WHEN mail_type = \'recipient_access_code\' THEN \'[Access code redacted after delivery]\'
 						ELSE body_text
@@ -374,7 +389,25 @@ final class MailQueueRepository
 			$update->execute(['sent_at' => $now, 'updated_at' => $now, 'id' => $jobId]);
 			$this->InsertLog($connection, $job, 'sent', null, $now);
 
-			if ((string)$job['mail_type'] === 'owner_due_notice' && (int)$job['check_cycle_id'] > 0)
+			if ((string)$job['mail_type'] === 'owner_release_warning')
+			{
+				$warning = $connection->prepare('UPDATE release_warnings SET warning_sent_at = COALESCE(warning_sent_at, :now), release_not_before = COALESCE(release_not_before, DATE_ADD(:release_start, INTERVAL grace_hours HOUR)), expires_at = DATE_ADD(:expires_start, INTERVAL 90 DAY), updated_at = :updated_at WHERE check_cycle_id = :cycle_id AND stopped_at IS NULL AND warning_sent_at IS NULL');
+				$warning->execute(['now' => $now, 'release_start' => $now, 'expires_start' => $now, 'updated_at' => $now, 'cycle_id' => (int)$job['check_cycle_id']]);
+				if ($warning->rowCount() === 1)
+				{
+					$notify = $connection->prepare('
+						INSERT INTO audit_log (user_id, event_type, entity_type, entity_id, message, context_json, created_at)
+						VALUES (:user_id, \'mail.owner_release_warning_sent\', \'monitor\', :monitor_id, :message, NULL, :created_at)
+					');
+					$notify->execute([
+						'user_id' => (int)$job['user_id'],
+						'monitor_id' => (int)$job['monitor_id'],
+						'message' => 'Final release warning accepted by the mail transport',
+						'created_at' => $now,
+					]);
+				}
+			}
+			elseif ((string)$job['mail_type'] === 'owner_due_notice' && (int)$job['check_cycle_id'] > 0)
 			{
 				$this->RecordDueNoticeSent($connection, $job, $now);
 			}
@@ -476,6 +509,7 @@ final class MailQueueRepository
 				status = \'cancelled\',
 				body_text = CASE
 					WHEN mail_type IN (\'safety_invitation\', \'safety_reminder\') THEN \'[Safety link redacted after cancellation]\'
+					WHEN mail_type = \'owner_release_warning\' THEN \'[Emergency link redacted after cancellation]\'
 					WHEN mail_type = \'recipient_notification\' THEN \'[Recipient portal link redacted after cancellation]\'
 					WHEN mail_type = \'recipient_access_code\' THEN \'[Access code redacted after cancellation]\'
 					ELSE body_text
@@ -502,6 +536,7 @@ final class MailQueueRepository
 			SET status = \'cancelled\',
 				body_text = CASE
 					WHEN mail_type IN (\'safety_invitation\', \'safety_reminder\') THEN \'[Safety link redacted after cancellation]\'
+					WHEN mail_type = \'owner_release_warning\' THEN \'[Emergency link redacted after cancellation]\'
 					WHEN mail_type = \'recipient_notification\' THEN \'[Recipient portal link redacted after cancellation]\'
 					WHEN mail_type = \'recipient_access_code\' THEN \'[Access code redacted after cancellation]\'
 					ELSE body_text
@@ -756,7 +791,7 @@ final class MailQueueRepository
 					AND available_at <= UTC_TIMESTAMP()
 					AND attempt_count < max_attempts
 					' . $whereId . '
-				ORDER BY available_at ASC, id ASC
+				ORDER BY CASE WHEN mail_type = \'owner_release_warning\' THEN 0 ELSE 1 END, available_at ASC, id ASC
 				LIMIT ' . $limit . '
 				FOR UPDATE SKIP LOCKED
 			');
@@ -794,7 +829,7 @@ final class MailQueueRepository
 				WHERE id IN (' . $idList . ')
 					AND status = \'processing\'
 					AND lease_token = ' . $connection->quote($leaseToken) . '
-				ORDER BY available_at ASC, id ASC
+				ORDER BY CASE WHEN mail_type = \'owner_release_warning\' THEN 0 ELSE 1 END, available_at ASC, id ASC
 			')->fetchAll(PDO::FETCH_ASSOC);
 			$connection->commit();
 

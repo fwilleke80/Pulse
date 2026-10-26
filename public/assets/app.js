@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', function ()
 		{
 			return field.type === 'checkbox' ? field.checked : field.value;
 		});
-		let saving = false;
+		let leavingAfterSave = false;
 		const dirty = function ()
 		{
 			return fields.some(function (field, index)
@@ -58,27 +58,365 @@ document.addEventListener('DOMContentLoaded', function ()
 			});
 		};
 
-		form.addEventListener('submit', function ()
+		// Text documents keep a per-owner/document draft across connection failures.
+		// File metadata forms retain their existing navigation guard only.
+		const draftPanel = form.querySelector('[data-document-draft-panel]');
+		const titleField = form.querySelector('input[name="title"]');
+		const contentField = form.querySelector('textarea[name="text_content"]');
+		const draftEnabled = form.hasAttribute('data-document-autosave') && draftPanel && titleField && contentField;
+		let persistDraft = null;
+
+		if (draftEnabled)
 		{
-			saving = true;
-		});
+			const storageKey = form.dataset.documentDraftKey;
+			const status = draftPanel.querySelector('[data-document-draft-status]');
+			const recovery = draftPanel.querySelector('[data-document-draft-recovery]');
+			const restoreButton = draftPanel.querySelector('[data-document-draft-restore]');
+			const discardButton = draftPanel.querySelector('[data-document-draft-discard]');
+			const submitButton = form.querySelector('button[type="submit"]');
+			const formFields = form.querySelector('fieldset');
+			let timer = null;
+			let submitting = false;
+			let storageWorking = true;
+			let pendingRecovery = false;
+			let previousDraft = null;
+			let serverSaveFailed = false;
+
+			/** @brief Reports whether the draft is server-saved or only locally preserved. */
+			const showStatus = function (message)
+			{
+				if (status)
+				{
+					status.textContent = message;
+				}
+			};
+
+			/** @brief Removes a local copy only after an explicit discard or confirmed save. */
+			const removeDraft = function ()
+			{
+				try
+				{
+					window.localStorage.removeItem(storageKey);
+					storageWorking = true;
+				}
+				catch (error)
+				{
+					storageWorking = false;
+				}
+			};
+
+			/** @brief Stores the latest unsaved title and Markdown source synchronously. */
+			persistDraft = function ()
+			{
+				if (timer !== null)
+				{
+					window.clearTimeout(timer);
+					timer = null;
+				}
+				if (!dirty())
+				{
+					removeDraft();
+					serverSaveFailed = false;
+					showStatus(draftPanel.dataset.saved);
+					return;
+				}
+				try
+				{
+					window.localStorage.setItem(storageKey, JSON.stringify({
+						format: 1,
+						title: titleField.value,
+						content: contentField.value,
+						modified: Date.now(),
+					}));
+					storageWorking = true;
+				}
+				catch (error)
+				{
+					storageWorking = false;
+				}
+				showStatus(!storageWorking ? draftPanel.dataset.failed
+					: serverSaveFailed ? draftPanel.dataset.saveFailed : draftPanel.dataset.local);
+			};
+
+			/** @brief Debounces writes while flushing immediately when the page is hidden. */
+			const scheduleDraft = function ()
+			{
+				pendingRecovery = false;
+				if (recovery)
+				{
+					recovery.hidden = true;
+				}
+				if (timer !== null)
+				{
+					window.clearTimeout(timer);
+				}
+				timer = window.setTimeout(persistDraft, 250);
+				if (dirty())
+				{
+					showStatus(draftPanel.dataset.pending);
+				}
+			};
+
+			// Never silently overwrite server data with an older local draft.
+			try
+			{
+				const stored = window.localStorage.getItem(storageKey);
+				if (stored)
+				{
+					const candidate = JSON.parse(stored);
+					if (candidate && candidate.format === 1
+						&& typeof candidate.title === 'string'
+						&& typeof candidate.content === 'string'
+						&& candidate.title.length <= 255 && candidate.content.length <= 1000000)
+					{
+						if (candidate.title === titleField.value && candidate.content === contentField.value)
+						{
+							removeDraft();
+						}
+						else
+						{
+							previousDraft = candidate;
+							pendingRecovery = true;
+							titleField.readOnly = true;
+							contentField.readOnly = true;
+							if (submitButton)
+							{
+								submitButton.disabled = true;
+							}
+							if (recovery)
+							{
+								recovery.hidden = false;
+							}
+							showStatus(draftPanel.dataset.restorable);
+						}
+					}
+				}
+			}
+			catch (error)
+			{
+				storageWorking = false;
+				showStatus(draftPanel.dataset.failed);
+			}
+
+			if (restoreButton)
+			{
+				restoreButton.addEventListener('click', function ()
+				{
+					if (!pendingRecovery || !previousDraft)
+					{
+						return;
+					}
+					titleField.value = previousDraft.title;
+					contentField.value = previousDraft.content;
+					titleField.readOnly = false;
+					contentField.readOnly = false;
+					if (submitButton)
+					{
+						submitButton.disabled = false;
+					}
+					previousDraft = null;
+					scheduleDraft();
+					persistDraft();
+				});
+			}
+			if (discardButton)
+			{
+				discardButton.addEventListener('click', function ()
+				{
+					previousDraft = null;
+					pendingRecovery = false;
+					titleField.readOnly = false;
+					contentField.readOnly = false;
+					if (submitButton)
+					{
+						submitButton.disabled = false;
+					}
+					if (recovery)
+					{
+						recovery.hidden = true;
+					}
+					removeDraft();
+					showStatus(draftPanel.dataset.saved);
+				});
+			}
+			titleField.addEventListener('input', scheduleDraft);
+			contentField.addEventListener('input', scheduleDraft);
+			window.addEventListener('pagehide', function ()
+			{
+				if (!pendingRecovery && !leavingAfterSave)
+				{
+					persistDraft();
+				}
+			});
+			document.addEventListener('visibilitychange', function ()
+			{
+				if (document.hidden && !pendingRecovery && !leavingAfterSave)
+				{
+					persistDraft();
+				}
+			});
+
+			/** @brief Clear a draft only on a confirmed server response, not on request submission. */
+			form.addEventListener('submit', async function (event)
+			{
+				event.preventDefault();
+				if (submitting || pendingRecovery)
+				{
+					return;
+				}
+				submitting = true;
+				serverSaveFailed = false;
+				persistDraft();
+				showStatus(draftPanel.dataset.saving);
+				const data = new FormData(form);
+				if (submitButton)
+				{
+					submitButton.disabled = true;
+				}
+				if (formFields)
+				{
+					formFields.disabled = true;
+				}
+				const abortController = new AbortController();
+				const timeout = window.setTimeout(function ()
+				{
+					abortController.abort();
+				}, 30000);
+				try
+				{
+					const response = await fetch(form.action, {
+						method: 'POST',
+						body: data,
+						credentials: 'same-origin',
+						signal: abortController.signal,
+						headers: {
+							'Accept': 'application/json',
+							'X-Pulse-Document-Save': '1',
+						},
+					});
+					const payload = await response.json();
+					if (!response.ok || payload.saved !== true || typeof payload.redirect !== 'string'
+						|| !payload.redirect.startsWith('/'))
+					{
+						throw new Error('Document save was not confirmed by Pulse.');
+					}
+					removeDraft();
+					leavingAfterSave = true;
+					window.location.assign(payload.redirect);
+				}
+				catch (error)
+				{
+					serverSaveFailed = true;
+					persistDraft();
+					showStatus(storageWorking ? draftPanel.dataset.saveFailed : draftPanel.dataset.failed);
+				}
+				finally
+				{
+					window.clearTimeout(timeout);
+					submitting = false;
+					if (submitButton)
+					{
+						submitButton.disabled = false;
+					}
+					if (formFields)
+					{
+						formFields.disabled = false;
+					}
+				}
+			});
+		}
+		else
+		{
+			form.addEventListener('submit', function ()
+			{
+				leavingAfterSave = true;
+			});
+		}
+
 		for (const link of form.querySelectorAll('[data-document-back]'))
 		{
 			link.addEventListener('click', function (event)
 			{
-				if (!saving && dirty() && !window.confirm(form.dataset.unsavedConfirm || 'Discard unsaved changes?'))
+				if (!leavingAfterSave && dirty() && !window.confirm(form.dataset.unsavedConfirm || 'Discard unsaved changes?'))
 				{
 					event.preventDefault();
 				}
 				else
 				{
-					saving = true;
+					if (persistDraft && !pendingRecovery)
+					{
+						persistDraft();
+					}
+					leavingAfterSave = true;
 				}
 			});
 		}
 		window.addEventListener('beforeunload', function (event)
 		{
-			if (saving || !dirty())
+			if (leavingAfterSave || !dirty())
+			{
+				return;
+			}
+			if (persistDraft && !draftPanel.querySelector('[data-document-draft-recovery]:not([hidden])'))
+			{
+				persistDraft();
+			}
+			event.preventDefault();
+			event.returnValue = '';
+		});
+	}
+
+	for (const form of document.querySelectorAll('[data-recipient-documents-assignment-form]'))
+	{
+		const checkboxes = Array.from(form.querySelectorAll('input[name="document_ids[]"]'));
+		const originallyChecked = checkboxes.map(function (box)
+		{
+			return box.checked;
+		});
+		let navigating = false;
+		const dirty = function ()
+		{
+			return checkboxes.some(function (box, index)
+			{
+				return box.checked !== originallyChecked[index];
+			});
+		};
+		const confirmDiscard = function ()
+		{
+			return !dirty() || window.confirm(form.dataset.unsavedConfirm || 'Discard unsaved document assignments?');
+		};
+
+		form.addEventListener('submit', function ()
+		{
+			navigating = true;
+		});
+		for (const link of document.querySelectorAll('[data-recipient-document-navigate]'))
+		{
+			link.addEventListener('click', function (event)
+			{
+				if (!confirmDiscard())
+				{
+					event.preventDefault();
+					return;
+				}
+				navigating = true;
+			});
+		}
+		for (const uploadForm of document.querySelectorAll('[data-recipient-document-upload-form]'))
+		{
+			uploadForm.addEventListener('submit', function (event)
+			{
+				if (!confirmDiscard())
+				{
+					event.preventDefault();
+					return;
+				}
+				navigating = true;
+			});
+		}
+		window.addEventListener('beforeunload', function (event)
+		{
+			if (navigating || !dirty())
 			{
 				return;
 			}
@@ -1453,8 +1791,8 @@ document.addEventListener('DOMContentLoaded', function ()
 			card.classList.toggle('is-expanded', expanded);
 			toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
 			toggle.textContent = expanded
-				? (toggle.dataset.hideLabel || 'Hide preview')
-				: (toggle.dataset.showLabel || 'Show preview');
+				? (toggle.dataset.hideLabel || 'Close')
+				: (toggle.dataset.showLabel || 'Open');
 
 			if (mode !== 'frame' || !panel || !frame)
 			{

@@ -49,6 +49,8 @@ $activityTranslationKeys = [
 	'monitor.paused' => 'dashboard.activity.paused',
 	'monitor.resumed' => 'dashboard.activity.resumed',
 	'monitor.forced_due' => 'dashboard.activity.forced_due',
+	'monitor.emergency_stopped' => 'dashboard.activity.emergency_stopped',
+	'mail.owner_release_warning_sent' => 'dashboard.activity.owner_release_warning_sent',
 	'mail.due_notice_sent' => 'dashboard.activity.due_notice_sent',
 	'mail.reminder_sent' => 'dashboard.activity.reminder_sent',
 	'mail.safety_invitation_sent' => 'dashboard.activity.safety_invitation_sent',
@@ -116,6 +118,26 @@ ob_start();
 		</div>
 	</div>
 <?php endif; ?>
+
+<?php $emergencyActive = count(array_filter($monitors, static fn (array $m): bool => !empty($m['emergency_stopped_at']))) > 0; ?>
+<section class="global-check-in-card emergency-card" aria-label="<?= e__('emergency.dashboard.heading') ?>">
+	<div>
+		<h2><?= e__('emergency.dashboard.heading') ?></h2>
+		<p><?= e__($emergencyActive ? 'emergency.dashboard.stopped_hint' : 'emergency.dashboard.hint') ?></p>
+	</div>
+	<?php if (count($monitors) > count(array_filter($monitors, static fn (array $m): bool => !empty($m['emergency_stopped_at'])))): ?>
+		<form method="post" action="<?= e($base_url) ?>/emergency-stop/dashboard" data-confirm="<?= e__('emergency.dashboard.confirm') ?>">
+			<?= csrf_field() ?>
+			<button type="submit" class="btn-danger btn-emergency-stop"><?= e__('emergency.stop.submit') ?></button>
+		</form>
+	<?php endif; ?>
+	<?php if ($emergencyActive): ?>
+		<form method="post" action="<?= e($base_url) ?>/emergency-stop/reactivate" data-confirm="<?= e__('emergency.reactivate.confirm') ?>">
+			<?= csrf_field() ?>
+			<button type="submit" class="btn-primary"><?= e__('emergency.reactivate.submit') ?></button>
+		</form>
+	<?php endif; ?>
+</section>
 
 <section class="dashboard-monitor-section">
 	<div class="section-title-row">

@@ -127,6 +127,7 @@ CREATE TABLE monitors
 	safety_max_reminders INT UNSIGNED NOT NULL DEFAULT 1,
 	safety_required_confirmations INT UNSIGNED NOT NULL DEFAULT 1,
 	safety_confirmation_days INT UNSIGNED NULL,
+	release_grace_hours SMALLINT UNSIGNED NOT NULL DEFAULT 0,
 	safety_postponement_limit INT UNSIGNED NOT NULL DEFAULT 0,
 	consecutive_safety_postponements INT UNSIGNED NOT NULL DEFAULT 0,
 	safety_invitation_subject VARCHAR(255) NULL,
@@ -139,6 +140,8 @@ CREATE TABLE monitors
 	portal_location_history_limit TINYINT UNSIGNED NOT NULL DEFAULT 5,
 	is_paused TINYINT(1) NOT NULL DEFAULT 0,
 	paused_at DATETIME NULL,
+	emergency_stopped_at DATETIME NULL,
+	emergency_was_paused TINYINT(1) NOT NULL DEFAULT 0,
 	is_archived TINYINT(1) NOT NULL DEFAULT 0,
 	archived_at DATETIME NULL,
 	last_confirmed_at DATETIME NULL,
@@ -472,6 +475,28 @@ CREATE TABLE recipient_portal_codes
 	INDEX idx_recipient_portal_codes_delivery (recipient_delivery_id, created_at),
 	INDEX idx_recipient_portal_codes_runtime (recipient_delivery_id, expires_at, used_at, invalidated_at),
 	FOREIGN KEY (recipient_delivery_id) REFERENCES recipient_release_deliveries(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE release_warnings
+(
+	id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+	check_cycle_id BIGINT UNSIGNED NOT NULL,
+	monitor_id BIGINT UNSIGNED NOT NULL,
+	user_id BIGINT UNSIGNED NOT NULL,
+	token_hash CHAR(64) NOT NULL,
+	release_not_before DATETIME NULL,
+	grace_hours SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+	expires_at DATETIME NOT NULL,
+	warning_sent_at DATETIME NULL,
+	stopped_at DATETIME NULL,
+	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+	UNIQUE KEY uq_release_warnings_cycle (check_cycle_id),
+	UNIQUE KEY uq_release_warnings_token (token_hash),
+	INDEX idx_release_warnings_owner (user_id, created_at),
+	FOREIGN KEY (check_cycle_id) REFERENCES check_cycles(id) ON DELETE CASCADE,
+	FOREIGN KEY (monitor_id) REFERENCES monitors(id) ON DELETE CASCADE,
+	FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE mail_queue

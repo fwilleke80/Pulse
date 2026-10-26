@@ -328,6 +328,7 @@ class MonitorController extends BaseController
 			$values['portal_location_history_limit']
 		);
 		$this->_monitorRepository->UpdateSafetyPostponementLimitForUser($monitorId, (int)$user['id'], $values['safety_postponement_limit']);
+		$this->_monitorRepository->UpdateReleaseGraceHoursForUser($monitorId, (int)$user['id'], $values['release_grace_hours']);
 		$this->_monitorExecutionService->SynchronizeMonitorForUser($monitorId, (int)$user['id']);
 		if ($this->_request->PostBool('recipient_assignments_present'))
 		{
@@ -840,7 +841,13 @@ class MonitorController extends BaseController
 
 		$release = $this->_escalationService->StageRecipientRelease($cycleId);
 
-		if ($release['status'] === 'blocked')
+		if ($release['status'] === 'owner_warning_pending')
+		{
+			$this->Flash('warning', __('monitors.send_recipients.warning_queued'));
+			$this->Redirect($this->RuntimeRedirect());
+		}
+
+		if (in_array((string)$release['status'], ['blocked', 'owner_warning_blocked'], true))
 		{
 			$this->Flash('error', $this->RecipientReleaseBlockedMessage((array)($release['issues'] ?? [])));
 			$this->Redirect($this->RuntimeRedirect());
@@ -1002,6 +1009,7 @@ class MonitorController extends BaseController
 			'safety_required_confirmations' => $this->_request->PostInt('safety_required_confirmations', 1),
 			'safety_confirmation_days' => $this->_request->PostInt('safety_confirmation_days', 0),
 			'safety_postponement_limit' => $this->_request->PostInt('safety_postponement_limit', 0),
+			'release_grace_hours' => $this->_request->PostInt('release_grace_hours', 0),
 			'location_check_in_enabled' => $this->_request->PostBool('location_check_in_enabled'),
 			'portal_location_sharing_enabled' => $this->_request->PostBool('portal_location_sharing_enabled'),
 			'portal_location_history_limit' => $this->_request->PostInt('portal_location_history_limit', 5),
@@ -1247,6 +1255,7 @@ class MonitorController extends BaseController
 			|| (int)$values['safety_required_confirmations'] < 1 || (int)$values['safety_required_confirmations'] > 100
 			|| (int)$values['safety_confirmation_days'] < 0 || (int)$values['safety_confirmation_days'] > 3650
 			|| (int)$values['safety_postponement_limit'] < 0 || (int)$values['safety_postponement_limit'] > 10000
+			|| (int)$values['release_grace_hours'] < 0 || (int)$values['release_grace_hours'] > 720
 			|| (int)$values['portal_location_history_limit'] < 1 || (int)$values['portal_location_history_limit'] > 20
 		)
 		{

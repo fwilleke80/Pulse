@@ -116,6 +116,8 @@ $statusHistoryTranslationKeys = [
 	'monitor.escalated' => 'dashboard.activity.escalated',
 	'monitor.reset_reactivated' => 'dashboard.activity.reset_reactivated',
 	'monitor.archived' => 'dashboard.activity.archived',
+	'monitor.emergency_stopped' => 'dashboard.activity.emergency_stopped',
+	'mail.owner_release_warning_sent' => 'dashboard.activity.owner_release_warning_sent',
 	'monitor.paused' => 'dashboard.activity.paused',
 	'monitor.resumed' => 'dashboard.activity.resumed',
 	'monitor.forced_due' => 'dashboard.activity.forced_due',
@@ -136,6 +138,8 @@ $statusHistoryCategories = [
 	'monitor.escalated' => 'escalation',
 	'monitor.reset_reactivated' => 'state',
 	'monitor.archived' => 'state',
+	'monitor.emergency_stopped' => 'dashboard.activity.emergency_stopped',
+	'mail.owner_release_warning_sent' => 'dashboard.activity.owner_release_warning_sent',
 	'monitor.paused' => 'state',
 	'monitor.resumed' => 'state',
 	'monitor.forced_due' => 'state',
@@ -614,6 +618,13 @@ ob_start();
 			<p><?= e__('monitors.escalation.hint') ?></p>
 		</div>
 
+		<div class="configuration-block">
+			<label><?= e__('monitors.escalation.release_grace_hours') ?>
+				<input type="number" name="release_grace_hours" form="monitor-settings-form" min="0" max="720" value="<?= (int)($monitor['release_grace_hours'] ?? 0) ?>" required>
+				<small><?= e__('monitors.escalation.release_grace_hours_hint') ?></small>
+			</label>
+		</div>
+
 		<div class="escalation-policy-grid">
 			<label class="policy-option">
 				<input type="radio" name="escalation_policy" form="monitor-settings-form" value="direct" <?= (string)$monitor['escalation_policy'] === 'direct' ? 'checked' : '' ?>>
@@ -638,7 +649,6 @@ ob_start();
 								<input type="checkbox" name="safety_contact_ids[]" form="monitor-settings-form" value="<?= (int)$contact['id'] ?>" data-safety-contact-eligible="<?= \Pulse\Core\EmailAddressCollection::HasChecked($contact) ? '1' : '0' ?>" <?= in_array((int)$contact['id'], $safetyContactIds, true) ? 'checked' : '' ?>>
 								<span>
 									<strong><?= e((string)$contact['name']) ?></strong><br>
-									<small><?= e(implode(', ', array_column(\Pulse\Core\EmailAddressCollection::FromRow($contact), 'email'))) ?> · <?= e(notification_language_name((string)$contact['notification_locale'])) ?></small>
 									<span class="mini-status mini-status-<?= \Pulse\Core\EmailAddressCollection::HasChecked($contact) ? 'ok' : 'warning' ?>"><?= e__(\Pulse\Core\EmailAddressCollection::HasChecked($contact) ? 'contacts.status.checked_available' : 'contacts.status.none_checked') ?></span>
 								</span>
 							</label>
@@ -923,5 +933,5 @@ ob_start();
 
 <?php
 $content = ob_get_clean();
-$title = e__('monitors.edit.title');
+$title = __('monitors.edit.browser_title', ['name' => (string)$monitor['name']]);
 require __DIR__ . '/../layouts/main.php';

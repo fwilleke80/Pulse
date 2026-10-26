@@ -261,7 +261,8 @@ final class EscalationService
 		{
 			$cycle = $this->LockCycle($connection, $cycleId);
 
-			if (!is_array($cycle) || !in_array((string)$cycle['status'], [MonitorStateMachine::OVERDUE, MonitorStateMachine::ESCALATED], true))
+			if (!is_array($cycle) || !empty($cycle['is_paused']) || !empty($cycle['emergency_stopped_at'])
+				|| !in_array((string)$cycle['status'], [MonitorStateMachine::OVERDUE, MonitorStateMachine::ESCALATED], true))
 			{
 				$connection->commit();
 				return ['status' => 'unavailable', 'queued' => 0, 'release_id' => 0, 'issues' => []];
@@ -295,6 +296,20 @@ final class EscalationService
 				$this->WriteAudit($connection, $cycle, 'recipient.release_blocked', ['reason' => $blockedReason, 'issues' => $blockedIssues]);
 				$connection->commit();
 				return ['status' => 'blocked', 'queued' => 0, 'release_id' => $releaseId, 'issues' => $blockedIssues];
+			}
+
+			// No recipient content is staged until a verified owner warning has been dispatched
+			// and the optional grace period has expired.
+			$warningState = $this->EnsureReleaseWarning($connection, $cycle);
+			if ($warningState !== 'ready')
+			{
+				$warningReleaseId = 0;
+				if ($warningState === 'owner_warning_blocked')
+				{
+					$warningReleaseId = $this->UpsertBlockedRelease($connection, $cycle, 'owner_warning_unavailable');
+				}
+				$connection->commit();
+				return ['status' => $warningState, 'queued' => 0, 'release_id' => $warningReleaseId, 'issues' => []];
 			}
 
 			$now = $this->Now();
@@ -440,6 +455,92 @@ final class EscalationService
 			$connection->rollBack();
 			throw $throwable;
 		}
+	}
+
+
+	/**
+	 * @brief Creates the owner emergency-warning barrier exactly once for an overdue cycle.
+	 * @details No recipient notification may be staged until at least one warning was
+	 * accepted by the mail transport and the configured grace period has elapsed.
+	 * @param PDO $connection Transactional connection holding the cycle lock.
+	 * @param array<string, mixed> $cycle Locked monitor cycle and owner.
+	 * @return string ready, owner_warning_pending, or owner_warning_blocked.
+	 */
+	private function EnsureReleaseWarning(PDO $connection, array $cycle): string
+	{
+		$lookup = $connection->prepare('SELECT * FROM release_warnings WHERE check_cycle_id = :id FOR UPDATE');
+		$lookup->execute(['id' => (int)$cycle['id']]);
+		$warning = $lookup->fetch(PDO::FETCH_ASSOC);
+		if (is_array($warning))
+		{
+			if ($warning['stopped_at'] !== null)
+			{
+				return 'owner_warning_blocked';
+			}
+			$remaining = $connection->prepare('SELECT COUNT(*) FROM mail_queue WHERE check_cycle_id = :cycle_id AND mail_type = \'owner_release_warning\' AND status IN (\'queued\',\'retrying\',\'processing\')');
+			$remaining->execute(['cycle_id' => (int)$cycle['id']]);
+			if ((int)$remaining->fetchColumn() > 0)
+			{
+				return 'owner_warning_pending';
+			}
+			if ($warning['warning_sent_at'] === null)
+			{
+				return 'owner_warning_blocked';
+			}
+			return $warning['warning_sent_at'] !== null
+				&& $warning['release_not_before'] !== null
+				&& (string)$warning['release_not_before'] <= $this->Now()
+				? 'ready' : 'owner_warning_pending';
+		}
+
+		$emails = EmailAddressCollection::Checked($cycle);
+		if ($emails === [])
+		{
+			return 'owner_warning_blocked';
+		}
+
+		$now = $this->Now();
+		$graceHours = max(0, (int)$cycle['release_grace_hours']);
+		$expiresAt = gmdate('Y-m-d H:i:s', time() + 90 * 86400);
+		$rawToken = bin2hex(random_bytes(32));
+		$insert = $connection->prepare('
+			INSERT INTO release_warnings
+			(check_cycle_id, monitor_id, user_id, token_hash, grace_hours, expires_at, created_at, updated_at)
+			VALUES (:cycle_id, :monitor_id, :user_id, :token_hash, :grace_hours, :expires_at, :created_at, :updated_at)
+		');
+		$insert->execute([
+			'cycle_id' => (int)$cycle['id'],
+			'monitor_id' => (int)$cycle['monitor_id'],
+			'user_id' => (int)$cycle['user_id'],
+			'token_hash' => hash('sha256', $rawToken),
+			'grace_hours' => $graceHours,
+			'expires_at' => $expiresAt,
+			'created_at' => $now,
+			'updated_at' => $now,
+		]);
+		$content = $this->_composer->ComposeOwnerReleaseWarning($cycle, $rawToken, $graceHours);
+		foreach ($emails as $index => $email)
+		{
+			$this->InsertQueue($connection, [
+				'user_id' => (int)$cycle['user_id'],
+				'check_cycle_id' => (int)$cycle['id'],
+				'monitor_id' => (int)$cycle['monitor_id'],
+				'contact_id' => null,
+				'safety_request_id' => null,
+				'recipient_delivery_id' => null,
+				'mail_type' => 'owner_release_warning',
+				'idempotency_key' => 'owner-release-warning:' . (int)$cycle['id'] . ':address' . ($index + 1),
+				'reminder_number' => null,
+				'recipient_email' => $email,
+				'subject' => $content['subject'],
+				'body_text' => $content['body_text'],
+				'available_at' => $now,
+			]);
+		}
+		$this->WriteAudit($connection, $cycle, 'monitor.owner_release_warning_queued', [
+			'grace_hours' => $graceHours,
+		]);
+		return 'owner_warning_pending';
 	}
 
 	/** @return array<string, mixed>|null @brief Resolves a current safety request without consuming its token. */
@@ -759,8 +860,12 @@ final class EscalationService
 	{
 		$statement = $connection->prepare('
 			SELECT cc.*, m.user_id, m.name AS monitor_name, m.is_paused,
+				m.emergency_stopped_at, m.release_grace_hours,
 				m.safety_invitation_subject, m.safety_invitation_body,
-				m.safety_reminder_subject, m.safety_reminder_body, u.display_name AS owner_name
+				m.safety_reminder_subject, m.safety_reminder_body, u.display_name AS owner_name,
+				u.email, u.email_checked_at, u.email_2, u.email_2_checked_at,
+				u.email_3, u.email_3_checked_at, u.email_4, u.email_4_checked_at,
+				u.notification_locale
 			FROM check_cycles cc
 			INNER JOIN monitors m ON m.id = cc.monitor_id
 			INNER JOIN users u ON u.id = m.user_id

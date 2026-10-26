@@ -74,6 +74,7 @@ use Pulse\Controllers\AdministrationController;
 use Pulse\Controllers\AuthController;
 use Pulse\Controllers\ContactController;
 use Pulse\Controllers\DocumentController;
+use Pulse\Controllers\EmergencyStopController;
 use Pulse\Controllers\HomeController;
 use Pulse\Controllers\LanguageController;
 use Pulse\Controllers\MarkdownController;
@@ -120,6 +121,7 @@ $testNotificationService = $container['testNotificationService'];
 $notificationLanguage = $container['notificationLanguage'];
 $notificationComposer = $container['notificationComposer'];
 $escalationService = $container['escalationService'];
+$emergencyStopService = $container['emergencyStopService'];
 $recipientPortalService = $container['recipientPortalService'];
 $recipientPortalArchiveBuilder = $container['recipientPortalArchiveBuilder'];
 $markdownRenderer = $container['markdownRenderer'];
@@ -157,6 +159,7 @@ if ($request->Method() === 'POST' && !$csrf->IsValid($request->PostString('_csrf
 	exit;
 }
 
+$emergencyStopController = new EmergencyStopController($view, $session, $auth, $logger, $request, $emergencyStopService);
 $homeController = new HomeController(
 	$view,
 	$session,
@@ -286,7 +289,8 @@ $recipientController = new RecipientController(
 	$notificationComposer,
 	$recipientPortalService,
 	$notificationLanguage,
-	dirname(__DIR__) . '/app/Lang'
+	dirname(__DIR__) . '/app/Lang',
+	(int)$config['uploads']['maximum_bytes']
 );
 $safetyController = new SafetyController(
 	$view,
@@ -316,6 +320,10 @@ $recipientPortalController = new RecipientPortalController(
 
 $router->Get('/', [$homeController, 'Dashboard']);
 $router->Get('/activity', [$homeController, 'Activity']);
+$router->Get('/emergency-stop', [$emergencyStopController, 'Show']);
+$router->Post('/emergency-stop/confirm', [$emergencyStopController, 'Confirm']);
+$router->Post('/emergency-stop/dashboard', [$emergencyStopController, 'StopDashboard']);
+$router->Post('/emergency-stop/reactivate', [$emergencyStopController, 'Reactivate']);
 $router->Get('/about', [$homeController, 'About']);
 $router->Get('/imprint', [$homeController, 'Imprint']);
 $router->Get('/health', [$homeController, 'Health']);

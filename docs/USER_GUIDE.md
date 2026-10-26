@@ -318,7 +318,7 @@ If the recipient currently has an active released delivery, this tab also lets t
 
 ### Documents
 
-Choose which current monitor documents are assigned to this recipient for future releases.
+Choose which current monitor documents are assigned to this recipient for future releases. You can also **Create text document**, **Upload document**, and **Edit** any monitor document directly here. The same document library and validation rules are used as in Monitor Editor → Documents. A document created or uploaded from this recipient's Documents tab is automatically assigned to this recipient only; it is not assigned to other recipients. If you edit an existing document, it changes the monitor's shared library version, not previously released snapshots. After saving an edit, you return to this recipient's Documents tab. Pending changes to the recipient's document checkboxes are protected against accidental loss when navigating to an editor or uploading a document.
 
 If an active delivery already exists, the same tab also lets the owner edit the released documents' display titles and descriptions. These presentation edits do not change the snapshotted document set or file/text payloads.
 

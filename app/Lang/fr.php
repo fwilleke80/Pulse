@@ -16,6 +16,39 @@ return [
 	'profile.notifications.smtp.not_configured' => 'Non configuré',
 	'profile.notifications.smtp.hint' => 'Ce sont les valeurs non secrètes effectivement chargées par Pulse. Le mot de passe SMTP lui-même n’est jamais affiché.',
 
+	'emergency.dashboard.heading' => 'Arrêt d’urgence',
+	'emergency.dashboard.hint' => 'Suspend toutes les diffusions, annule les notifications en attente et révoque les portails des destinataires.',
+	'emergency.dashboard.stopped_hint' => 'L’arrêt d’urgence est actif. Les diffusions restent suspendues jusqu’à une réactivation explicite.',
+	'emergency.dashboard.confirm' => 'Arrêter TOUS vos moniteurs et révoquer l’accès aux portails déjà publiés ?',
+	'emergency.stop.submit' => 'Arrêt d’urgence',
+	'emergency.link.heading' => 'Arrêter la diffusion Pulse',
+	'emergency.link.description' => 'Une diffusion pour {monitor} est imminente ou en cours. Appuyez pour arrêter uniquement ce moniteur et révoquer ses portails destinataires. Les autres moniteurs ne seront pas affectés. Ouvrir ce lien ne change rien.',
+	'emergency.link.invalid' => 'Ce lien est invalide, expiré ou déjà utilisé. Connectez-vous pour activer l’arrêt d’urgence.',
+	'emergency.stopped' => 'Arrêt d’urgence activé. Les diffusions en attente sont annulées et les portails révoqués. Les e-mails déjà envoyés ne peuvent pas être rappelés.',
+	'emergency.link.stopped' => 'La diffusion de ce moniteur est arrêtée. Les notifications en attente sont annulées et ses portails révoqués. Les e-mails déjà envoyés ne peuvent pas être rappelés.',
+	'emergency.reactivate.submit' => 'Réactiver la surveillance',
+	'emergency.reactivate.confirm' => 'Réactiver la surveillance avec de nouveaux intervalles ? Les portails révoqués le resteront.',
+	'emergency.reactivated' => 'Surveillance réactivée pour {count} moniteurs précédemment actifs. Les autres restent en pause.',
+	'monitors.escalation.release_grace_hours' => 'Délai de grâce avant diffusion (heures)',
+	'monitors.escalation.release_grace_hours_hint' => '0 désactive le délai supplémentaire. L’avertissement est envoyé avant toute diffusion et le décompte commence lors de son acceptation par le transport e-mail. Maximum : 720 heures.',
+	'mail.owner_release_warning.subject' => 'Urgent : Pulse pourrait diffuser les documents de {monitor}',
+	'mail.owner_release_warning.body' => 'Bonjour {name},
+
+Pulse prépare la diffusion des documents de **{monitor}**. Cet avertissement au propriétaire est prioritaire.
+
+Le délai de grâce de **{grace_hours} heure(s)** commence après l’acceptation de ce message par le transport e-mail. Avec 0, la diffusion peut suivre au prochain passage du planificateur.
+
+**En cas de fausse alerte :**
+
+[Arrêter immédiatement la diffusion]({url})
+
+Ce lien ouvre une page de confirmation sans exécuter immédiatement l’arrêt. Il ne nécessite pas de connexion. Il arrête uniquement ce moniteur et révoque ses portails. Pour arrêter tous les moniteurs, utilisez le tableau de bord. Les e-mails déjà expédiés ne peuvent pas être rappelés.',
+	'dashboard.activity.emergency_stopped' => 'L’arrêt d’urgence a été activé.',
+
+	'monitors.status.action.owner_release_warning' => 'Dernier avertissement au propriétaire',
+	'monitors.status.action.release_grace' => 'Délai de grâce avant diffusion',
+	'monitors.send_recipients.warning_queued' => 'L’avertissement d’urgence au propriétaire est planifié. Les envois attendent sa transmission et le délai de grâce éventuel.',
+	'dashboard.activity.owner_release_warning_sent' => 'Le dernier avertissement pour {name} a été envoyé au propriétaire.',
 	'_language.name' => 'Français',
 
 	'app.name' => 'Pulse',
@@ -255,6 +288,7 @@ return [
 	'monitors.add.flash.invalidnumbers' => 'Veuillez saisir des valeurs de délai valides pour le moniteur.',
 
 	'monitors.edit.title' => 'Modifier le moniteur',
+	'monitors.edit.browser_title' => 'Moniteur « {name} »',
 	'monitors.edit.heading' => 'Modifier le moniteur',
 	'monitors.edit.intro' => 'Configurez le calendrier, les destinataires, le contenu de livraison, la politique d’escalade et l’état d’activation.',
 	'monitors.edit.name' => 'Nom',
@@ -393,6 +427,7 @@ return [
 	'recipients.overview.safety_hint' => 'Les contacts de sécurité sont configurés séparément des destinataires.',
 	'recipients.overview.safety_action' => 'Ouvrir Sécurité et escalade',
 	'recipients.edit.title' => 'Modifier le destinataire',
+	'recipients.edit.browser_title' => 'Destinataire « {name} »',
 	'recipients.edit.heading' => 'Destinataire : {name}',
 	'recipients.edit.intro' => 'Configuration de livraison propre au moniteur {monitor}.',
 	'recipients.archived.readonly.heading' => 'Moniteur archivé',
@@ -412,6 +447,9 @@ return [
 	'recipients.message.default_preview.heading' => 'Afficher le modèle par défaut actuel',
 	'recipients.message.custom_hint' => 'Ces champs remplacent le texte par défaut du moniteur pour ce destinataire.',
 	'recipients.documents.heading' => 'Documents attribués',
+	'recipients.documents.manage_heading' => 'Gérer les documents du moniteur',
+	'recipients.documents.manage_hint' => 'Créez, téléversez ou modifiez ici les documents du moniteur. Les nouveaux documents sont automatiquement attribués à ce destinataire, sans modifier les autres.',
+	'recipients.documents.unsaved_confirm' => 'Des modifications des attributions de documents ne sont pas enregistrées. Continuer sans enregistrer ?',
 	'recipients.documents.hint' => 'Choisissez quels documents du moniteur feront partie de la future diffusion sécurisée de ce destinataire.',
 	'recipients.documents.none' => 'Ce moniteur ne contient aucun document.',
 	'recipients.preview.heading' => 'Aperçu de l’e-mail',
@@ -800,6 +838,8 @@ return [
 	'portal.documents.intro_warm' => 'Ces documents ont été préparés pour vous.',
 	'portal.documents.download_all_summary' => 'Total : {count} · {size}',
 	'portal.documents.view' => 'Voir',
+	'portal.documents.close' => 'Fermer',
+	'portal.documents.open' => 'Ouvrir',
 	'portal.documents.view_named' => 'Voir {name}',
 	'portal.documents.preview_named' => 'Aperçu de {name}',
 	'portal.documents.show_preview' => 'Afficher directement',
@@ -1394,6 +1434,7 @@ return [
 	'monitors.documents.text.create.action' => 'Créer un document texte',
 	'monitors.documents.editor.new_title' => 'Créer un document texte',
 	'monitors.documents.editor.edit_title' => 'Modifier le document',
+	'monitors.documents.editor.browser_title' => 'Document « {name} »',
 	'monitors.documents.editor.new_hint' => 'Créez le document sur une page séparée afin de garder la liste des documents du moniteur compacte.',
 	'monitors.documents.editor.edit_hint' => 'Modifiez ce document sans le développer dans l’éditeur du moniteur.',
 	'monitors.documents.editor.filename' => 'Nom du fichier',
@@ -1412,4 +1453,15 @@ return [
 	'monitors.status.postponements.unlimited' => 'Reports des contacts de sécurité : illimités jusqu’au prochain pointage personnel.',
 	'monitors.status.postponements.limited' => 'Reports des contacts de sécurité : {used} sur {limit}, {remaining} restant(s). Votre prochain pointage remet le compteur à zéro.',
 	'monitors.documents.editor.unsaved_confirm' => 'Retourner aux documents sans enregistrer les modifications ?',
+	'monitors.documents.draft.saved' => 'Toutes les modifications sont enregistrées dans Pulse.',
+	'monitors.documents.draft.local' => 'Modifications non enregistrées — brouillon sauvegardé dans ce navigateur.',
+	'monitors.documents.draft.failed' => 'Modifications non enregistrées — le navigateur n’a pas pu sauvegarder le brouillon.',
+	'monitors.documents.draft.restorable' => 'Un brouillon local non enregistré est disponible.',
+	'monitors.documents.draft.restore' => 'Restaurer le brouillon',
+	'monitors.documents.draft.discard' => 'Supprimer le brouillon',
+	'monitors.documents.draft.saving' => 'Enregistrement du document dans Pulse…',
+	'monitors.documents.draft.save_failed' => 'Échec de l’enregistrement dans Pulse. Le brouillon local reste disponible.',
+	'monitors.documents.draft.privacy' => 'Les brouillons locaux restent non chiffrés dans ce navigateur. Évitez les appareils partagés.',
+	'monitors.documents.draft.pending' => 'Modifications non enregistrées — sauvegarde du brouillon dans ce navigateur…',
+	'monitors.documents.draft.new' => 'Nouveau document — pas encore enregistré dans Pulse.',
 ];

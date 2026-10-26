@@ -16,6 +16,41 @@ return [
 	'profile.notifications.smtp.not_configured' => 'Nicht konfiguriert',
 	'profile.notifications.smtp.hint' => 'Dies sind die tatsächlich von Pulse geladenen, nicht geheimen Werte. Das SMTP-Passwort selbst wird niemals angezeigt.',
 
+	'emergency.dashboard.heading' => 'Not-Aus',
+	'emergency.dashboard.hint' => 'Stoppt die Freigabe für alle Monitore, storniert ausstehende Nachrichten und sperrt bereits freigegebene Empfängerportale. Verwende dies bei einer möglichen Fehlfreigabe.',
+	'emergency.dashboard.stopped_hint' => 'Der Not-Aus ist aktiv. Die Überwachung und der Empfängerzugang bleiben gesperrt, bis du sie ausdrücklich reaktivierst.',
+	'emergency.dashboard.confirm' => 'Der Not-Aus stoppt ALLE deine Monitore und sperrt bereits freigegebene Empfängerportale. Fortfahren?',
+	'emergency.stop.submit' => 'Not-Aus',
+	'emergency.link.heading' => 'Pulse-Freigabe stoppen',
+	'emergency.link.description' => 'Die Freigabe für {monitor} steht bevor oder läuft bereits. Mit der Schaltfläche stoppst du nur diesen Monitor und sperrst dessen Empfängerportale. Andere Monitore bleiben unverändert. Das bloße Öffnen des Links bewirkt nichts.',
+	'emergency.link.invalid' => 'Dieser Not-Aus-Link ist ungültig, abgelaufen oder bereits verwendet. Melde dich bei Pulse an, um den Not-Aus im Dashboard zu verwenden.',
+	'emergency.stopped' => 'Not-Aus aktiviert. Ausstehende Freigaben wurden abgebrochen und Empfängerportale gesperrt. Bereits versendete E-Mails lassen sich nicht zurückholen.',
+	'emergency.link.stopped' => 'Die Freigabe für diesen Monitor wurde gestoppt. Ausstehende Empfängernachrichten wurden abgebrochen und seine Portale gesperrt. Bereits versendete E-Mails lassen sich nicht zurückholen.',
+	'emergency.reactivate.submit' => 'Überwachung reaktivieren',
+	'emergency.reactivate.confirm' => 'Überwachung mit neuen Bestätigungsintervallen reaktivieren? Bereits freigegebene Portale bleiben gesperrt.',
+	'emergency.reactivated' => 'Die Überwachung wurde für {count} zuvor aktive Monitore neu gestartet. Zuvor pausierte Monitore bleiben pausiert.',
+	'monitors.escalation.release_grace_hours' => 'Letzte Schonfrist vor Freigabe (Stunden)',
+	'monitors.escalation.release_grace_hours_hint' => '0 = keine zusätzliche Verzögerung. Der Besitzer erhält zuerst eine Not-Aus-E-Mail. Die Frist beginnt erst, nachdem der Mailtransport die Warnung angenommen hat. Höchstens 720 Stunden (30 Tage).',
+	'mail.owner_release_warning.subject' => 'Dringend: Pulse könnte Dokumente für {monitor} freigeben',
+	'mail.owner_release_warning.body' => 'Hallo {name},
+
+Pulse hat die Eskalation für **{monitor}** abgeschlossen und bereitet Empfängerbenachrichtigungen vor. Diese Warnung an dich hat höchste Priorität.
+
+Eine abschließende Schonfrist von **{grace_hours} Stunde(n)** beginnt, sobald der Mailtransport diese Nachricht angenommen hat. Bei 0 kann die Freigabe beim nächsten Scheduler-Durchlauf beginnen.
+
+**Falls es sich um einen Fehlalarm handelt, stoppe die Freigabe sofort:**
+
+[Freigabe sofort stoppen]({url})
+
+Der Link führt zu einer Bestätigungsseite; das bloße Öffnen löst keinen Not-Aus aus. Eine Anmeldung ist nicht erforderlich.
+
+Dieser Link stoppt nur den genannten Monitor und sperrt dessen Empfängerportale. Über den Not-Aus im Dashboard kannst du alle Monitore stoppen. Bereits versendete E-Mails lassen sich nicht zurückholen.',
+	'dashboard.activity.emergency_stopped' => 'Der Not-Aus wurde für deine Monitore aktiviert.',
+
+	'monitors.status.action.owner_release_warning' => 'Letzte Warnung an Besitzer',
+	'monitors.status.action.release_grace' => 'Schonfrist vor der Freigabe',
+	'monitors.send_recipients.warning_queued' => 'Die Not-Aus-Warnung an den Besitzer wurde eingeplant. Empfängerbenachrichtigungen warten auf ihren Versand und die eingestellte Schonfrist.',
+	'dashboard.activity.owner_release_warning_sent' => 'Die letzte Freigabewarnung für {name} wurde an den Besitzer versendet.',
 	'_language.name' => 'Deutsch',
 
 	'app.name' => 'Pulse',
@@ -255,6 +290,7 @@ return [
 	'monitors.add.flash.invalidnumbers' => 'Bitte gib gültige Zeitwerte für den Monitor ein.',
 
 	'monitors.edit.title' => 'Monitor bearbeiten',
+	'monitors.edit.browser_title' => 'Monitor „{name}“',
 	'monitors.edit.heading' => 'Monitor bearbeiten',
 	'monitors.edit.intro' => 'Konfiguriere Zeitplan, Empfänger, Zustellungsinhalte, Eskalationsrichtlinie und Aktivierungsstatus.',
 	'monitors.edit.name' => 'Name',
@@ -393,6 +429,7 @@ return [
 	'recipients.overview.safety_hint' => 'Sicherheitskontakte werden getrennt von den Empfängern konfiguriert.',
 	'recipients.overview.safety_action' => 'Sicherheit & Eskalation öffnen',
 	'recipients.edit.title' => 'Empfänger bearbeiten',
+	'recipients.edit.browser_title' => 'Empfänger „{name}“',
 	'recipients.edit.heading' => 'Empfänger: {name}',
 	'recipients.edit.intro' => 'Monitorspezifische Zustellungskonfiguration für {monitor}.',
 	'recipients.archived.readonly.heading' => 'Archivierter Monitor',
@@ -412,6 +449,9 @@ return [
 	'recipients.message.default_preview.heading' => 'Aktuelle Standardvorlage anzeigen',
 	'recipients.message.custom_hint' => 'Diese Felder ersetzen den Monitorstandard nur für diesen Empfänger.',
 	'recipients.documents.heading' => 'Zugeordnete Dokumente',
+	'recipients.documents.manage_heading' => 'Monitordokumente verwalten',
+	'recipients.documents.manage_hint' => 'Erstelle, lade hoch oder bearbeite Monitordokumente hier. Neue Dokumente werden diesem Empfänger automatisch zugewiesen; andere Empfänger bleiben unverändert.',
+	'recipients.documents.unsaved_confirm' => 'Du hast ungespeicherte Änderungen an den Dokumentzuweisungen. Ohne Speichern fortfahren?',
 	'recipients.documents.hint' => 'Wähle aus, welche Monitordokumente zur späteren sicheren Freigabe dieses Empfängers gehören.',
 	'recipients.documents.none' => 'Dieser Monitor hat keine Dokumente.',
 	'recipients.preview.heading' => 'E-Mail-Vorschau',
@@ -800,6 +840,8 @@ return [
 	'portal.documents.intro_warm' => 'Diese Dokumente wurden für Sie vorbereitet.',
 	'portal.documents.download_all_summary' => 'Gesamt: {count} · {size}',
 	'portal.documents.view' => 'Ansehen',
+	'portal.documents.close' => 'Schließen',
+	'portal.documents.open' => 'Öffnen',
 	'portal.documents.view_named' => '{name} ansehen',
 	'portal.documents.preview_named' => 'Vorschau von {name}',
 	'portal.documents.show_preview' => 'Direkt ansehen',
@@ -1394,6 +1436,7 @@ return [
 	'monitors.documents.text.create.action' => 'Textdokument erstellen',
 	'monitors.documents.editor.new_title' => 'Textdokument erstellen',
 	'monitors.documents.editor.edit_title' => 'Dokument bearbeiten',
+	'monitors.documents.editor.browser_title' => 'Dokument „{name}“',
 	'monitors.documents.editor.new_hint' => 'Erstelle das Dokument auf einer eigenen Seite, damit die Dokumentliste des Monitors kompakt bleibt.',
 	'monitors.documents.editor.edit_hint' => 'Bearbeite dieses Dokument, ohne es im Monitor-Editor aufzuklappen.',
 	'monitors.documents.editor.filename' => 'Dateiname',
@@ -1412,4 +1455,15 @@ return [
 	'monitors.status.postponements.unlimited' => 'Aufschübe durch Sicherheitskontakte: unbegrenzt bis zum nächsten persönlichen Check-in.',
 	'monitors.status.postponements.limited' => 'Aufschübe durch Sicherheitskontakte: {used} von {limit} verbraucht; {remaining} verbleiben. Dein nächster persönlicher Check-in setzt den Zähler zurück.',
 	'monitors.documents.editor.unsaved_confirm' => 'Ohne Speichern der Änderungen zurück zu den Dokumenten?',
+	'monitors.documents.draft.saved' => 'Alle Änderungen in Pulse gespeichert.',
+	'monitors.documents.draft.local' => 'Ungespeicherte Änderungen – Entwurf in diesem Browser gesichert.',
+	'monitors.documents.draft.failed' => 'Ungespeicherte Änderungen – der Browser konnte den Entwurf nicht sichern.',
+	'monitors.documents.draft.restorable' => 'Ein ungespeicherter Entwurf ist in diesem Browser vorhanden.',
+	'monitors.documents.draft.restore' => 'Entwurf wiederherstellen',
+	'monitors.documents.draft.discard' => 'Entwurf verwerfen',
+	'monitors.documents.draft.saving' => 'Dokument wird in Pulse gespeichert…',
+	'monitors.documents.draft.save_failed' => 'Speichern in Pulse fehlgeschlagen. Dein lokaler Entwurf bleibt erhalten.',
+	'monitors.documents.draft.privacy' => 'Lokale Entwürfe bleiben unverschlüsselt in diesem Browser. Keine gemeinsam genutzten Geräte verwenden.',
+	'monitors.documents.draft.pending' => 'Ungespeicherte Änderungen – Entwurf wird im Browser gesichert…',
+	'monitors.documents.draft.new' => 'Neues Dokument – noch nicht in Pulse gespeichert.',
 ];

@@ -1,6 +1,20 @@
+## Pulse 1.4.6 — Portal and editor presentation
+
+Version 1.4.6 rearranges portal document cards into title/metadata, preview and actions, expands full document content inside the original preview region with Open/Close controls, and improves monitor escalation spacing and named browser titles. It does not change monitoring or delivery state transitions and requires no new database migration.
+
+## Pulse 1.4.5 — Emergency release controls
+
+Version 1.4.5 adds an owner-release warning before any *new* recipient release, a configurable final grace period (`0–720` hours, default `0`) and emergency stops. The release-warning message has the highest outgoing mail queue priority. A recipient release is not staged until an owner warning has been accepted by the SMTP transport and the grace period, if configured, has elapsed. SMTP acceptance is **not** confirmation that the owner read the warning. If no owner address is checked or the warning cannot be sent, release stays blocked.
+
+The Dashboard's red **Emergency Stop** suspends all of that owner's monitors, cancels outstanding monitor-related messages, and revokes existing recipient portals. The emailed emergency link works *without a normal login* but requires an explicit confirmation (HTTP POST) and stops only the monitor named in the email. Opening the link alone cannot stop it. Emergency links are single-use, expiring and stored as SHA-256 token hashes; a forwarded/stolen email link is sufficient to authorize the named monitor's stop. Reactivation is an explicit authenticated action and leaves previously revoked portals revoked.
+
+**Operational limitation:** Messages accepted by mail transport and documents already accessed cannot be recalled. An email already in flight when an emergency stop is pressed may still arrive. The stop prevents new release work and cancels outstanding queued work but cannot reverse an external transport's accepted message. For meaningful warning time, choose a **nonzero** grace period.
+
+This version adds database migration `010_release_emergency_safeguards.sql`. Upgrade using the update ZIP and back up the database beforehand; complete MySQL-backed integration testing is required before relying on these irreversible-release safeguards in production.
+
 # Pulse
 
-**Current release: 1.4.3**
+**Current release: 1.4.6**
 
 Pulse is a private, self-hosted check-in and notification system for situations in which something could happen to you and the people who need to know might otherwise not be informed for some time. You might use it to make sure family, friends, or other trusted people are contacted if you die or become seriously ill, or as an additional safety measure while travelling alone, going on an expedition, or spending time somewhere where help may be difficult to reach.
 
@@ -41,6 +55,18 @@ When preparing source for deployment, generate `config/version.php` before uploa
 python3 tools/write_version.py
 ```
 
+## Emergency Stop and final release grace period
+
+Pulse 1.4.5 adds an **Emergency Stop** button to the authenticated Dashboard. It suspends all monitors for the account, cancels unsent queued mail, and revokes already released recipient portal access. It cannot retract messages already accepted by SMTP or downloaded documents. Explicit **Reactivate monitoring** starts fresh check-in cycles for monitors that were active before the stop; monitors already paused remain paused.
+
+When a monitor reaches the recipient-release stage, Pulse **first** queues a priority owner warning at every checked owner email address. Each warning contains an expiring, unguessable emergency-stop URL. Visiting the URL is read-only; pressing **Emergency Stop** on the confirmation page performs a CSRF-protected POST, without requiring a normal login. The link grants stop-only authority and never gives access to documents or account settings. If there are no checked owner addresses, or all warning deliveries fail, **recipient release is blocked** until the delivery issue is resolved.
+
+The monitor's optional **Final release grace period** is measured in hours (0–720; 0 means no extra grace period). Its clock starts when the first owner warning is **accepted by the mail transport**, not when it is queued. New recipient notifications are staged only after all owner-warning attempts have completed, at least one was accepted and the configured grace period has elapsed. Mail transport acceptance is not proof of inbox receipt. Prefer a positive grace period for consequential content.
+
+The recipient portal and its owner preview now display up to two document cards side by side when their container is wide enough; small layouts use one column. Expanded document readers remain full width.
+
+**Safety testing:** Because emergency stops and SMTP delivery involve concurrency, test the full release path on a separate MySQL-backed installation with non-sensitive recipients and deliberately failing SMTP deliveries before using it for real information. In-flight mail already handed off to SMTP cannot be guaranteed cancellable.
+
 ## First steps after installation
 
 A useful first rehearsal is deliberately small:
@@ -80,6 +106,10 @@ Passkeys require HTTPS and a stable Pulse hostname in normal deployment.
 Each monitor can independently request a one-time browser location during check-in. Enabling the setting asks the current device for permission; the browser decides whether that grant is retained. Pulse never tracks continuously, and check-in always continues if location is denied or unavailable.
 
 Recorded owner-history locations link to OpenStreetMap. A second, separate monitor option can publish a bounded last-known history of 1–20 points in the authenticated recipient portal after escalation. That history is frozen with the release and cannot gain later check-ins. The portal presents a compact chronological table after the documents and makes no map request until the recipient deliberately selects **Show locations on map**. The map then expands below the table with numbered points, accuracy areas, and a straight chronological path plus pan, zoom, and point details. Positions are approximate and do not replace rescue or emergency services.
+
+## Local recovery drafts for text documents (1.4.4)
+
+When editing or creating a Markdown text document, Pulse keeps a browser-local draft of unsaved title and Markdown changes. A status below the editor distinguishes server-saved content from locally cached unsaved edits. If you revisit the same document after a failed connection, Pulse offers **Restore draft** or **Discard draft**, without silently replacing server content. A successful server acknowledgement clears the local copy; a failed or interrupted save does not. Drafts are unencrypted in browser storage and should be avoided on shared devices. Clearing site data also clears those drafts; this is a recovery aid, not a substitute for Pulse backups.
 
 ## Inline recipient documents and media
 

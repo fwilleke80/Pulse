@@ -101,6 +101,8 @@ final class MonitorStatusService
 					\'monitor.paused\',
 					\'monitor.resumed\',
 					\'monitor.forced_due\',
+					\'monitor.emergency_stopped\',
+					\'mail.owner_release_warning_sent\',
 					\'mail.due_notice_sent\',
 					\'mail.reminder_sent\',
 					\'mail.safety_invitation_sent\',
@@ -154,6 +156,9 @@ final class MonitorStatusService
 				m.next_check_due_at,
 				m.safety_postponement_limit,
 				m.consecutive_safety_postponements,
+				m.release_grace_hours,
+				(SELECT rw.warning_sent_at FROM release_warnings rw WHERE rw.check_cycle_id = cc.id LIMIT 1) AS release_warning_sent_at,
+				(SELECT rw.release_not_before FROM release_warnings rw WHERE rw.check_cycle_id = cc.id LIMIT 1) AS release_not_before,
 				cc.id AS cycle_id,
 				cc.status AS cycle_status,
 				cc.started_at,
@@ -205,7 +210,7 @@ final class MonitorStatusService
 					SELECT COUNT(*)
 					FROM mail_queue mq
 					WHERE mq.check_cycle_id = cc.id
-						AND mq.mail_type IN (\'owner_due_notice\', \'owner_reminder\', \'safety_invitation\', \'safety_reminder\', \'recipient_notification\')
+						AND mq.mail_type IN (\'owner_due_notice\', \'owner_reminder\', \'owner_release_warning\', \'safety_invitation\', \'safety_reminder\', \'recipient_notification\')
 						AND mq.status = \'failed\'
 				) AS failed_notification_count
 			FROM monitors m
@@ -354,6 +359,15 @@ final class MonitorStatusService
 
 		if ($status === 'overdue')
 		{
+			if (empty($row['release_warning_sent_at']))
+			{
+				return ['type' => 'owner_release_warning', 'at' => $this->NullableTimestamp($row['next_queued_mail_at'] ?? null)];
+			}
+			$notBefore = $this->NullableTimestamp($row['release_not_before'] ?? null);
+			if ($notBefore !== null && $notBefore > gmdate('Y-m-d H:i:s'))
+			{
+				return ['type' => 'release_grace', 'at' => $notBefore];
+			}
 			$releaseStatus = (string)($row['release_status'] ?? '');
 
 			if ($releaseStatus === 'blocked')

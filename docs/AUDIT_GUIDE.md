@@ -245,6 +245,8 @@ Repeat the presentation through the owner-only recipient portal preview. Inline 
 
 In **Monitor Editor → Documents**, verify that documents appear as a compact list rather than inline editors, with type, title, modification time, and appropriate size metadata. Create a text document with **Create text document**, edit an existing text document through its dedicated editor, and edit an uploaded file's title/description through the same dedicated workflow. Confirm the collapsible upload block still accepts files and that returning from a dedicated editor lands back on the monitor's Documents tab. Confirm the monitor-wide **Save changes** bar sits at the bottom of the editor in normal page flow instead of following the viewport.
 
+In **Recipient Editor → Documents**, check that Create text document and Upload document are available for an editable monitor, that each document has an Edit action beside (not inside) its assignment label, and that edits use the shared monitor document editor. Verify that saving an edit returns to this recipient's Documents tab, with all existing assignments intact. Creating or uploading here should automatically assign the new document only to this recipient, including when the recipient is an inactive draft. Confirm changing checkboxes without saving warns before navigating into an editor or submitting the upload form. Confirm archived monitors do not expose these actions. The Safety contacts cards under **Safety & escalation** should show only name and checked-address availability, not email-address lists.
+
 For a release containing shared check-in locations, also verify:
 
 - **Last known check-in locations** appears after the documents as a compact Location/Accuracy/Timestamp table;

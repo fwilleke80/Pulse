@@ -13,6 +13,7 @@ declare(strict_types=1);
 /** @var string $base_url */
 /** @var bool|null $previewAvailable */
 /** @var string|null $previewKind */
+/** @var int $returnRecipientId */
 
 ob_start();
 $isNew = $document === null;
@@ -20,6 +21,10 @@ $isArchived = !empty($monitor['is_archived']);
 $storageType = $isNew ? 'text' : (string)$document['storage_type'];
 $monitorId = (int)$monitor['id'];
 $documentId = $isNew ? 0 : (int)$document['id'];
+$returnRecipientId = (int)($returnRecipientId ?? 0);
+$returnPath = $returnRecipientId > 0
+	? '/monitors/recipients/edit?id=' . $returnRecipientId . '&section=documents'
+	: '/monitors/edit?id=' . $monitorId . '&tab=documents';
 $isText = $storageType === 'text';
 $previewAvailable = !$isNew && !$isText && !empty($previewAvailable);
 $previewKind = (string)($previewKind ?? 'download');
@@ -30,16 +35,19 @@ $isFramedPreview = in_array($previewKind, ['pdf', 'markdown', 'text', 'csv', 'js
 $action = $isNew
 	? $base_url . '/monitors/documents/text/create'
 	: $base_url . '/monitors/documents/' . ($isText ? 'text' : 'file') . '/update';
-$title = $isNew ? e__('monitors.documents.editor.new_title') : e__('monitors.documents.editor.edit_title');
+$title = $isNew
+	? __('monitors.documents.editor.new_title')
+	: __('monitors.documents.editor.browser_title', ['name' => (string)$document['title']]);
+$heading = $isNew ? __('monitors.documents.editor.new_title') : __('monitors.documents.editor.edit_title');
 ?>
 
 <p class="editor-breadcrumb">
-	<a href="<?= e($base_url) ?>/monitors/edit?id=<?= $monitorId ?>&amp;tab=documents"><?= e((string)$monitor['name']) ?> · <?= e__('monitors.tabs.documents') ?></a>
+	<a href="<?= e($base_url . $returnPath) ?>"><?= e((string)$monitor['name']) ?> · <?= e__('monitors.tabs.documents') ?></a>
 </p>
 
 <div class="editor-heading document-editor-heading">
 	<div>
-		<h1><?= e($title) ?></h1>
+		<h1><?= e($heading) ?></h1>
 		<p class="form-hint"><?= e__($isNew ? 'monitors.documents.editor.new_hint' : 'monitors.documents.editor.edit_hint') ?></p>
 	</div>
 	<?php if (!$isNew): ?>
@@ -53,9 +61,12 @@ $title = $isNew ? e__('monitors.documents.editor.new_title') : e__('monitors.doc
 	</div>
 <?php endif; ?>
 
-<form method="post" action="<?= e($action) ?>" class="document-editor-form" data-document-dirty-guard data-unsaved-confirm="<?= e__('monitors.documents.editor.unsaved_confirm') ?>">
+<form method="post" action="<?= e($action) ?>" class="document-editor-form" data-document-dirty-guard<?= $isText && !$isArchived ? ' data-document-autosave data-document-draft-key="pulse:draft:v1:user:' . (int)$user['id'] . ':monitor:' . $monitorId . ':document:' . $documentId . ':recipient:' . ($isNew ? $returnRecipientId : 0) . '"' : '' ?> data-unsaved-confirm="<?= e__('monitors.documents.editor.unsaved_confirm') ?>">
 	<?= csrf_field() ?>
 	<input type="hidden" name="monitor_id" value="<?= $monitorId ?>">
+	<?php if ($returnRecipientId > 0): ?>
+		<input type="hidden" name="recipient_id" value="<?= $returnRecipientId ?>">
+	<?php endif; ?>
 	<?php if (!$isNew): ?>
 		<input type="hidden" name="document_id" value="<?= $documentId ?>">
 	<?php endif; ?>
@@ -67,6 +78,21 @@ $title = $isNew ? e__('monitors.documents.editor.new_title') : e__('monitors.doc
 		<?php if ($isText): ?>
 			<label for="document_editor_content"><?= e__('monitors.documents.text.content') ?></label>
 			<?= markdown_editor($base_url, 'document_editor_content', 'text_content', $isNew ? '' : (string)($document['text_content'] ?? ''), 18, 'web', ['required' => true]) ?>
+			<div class="document-draft-status" data-document-draft-panel
+				data-saved="<?= e__($isNew ? 'monitors.documents.draft.new' : 'monitors.documents.draft.saved') ?>"
+				data-local="<?= e__('monitors.documents.draft.local') ?>"
+				data-pending="<?= e__('monitors.documents.draft.pending') ?>"
+				data-failed="<?= e__('monitors.documents.draft.failed') ?>"
+				data-restorable="<?= e__('monitors.documents.draft.restorable') ?>"
+				data-saving="<?= e__('monitors.documents.draft.saving') ?>"
+				data-save-failed="<?= e__('monitors.documents.draft.save_failed') ?>">
+				<p class="document-draft-status-line" data-document-draft-status role="status" aria-live="polite"><?= e__($isNew ? 'monitors.documents.draft.new' : 'monitors.documents.draft.saved') ?></p>
+				<div class="document-draft-recovery" data-document-draft-recovery hidden>
+					<button type="button" data-document-draft-restore><?= e__('monitors.documents.draft.restore') ?></button>
+					<button type="button" class="button-link" data-document-draft-discard><?= e__('monitors.documents.draft.discard') ?></button>
+				</div>
+				<p class="form-hint"><?= e__('monitors.documents.draft.privacy') ?></p>
+			</div>
 		<?php else: ?>
 			<div class="document-editor-file-meta">
 				<div><span><?= e__('monitors.documents.editor.filename') ?></span><strong><?= e((string)($document['original_filename'] ?? '')) ?></strong></div>
@@ -107,7 +133,7 @@ $title = $isNew ? e__('monitors.documents.editor.new_title') : e__('monitors.doc
 		<?php if (!$isArchived): ?>
 			<button type="submit"><?= e__($isNew ? 'monitors.documents.text.create.submit' : ($isText ? 'monitors.documents.text.update.submit' : 'monitors.documents.file.update.submit')) ?></button>
 		<?php endif; ?>
-		<a href="<?= e($base_url) ?>/monitors/edit?id=<?= $monitorId ?>&amp;tab=documents" class="button-link" data-document-back><?= e__('monitors.documents.editor.back') ?></a>
+		<a href="<?= e($base_url . $returnPath) ?>" class="button-link" data-document-back><?= e__('monitors.documents.editor.back') ?></a>
 		<?php if (!$isNew && !$isText): ?>
 			<a href="<?= e($base_url) ?>/monitors/documents/download?monitor_id=<?= $monitorId ?>&amp;document_id=<?= $documentId ?>" class="button-link"><?= e__('monitors.documents.download.submit') ?></a>
 		<?php endif; ?>

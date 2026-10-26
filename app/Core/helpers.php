@@ -425,6 +425,11 @@ function monitor_status(array $monitor): string
 		return 'archived';
 	}
 
+	if (!empty($monitor['emergency_stopped_at']))
+	{
+		return 'paused';
+	}
+
 	if (!empty($monitor['is_paused']))
 	{
 		return 'paused';
@@ -490,6 +495,8 @@ function monitor_action_label(array $action): string
 		'safety_postpone' => __('monitors.status.action.safety_postpone'),
 		'safety_expiry' => __('monitors.status.action.safety_expiry'),
 		'recipient_release' => __('monitors.status.action.recipient_release'),
+		'owner_release_warning' => __('monitors.status.action.owner_release_warning'),
+		'release_grace' => __('monitors.status.action.release_grace'),
 		'recipient_delivery' => __('monitors.status.action.recipient_delivery'),
 		'release_blocked' => __('monitors.status.action.release_blocked'),
 		'escalated' => __('monitors.status.action.escalated'),
@@ -525,7 +532,7 @@ function monitor_action_time_label(array $action): string
 
 	return match ((string)($action['type'] ?? 'none'))
 	{
-		'due_notice', 'safety_invitation', 'recipient_release', 'recipient_delivery' => __('monitors.status.next_cron'),
+		'due_notice', 'safety_invitation', 'recipient_release', 'recipient_delivery', 'owner_release_warning' => __('monitors.status.next_cron'),
 		'safety_postpone' => __('monitors.status.next.safety_any_time'),
 		'paused' => __('monitors.status.no_action.paused'),
 		'archived' => __('monitors.status.no_action.archived'),

@@ -22,11 +22,14 @@ declare(strict_types=1);
 /** @var array<int, array<string, mixed>> $activeDeliveryDocuments */
 /** @var string $activeSection */
 /** @var string $base_url */
+/** @var int $uploadMaximumBytes */
 
 $hasOverride = !empty($recipient['override_message_id']);
 $hasPortalOverride = !empty($recipient['portal_override_enabled']);
 $recipientAddresses = \Pulse\Core\EmailAddressCollection::FromRow($recipient);
 $isArchivedMonitor = !empty($recipient['monitor_is_archived']);
+$uploadSizeMegabytes = max(0.1, $uploadMaximumBytes / 1048576);
+$uploadSizeLabel = number_format($uploadSizeMegabytes, $uploadSizeMegabytes >= 10 || floor($uploadSizeMegabytes) === $uploadSizeMegabytes ? 0 : 1) . ' MB';
 $sections = [
 	'overview' => 'recipients.tabs.overview',
 	'notification' => 'recipients.tabs.notification',
@@ -194,7 +197,35 @@ ob_start();
 	</section>
 
 	<section class="editor-subtab-panel" data-subtab-panel="documents"<?= $activeSection === 'documents' ? '' : ' hidden' ?>>
-		<form method="post" action="<?= e($base_url) ?>/monitors/recipients/update" class="stack">
+		<?php if (!$isArchivedMonitor): ?>
+			<div class="section-heading document-library-heading">
+				<div>
+					<h2><?= e__('recipients.documents.manage_heading') ?></h2>
+					<p class="form-hint"><?= e__('recipients.documents.manage_hint') ?></p>
+				</div>
+				<div class="document-library-add-actions">
+					<a class="button-link" data-recipient-document-navigate href="<?= e($base_url) ?>/monitors/documents/text/new?monitor_id=<?= (int)$recipient['monitor_id'] ?>&amp;recipient_id=<?= (int)$recipient['id'] ?>"><?= e__('monitors.documents.text.create.action') ?></a>
+					<button type="button" class="button-link" data-document-upload-toggle aria-expanded="false" aria-controls="recipient-document-upload"><?= e__('monitors.documents.upload.heading') ?></button>
+				</div>
+			</div>
+			<div id="recipient-document-upload" class="document-upload-panel configuration-block" data-document-upload-panel hidden>
+				<h3><?= e__('monitors.documents.upload.heading') ?></h3>
+				<form method="post" action="<?= e($base_url) ?>/monitors/documents/upload" enctype="multipart/form-data" class="document-upload-form" data-recipient-document-upload-form>
+					<?= csrf_field() ?>
+					<input type="hidden" name="monitor_id" value="<?= (int)$recipient['monitor_id'] ?>">
+					<input type="hidden" name="recipient_id" value="<?= (int)$recipient['id'] ?>">
+					<div class="field-grid field-grid-two">
+						<label><?= e__('monitors.documents.upload.title') ?><input type="text" name="title"></label>
+						<label><?= e__('monitors.documents.upload.file') ?><input type="file" name="document_file" required></label>
+					</div>
+					<label><?= e__('monitors.documents.description') ?><textarea name="description" rows="3"></textarea></label>
+					<p class="form-hint"><?= e__('monitors.documents.description_hint') ?></p>
+					<p class="form-hint"><?= e__('monitors.documents.upload.preview_hint', ['size' => $uploadSizeLabel]) ?></p>
+					<button type="submit"><?= e__('monitors.documents.upload.submit') ?></button>
+				</form>
+			</div>
+		<?php endif; ?>
+		<form method="post" action="<?= e($base_url) ?>/monitors/recipients/update" class="stack" data-recipient-documents-assignment-form data-unsaved-confirm="<?= e__('recipients.documents.unsaved_confirm') ?>">
 			<fieldset class="recipient-readonly-fieldset"<?= $isArchivedMonitor ? ' disabled' : '' ?>>
 			<?= csrf_field() ?>
 			<input type="hidden" name="id" value="<?= (int)$recipient['id'] ?>">
@@ -207,10 +238,15 @@ ob_start();
 				<?php else: ?>
 					<div class="recipient-document-checklist">
 						<?php foreach ($documents as $document): ?>
-							<label class="recipient-document-row">
-								<input type="checkbox" name="document_ids[]" value="<?= (int)$document['id'] ?>" <?= in_array((int)$document['id'], $assignedDocumentIds, true) ? 'checked' : '' ?>>
-								<span class="recipient-document-content"><strong><?= e((string)$document['title']) ?></strong><small><?= e__('monitors.documents.type.' . (string)$document['storage_type']) ?></small><?php if (trim((string)($document['description'] ?? '')) !== ''): ?><small><?= e((string)$document['description']) ?></small><?php endif; ?></span>
-							</label>
+							<div class="recipient-document-row">
+								<label class="recipient-document-selection">
+									<input type="checkbox" name="document_ids[]" value="<?= (int)$document['id'] ?>" <?= in_array((int)$document['id'], $assignedDocumentIds, true) ? 'checked' : '' ?>>
+									<span class="recipient-document-content"><strong><?= e((string)$document['title']) ?></strong><small><?= e__('monitors.documents.type.' . (string)$document['storage_type']) ?></small><?php if (trim((string)($document['description'] ?? '')) !== ''): ?><small><?= e((string)$document['description']) ?></small><?php endif; ?></span>
+								</label>
+								<?php if (!$isArchivedMonitor): ?>
+									<a class="button-link" data-recipient-document-navigate href="<?= e($base_url) ?>/monitors/documents/edit?monitor_id=<?= (int)$recipient['monitor_id'] ?>&amp;document_id=<?= (int)$document['id'] ?>&amp;recipient_id=<?= (int)$recipient['id'] ?>"><?= e__('monitors.documents.list.edit') ?></a>
+								<?php endif; ?>
+							</div>
 						<?php endforeach; ?>
 					</div>
 				<?php endif; ?>
@@ -333,5 +369,5 @@ ob_start();
 
 <?php
 $content = ob_get_clean();
-$title = e__('recipients.edit.title');
+$title = __('recipients.edit.browser_title', ['name' => (string)$recipient['name']]);
 require __DIR__ . '/../layouts/main.php';

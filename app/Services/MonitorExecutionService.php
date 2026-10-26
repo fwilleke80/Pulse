@@ -345,7 +345,7 @@ final class MonitorExecutionService
 			$nowValue = $this->FormatUtc($now);
 			$monitor = $this->LockMonitorForUser($connection, $monitorId, $userId);
 
-			if (!is_array($monitor) || empty($monitor['is_paused']) || !empty($monitor['is_archived']))
+			if (!is_array($monitor) || empty($monitor['is_paused']) || !empty($monitor['is_archived']) || !empty($monitor['emergency_stopped_at']))
 			{
 				$connection->commit();
 				return false;

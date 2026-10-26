@@ -1306,6 +1306,7 @@ small
 	display: flex;
 	align-items: flex-start;
 	gap: 0.7rem;
+	flex-wrap: wrap;
 	margin: 0;
 	padding: 0.7rem 0.8rem;
 	border: 1px solid var(--border);
@@ -1318,6 +1319,24 @@ small
 {
 	border-color: color-mix(in srgb, var(--primary) 55%, var(--border));
 	background: color-mix(in srgb, var(--primary) 5%, var(--surface));
+}
+
+.recipient-document-selection
+{
+	display: flex;
+	align-items: flex-start;
+	gap: 0.7rem;
+	margin: 0;
+	flex: 1;
+	min-width: 0;
+	font-weight: normal;
+}
+
+.recipient-document-row > .button-link
+{
+	margin-left: auto;
+	align-self: center;
+	white-space: nowrap;
 }
 
 .recipient-document-row input[type="checkbox"]
@@ -2629,9 +2648,9 @@ footer
 .portal-access-grid
 {
 	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+	grid-template-columns: repeat(2, minmax(0, 1fr));
 	gap: 1rem;
-	align-items: start;
+	align-items: stretch;
 }
 
 .inline-form
@@ -2884,12 +2903,17 @@ footer
 	font-weight: 500;
 }
 
+.portal-documents-section
+{
+	container-type: inline-size;
+}
+
 .portal-document-grid
 {
 	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+	grid-template-columns: repeat(2, minmax(0, 1fr));
 	gap: 1rem;
-	align-items: start;
+	align-items: stretch;
 }
 
 .portal-document-card
@@ -2909,6 +2933,20 @@ footer
 	grid-column: 1 / -1;
 }
 
+.portal-document-preview-region
+{
+	min-width: 0;
+	flex: 1 0 auto;
+	border-bottom: 1px solid var(--border);
+	background: var(--surface-subtle);
+}
+
+/* The expanded reader occupies the original preview region, never an area below the actions. */
+.portal-document-card.is-expanded .portal-document-preview-region.is-framed > .portal-document-preview
+{
+	display: none;
+}
+
 .portal-document-preview
 {
 	display: flex;
@@ -2917,7 +2955,6 @@ footer
 	max-height: 11rem;
 	align-items: center;
 	justify-content: center;
-	border-bottom: 1px solid var(--border);
 	background: var(--surface-subtle);
 }
 
@@ -3036,8 +3073,8 @@ footer
 .portal-document-content
 {
 	min-width: 0;
-	flex: 1 1 auto;
-	padding: 1rem 1rem 0.7rem;
+	flex: 0 0 auto;
+	padding: 1rem 1rem 0.75rem;
 }
 
 .portal-document-content h3
@@ -3061,7 +3098,7 @@ footer
 	display: flex;
 	flex-wrap: wrap;
 	gap: 0.3rem;
-	margin-top: 0.75rem;
+	margin-top: 0.35rem;
 	color: var(--muted);
 	font-size: 0.78rem;
 }
@@ -3071,7 +3108,7 @@ footer
 	display: flex;
 	flex-wrap: wrap;
 	gap: 0.55rem;
-	padding: 0 1rem 1rem;
+	padding: 0.9rem 1rem 1rem;
 }
 
 .portal-close-access form
@@ -3089,10 +3126,8 @@ footer
 {
 	position: relative;
 	min-height: 18rem;
-	margin: 0 1rem 1rem;
+	margin: 0;
 	overflow: hidden;
-	border: 1px solid var(--border);
-	border-radius: 10px;
 	background: var(--surface-subtle);
 }
 
@@ -5850,4 +5885,71 @@ button.portal-map-details-close
 {
 	.administration-section-nav { grid-template-columns: 1fr; }
 	.administration-status-grid { grid-template-columns: 1fr; }
+}
+
+/* Document drafts are browser-only until the server acknowledges a successful save. */
+.document-draft-status
+{
+	margin-top: 0.1rem;
+	padding: 0.7rem 0.9rem;
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	background: var(--surface-subtle);
+}
+
+.document-draft-status-line
+{
+	margin: 0;
+	font-size: 0.9rem;
+}
+
+.document-draft-recovery
+{
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 0.65rem;
+}
+
+.document-draft-recovery[hidden]
+{
+	display: none;
+}
+
+.document-draft-recovery button
+{
+	margin-top: 0.5rem;
+}
+
+.document-draft-status .form-hint
+{
+	margin: 0.4rem 0 0;
+}
+
+/* Emergency controls remain conspicuous but distinct from ordinary check-in. */
+.emergency-card
+{
+	border: 1px solid #bd4545;
+}
+.btn-emergency-stop
+{
+	min-height: 3.1rem;
+	width: 100%;
+	background: #a92c34;
+	color: #fff;
+	font-weight: 700;
+	border-color: #8b2028;
+}
+.btn-emergency-stop:hover
+{
+	background: #881f2a;
+}
+
+/* Measure the portal content, not just the viewport, when collapsing cards. */
+@container (max-width: 40rem)
+{
+	.portal-document-grid
+	{
+		grid-template-columns: minmax(0, 1fr);
+	}
 }

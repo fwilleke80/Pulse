@@ -50,6 +50,29 @@ final class NotificationComposer
 		return $this->_languages->Resolve($locale);
 	}
 
+
+	/**
+	 * @brief Creates the highest-priority pre-release warning for the owner.
+	 * @param array<string, mixed> $cycle Current monitor and owner snapshot.
+	 * @param string $token Single-use emergency stop bearer token.
+	 * @param int $graceHours Hours withheld after the warning is accepted by mail transport.
+	 * @return array{subject: string, body_text: string}
+	 */
+	public function ComposeOwnerReleaseWarning(array $cycle, string $token, int $graceHours): array
+	{
+		$locale = $this->_languages->Resolve(isset($cycle['notification_locale']) ? (string)$cycle['notification_locale'] : null);
+		$params = [
+			'name' => (string)$cycle['owner_name'],
+			'monitor' => (string)$cycle['monitor_name'],
+			'grace_hours' => $graceHours,
+			'url' => $this->_baseUrl . '/emergency-stop?token=' . rawurlencode($token),
+		];
+		return [
+			'subject' => $this->Translate($locale, 'mail.owner_release_warning.subject', $params),
+			'body_text' => $this->Translate($locale, 'mail.owner_release_warning.body', $params),
+		];
+	}
+
 	/**
 	 * @brief Composes the initial notification sent when a monitor becomes due.
 	 * @param array<string, mixed> $cycle Awaiting cycle and owner data.

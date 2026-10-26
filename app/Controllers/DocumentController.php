@@ -80,16 +80,19 @@ class DocumentController extends BaseController
 			$this->Redirect('/monitors');
 		}
 
+		$recipientId = $this->VerifiedRecipientId($this->_request->QueryInt('recipient_id'), $monitorId, (int)$user['id']);
+
 		if (!empty($monitor['is_archived']))
 		{
 			$this->Flash('warning', __('monitors.archived.readonly.flash'));
-			$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=documents');
+			$this->Redirect($this->DocumentsReturnUrl($monitorId, $recipientId));
 		}
 
 		return $this->_view->Render('documents.editor', [
 			'user' => $user,
 			'monitor' => $monitor,
 			'document' => null,
+			'returnRecipientId' => $recipientId,
 		]);
 	}
 
@@ -101,6 +104,7 @@ class DocumentController extends BaseController
 		$documentId = $this->_request->QueryInt('document_id');
 		$monitor = $this->_monitorRepository->FindByIdForUser($monitorId, (int)$user['id']);
 		$document = $this->_documentRepository->FindByIdForMonitorAndUser($documentId, $monitorId, (int)$user['id']);
+		$recipientId = $this->VerifiedRecipientId($this->_request->QueryInt('recipient_id'), $monitorId, (int)$user['id']);
 
 		if ($monitor === null || $document === null)
 		{
@@ -135,6 +139,7 @@ class DocumentController extends BaseController
 			'document' => $document,
 			'previewAvailable' => $previewAvailable,
 			'previewKind' => $previewKind,
+			'returnRecipientId' => $recipientId,
 		]);
 	}
 
@@ -209,6 +214,7 @@ class DocumentController extends BaseController
 	{
 		$user = $this->RequireUser();
 		$monitorId = $this->_request->PostInt('monitor_id');
+		$recipientId = $this->VerifiedRecipientId($this->_request->PostInt('recipient_id'), $monitorId, (int)$user['id']);
 		$file = $this->_request->UploadedFile('document_file') ?? [];
 		$originalFilename = str_replace('\\', '/', (string)($file['name'] ?? ''));
 		$originalFilename = basename($originalFilename);
@@ -221,17 +227,46 @@ class DocumentController extends BaseController
 				$this->_request->PostString('title', 255),
 				$this->_request->PostString('description', 4000, false),
 				$file,
-				[]
+				$recipientId > 0 ? [$recipientId] : []
 			);
 		}
 		catch (DocumentException $exception)
 		{
 			$this->Flash('error', __($exception->TranslationKey()));
-			$this->Redirect($monitorId > 0 ? '/monitors/edit?id=' . $monitorId . '&tab=documents' : '/monitors');
+			$this->Redirect($this->DocumentsReturnUrl($monitorId, $recipientId));
 		}
 
 		$this->Flash('success', __('monitors.documents.flash.uploaded', ['name' => $originalFilename]));
-		$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=documents');
+		$this->Redirect($this->DocumentsReturnUrl($monitorId, $recipientId));
+	}
+
+	/**
+	 * @brief Finishes a text-document POST, returning JSON for local-draft-aware editors.
+	 * @param bool $saved Whether the database write succeeded.
+	 * @param string $message Localized result message.
+	 * @param string $path Safe destination for successful navigation or fallback redirects.
+	 */
+	private function FinishTextSave(bool $saved, string $message, string $path): void
+	{
+		if ((string)($_SERVER['HTTP_X_PULSE_DOCUMENT_SAVE'] ?? '') === '1')
+		{
+			if ($saved)
+			{
+				$this->Flash('success', $message);
+			}
+			header('Content-Type: application/json; charset=utf-8');
+			header('Cache-Control: no-store, private');
+			http_response_code($saved ? 200 : 422);
+			echo json_encode([
+				'saved' => $saved,
+				'message' => $message,
+				'redirect' => $saved ? $path : null,
+			], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+			exit;
+		}
+
+		$this->Flash($saved ? 'success' : 'error', $message);
+		$this->Redirect($path);
 	}
 
 	/** @brief Creates an editable text document. */
@@ -239,6 +274,7 @@ class DocumentController extends BaseController
 	{
 		$user = $this->RequireUser();
 		$monitorId = $this->_request->PostInt('monitor_id');
+		$recipientId = $this->VerifiedRecipientId($this->_request->PostInt('recipient_id'), $monitorId, (int)$user['id']);
 		$title = $this->_request->PostString('title', 255);
 
 		try
@@ -248,17 +284,17 @@ class DocumentController extends BaseController
 				$monitorId,
 				$title,
 				$this->_request->PostString('text_content', 1000000, false),
-				[]
+				$recipientId > 0 ? [$recipientId] : []
 			);
 		}
 		catch (DocumentException $exception)
 		{
-			$this->Flash('error', __($exception->TranslationKey()));
-			$this->Redirect($monitorId > 0 ? '/monitors/documents/text/new?monitor_id=' . $monitorId : '/monitors');
+			$this->FinishTextSave(false, __($exception->TranslationKey()), $monitorId > 0
+				? '/monitors/documents/text/new?monitor_id=' . $monitorId . ($recipientId > 0 ? '&recipient_id=' . $recipientId : '')
+				: '/monitors');
 		}
 
-		$this->Flash('success', __('monitors.documents.flash.text_created', ['name' => $title]));
-		$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=documents');
+		$this->FinishTextSave(true, __('monitors.documents.flash.text_created', ['name' => $title]), $this->DocumentsReturnUrl($monitorId, $recipientId));
 	}
 
 	/** @brief Updates an editable text document while preserving recipient assignments. */
@@ -266,6 +302,7 @@ class DocumentController extends BaseController
 	{
 		$user = $this->RequireUser();
 		$monitorId = $this->_request->PostInt('monitor_id');
+		$recipientId = $this->VerifiedRecipientId($this->_request->PostInt('recipient_id'), $monitorId, (int)$user['id']);
 
 		try
 		{
@@ -280,15 +317,13 @@ class DocumentController extends BaseController
 		}
 		catch (DocumentException $exception)
 		{
-			$this->Flash('error', __($exception->TranslationKey()));
 			$documentId = $this->_request->PostInt('document_id');
-			$this->Redirect($monitorId > 0 && $documentId > 0
-				? '/monitors/documents/edit?monitor_id=' . $monitorId . '&document_id=' . $documentId
+			$this->FinishTextSave(false, __($exception->TranslationKey()), $monitorId > 0 && $documentId > 0
+				? '/monitors/documents/edit?monitor_id=' . $monitorId . '&document_id=' . $documentId . ($recipientId > 0 ? '&recipient_id=' . $recipientId : '')
 				: '/monitors');
 		}
 
-		$this->Flash('success', __('monitors.documents.flash.text_updated'));
-		$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=documents');
+		$this->FinishTextSave(true, __('monitors.documents.flash.text_updated'), $this->DocumentsReturnUrl($monitorId, $recipientId));
 	}
 
 	/** @brief Updates an uploaded file's display metadata while preserving recipient assignments. */
@@ -296,6 +331,7 @@ class DocumentController extends BaseController
 	{
 		$user = $this->RequireUser();
 		$monitorId = $this->_request->PostInt('monitor_id');
+		$recipientId = $this->VerifiedRecipientId($this->_request->PostInt('recipient_id'), $monitorId, (int)$user['id']);
 
 		try
 		{
@@ -313,12 +349,12 @@ class DocumentController extends BaseController
 			$this->Flash('error', __($exception->TranslationKey()));
 			$documentId = $this->_request->PostInt('document_id');
 			$this->Redirect($monitorId > 0 && $documentId > 0
-				? '/monitors/documents/edit?monitor_id=' . $monitorId . '&document_id=' . $documentId
+				? '/monitors/documents/edit?monitor_id=' . $monitorId . '&document_id=' . $documentId . ($recipientId > 0 ? '&recipient_id=' . $recipientId : '')
 				: '/monitors');
 		}
 
 		$this->Flash('success', __('monitors.documents.flash.file_updated'));
-		$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=documents');
+		$this->Redirect($this->DocumentsReturnUrl($monitorId, $recipientId));
 	}
 
 	/** @brief Updates the document recipient set. */
@@ -403,6 +439,49 @@ class DocumentController extends BaseController
 		header('X-Content-Type-Options: nosniff');
 		readfile($path);
 		exit;
+	}
+
+	/**
+	 * @brief Validates the optional return-recipient against the owned monitor.
+	 * @param int $recipientId Requested monitor-contact ID; zero selects monitor-level navigation.
+	 * @param int $monitorId Monitor ID.
+	 * @param int $userId Authenticated owner ID.
+	 * @return int Verified recipient ID, or zero when no context was requested.
+	 */
+	private function VerifiedRecipientId(int $recipientId, int $monitorId, int $userId): int
+	{
+		if ($recipientId <= 0)
+		{
+			return 0;
+		}
+
+		foreach ($this->_monitorRepository->FindMonitorContactsByMonitorIdForUser($monitorId, $userId) as $contact)
+		{
+			if ((int)$contact['id'] === $recipientId)
+			{
+				return $recipientId;
+			}
+		}
+
+		$this->Flash('error', __('recipients.flash.not_found'));
+		$this->Redirect($monitorId > 0 ? '/monitors/edit?id=' . $monitorId . '&tab=documents' : '/monitors');
+		return 0;
+	}
+
+	/**
+	 * @brief Finds the appropriate documents page without trusting a client-supplied URL.
+	 * @param int $monitorId Current monitor ID.
+	 * @param int $recipientId Verified recipient ID, if present.
+	 * @return string Internal navigation target.
+	 */
+	private function DocumentsReturnUrl(int $monitorId, int $recipientId): string
+	{
+		if ($recipientId > 0)
+		{
+			return '/monitors/recipients/edit?id=' . $recipientId . '&section=documents';
+		}
+
+		return $monitorId > 0 ? '/monitors/edit?id=' . $monitorId . '&tab=documents' : '/monitors';
 	}
 
 	/** @brief Emits a generic owner-only preview 404. */

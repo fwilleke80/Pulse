@@ -123,39 +123,55 @@ ob_start();
 				$showPreviewToggle = !empty($document['view_available']) && ($isFramedPreview || $isExpandableVisual);
 				?>
 				<article class="portal-document-card" data-document-card data-preview-kind="<?= e($previewKind) ?>">
-					<?php if ((string)($document['storage_type'] ?? '') === 'text'): ?>
-						<div class="portal-document-preview portal-document-preview-text markdown-content" aria-label="<?= e__('portal.documents.preview_named', ['name' => (string)$document['title']]) ?>">
-							<div><?= e(\Pulse\Services\DocumentExcerptService::FromMarkdown((string)($document['text_content'] ?? ''))) ?></div>
-						</div>
-					<?php elseif ($previewKind === 'image' && !empty($document['view_available'])): ?>
-						<div id="<?= e($previewId) ?>" class="portal-document-preview portal-document-preview-image">
-							<img src="<?= e($previewUrl) ?>" alt="<?= e((string)$document['title']) ?>" loading="lazy" decoding="async">
-						</div>
-					<?php elseif ($previewKind === 'audio' && !empty($document['view_available'])): ?>
-						<div class="portal-document-preview portal-document-preview-audio">
-							<span class="portal-media-type" aria-hidden="true"><?= e((string)$document['type_label']) ?></span>
-							<audio controls preload="metadata" src="<?= e($previewUrl) ?>"><?= e__('portal.documents.media_unsupported') ?></audio>
-						</div>
-					<?php elseif ($previewKind === 'video' && !empty($document['view_available'])): ?>
-						<div id="<?= e($previewId) ?>" class="portal-document-preview portal-document-preview-video">
-							<video controls preload="metadata" playsinline src="<?= e($previewUrl) ?>"><?= e__('portal.documents.media_unsupported') ?></video>
-						</div>
-					<?php else: ?>
-						<div class="portal-document-preview portal-document-preview-type" aria-hidden="true">
-							<span><?= e((string)$document['type_label']) ?></span>
-						</div>
-					<?php endif; ?>
-
 					<div class="portal-document-content">
 						<h3><?= e((string)$document['title']) ?></h3>
-						<?php if (trim((string)($document['description'] ?? '')) !== ''): ?>
-							<p class="portal-document-description"><?= nl2br(e((string)$document['description'])) ?></p>
-						<?php endif; ?>
 						<div class="portal-document-meta">
 							<span><?= e((string)$document['type_label']) ?></span>
 							<span aria-hidden="true">·</span>
 							<span><?= e($formatSize((int)$document['size_bytes'])) ?></span>
 						</div>
+						<?php if (trim((string)($document['description'] ?? '')) !== ''): ?>
+							<p class="portal-document-description"><?= nl2br(e((string)$document['description'])) ?></p>
+						<?php endif; ?>
+					</div>
+
+					<div class="portal-document-preview-region<?= $isFramedPreview ? ' is-framed' : '' ?>">
+						<?php if ((string)($document['storage_type'] ?? '') === 'text'): ?>
+							<div class="portal-document-preview portal-document-preview-text markdown-content" aria-label="<?= e__('portal.documents.preview_named', ['name' => (string)$document['title']]) ?>">
+								<div><?= e(\Pulse\Services\DocumentExcerptService::FromMarkdown((string)($document['text_content'] ?? ''))) ?></div>
+							</div>
+						<?php elseif ($previewKind === 'image' && !empty($document['view_available'])): ?>
+							<div id="<?= e($previewId) ?>" class="portal-document-preview portal-document-preview-image">
+								<img src="<?= e($previewUrl) ?>" alt="<?= e((string)$document['title']) ?>" loading="lazy" decoding="async">
+							</div>
+						<?php elseif ($previewKind === 'audio' && !empty($document['view_available'])): ?>
+							<div class="portal-document-preview portal-document-preview-audio">
+								<span class="portal-media-type" aria-hidden="true"><?= e((string)$document['type_label']) ?></span>
+								<audio controls preload="metadata" src="<?= e($previewUrl) ?>"><?= e__('portal.documents.media_unsupported') ?></audio>
+							</div>
+						<?php elseif ($previewKind === 'video' && !empty($document['view_available'])): ?>
+							<div id="<?= e($previewId) ?>" class="portal-document-preview portal-document-preview-video">
+								<video controls preload="metadata" playsinline src="<?= e($previewUrl) ?>"><?= e__('portal.documents.media_unsupported') ?></video>
+							</div>
+						<?php else: ?>
+							<div class="portal-document-preview portal-document-preview-type" aria-hidden="true">
+								<span><?= e((string)$document['type_label']) ?></span>
+							</div>
+						<?php endif; ?>
+
+						<?php if ($isFramedPreview && !empty($document['view_available'])): ?>
+							<div id="<?= e($previewId) ?>" class="portal-document-inline-panel" data-document-preview-panel hidden>
+								<p class="portal-document-preview-loading" data-document-preview-loading><?= e__('portal.documents.preview_loading') ?></p>
+								<iframe
+									class="portal-document-frame"
+									data-document-preview-frame
+									data-preview-src="<?= e($previewUrl) ?>"
+									title="<?= e__('portal.documents.preview_named', ['name' => (string)$document['title']]) ?>"
+									loading="lazy"
+									referrerpolicy="no-referrer"<?= $previewKind === 'pdf' ? '' : ' sandbox="allow-same-origin"' ?>
+								></iframe>
+							</div>
+						<?php endif; ?>
 					</div>
 
 					<div class="portal-document-actions">
@@ -165,13 +181,13 @@ ob_start();
 								class="button-link"
 								data-document-preview-toggle
 								data-preview-mode="<?= e($isFramedPreview ? 'frame' : 'visual') ?>"
-								data-show-label="<?= e__($isFramedPreview ? 'portal.documents.show_preview' : 'portal.documents.enlarge') ?>"
-								data-hide-label="<?= e__($isFramedPreview ? 'portal.documents.hide_preview' : 'portal.documents.reduce') ?>"
+								data-show-label="<?= e__('portal.documents.open') ?>"
+								data-hide-label="<?= e__('portal.documents.close') ?>"
 								aria-expanded="false"
 								aria-controls="<?= e($previewId) ?>"
-							><?= e__($isFramedPreview ? 'portal.documents.show_preview' : 'portal.documents.enlarge') ?></button>
+							><?= e__('portal.documents.open') ?></button>
 							<?php if ($isFramedPreview): ?>
-								<noscript><a class="button-link" href="<?= e($previewUrl) ?>" target="_blank" rel="noopener noreferrer"><?= e__('portal.documents.view') ?></a></noscript>
+								<noscript><a class="button-link" href="<?= e($previewUrl) ?>" target="_blank" rel="noopener noreferrer"><?= e__('portal.documents.open') ?></a></noscript>
 							<?php endif; ?>
 						<?php endif; ?>
 						<?php if ($previewMode && !empty($document['download_available'])): ?>
@@ -182,20 +198,6 @@ ob_start();
 							<span class="table-warning table-warning-critical"><?= e__('portal.documents.unavailable') ?></span>
 						<?php endif; ?>
 					</div>
-
-					<?php if ($isFramedPreview && !empty($document['view_available'])): ?>
-						<div id="<?= e($previewId) ?>" class="portal-document-inline-panel" data-document-preview-panel hidden>
-							<p class="portal-document-preview-loading" data-document-preview-loading><?= e__('portal.documents.preview_loading') ?></p>
-							<iframe
-								class="portal-document-frame"
-								data-document-preview-frame
-								data-preview-src="<?= e($previewUrl) ?>"
-								title="<?= e__('portal.documents.preview_named', ['name' => (string)$document['title']]) ?>"
-								loading="lazy"
-								referrerpolicy="no-referrer"<?= $previewKind === 'pdf' ? '' : ' sandbox="allow-same-origin"' ?>
-							></iframe>
-						</div>
-					<?php endif; ?>
 				</article>
 			<?php endforeach; ?>
 		</div>

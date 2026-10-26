@@ -16,6 +16,39 @@ return [
 	'profile.notifications.smtp.not_configured' => 'Non configurata',
 	'profile.notifications.smtp.hint' => 'Questi sono i valori non segreti effettivamente caricati da Pulse. La password SMTP non viene mai mostrata.',
 
+	'emergency.dashboard.heading' => 'Arresto di emergenza',
+	'emergency.dashboard.hint' => 'Sospende tutti i rilasci, annulla le notifiche in attesa e revoca i portali dei destinatari.',
+	'emergency.dashboard.stopped_hint' => 'L’arresto di emergenza è attivo. Il monitoraggio rimane sospeso fino alla riattivazione esplicita.',
+	'emergency.dashboard.confirm' => 'Arrestare TUTTI i monitor e revocare l’accesso ai portali già rilasciati?',
+	'emergency.stop.submit' => 'Arresto di emergenza',
+	'emergency.link.heading' => 'Blocca il rilascio Pulse',
+	'emergency.link.description' => 'Un rilascio per {monitor} è imminente o in corso. Premi per fermare solo questo monitor e revocare i suoi portali. Gli altri monitor rimangono invariati. Aprire il link non esegue alcuna modifica.',
+	'emergency.link.invalid' => 'Questo link è invalido, scaduto o già usato. Accedi a Pulse per usare l’arresto di emergenza.',
+	'emergency.stopped' => 'Arresto di emergenza attivato. I rilasci in attesa sono stati annullati e i portali revocati. Le email già inviate non possono essere richiamate.',
+	'emergency.link.stopped' => 'Il rilascio di questo monitor è stato fermato. Le notifiche in coda sono state annullate e i suoi portali revocati. Le email già inviate non possono essere richiamate.',
+	'emergency.reactivate.submit' => 'Riattiva il monitoraggio',
+	'emergency.reactivate.confirm' => 'Riattivare il monitoraggio con nuovi intervalli? I portali revocati resteranno tali.',
+	'emergency.reactivated' => 'Monitoraggio riavviato per {count} monitor precedentemente attivi. Gli altri rimangono in pausa.',
+	'monitors.escalation.release_grace_hours' => 'Periodo di grazia prima del rilascio (ore)',
+	'monitors.escalation.release_grace_hours_hint' => '0 disattiva il ritardo aggiuntivo. Il proprietario riceve prima un avviso. Il tempo decorre da quando il trasporto email lo accetta. Massimo 720 ore.',
+	'mail.owner_release_warning.subject' => 'Urgente: Pulse potrebbe rilasciare i documenti di {monitor}',
+	'mail.owner_release_warning.body' => 'Ciao {name},
+
+Pulse sta preparando il rilascio dei documenti di **{monitor}**. Questo avviso al proprietario ha priorità massima.
+
+Un periodo di grazia di **{grace_hours} ora/e** inizia quando il trasporto email accetta questo messaggio. Con valore 0, il rilascio può proseguire al successivo ciclo dello scheduler.
+
+**Se è un falso allarme:**
+
+[Blocca subito il rilascio]({url})
+
+Il link apre una pagina di conferma e non richiede l’accesso. Arresta solo il monitor indicato e revoca i suoi portali. Per fermare tutti i monitor usa il pulsante nella Dashboard. Le email già inviate non possono essere richiamate.',
+	'dashboard.activity.emergency_stopped' => 'Arresto di emergenza attivato per i tuoi monitor.',
+
+	'monitors.status.action.owner_release_warning' => 'Avviso finale al proprietario',
+	'monitors.status.action.release_grace' => 'Periodo di grazia prima del rilascio',
+	'monitors.send_recipients.warning_queued' => 'L’avviso di emergenza è in coda. Le notifiche ai destinatari attendono la sua consegna e il periodo di grazia.',
+	'dashboard.activity.owner_release_warning_sent' => 'L’avviso finale per {name} è stato inviato al proprietario.',
 	'_language.name' => 'Italiano',
 
 	'app.name' => 'Pulse',
@@ -255,6 +288,7 @@ return [
 	'monitors.add.flash.invalidnumbers' => 'Inserisci valori temporali validi per il monitor.',
 
 	'monitors.edit.title' => 'Modifica monitor',
+	'monitors.edit.browser_title' => 'Monitor «{name}»',
 	'monitors.edit.heading' => 'Modifica monitor',
 	'monitors.edit.intro' => 'Configura pianificazione, destinatari, contenuto della consegna, politica di escalation e stato di attivazione.',
 	'monitors.edit.name' => 'Nome',
@@ -393,6 +427,7 @@ return [
 	'recipients.overview.safety_hint' => 'I contatti di sicurezza vengono configurati separatamente dai destinatari.',
 	'recipients.overview.safety_action' => 'Apri Sicurezza ed escalation',
 	'recipients.edit.title' => 'Modifica destinatario',
+	'recipients.edit.browser_title' => 'Destinatario «{name}»',
 	'recipients.edit.heading' => 'Destinatario: {name}',
 	'recipients.edit.intro' => 'Configurazione della consegna specifica del monitor {monitor}.',
 	'recipients.archived.readonly.heading' => 'Monitor archiviato',
@@ -412,6 +447,9 @@ return [
 	'recipients.message.default_preview.heading' => 'Mostra il modello predefinito corrente',
 	'recipients.message.custom_hint' => 'Questi campi sostituiscono il testo predefinito del monitor per questo destinatario.',
 	'recipients.documents.heading' => 'Documenti assegnati',
+	'recipients.documents.manage_heading' => 'Gestisci documenti del monitor',
+	'recipients.documents.manage_hint' => 'Crea, carica o modifica qui i documenti del monitor. I nuovi documenti vengono assegnati automaticamente a questo destinatario; gli altri destinatari non cambiano.',
+	'recipients.documents.unsaved_confirm' => 'Ci sono modifiche non salvate alle assegnazioni dei documenti. Continuare senza salvare?',
 	'recipients.documents.hint' => 'Scegli quali documenti del monitor faranno parte del futuro rilascio sicuro per questo destinatario.',
 	'recipients.documents.none' => 'Questo monitor non contiene documenti.',
 	'recipients.preview.heading' => 'Anteprima e-mail',
@@ -800,6 +838,8 @@ return [
 	'portal.documents.intro_warm' => 'Questi documenti sono stati preparati per te.',
 	'portal.documents.download_all_summary' => 'Totale: {count} · {size}',
 	'portal.documents.view' => 'Visualizza',
+	'portal.documents.close' => 'Chiudi',
+	'portal.documents.open' => 'Apri',
 	'portal.documents.view_named' => 'Visualizza {name}',
 	'portal.documents.preview_named' => 'Anteprima di {name}',
 	'portal.documents.show_preview' => 'Visualizza direttamente',
@@ -1394,6 +1434,7 @@ return [
 	'monitors.documents.text.create.action' => 'Crea documento di testo',
 	'monitors.documents.editor.new_title' => 'Crea documento di testo',
 	'monitors.documents.editor.edit_title' => 'Modifica documento',
+	'monitors.documents.editor.browser_title' => 'Documento «{name}»',
 	'monitors.documents.editor.new_hint' => 'Crea il documento in una pagina separata per mantenere compatta la lista dei documenti del monitor.',
 	'monitors.documents.editor.edit_hint' => 'Modifica questo documento senza espanderlo nell’editor del monitor.',
 	'monitors.documents.editor.filename' => 'Nome file',
@@ -1412,4 +1453,15 @@ return [
 	'monitors.status.postponements.unlimited' => 'Rinvii dei contatti di sicurezza: illimitati fino al prossimo check-in personale.',
 	'monitors.status.postponements.limited' => 'Rinvii dei contatti di sicurezza: {used} su {limit}; {remaining} rimanenti. Il prossimo check-in azzera il conteggio.',
 	'monitors.documents.editor.unsaved_confirm' => 'Tornare ai documenti senza salvare le modifiche?',
+	'monitors.documents.draft.saved' => 'Tutte le modifiche sono state salvate in Pulse.',
+	'monitors.documents.draft.local' => 'Modifiche non salvate — bozza salvata in questo browser.',
+	'monitors.documents.draft.failed' => 'Modifiche non salvate — impossibile salvare la bozza nel browser.',
+	'monitors.documents.draft.restorable' => 'È disponibile una bozza locale non salvata.',
+	'monitors.documents.draft.restore' => 'Ripristina bozza',
+	'monitors.documents.draft.discard' => 'Elimina bozza',
+	'monitors.documents.draft.saving' => 'Salvataggio del documento in Pulse…',
+	'monitors.documents.draft.save_failed' => 'Salvataggio in Pulse non riuscito. La bozza locale è ancora disponibile.',
+	'monitors.documents.draft.privacy' => 'Le bozze locali restano non cifrate in questo browser. Evita dispositivi condivisi.',
+	'monitors.documents.draft.pending' => 'Modifiche non salvate — salvataggio della bozza nel browser…',
+	'monitors.documents.draft.new' => 'Nuovo documento — non ancora salvato in Pulse.',
 ];

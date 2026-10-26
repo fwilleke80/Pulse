@@ -16,6 +16,41 @@ return [
 	'profile.notifications.smtp.not_configured' => 'Not configured',
 	'profile.notifications.smtp.hint' => 'These are the effective non-secret values Pulse loaded. The SMTP password itself is never displayed.',
 
+	'emergency.dashboard.heading' => 'Emergency Stop',
+	'emergency.dashboard.hint' => 'Stops all monitoring releases, cancels pending notifications and revokes existing recipient portals. Use this if a release may be incorrect.',
+	'emergency.dashboard.stopped_hint' => 'Emergency stop is active. Monitoring and recipient access remain suspended until you explicitly reactivate them.',
+	'emergency.dashboard.confirm' => 'Emergency Stop will suspend ALL your monitors and revoke already released recipient portals. Proceed?',
+	'emergency.stop.submit' => 'Emergency Stop',
+	'emergency.link.heading' => 'Stop Pulse release',
+	'emergency.link.description' => 'A release for {monitor} may be imminent or in progress. Press the button to stop this monitor and revoke its recipient portals. Your other monitors remain unchanged. Opening this link alone does nothing.',
+	'emergency.link.invalid' => 'This emergency link is invalid, expired, or already used. Sign in to Pulse to use the Dashboard emergency stop.',
+	'emergency.stopped' => 'Emergency Stop activated. Pending releases have been cancelled and recipient portals revoked. Previously delivered email cannot be recalled.',
+	'emergency.link.stopped' => 'Release stopped for this monitor. Queued recipient notifications were cancelled and its portals revoked. Already-delivered emails cannot be recalled.',
+	'emergency.reactivate.submit' => 'Reactivate monitoring',
+	'emergency.reactivate.confirm' => 'Reactivate monitoring with fresh check-in intervals? Already-released portals will remain revoked.',
+	'emergency.reactivated' => 'Monitoring restarted for {count} previously active monitors. Previously paused monitors remain paused.',
+	'monitors.escalation.release_grace_hours' => 'Final release grace period (hours)',
+	'monitors.escalation.release_grace_hours_hint' => '0 disables the additional delay. The owner receives an emergency-stop email before recipient release; the timer starts only after the warning is accepted by the mail transport. Maximum 720 hours (30 days).',
+	'mail.owner_release_warning.subject' => 'Urgent: Pulse may release documents for {monitor}',
+	'mail.owner_release_warning.body' => 'Hello {name},
+
+Pulse has finished escalation for **{monitor}** and is preparing recipient notifications. This is the highest-priority owner warning.
+
+A final grace period of **{grace_hours} hour(s)** begins when this message is accepted by the mail transport. If it is zero, release may proceed on the next scheduler run.
+
+**If this is a false alarm, stop the release immediately:**
+
+[Stop release immediately]({url})
+
+The link opens a confirmation page; simply opening it does not stop Pulse. It can be used without logging in.
+
+This link stops only the named monitor and revokes its recipient portals. The Dashboard Emergency Stop button can stop all monitors. Already sent emails cannot be recalled.',
+	'dashboard.activity.emergency_stopped' => 'Emergency Stop was activated for your monitors.',
+
+	'monitors.status.action.owner_release_warning' => 'Final owner warning',
+	'monitors.status.action.release_grace' => 'Release grace period',
+	'monitors.send_recipients.warning_queued' => 'Owner emergency warning is queued. Recipient delivery waits for confirmation of warning delivery and any configured grace period.',
+	'dashboard.activity.owner_release_warning_sent' => 'Final release warning for {name} was sent to the owner.',
 	'_language.name' => 'English',
 
 	'app.name' => 'Pulse',
@@ -255,6 +290,7 @@ return [
 	'monitors.add.flash.invalidnumbers' => 'Please enter valid monitor timing values.',
 
 	'monitors.edit.title' => 'Edit monitor',
+	'monitors.edit.browser_title' => 'Monitor ‘{name}’',
 	'monitors.edit.heading' => 'Edit monitor',
 	'monitors.edit.intro' => 'Configure the schedule, recipients, delivery content, escalation policy, and activation state.',
 	'monitors.edit.name' => 'Name',
@@ -393,6 +429,7 @@ return [
 	'recipients.overview.safety_hint' => 'Safety contacts are configured separately from recipients.',
 	'recipients.overview.safety_action' => 'Open Safety & escalation',
 	'recipients.edit.title' => 'Edit recipient',
+	'recipients.edit.browser_title' => 'Recipient ‘{name}’',
 	'recipients.edit.heading' => 'Recipient: {name}',
 	'recipients.edit.intro' => 'Monitor-specific delivery configuration for {monitor}.',
 	'recipients.archived.readonly.heading' => 'Archived monitor',
@@ -412,6 +449,9 @@ return [
 	'recipients.message.default_preview.heading' => 'Show current default template',
 	'recipients.message.custom_hint' => 'These fields replace the monitor default for this recipient.',
 	'recipients.documents.heading' => 'Assigned documents',
+	'recipients.documents.manage_heading' => 'Manage monitor documents',
+	'recipients.documents.manage_hint' => 'Create, upload or edit monitor documents here. New documents are automatically assigned to this recipient; other recipients are unchanged.',
+	'recipients.documents.unsaved_confirm' => 'You have unsaved document assignment changes. Continue without saving them?',
 	'recipients.documents.hint' => 'Choose which monitor documents belong to this recipient’s future secure release.',
 	'recipients.documents.none' => 'This monitor has no documents.',
 	'recipients.preview.heading' => 'Email preview',
@@ -800,6 +840,8 @@ return [
 	'portal.documents.intro_warm' => 'These documents were prepared for you.',
 	'portal.documents.download_all_summary' => 'Total: {count} · {size}',
 	'portal.documents.view' => 'View',
+	'portal.documents.close' => 'Close',
+	'portal.documents.open' => 'Open',
 	'portal.documents.view_named' => 'View {name}',
 	'portal.documents.preview_named' => 'Preview of {name}',
 	'portal.documents.show_preview' => 'View directly',
@@ -1394,6 +1436,7 @@ return [
 	'monitors.documents.text.create.action' => 'Create text document',
 	'monitors.documents.editor.new_title' => 'Create text document',
 	'monitors.documents.editor.edit_title' => 'Edit document',
+	'monitors.documents.editor.browser_title' => 'Document ‘{name}’',
 	'monitors.documents.editor.new_hint' => 'Create the document on its own page so the monitor’s document list stays compact.',
 	'monitors.documents.editor.edit_hint' => 'Edit this document without expanding it inside the monitor editor.',
 	'monitors.documents.editor.filename' => 'File name',
@@ -1412,4 +1455,15 @@ return [
 	'monitors.status.postponements.unlimited' => 'Safety-contact postponements: unlimited until your next check-in.',
 	'monitors.status.postponements.limited' => 'Safety-contact postponements: {used} of {limit} used; {remaining} remaining. Your next personal check-in resets the allowance.',
 	'monitors.documents.editor.unsaved_confirm' => 'Return to documents without saving your changes?',
+	'monitors.documents.draft.saved' => 'All changes saved to Pulse.',
+	'monitors.documents.draft.local' => 'Unsaved changes — draft saved in this browser.',
+	'monitors.documents.draft.failed' => 'Unsaved changes — this browser could not store a local draft.',
+	'monitors.documents.draft.restorable' => 'An unsaved local draft is available.',
+	'monitors.documents.draft.restore' => 'Restore draft',
+	'monitors.documents.draft.discard' => 'Discard draft',
+	'monitors.documents.draft.saving' => 'Saving document to Pulse…',
+	'monitors.documents.draft.save_failed' => 'Saving to Pulse failed. Your local draft is still available.',
+	'monitors.documents.draft.privacy' => 'Local drafts remain on this browser and are not encrypted. Avoid shared devices.',
+	'monitors.documents.draft.pending' => 'Unsaved changes — saving draft in this browser…',
+	'monitors.documents.draft.new' => 'New document — not yet saved to Pulse.',
 ];

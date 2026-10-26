@@ -54,6 +54,7 @@ class MonitorRepository
 				safety_max_reminders,
 				safety_required_confirmations,
 				safety_confirmation_days,
+				release_grace_hours,
 				safety_postponement_limit,
 				consecutive_safety_postponements,
 				safety_invitation_subject,
@@ -66,6 +67,8 @@ class MonitorRepository
 				portal_location_history_limit,
 				is_paused,
 				paused_at,
+				emergency_stopped_at,
+				emergency_was_paused,
 				is_archived,
 				archived_at,
 				last_confirmed_at,
@@ -188,6 +191,7 @@ class MonitorRepository
 				safety_max_reminders,
 				safety_required_confirmations,
 				safety_confirmation_days,
+				release_grace_hours,
 				safety_postponement_limit,
 				consecutive_safety_postponements,
 				safety_invitation_subject,
@@ -200,6 +204,8 @@ class MonitorRepository
 				portal_location_history_limit,
 				is_paused,
 				paused_at,
+				emergency_stopped_at,
+				emergency_was_paused,
 				is_archived,
 				archived_at,
 				last_confirmed_at,
@@ -505,6 +511,16 @@ class MonitorRepository
 			'safety_reminder_subject' => $safetyReminderSubject,
 			'safety_reminder_body' => $safetyReminderBody,
 		]);
+	}
+
+	/** @brief Updates the optional grace period before recipient release (zero disables it). */
+	public function UpdateReleaseGraceHoursForUser(int $monitorId, int $userId, int $hours): void
+	{
+		$statement = $this->_database->GetConnection()->prepare('
+			UPDATE monitors SET release_grace_hours = :hours, updated_at = UTC_TIMESTAMP()
+			WHERE id = :id AND user_id = :user_id
+		');
+		$statement->execute(['hours' => $hours, 'id' => $monitorId, 'user_id' => $userId]);
 	}
 
 	/**
