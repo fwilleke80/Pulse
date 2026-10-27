@@ -44,12 +44,16 @@ $versionLabel = trim((string)$appVersion) !== ''
 
 <?php if (!empty($isAuthenticated)): ?>
 <nav class="main-nav" aria-label="<?= e__('nav.primary') ?>">
+	<?php if (empty($requiredAccountAction)): ?>
 	<a href="<?= e($base_url) ?>/"><?= e__('nav.dashboard') ?></a>
 	<a href="<?= e($base_url) ?>/monitors"><?= e__('nav.monitors') ?></a>
 	<a href="<?= e($base_url) ?>/contacts"><?= e__('nav.contacts') ?></a>
 	<a href="<?= e($base_url) ?>/profile"><?= e__('nav.profile') ?></a>
 	<?php if (is_array($currentUser) && (string)($currentUser['role'] ?? 'user') === 'administrator'): ?>
 		<a href="<?= e($base_url) ?>/administration"><?= e__('nav.administration') ?></a>
+	<?php endif; ?>
+	<?php else: ?>
+	<a href="<?= e($base_url . $requiredAccountAction) ?>"><?= e__('nav.profile') ?></a>
 	<?php endif; ?>
 	<form method="post" action="<?= e($base_url) ?>/logout" class="nav-form">
 		<?= csrf_field() ?>

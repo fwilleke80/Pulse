@@ -130,12 +130,12 @@ class AuthController extends BaseController
 		{
 			$this->_session->Regenerate();
 			$this->ApplyWebsiteLanguage($user);
-			$this->_totp->BeginLogin($userId, $email, CheckInLocation::FromRequest($this->_request));
+			$this->_totp->BeginLogin($userId, $email, CheckInLocation::FromRequest($this->_request), (int)$user['auth_version']);
 			$this->_csrf->Rotate();
 			$this->Redirect('/login/totp');
 		}
 
-		if (!$this->_auth->LoginUser($userId, 'password'))
+		if (!$this->_auth->LoginUser($userId, 'password', (int)$user['auth_version']))
 		{
 			$this->_loginThrottle->RecordFailure($email, $clientIp);
 			$this->Flash('error', __('flash.login.failed'));
@@ -189,6 +189,13 @@ class AuthController extends BaseController
 		}
 
 		$userId = (int)$pending['user_id'];
+		if (!$this->_auth->IsAuthenticationVersionCurrent($userId, (int)($pending['auth_version'] ?? 0)))
+		{
+			$this->_totp->CancelPendingLogin();
+			$this->Flash('error', __('flash.login.failed'));
+			$this->Redirect('/login');
+		}
+
 		$email = (string)$pending['email'];
 		$clientIp = $this->_request->ClientIp();
 		$scope = 'totp_login';
@@ -224,7 +231,7 @@ class AuthController extends BaseController
 			$this->Redirect('/login/totp');
 		}
 
-		if (!$this->_auth->LoginUser($userId, $method))
+		if (!$this->_auth->LoginUser($userId, $method, (int)$pending['auth_version']))
 		{
 			$this->_totp->CancelPendingLogin();
 			$this->Flash('error', __('flash.login.failed'));
@@ -270,6 +277,11 @@ class AuthController extends BaseController
 	{
 		$this->ApplyWebsiteLanguage($currentUser);
 		$this->_csrf->Rotate();
+		$requiredAction = $this->_auth->RequiredAccountAction($this->_totp->IsEnabled((int)$currentUser['id']));
+		if ($requiredAction !== null)
+		{
+			$this->Redirect($requiredAction);
+		}
 		$quickTokenHash = (string)$this->_session->Get('pulse_quick_checkin_token_hash', '');
 
 		if ($quickTokenHash !== '')

@@ -18,18 +18,25 @@ $ownerAddresses = \Pulse\Core\EmailAddressCollection::FromRow($user);
 $totpEnabled = is_array($totpStatus);
 $recoveryCodesRemaining = is_array($totpStatus) ? (int)$totpStatus['recovery_codes_remaining'] : 0;
 $hasPasskey = $passkeys !== [];
+$passwordRequired = !empty($user['password_change_required']);
+$totpRequired = !empty($user['totp_required']) && !$totpEnabled;
+$restrictedAccount = $passwordRequired || $totpRequired;
+if ($restrictedAccount) { $activeTab = $passwordRequired ? 'password' : 'security'; }
 $recoveryReady = $totpEnabled && $hasPasskey && $recoveryCodesRemaining > 3;
 ?>
 
 <h1><?= e__('profile.heading') ?></h1>
+<?php if ($passwordRequired): ?><div class="flash flash-warning" role="alert"><?= e__('accounts.password_required') ?></div><?php endif; ?>
+<?php if ($totpRequired): ?><div class="flash flash-warning" role="alert"><?= e__('accounts.totp_required') ?></div><?php endif; ?>
 
 <div class="monitor-editor profile-editor" data-monitor-tabs data-active-tab="<?= e($activeTab) ?>">
 	<nav class="monitor-tabs" role="tablist" aria-label="<?= e__('profile.tabs.label') ?>">
-		<a href="<?= e($base_url) ?>/profile?tab=profile" id="profile-tab-profile" class="monitor-tab-link<?= $activeTab === 'profile' ? ' is-active' : '' ?>" role="tab" aria-selected="<?= $activeTab === 'profile' ? 'true' : 'false' ?>" aria-controls="profile-panel-profile" data-tab-target="profile"><?= e__('profile.tabs.profile_data') ?></a>
-		<a href="<?= e($base_url) ?>/profile?tab=security" id="profile-tab-security" class="monitor-tab-link<?= $activeTab === 'security' ? ' is-active' : '' ?>" role="tab" aria-selected="<?= $activeTab === 'security' ? 'true' : 'false' ?>" aria-controls="profile-panel-security" data-tab-target="security"><?= e__('profile.tabs.account_security') ?></a>
-		<a href="<?= e($base_url) ?>/profile?tab=password" id="profile-tab-password" class="monitor-tab-link<?= $activeTab === 'password' ? ' is-active' : '' ?>" role="tab" aria-selected="<?= $activeTab === 'password' ? 'true' : 'false' ?>" aria-controls="profile-panel-password" data-tab-target="password"><?= e__('profile.tabs.change_password') ?></a>
+<?php if (!$restrictedAccount || $activeTab === 'profile'): ?>		<a href="<?= e($base_url) ?>/profile?tab=profile" id="profile-tab-profile" class="monitor-tab-link<?= $activeTab === 'profile' ? ' is-active' : '' ?>" role="tab" aria-selected="<?= $activeTab === 'profile' ? 'true' : 'false' ?>" aria-controls="profile-panel-profile" data-tab-target="profile"><?= e__('profile.tabs.profile_data') ?></a><?php endif; ?>
+<?php if (!$restrictedAccount || $activeTab === 'security'): ?>		<a href="<?= e($base_url) ?>/profile?tab=security" id="profile-tab-security" class="monitor-tab-link<?= $activeTab === 'security' ? ' is-active' : '' ?>" role="tab" aria-selected="<?= $activeTab === 'security' ? 'true' : 'false' ?>" aria-controls="profile-panel-security" data-tab-target="security"><?= e__('profile.tabs.account_security') ?></a><?php endif; ?>
+<?php if (!$restrictedAccount || $activeTab === 'password'): ?>		<a href="<?= e($base_url) ?>/profile?tab=password" id="profile-tab-password" class="monitor-tab-link<?= $activeTab === 'password' ? ' is-active' : '' ?>" role="tab" aria-selected="<?= $activeTab === 'password' ? 'true' : 'false' ?>" aria-controls="profile-panel-password" data-tab-target="password"><?= e__('profile.tabs.change_password') ?></a><?php endif; ?>
 	</nav>
 
+<?php if (!$restrictedAccount): ?>
 <section id="profile-panel-profile" class="stack monitor-tab-panel<?= $activeTab === 'profile' ? ' is-active' : '' ?>" role="tabpanel" aria-labelledby="profile-tab-profile" data-tab-panel="profile"<?= $activeTab === 'profile' ? '' : ' hidden' ?>>
 	<h2><?= e__('profile.data.heading') ?></h2>
 
@@ -93,6 +100,8 @@ $recoveryReady = $totpEnabled && $hasPasskey && $recoveryCodesRemaining > 3;
 </section>
 
 
+<?php endif; ?>
+<?php if (!$passwordRequired): ?>
 <section class="stack monitor-tab-panel<?= $activeTab === 'security' ? ' is-active' : '' ?>" id="profile-panel-security" role="tabpanel" aria-labelledby="profile-tab-security" data-tab-panel="security"<?= $activeTab === 'security' ? '' : ' hidden' ?>>
 	<h2><?= e__('security.heading') ?></h2>
 	<p><?= e__('security.hint') ?></p>
@@ -214,6 +223,7 @@ $recoveryReady = $totpEnabled && $hasPasskey && $recoveryCodesRemaining > 3;
 		<?php endif; ?>
 	</div>
 
+<?php if (!$restrictedAccount): ?>
 	<div class="configuration-block">
 		<h3><?= e__('security.passkeys.heading') ?></h3>
 		<p><?= e__('security.passkeys.hint') ?></p>
@@ -257,8 +267,11 @@ $recoveryReady = $totpEnabled && $hasPasskey && $recoveryCodesRemaining > 3;
 			<div class="security-method-status" data-passkey-status hidden></div>
 		</form>
 	</div>
+<?php endif; ?>
 </section>
 
+<?php endif; ?>
+<?php if (!$restrictedAccount || $passwordRequired): ?>
 <section id="profile-panel-password" class="stack monitor-tab-panel<?= $activeTab === 'password' ? ' is-active' : '' ?>" role="tabpanel" aria-labelledby="profile-tab-password" data-tab-panel="password"<?= $activeTab === 'password' ? '' : ' hidden' ?>>
 	<h2><?= e__('profile.password.heading') ?></h2>
 
@@ -306,6 +319,7 @@ $recoveryReady = $totpEnabled && $hasPasskey && $recoveryCodesRemaining > 3;
 		</div>
 	</form>
 </section>
+<?php endif; ?>
 
 </div>
 

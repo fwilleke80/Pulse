@@ -447,13 +447,13 @@ if ($step === 'application')
 
 if ($step === 'administrator')
 {
-	$content = $errorHtml . '<h1>First administrator</h1><p>Create the account that will administer this Pulse installation. Future multi-user support can add ordinary users without changing this administrator role.</p>'
+	$content = $errorHtml . '<h1>Super user</h1><p>Create the protected administrator account for this installation. This account cannot be deleted or demoted. Other users’ private content remains accessible only to its owner.</p>'
 		. '<form method="post"><input type="hidden" name="_csrf_token" value="' . h($csrfToken) . '"><input type="hidden" name="action" value="administrator"><div class="form-grid two-column">'
 		. '<div><label for="display_name">Name</label><input id="display_name" name="display_name" value="' . h(post_value('display_name')) . '" autocomplete="name" required></div>'
 		. '<div><label for="email">Email address</label><input id="email" type="email" name="email" value="' . h(post_value('email')) . '" autocomplete="email" required></div></div>'
 		. '<div class="form-grid two-column"><div><label for="password">Password</label><input id="password" type="password" name="password" autocomplete="new-password" minlength="12" required><p class="field-hint">At least 12 characters.</p></div>'
 		. '<div><label for="password_confirmation">Confirm password</label><input id="password_confirmation" type="password" name="password_confirmation" autocomplete="new-password" minlength="12" required></div></div>'
-		. '<div class="installer-actions"><a class="button-link" href="' . h(installer_step_url('application')) . '">Back</a><button class="btn-primary" type="submit">Create administrator</button></div></form>';
+		. '<div class="installer-actions"><a class="button-link" href="' . h(installer_step_url('application')) . '">Back</a><button class="btn-primary" type="submit">Create super user</button></div></form>';
 	render_page('First administrator', 'administrator', $content);
 }
 

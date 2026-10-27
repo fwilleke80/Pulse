@@ -97,6 +97,7 @@ ob_start();
 	</a>
 </div>
 
+<div class="dashboard-primary-actions">
 <?php if ($activeMonitors !== []): ?>
 	<section class="global-check-in-card">
 		<div>
@@ -128,7 +129,7 @@ ob_start();
 	<?php if (count($monitors) > count(array_filter($monitors, static fn (array $m): bool => !empty($m['emergency_stopped_at'])))): ?>
 		<form method="post" action="<?= e($base_url) ?>/emergency-stop/dashboard" data-confirm="<?= e__('emergency.dashboard.confirm') ?>">
 			<?= csrf_field() ?>
-			<button type="submit" class="btn-danger btn-emergency-stop"><?= e__('emergency.stop.submit') ?></button>
+			<button type="submit" class="btn-danger btn-check-in btn-emergency-stop"><span class="check-in-button-icon stop-button-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2h8l6 6v8l-6 6H8l-6-6V8Z"/><path d="M8 8h8v8H8Z" fill="currentColor" stroke="none"/></svg></span><span><?= e__('emergency.stop.submit') ?></span></button>
 		</form>
 	<?php endif; ?>
 	<?php if ($emergencyActive): ?>
@@ -139,6 +140,7 @@ ob_start();
 	<?php endif; ?>
 </section>
 
+</div>
 <section class="dashboard-monitor-section">
 	<div class="section-title-row">
 		<div>

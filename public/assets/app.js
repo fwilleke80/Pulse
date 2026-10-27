@@ -7,6 +7,166 @@
 
 document.addEventListener('DOMContentLoaded', function ()
 {
+	// A file dropped outside a valid upload area must never replace the editor page.
+	if (document.querySelector('[data-document-drop-zone]'))
+	{
+		for (const eventName of ['dragover', 'drop'])
+		{
+			document.addEventListener(eventName, function (event)
+			{
+				if (Array.from(event.dataTransfer?.types || []).includes('Files') || event.dataTransfer?.files?.length)
+				{
+					event.preventDefault();
+				}
+			});
+		}
+	}
+	for (const zone of document.querySelectorAll('[data-document-drop-zone]'))
+	{
+		const form = zone.querySelector('.document-upload-form');
+		const status = zone.querySelector('[data-drop-status]');
+		if (!form || !status)
+		{
+			continue;
+		}
+		let uploading = false;
+		let depth = 0;
+		/** @brief Recognizes file drags without intercepting ordinary text or links. */
+		const hasFiles = function (event)
+		{
+			return Array.from(event.dataTransfer?.types || []).includes('Files') || Boolean(event.dataTransfer?.files?.length);
+		};
+		zone.addEventListener('dragenter', function (event)
+		{
+			if (hasFiles(event))
+			{
+				event.preventDefault();
+				depth++;
+				zone.classList.add('is-dragging');
+			}
+		});
+		zone.addEventListener('dragleave', function (event)
+		{
+			if (hasFiles(event) && --depth <= 0)
+			{
+				zone.classList.remove('is-dragging');
+			}
+		});
+		zone.addEventListener('dragover', function (event)
+		{
+			if (hasFiles(event))
+			{
+				event.preventDefault();
+				event.dataTransfer.dropEffect = uploading ? 'none' : 'copy';
+			}
+		});
+		zone.addEventListener('drop', async function (event)
+		{
+			if (!hasFiles(event))
+			{
+				return;
+			}
+			event.preventDefault();
+			depth = 0;
+			zone.classList.remove('is-dragging');
+			if (uploading)
+			{
+				return;
+			}
+			const files = Array.from(event.dataTransfer.files);
+			uploading = true;
+			zone.setAttribute('aria-busy', 'true');
+			try
+			{
+				for (const file of files)
+				{
+					const message = document.createElement('p');
+					message.textContent = file.name + ': ' + zone.dataset.dropUploading;
+					status.append(message);
+					try
+					{
+						const body = new FormData(form);
+						body.set('document_file', file, file.name);
+						body.set('title', file.name);
+						body.set('description', '');
+						body.set('drop_upload', '1');
+						const response = await fetch(form.action,
+						{
+							method: 'POST', body: body, credentials: 'same-origin',
+							headers: { 'Accept': 'application/json' }
+						});
+						if (response.redirected || !response.headers.get('content-type')?.includes('application/json'))
+						{
+							throw new Error(zone.dataset.dropFailed);
+						}
+						const result = await response.json();
+						if (!response.ok || !result.saved)
+						{
+							throw new Error(result.message || zone.dataset.dropFailed);
+						}
+						message.textContent = result.message;
+						let list = zone.querySelector('[data-drop-list]');
+						const assignment = zone.querySelector('[data-recipient-documents-assignment-form]');
+						if (!list)
+						{
+							list = document.createElement('div');
+							list.dataset.dropList = '';
+							list.className = assignment ? 'recipient-document-checklist' : 'document-library-list';
+							(assignment?.querySelector('.configuration-block') || zone).append(list);
+						}
+						const row = document.createElement('div');
+						row.className = assignment ? 'recipient-document-row' : 'document-library-item';
+						const label = document.createElement('label');
+						if (assignment)
+						{
+							const checkbox = document.createElement('input');
+							checkbox.type = 'checkbox';
+							checkbox.name = 'document_ids[]';
+							checkbox.value = String(result.id);
+							checkbox.checked = true;
+							label.append(checkbox);
+						}
+						label.append(document.createTextNode(result.title));
+						row.append(label);
+						const link = document.createElement('a');
+						const url = new URL(form.action);
+						url.pathname = url.pathname.replace(/\/upload$/, '/edit');
+						url.searchParams.set('monitor_id', body.get('monitor_id'));
+						url.searchParams.set('document_id', String(result.id));
+						if (body.get('recipient_id'))
+						{
+							url.searchParams.set('recipient_id', body.get('recipient_id'));
+						}
+						link.href = url.href;
+						link.className = 'button-link';
+						link.textContent = zone.dataset.dropEdit;
+						row.append(link);
+						list.append(row);
+						zone.dispatchEvent(new CustomEvent('pulse:document-added', { detail: row }));
+					}
+					catch (error)
+					{
+						message.textContent = file.name + ': ' + (error.message || zone.dataset.dropFailed);
+						message.classList.add('upload-error');
+					}
+				}
+			}
+			finally
+			{
+				uploading = false;
+				zone.removeAttribute('aria-busy');
+			}
+		});
+		window.addEventListener('beforeunload', function (event)
+		{
+			if (uploading)
+			{
+				event.preventDefault();
+				event.returnValue = '';
+			}
+		});
+	}
+
 	const backupEncrypt = document.querySelector('[data-backup-encrypt]');
 	const backupPassword = document.querySelector('[data-backup-password]');
 	if (backupEncrypt && backupPassword)
@@ -372,6 +532,15 @@ document.addEventListener('DOMContentLoaded', function ()
 		const originallyChecked = checkboxes.map(function (box)
 		{
 			return box.checked;
+		});
+		form.closest('[data-document-drop-zone]')?.addEventListener('pulse:document-added', function (event)
+		{
+			const box = event.detail.querySelector('input[name="document_ids[]"]');
+			if (box)
+			{
+				checkboxes.push(box);
+				originallyChecked.push(true);
+			}
 		});
 		let navigating = false;
 		const dirty = function ()
@@ -1785,27 +1954,50 @@ document.addEventListener('DOMContentLoaded', function ()
 			});
 		}
 
+		/** @brief Animates the grid's old geometry into its expanded or collapsed layout. */
 		toggle.addEventListener('click', function ()
 		{
+			const cards = Array.from(card.parentElement.querySelectorAll('[data-document-card]'));
+			const before = cards.map(item => item.getBoundingClientRect());
+			for (const item of cards)
+			{
+				for (const animation of item.getAnimations?.() || [])
+				{
+					animation.cancel();
+				}
+			}
 			expanded = !expanded;
 			card.classList.toggle('is-expanded', expanded);
 			toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
 			toggle.textContent = expanded
 				? (toggle.dataset.hideLabel || 'Close')
 				: (toggle.dataset.showLabel || 'Open');
-
-			if (mode !== 'frame' || !panel || !frame)
+			if (mode === 'frame' && panel && frame)
+			{
+				panel.hidden = !expanded;
+				if (expanded && frame.dataset.loaded !== 'true')
+				{
+					frame.dataset.loaded = 'true';
+					frame.src = frame.dataset.previewSrc || '';
+				}
+			}
+			if (window.matchMedia('(prefers-reduced-motion: reduce)').matches)
 			{
 				return;
 			}
-
-			panel.hidden = !expanded;
-
-			if (expanded && frame.dataset.loaded !== 'true')
+			cards.forEach(function (item, index)
 			{
-				frame.dataset.loaded = 'true';
-				frame.src = frame.dataset.previewSrc || '';
-			}
+				const after = item.getBoundingClientRect();
+				const previous = before[index];
+				if (!item.animate || !after.width || !after.height || !previous.width || !previous.height)
+				{
+					return;
+				}
+				item.animate([
+					{ transformOrigin: 'top left', transform: `translate(${previous.left - after.left}px, ${previous.top - after.top}px) scale(${previous.width / after.width}, ${previous.height / after.height})` },
+					{ transformOrigin: 'top left', transform: 'none' }
+				], { duration: 260, easing: 'cubic-bezier(0.2, 0.7, 0.2, 1)' });
+			});
 		});
 	}
 });

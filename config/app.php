@@ -37,7 +37,7 @@ return [
 		'login_max_attempts' => Environment::GetInt('PULSE_LOGIN_MAX_ATTEMPTS', 5, 2, 50),
 		'login_window_seconds' => Environment::GetInt('PULSE_LOGIN_WINDOW_SECONDS', 900, 60),
 		'login_block_seconds' => Environment::GetInt('PULSE_LOGIN_BLOCK_SECONDS', 900, 60),
-		'password_minimum_length' => Environment::GetInt('PULSE_PASSWORD_MINIMUM_LENGTH', 12, 8, 128),
+		'password_minimum_length' => Environment::GetInt('PULSE_PASSWORD_MINIMUM_LENGTH', 12, 8, 72),
 		'passkey_quick_checkin_enabled' => Environment::GetBool('PULSE_PASSKEY_QUICK_CHECKIN_ENABLED', false),
 		'totp_encryption_key' => Environment::Get('PULSE_TOTP_ENCRYPTION_KEY'),
 		'totp_max_attempts' => Environment::GetInt('PULSE_TOTP_MAX_ATTEMPTS', 6, 2, 50),

@@ -76,7 +76,7 @@ final class RecipientRepository
 			FROM monitor_contacts mc
 			INNER JOIN monitors m ON m.id = mc.monitor_id
 			INNER JOIN users u ON u.id = m.user_id
-			INNER JOIN contacts c ON c.id = mc.contact_id
+			INNER JOIN contacts c ON c.id = mc.contact_id AND c.user_id = m.user_id
 			LEFT JOIN contact_messages cm ON cm.monitor_contact_id = mc.id
 			LEFT JOIN monitor_mail_templates mmt
 				ON mmt.monitor_id = m.id
@@ -290,6 +290,7 @@ final class RecipientRepository
 			FROM document_monitor_contacts dmc
 			INNER JOIN monitor_contacts mc ON mc.id = dmc.monitor_contact_id
 			INNER JOIN monitors m ON m.id = mc.monitor_id
+			INNER JOIN documents d ON d.id = dmc.document_id AND d.monitor_id = mc.monitor_id
 			WHERE dmc.monitor_contact_id = :id AND m.user_id = :user_id
 			ORDER BY dmc.document_id ASC
 		');

@@ -144,11 +144,12 @@ final class TotpService
 	 * @brief Stores the password-verified account while awaiting its second factor.
 	 * @param array<string, mixed>|null $location Optional location captured for a pending quick check-in.
 	 */
-	public function BeginLogin(int $userId, string $email, ?array $location): void
+	public function BeginLogin(int $userId, string $email, ?array $location, int $authVersion = 1): void
 	{
 		$this->_session->Set(self::LOGIN_SESSION_KEY, [
 			'user_id' => $userId,
 			'email' => strtolower(trim($email)),
+			'auth_version' => $authVersion,
 			'location' => $location,
 			'created_at' => time(),
 		]);
@@ -177,6 +178,7 @@ final class TotpService
 		return [
 			'user_id' => $userId,
 			'email' => (string)($entry['email'] ?? ''),
+			'auth_version' => (int)($entry['auth_version'] ?? 0),
 			'location' => is_array($location) ? $location : null,
 		];
 	}

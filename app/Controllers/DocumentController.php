@@ -221,7 +221,7 @@ class DocumentController extends BaseController
 
 		try
 		{
-			$this->_documentService->UploadForUser(
+			$documentId = $this->_documentService->UploadForUser(
 				(int)$user['id'],
 				$monitorId,
 				$this->_request->PostString('title', 255),
@@ -232,12 +232,30 @@ class DocumentController extends BaseController
 		}
 		catch (DocumentException $exception)
 		{
+			if ($this->_request->PostBool('drop_upload'))
+			{
+				$this->UploadJson(false, __($exception->TranslationKey()));
+			}
 			$this->Flash('error', __($exception->TranslationKey()));
 			$this->Redirect($this->DocumentsReturnUrl($monitorId, $recipientId));
 		}
 
+		if ($this->_request->PostBool('drop_upload'))
+		{
+			$this->UploadJson(true, __('monitors.documents.flash.uploaded', ['name' => $originalFilename]), $documentId, $originalFilename);
+		}
 		$this->Flash('success', __('monitors.documents.flash.uploaded', ['name' => $originalFilename]));
 		$this->Redirect($this->DocumentsReturnUrl($monitorId, $recipientId));
+	}
+
+	/** @brief Returns upload results without navigating away from unsaved editor fields. */
+	private function UploadJson(bool $saved, string $message, int $documentId = 0, string $filename = ''): never
+	{
+		header('Content-Type: application/json; charset=utf-8');
+		header('Cache-Control: no-store, private');
+		http_response_code($saved ? 200 : 422);
+		echo json_encode(['saved' => $saved, 'message' => $message, 'id' => $documentId, 'title' => $filename], JSON_THROW_ON_ERROR);
+		exit;
 	}
 
 	/**

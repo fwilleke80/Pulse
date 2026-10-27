@@ -47,11 +47,6 @@ foreach ($configurationIssues as $issue)
 {
 	$issueTabs[(string)$issue['tab']] = true;
 }
-$sections = [
-	'overview' => ['administration.section.overview', '/administration'],
-	'configuration' => ['administration.section.configuration', '/administration/configuration'],
-	'backups' => ['administration.section.maintenance', '/administration/maintenance/backups'],
-];
 $sectionHeading = $section === 'backups' || $section === 'updates' ? 'administration.section.maintenance' :
 	($section === 'configuration' ? 'administration.section.configuration' : 'administration.heading');
 ob_start();
@@ -62,11 +57,7 @@ ob_start();
 		<span class="status-badge status-<?= $configurationIssues === [] ? 'verified' : 'due' ?>"><?= e__($configurationIssues === [] ? 'administration.health.ready' : 'administration.health.attention', ['count' => count($configurationIssues)]) ?></span>
 	<?php endif; ?>
 </div>
-<nav class="administration-section-nav" aria-label="<?= e__('administration.sections.label') ?>">
-	<?php foreach ($sections as $sectionKey => $item): ?>
-		<a href="<?= e($base_url . $item[1]) ?>" class="administration-section-link<?= ($section === $sectionKey || ($section === 'updates' && $sectionKey === 'backups')) ? ' is-active' : '' ?>"<?= ($section === $sectionKey) ? ' aria-current="page"' : '' ?>><?= e__($item[0]) ?></a>
-	<?php endforeach; ?>
-</nav>
+<?php require __DIR__ . '/navigation.php'; ?>
 <?php if ($section === 'overview'): ?>
 <div class="administration-status-grid" aria-label="<?= e__('administration.overview.status_heading') ?>">
 	<div class="administration-status-card">
@@ -278,8 +269,18 @@ ob_start();
 			<label><?= e__('administration.field.login_attempts') ?><input type="number" min="2" max="50" name="PULSE_LOGIN_MAX_ATTEMPTS" form="administration-settings-form" value="<?= e($settings['PULSE_LOGIN_MAX_ATTEMPTS']) ?>" required><small><?= e__('administration.field.login_attempts_hint') ?></small></label>
 			<label><?= e__('administration.field.login_window') ?><input type="number" min="60" name="PULSE_LOGIN_WINDOW_SECONDS" form="administration-settings-form" value="<?= e($settings['PULSE_LOGIN_WINDOW_SECONDS']) ?>" required><small><?= e__('administration.field.login_window_hint') ?></small></label>
 			<label><?= e__('administration.field.login_block') ?><input type="number" min="60" name="PULSE_LOGIN_BLOCK_SECONDS" form="administration-settings-form" value="<?= e($settings['PULSE_LOGIN_BLOCK_SECONDS']) ?>" required><small><?= e__('administration.field.login_block_hint') ?></small></label>
-			<label><?= e__('administration.field.password_minimum') ?><input type="number" min="8" max="128" name="PULSE_PASSWORD_MINIMUM_LENGTH" form="administration-settings-form" value="<?= e($settings['PULSE_PASSWORD_MINIMUM_LENGTH']) ?>" required><small><?= e__('administration.field.password_minimum_hint') ?></small></label>
+			<label><?= e__('administration.field.password_minimum') ?><input type="number" min="8" max="72" name="PULSE_PASSWORD_MINIMUM_LENGTH" form="administration-settings-form" value="<?= e($settings['PULSE_PASSWORD_MINIMUM_LENGTH']) ?>" required><small><?= e__('administration.field.password_minimum_hint') ?></small></label>
 		</div>
+<section class="configuration-block">
+<h2><?= e__('accounts.settings') ?></h2>
+<p><?= e__('accounts.settings_hint') ?></p>
+<form method="post" action="<?= e($base_url) ?>/administration/users/settings" class="stack">
+<?= csrf_field() ?>
+<label><input type="checkbox" name="registration_enabled" value="1"<?= !empty($registrationSettings['registration_enabled']) ? ' checked' : '' ?>> <?= e__('accounts.public_registration') ?></label>
+<label><input type="checkbox" name="registration_requires_approval" value="1"<?= !empty($registrationSettings['registration_requires_approval']) ? ' checked' : '' ?>> <?= e__('accounts.approval_required') ?></label>
+<button type="submit"><?= e__('accounts.save') ?></button>
+</form>
+</section>
 	</section>
 
 	<section id="administration-tab-files" class="monitor-tab-panel<?= $activeTab === 'files' ? ' is-active' : '' ?>" role="tabpanel" data-tab-panel="files"<?= $activeTab === 'files' ? '' : ' hidden' ?>>
@@ -506,7 +507,7 @@ ob_start();
 	<span><?= e__('administration.save_hint') ?></span>
 	<div class="editor-save-actions"><button type="submit" form="administration-settings-form"><?= e__('administration.save') ?></button></div>
 </div>
-<?php elseif ($section === 'backups' || $section === 'updates'): ?>
+<?php elseif (!empty($isSuperUser) && ($section === 'backups' || $section === 'updates')): ?>
 <nav class="monitor-tabs administration-maintenance-tabs" aria-label="<?= e__('administration.section.maintenance') ?>">
 	<a class="monitor-tab-link<?= $section === 'backups' ? ' is-active' : '' ?>" href="<?= e($base_url) ?>/administration/maintenance/backups"<?= $section === 'backups' ? ' aria-current="page"' : '' ?>><?= e__('administration.tabs.backup') ?></a>
 	<a class="monitor-tab-link<?= $section === 'updates' ? ' is-active' : '' ?>" href="<?= e($base_url) ?>/administration/maintenance/updates"<?= $section === 'updates' ? ' aria-current="page"' : '' ?>><?= e__('administration.tabs.updates') ?></a>

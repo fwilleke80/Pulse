@@ -99,6 +99,23 @@ class UserRepository
 	 */
 	public function UpdateProfile(int $userId, string $displayName, array $addresses, string $notificationLocale, string $websiteLocale): void
 	{
+		(new AccountRepository($this->_database))->Transaction(function () use ($userId, $displayName, $addresses, $notificationLocale, $websiteLocale): void
+		{
+			foreach ($addresses as $address)
+			{
+				if ($this->FindByEmailExcludingUserId($userId, (string)$address['email']) !== null)
+				{
+					throw new \InvalidArgumentException('Email address already in use.');
+				}
+			}
+			$this->WriteProfile($userId, $displayName, $addresses, $notificationLocale, $websiteLocale);
+		});
+	}
+
+	/** @brief Writes profile fields while holding the shared account mutation lock. */
+	private function WriteProfile(int $userId, string $displayName, array $addresses, string $notificationLocale, string $websiteLocale): void
+	{
+
 		$bindings = $this->AddressBindings($addresses);
 		$sql = 'UPDATE users
 			SET display_name = :display_name,
@@ -176,6 +193,23 @@ class UserRepository
 			'password_hash' => $passwordHash,
 			'id' => $userId,
 		]);
+	}
+
+
+	/** @brief Replaces a user-chosen password and revokes older authenticated sessions. */
+	public function ChangePassword(int $userId, string $passwordHash): void
+	{
+		$accounts = new AccountRepository($this->_database);
+		$accounts->Transaction(function () use ($accounts, $userId, $passwordHash): void
+		{
+
+		$statement = $this->_database->GetConnection()->prepare(
+			'UPDATE users SET password_hash = :hash, password_change_required = 0,
+			auth_version = auth_version + 1 WHERE id = :id'
+		);
+		$statement->execute(['hash' => $passwordHash, 'id' => $userId]);
+			$accounts->RevokeTokens($userId);
+		});
 	}
 
 	/**

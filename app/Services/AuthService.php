@@ -57,7 +57,7 @@ class AuthService
 			return null;
 		}
 
-		if (!(bool)$user['is_active'])
+		if (!$this->AccountCanAuthenticate($user))
 		{
 			password_verify($password, (string)$user['password_hash']);
 			$this->_logger->Warning('Login failed for inactive account');
@@ -88,11 +88,12 @@ class AuthService
 	 * @param string $method Security method that verified the user.
 	 * @return bool True when the active account was logged in.
 	 */
-	public function LoginUser(int $userId, string $method): bool
+	public function LoginUser(int $userId, string $method, ?int $expectedVersion = null): bool
 	{
 		$user = $this->_userRepository->FindById($userId);
 
-		if (!is_array($user) || !(bool)($user['is_active'] ?? false))
+		if (!is_array($user) || !$this->AccountCanAuthenticate($user)
+			|| ($expectedVersion !== null && (int)$user['auth_version'] !== $expectedVersion))
 		{
 			$this->_logger->Warning('Authentication completed for an unavailable account', [
 				'user_id' => $userId,
@@ -103,6 +104,7 @@ class AuthService
 
 		$this->_session->Regenerate();
 		$this->_session->LoginUser($userId);
+		$this->_session->Set('pulse_account_auth_version', (int)($user['auth_version'] ?? 1));
 		$this->_currentUserResolved = false;
 		$this->_currentUser = null;
 
@@ -152,7 +154,8 @@ class AuthService
 
 		$user = $this->_userRepository->FindById($userId);
 
-		if (!is_array($user) || !(bool)($user['is_active'] ?? false))
+		if (!is_array($user) || !$this->AccountCanAuthenticate($user)
+			|| (int)$this->_session->Get('pulse_account_auth_version', 0) !== (int)($user['auth_version'] ?? 1))
 		{
 			$this->_logger->Warning('Invalidated stale or inactive authenticated session', [
 				'user_id' => $userId,
@@ -164,6 +167,41 @@ class AuthService
 
 		$this->_currentUser = $user;
 		return $this->_currentUser;
+	}
+
+	/** @brief Requires both activation conditions for every authentication method. @param array<string,mixed> $user */
+	public function AccountCanAuthenticate(array $user): bool
+	{
+		return !empty($user['is_active'])
+			&& !empty($user['email_verified_at'])
+			&& !empty($user['approved_at']);
+	}
+
+	/** @brief Checks a password-verified challenge against subsequent account changes. */
+	public function IsAuthenticationVersionCurrent(int $userId, int $version): bool
+	{
+		$user = $this->_userRepository->FindById($userId);
+		return is_array($user) && $this->AccountCanAuthenticate($user)
+			&& (int)$user['auth_version'] === $version;
+	}
+
+	/** @brief Returns the mandatory security setup page before private operations are allowed. */
+	public function RequiredAccountAction(bool $totpEnabled): ?string
+	{
+		$user = $this->GetCurrentUser();
+		if (!is_array($user))
+		{
+			return null;
+		}
+		if (!empty($user['password_change_required']))
+		{
+			return '/profile?tab=password';
+		}
+		if (!empty($user['totp_required']) && !$totpEnabled)
+		{
+			return '/profile?tab=security';
+		}
+		return null;
 	}
 
 	/**

@@ -150,7 +150,15 @@ class ProfileController extends BaseController
 			}
 		}
 
+		try
+		{
 		$this->_userRepository->UpdateProfile($userId, $displayName, $addresses, $notificationLocale, $websiteLocale);
+		}
+		catch (InvalidArgumentException)
+		{
+			$this->Flash('error', __('profile.flash.update.email_taken'));
+			$this->Redirect('/profile?tab=profile');
+		}
 		$this->_session->Set('locale', $websiteLocale);
 		WebsiteLanguagePreference::Write($websiteLocale, $this->_request->IsSecure());
 
@@ -194,7 +202,7 @@ class ProfileController extends BaseController
 			$this->Redirect('/profile?tab=password');
 		}
 
-		if (strlen($newPassword) < $this->_passwordMinimumLength)
+		if (strlen($newPassword) < $this->_passwordMinimumLength || strlen($newPassword) > 72 || str_contains($newPassword, "\0"))
 		{
 			$this->_logger->Warning('Password change failed due to new password being too short', ['user_id' => $userId]);
 			$this->Flash('error', __('profile.flash.password.too_short', ['minimum' => $this->_passwordMinimumLength]));
@@ -202,11 +210,12 @@ class ProfileController extends BaseController
 		}
 
 		$newPasswordHash = password_hash($newPassword, PASSWORD_DEFAULT);
-		$this->_userRepository->UpdatePasswordHash($userId, $newPasswordHash);
+		$this->_userRepository->ChangePassword($userId, $newPasswordHash);
+		$this->_auth->Logout();
 
 		$this->_logger->Info('Password changed successfully', ['user_id' => $userId]);
 		$this->Flash('success', __('profile.flash.password.success'));
-		$this->Redirect('/profile?tab=password');
+		$this->Redirect('/login');
 	}
 
 	/** @brief Returns the requested accessible profile tab with a stable fallback. */

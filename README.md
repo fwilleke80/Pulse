@@ -1,3 +1,19 @@
+## Pulse 1.5.2 — Simplified navigation
+
+User accounts is now reached through Administration → User accounts. The duplicate main-menu entry is removed; administrator permissions are unchanged. No new database migration is required.
+
+## Pulse 1.5.1 — Administration and editor polish
+
+This update fixes recipient document drag-and-drop, keeps account management inside the Administration navigation, moves registration settings to Configuration → Security, and adds the user table and actions menu. Dashboard Check-in and Emergency Stop now share a responsive two-column layout and matching button design. Portal document cards animate when opened and closed, with reduced-motion support.
+
+No new database migration is required when upgrading from 1.5.0. See the [changelog](CHANGELOG.md) for validation details, including the unconfirmed browser Back/login behavior.
+
+## Pulse 1.5.0 — Multi-user accounts and emergency-stop recovery
+
+Version 1.5.0 adds protected superuser and administrator account management, optional verified public registration, private per-user content, and document drag-and-drop uploads. It also fixes monitors remaining Paused after an emergency stop followed by Resume. After upgrading, sign in again and choose **Resume** on the affected monitor to start a fresh interval. The upgrade never resumes stopped monitors automatically.
+
+Migration `011_multiuser_accounts.sql` promotes the original owner to protected superuser and preserves existing account access. Public registration is disabled by default. Read [1.5.0 release and validation notes](docs/RELEASE_1.5.0.md) before deploying.
+
 ## Pulse 1.4.7 — Escalation spacing hotfix
 
 Version 1.4.7 fixes the missing vertical spacing below the Final release grace period card in Monitor Editor → Safety & escalation. No database migration is required.
@@ -18,7 +34,7 @@ This version adds database migration `010_release_emergency_safeguards.sql`. Upg
 
 # Pulse
 
-**Current release: 1.4.7**
+**Current release: 1.5.2**
 
 Pulse is a private, self-hosted check-in and notification system for situations in which something could happen to you and the people who need to know might otherwise not be informed for some time. You might use it to make sure family, friends, or other trusted people are contacted if you die or become seriously ill, or as an additional safety measure while travelling alone, going on an expedition, or spending time somewhere where help may be difficult to reach.
 

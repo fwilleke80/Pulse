@@ -1,3 +1,51 @@
+## 1.5.2 - 2026-10-27
+
+### Navigation
+- Remove the duplicate User accounts entry from the main menu. Administrators continue to reach account management through Administration → User accounts, with all existing permissions and superuser protections unchanged.
+- No database migration or authentication changes.
+
+## 1.5.1 - 2026-10-27
+
+### Administration
+- Keep the shared Administration navigation visible on the User accounts list and account editor. The top-level menu shortcut opens the same section.
+- Move Registration settings to Configuration → Security and return there after saving.
+- Replace account cards with a table and clickable account names. Add the standard ellipsis actions menu for editing, explicit invitations, approval when pending, and links to authenticator reset/deletion confirmation. Preserve protected-superuser and self-deletion restrictions; the superuser's own name opens their profile.
+
+### Document drops
+- Fix the recipient drop hint/status elements being placed in Notification instead of Documents. This prevented upload handlers from attaching and let dropped files replace the page.
+- Show the same visible drop area as the monitor editor, and prevent file drops outside the upload area from navigating away. Preserve existing upload checks and unsaved editor fields.
+- The reported login redirect after navigating back from a local file was not reproduced independently. No upload code logs out the user. Preventing the unintended navigation removes that trigger; session-cookie protections are unchanged.
+
+### Dashboard and portal
+- Match the Emergency Stop button to Check-in, with red colors and a stop-sign icon. Place their sections in equal-width columns, stacking on narrow screens. Keep Emergency Stop confirmation.
+- Animate portal document cards and surrounding cards between expanded/collapsed layouts, including owner preview. Honor reduced-motion preferences and retain lazy preview loading.
+
+### Validation
+- 65 focused PHP tests / 117 assertions pass; template rendering and PHP/JS syntax checks pass.
+- DOM tests cover the real drop-area template structure, multiple uploads, rejected files, escaped filenames, unsaved state, outside-drop navigation prevention, expansion/collapse, lazy loading and reduced motion.
+- No schema migration is added. Validation used PHP 8.3; supported deployment remains PHP 8.4+. Full browser/SMTP validation and reproduction of the reported Safari return-to-login behavior remain outstanding. Existing full-suite baseline failures are documented in the 1.5.0 release notes.
+
+## 1.5.0 - 2026-10-27
+
+### Accounts and privacy
+- Create a protected superuser during installation; migrate the original owner to that role. Administrators can manage accounts, roles, login access, passwords and required/reset two-factor authentication. Passwords are never displayed. Administrative roles do not grant access to another user's monitors, recipients or documents.
+- Add optional public registration, mandatory email confirmation and an independent optional administrator-approval requirement. Public registration always creates normal users.
+- Allow manually provisioned accounts without email invitations. Invitations are sent only through an explicit administrator action. Initial and administrator-reset passwords require a password change.
+- Add expiring single-use hashed account tokens, CSRF validation, escaped account forms, throttled public authentication actions, session revocation after account security changes, and account audit events.
+- Restrict installation-wide backups, restores and updates to the superuser. These operator functions contain installation data and are not a cryptographic privacy boundary.
+- Keep monitoring running when an administrator blocks an account's login.
+
+### Emergency-stop recovery
+- Fix ordinary Resume clearing the pause while retaining the emergency-stop flag. Both resume paths now update the monitor transactionally. Explicit Resume also recovers monitors already stuck in that inconsistent state and starts a fresh interval.
+- Migration 011 keeps legacy inconsistent monitors safely paused until their owner chooses Resume. Global emergency reactivation preserves pauses that existed before the emergency. Cancelled messages and revoked portals remain cancelled/revoked.
+
+### Document editor improvements
+- Support multiple-file drag and drop in the monitor and recipient document tabs, using each file's name as its document name and the existing upload eligibility checks. Report individual failures and preserve unsaved editor fields and document selections.
+- Remove the monitor editor's bottom note about settings and message/content changes being saved together.
+
+### Upgrade
+- Adds migration `011_multiuser_accounts.sql`; existing sessions must sign in again. Public registration remains disabled by default. See `docs/RELEASE_1.5.0.md` for deployment and validation details.
+
 ## 1.4.7 - 2026-10-26
 
 ### Monitor escalation spacing

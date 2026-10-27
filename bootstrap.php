@@ -28,6 +28,7 @@ use Pulse\Core\Translator;
 use Pulse\Core\TotpAlgorithm;
 use Pulse\Core\View;
 use Pulse\Mail\SmtpMailTransport;
+use Pulse\Repositories\AccountRepository;
 use Pulse\Repositories\ContactRepository;
 use Pulse\Repositories\DocumentRepository;
 use Pulse\Repositories\LoginThrottleRepository;
@@ -40,6 +41,7 @@ use Pulse\Repositories\RecipientRepository;
 use Pulse\Repositories\RecipientPortalRepository;
 use Pulse\Repositories\SecurityCredentialRepository;
 use Pulse\Repositories\UserRepository;
+use Pulse\Services\AccountService;
 use Pulse\Services\AuthService;
 use Pulse\Services\DocumentService;
 use Pulse\Services\DocumentPreviewService;
@@ -141,6 +143,8 @@ if ($appliedMigrations !== [])
 $router = new Router();
 $view = new View(__DIR__ . '/app/Views');
 $userRepository = new UserRepository($database);
+$accountRepository = new AccountRepository($database);
+$accountService = new AccountService($accountRepository, $appConfig);
 $contactRepository = new ContactRepository($database);
 $monitorRepository = new MonitorRepository($database);
 $recipientRepository = new RecipientRepository($database);
@@ -246,6 +250,8 @@ setDisplayTimezone((string)$appConfig['display_timezone']);
 
 $view->SetGlobals([
 	'appName' => $appConfig['name'],
+	'registrationSettings' => $accountService->RegistrationSettings(),
+	'publicRegistrationEnabled' => (bool)$accountService->RegistrationSettings()['registration_enabled'],
 	'appVersion' => $appVersion,
 	'isAuthenticated' => $isCli || $isBackgroundRequest ? false : $auth->IsAuthenticated(),
 	'currentUser' => $isCli || $isBackgroundRequest ? null : $auth->GetCurrentUser(),
@@ -271,6 +277,8 @@ return [
 	'session' => $session,
 	'csrf' => $csrf,
 	'userRepository' => $userRepository,
+	'accountRepository' => $accountRepository,
+	'accountService' => $accountService,
 	'auth' => $auth,
 	'translator' => $translator,
 	'languageCatalog' => $languageCatalog,

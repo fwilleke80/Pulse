@@ -29,6 +29,7 @@ final class TotpAlgorithmTest extends TestCase
 		];
 	}
 
+	/** @dataProvider RfcVectors */
 	#[DataProvider('RfcVectors')]
 	public function testMatchesRfc6238Sha1Vectors(int $timestamp, string $expected): void
 	{

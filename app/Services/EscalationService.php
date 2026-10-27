@@ -200,7 +200,7 @@ final class EscalationService
 			FROM check_cycles cc
 			INNER JOIN monitors m ON m.id = cc.monitor_id
 			INNER JOIN users u ON u.id = m.user_id
-			WHERE cc.status = \'safety_pending\' AND m.is_paused = 0 AND m.is_archived = 0 AND u.is_active = 1
+			WHERE cc.status = \'safety_pending\' AND m.is_paused = 0 AND m.emergency_stopped_at IS NULL AND m.is_archived = 0 
 			ORDER BY cc.id ASC
 		')->fetchAll(PDO::FETCH_ASSOC);
 
@@ -704,7 +704,7 @@ final class EscalationService
 				INNER JOIN monitors m ON m.id = cc.monitor_id
 				WHERE cc.monitor_id = :monitor_id
 					AND m.user_id = :user_id
-					AND m.is_paused = 0
+					AND m.is_paused = 0 AND m.emergency_stopped_at IS NULL
 					AND m.is_archived = 0
 					AND cc.status = \'safety_pending\'
 					AND cc.safety_gate_started_at IS NOT NULL
@@ -757,7 +757,7 @@ final class EscalationService
 			INNER JOIN monitors m ON m.id = cc.monitor_id
 			WHERE cc.monitor_id = :monitor_id
 				AND m.user_id = :user_id
-				AND m.is_paused = 0
+				AND m.is_paused = 0 AND m.emergency_stopped_at IS NULL
 				AND m.is_archived = 0
 				AND cc.status = \'awaiting\'
 				AND cc.escalation_policy_snapshot = \'safety_contact\'

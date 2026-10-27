@@ -70,6 +70,7 @@ if (!$maintenanceMutation)
 	}
 }
 
+use Pulse\Controllers\AccountController;
 use Pulse\Controllers\AdministrationController;
 use Pulse\Controllers\AuthController;
 use Pulse\Controllers\ContactController;
@@ -159,6 +160,34 @@ if ($request->Method() === 'POST' && !$csrf->IsValid($request->PostString('_csrf
 	exit;
 }
 
+// Mandatory account setup is enforced before any controller can perform side effects.
+$requiredAccountAction = null;
+$gateUser = $auth->GetCurrentUser();
+if (is_array($gateUser))
+{
+	$requiredAccountAction = $auth->RequiredAccountAction($totpService->IsEnabled((int)$gateUser['id']));
+	if ($requiredAccountAction !== null)
+	{
+		$allowedPost = ['/profile/password', '/logout', '/language/set'];
+		if ($requiredAccountAction === '/profile?tab=security')
+		{
+			$allowedPost = array_merge($allowedPost, ['/security/totp/setup', '/security/totp/confirm',
+				'/security/totp/cancel', '/security/totp/recovery/acknowledge']);
+		}
+		$allowed = ($request->Method() === 'GET' && $request->Path() === '/profile')
+			|| ($request->Method() === 'POST' && in_array($request->Path(), $allowedPost, true));
+		if (!$allowed)
+		{
+			header('Location: ' . $requiredAccountAction, true, 303);
+			exit;
+		}
+	}
+}
+$view->SetGlobals(['requiredAccountAction' => $requiredAccountAction], true);
+
+$accountController = new AccountController($view, $session, $auth, $logger, $request,
+	$container['accountService'], $container['accountRepository'], $loginThrottle,
+	(int)$config['security']['password_minimum_length']);
 $emergencyStopController = new EmergencyStopController($view, $session, $auth, $logger, $request, $emergencyStopService);
 $homeController = new HomeController(
 	$view,
@@ -428,6 +457,22 @@ $router->Get('/quick-check-in', [$quickCheckInController, 'Open']);
 $router->Post('/quick-check-in/passkey/options', [$quickCheckInController, 'PasskeyOptions']);
 $router->Post('/quick-check-in/passkey/verify', [$quickCheckInController, 'PasskeyVerify']);
 $router->Get('/quick-check-in/success', [$quickCheckInController, 'Success']);
+
+$router->Get('/administration/users', [$accountController, 'Index']);
+$router->Get('/administration/users/edit', [$accountController, 'Edit']);
+$router->Post('/administration/users/create', [$accountController, 'Create']);
+$router->Post('/administration/users/edit', [$accountController, 'Update']);
+$router->Post('/administration/users/delete', [$accountController, 'Delete']);
+$router->Post('/administration/users/invite', [$accountController, 'Invite']);
+$router->Post('/administration/users/approve', [$accountController, 'Approve']);
+$router->Post('/administration/users/totp-reset', [$accountController, 'ResetTotp']);
+$router->Post('/administration/users/settings', [$accountController, 'Settings']);
+$router->Get('/register', [$accountController, 'ShowRegistration']);
+$router->Post('/register', [$accountController, 'Register']);
+$router->Get('/register/confirm', [$accountController, 'ShowVerification']);
+$router->Post('/register/confirm', [$accountController, 'Verify']);
+$router->Get('/account/set-password', [$accountController, 'ShowInvitation']);
+$router->Post('/account/set-password', [$accountController, 'AcceptInvitation']);
 
 $router->Get('/login', [$authController, 'ShowLogin']);
 $router->Post('/login', [$authController, 'Login']);

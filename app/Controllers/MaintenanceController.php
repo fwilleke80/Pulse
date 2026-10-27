@@ -21,7 +21,7 @@ use Pulse\Services\UpdateInstallerService;
 use Pulse\Services\UpdatePackageInspector;
 use Throwable;
 
-/** @brief Provides secure, owner-scoped exports and administrator backup downloads. */
+/** @brief Provides superuser-only operational archives and updates without an ownership bypass. */
 final class MaintenanceController extends BaseController
 {
 	private BackupService $_backupService;
@@ -54,10 +54,10 @@ final class MaintenanceController extends BaseController
 		$this->_version = $version;
 	}
 
-	/** @brief Downloads the current user's Markdown documents without exporting other accounts. */
+	/** @brief Downloads the superuser's Markdown documents without exporting other accounts. */
 	public function ExportTextDocuments(): void
 	{
-		$user = $this->RequireUser();
+		$user = $this->RequireSuperUser();
 		$temporary = $this->_backupService->TemporaryDirectory();
 		$failed = false;
 		try
@@ -86,7 +86,7 @@ final class MaintenanceController extends BaseController
 	/** @brief Downloads a complete backup, optionally encrypted with the supplied password. */
 	public function CreateBackup(): void
 	{
-		$user = $this->RequireAdministrator();
+		$user = $this->RequireSuperUser();
 		$password = $this->_request->PostString('backup_password', 1024, false);
 		$encrypt = $this->_request->PostBool('encrypt_backup');
 		if ($encrypt && strlen($password) < 12)
@@ -126,7 +126,7 @@ final class MaintenanceController extends BaseController
 	/** @brief Verify and privately stage a backup without touching live data. */
 	public function PreflightRestore(): void
 	{
-		$user = $this->RequireAdministrator();
+		$user = $this->RequireSuperUser();
 		$upload = null;
 		$this->DiscardPreflight('restore');
 		try
@@ -152,7 +152,7 @@ final class MaintenanceController extends BaseController
 	/** @brief Restore the verified staged package after fresh password and destructive confirmation. */
 	public function RestoreBackup(): void
 	{
-		$user = $this->RequireAdministrator();
+		$user = $this->RequireSuperUser();
 		if (!$this->_request->PostBool('confirm_restore'))
 		{
 			$this->Flash('error', __('administration.backup.restore_invalid'));
@@ -181,10 +181,10 @@ final class MaintenanceController extends BaseController
 		}
 	}
 
-	/** @brief Re-enables monitoring only after an authenticated administrator has reviewed the restore. */
+	/** @brief Re-enables monitoring only after an authenticated superuser has reviewed the restore. */
 	public function ResumeAfterRestore(): void
 	{
-		$user = $this->RequireAdministrator();
+		$user = $this->RequireSuperUser();
 		if ($this->_request->PostString('resume_confirmation', 16) !== 'RESUME')
 		{
 			$this->Flash('error', __('administration.backup.restore_invalid'));
@@ -207,7 +207,7 @@ final class MaintenanceController extends BaseController
 	/** @brief Stage and validate a release ZIP before presenting release notes to its administrator. */
 	public function PreflightUpdate(): void
 	{
-		$user = $this->RequireAdministrator();
+		$user = $this->RequireSuperUser();
 		$upload = null;
 		$this->DiscardPreflight('update');
 		try
@@ -232,7 +232,7 @@ final class MaintenanceController extends BaseController
 	/** @brief Discard a verified staged ZIP before selecting another package. */
 	public function ChangeUpdatePackage(): void
 	{
-		$this->RequireAdministrator();
+		$this->RequireSuperUser();
 		$this->DiscardPreflight('update');
 		$this->Redirect('/administration/maintenance/updates');
 	}
@@ -240,7 +240,7 @@ final class MaintenanceController extends BaseController
 	/** @brief Apply the previously inspected and unchanged release ZIP after fresh authentication. */
 	public function InstallUpdate(): void
 	{
-		$user = $this->RequireAdministrator();
+		$user = $this->RequireSuperUser();
 		$this->VerifyFreshPassword($user, 'updates');
 		try
 		{

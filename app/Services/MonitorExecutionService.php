@@ -47,7 +47,7 @@ final class MonitorExecutionService
 			FROM monitors
 			WHERE user_id = :user_id
 				AND location_check_in_enabled = 1
-				AND is_paused = 0
+				AND is_paused = 0 AND emergency_stopped_at IS NULL
 				AND is_archived = 0
 				AND NOT EXISTS
 				(
@@ -110,7 +110,7 @@ final class MonitorExecutionService
 		{
 			$monitor = $this->LockMonitorForUser($connection, $monitorId, $userId);
 
-			if (is_array($monitor) && empty($monitor['is_paused']) && empty($monitor['is_archived']))
+			if (is_array($monitor) && empty($monitor['is_paused']) && empty($monitor['emergency_stopped_at']) && empty($monitor['is_archived']))
 			{
 				$this->SynchronizeMonitor($connection, $monitor, $this->UtcNow());
 			}
@@ -138,7 +138,7 @@ final class MonitorExecutionService
 		{
 			$monitor = $this->LockMonitorForUser($connection, $monitorId, $userId);
 
-			if (is_array($monitor) && empty($monitor['is_paused']) && empty($monitor['is_archived']))
+			if (is_array($monitor) && empty($monitor['is_paused']) && empty($monitor['emergency_stopped_at']) && empty($monitor['is_archived']))
 			{
 				$this->SynchronizeMonitor($connection, $monitor, $this->UtcNow());
 			}
@@ -277,7 +277,7 @@ final class MonitorExecutionService
 			$nowValue = $this->FormatUtc($now);
 			$monitor = $this->LockMonitorForUser($connection, $monitorId, $userId);
 
-			if (!is_array($monitor) || !empty($monitor['is_paused']) || !empty($monitor['is_archived']))
+			if (!is_array($monitor) || !empty($monitor['is_paused']) || !empty($monitor['emergency_stopped_at']) || !empty($monitor['is_archived']))
 			{
 				$connection->commit();
 				return false;
@@ -332,9 +332,10 @@ final class MonitorExecutionService
 	 * @brief Resumes a paused monitor as a fresh confirmation and schedules a new cycle.
 	 * @param int $monitorId Monitor ID.
 	 * @param int $userId Owner user ID.
-	 * @return bool True when the monitor changed state.
+	 * @param bool $emergencyOnly Preserve pre-emergency pauses during global reactivation.
+	 * @return bool True when a fresh monitoring cycle was started.
 	 */
-	public function ResumeMonitorForUser(int $monitorId, int $userId): bool
+	public function ResumeMonitorForUser(int $monitorId, int $userId, bool $emergencyOnly = false): bool
 	{
 		$connection = $this->_database->GetConnection();
 		$connection->beginTransaction();
@@ -345,12 +346,25 @@ final class MonitorExecutionService
 			$nowValue = $this->FormatUtc($now);
 			$monitor = $this->LockMonitorForUser($connection, $monitorId, $userId);
 
-			if (!is_array($monitor) || empty($monitor['is_paused']) || !empty($monitor['is_archived']) || !empty($monitor['emergency_stopped_at']))
+			if (!is_array($monitor) || (empty($monitor['is_paused']) && empty($monitor['emergency_stopped_at']))
+				|| (!$emergencyOnly && !empty($monitor['is_archived']))
+				|| ($emergencyOnly && empty($monitor['emergency_stopped_at'])))
 			{
 				$connection->commit();
 				return false;
 			}
 
+
+			// Global reactivation preserves a pause that predates the emergency.
+			// Explicit per-monitor Resume is consent to start that monitor again.
+			if ($emergencyOnly && (!empty($monitor['emergency_was_paused']) || !empty($monitor['is_archived'])))
+			{
+				$clear = $connection->prepare('UPDATE monitors SET emergency_stopped_at = NULL, emergency_was_paused = 0, is_paused = 1, next_check_due_at = NULL, updated_at = :now WHERE id = :id');
+				$clear->execute(['now' => $nowValue, 'id' => $monitorId]);
+				$this->WriteAudit($connection, $userId, 'monitor.emergency_cleared', $monitorId, $nowValue);
+				$connection->commit();
+				return false;
+			}
 			$lingeringCycle = $this->FindOpenCycleForUpdate($connection, $monitorId);
 
 			if (is_array($lingeringCycle))
@@ -378,6 +392,8 @@ final class MonitorExecutionService
 				UPDATE monitors
 				SET
 					is_paused = 0,
+					emergency_stopped_at = NULL,
+					emergency_was_paused = 0,
 					paused_at = NULL,
 					last_confirmed_at = :confirmed_at,
 					next_check_due_at = :next_due_at,
@@ -580,7 +596,7 @@ final class MonitorExecutionService
 			$nowValue = $this->FormatUtc($now);
 			$monitor = $this->LockMonitorForUser($connection, $monitorId, $userId);
 
-			if (!is_array($monitor) || !empty($monitor['is_paused']) || !empty($monitor['is_archived']))
+			if (!is_array($monitor) || !empty($monitor['is_paused']) || !empty($monitor['emergency_stopped_at']) || !empty($monitor['is_archived']))
 			{
 				$connection->commit();
 				return false;
@@ -1206,6 +1222,8 @@ final class MonitorExecutionService
 					safety_required_confirmations,
 					safety_confirmation_days,
 					is_paused,
+				emergency_stopped_at,
+				emergency_was_paused,
 				paused_at,
 				is_archived,
 				archived_at,
@@ -1215,7 +1233,7 @@ final class MonitorExecutionService
 				created_at
 			FROM monitors
 			WHERE user_id = :user_id
-				AND is_paused = 0
+				AND is_paused = 0 AND emergency_stopped_at IS NULL
 				AND is_archived = 0
 				AND NOT EXISTS
 				(
@@ -1257,6 +1275,8 @@ final class MonitorExecutionService
 					safety_required_confirmations,
 					safety_confirmation_days,
 					is_paused,
+				emergency_stopped_at,
+				emergency_was_paused,
 				paused_at,
 				is_archived,
 				archived_at,

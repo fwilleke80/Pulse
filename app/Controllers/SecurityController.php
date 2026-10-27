@@ -261,6 +261,12 @@ final class SecurityController extends BaseController
 	public function DisableTotp(): void
 	{
 		$user = $this->RequireUser();
+		if (!empty($user['totp_required']))
+		{
+			$this->Flash('error', __('accounts.totp_required'));
+			$this->Redirect('/profile?tab=security');
+		}
+
 		$userId = (int)$user['id'];
 
 		if (!$this->VerifyTotpManagement($user, 'totp_disable'))
@@ -364,6 +370,12 @@ final class SecurityController extends BaseController
 
 			$this->_csrf->Rotate();
 			$this->_totp->CancelPendingLogin();
+			$requiredAction = $this->_auth->RequiredAccountAction($this->_totp->IsEnabled($userId));
+			if ($requiredAction !== null)
+			{
+				return $this->Json(['ok' => true, 'redirect' => $requiredAction]);
+			}
+
 
 			if ($quickTokenHash !== '')
 			{

@@ -104,6 +104,7 @@ ob_start();
 	</section>
 
 	<section class="editor-subtab-panel" data-subtab-panel="notification"<?= $activeSection === 'notification' ? '' : ' hidden' ?>>
+
 		<form method="post" action="<?= e($base_url) ?>/monitors/recipients/update" class="stack">
 			<fieldset class="recipient-readonly-fieldset"<?= $isArchivedMonitor ? ' disabled' : '' ?>>
 			<?= csrf_field() ?>
@@ -196,7 +197,7 @@ ob_start();
 		<?php endif; ?>
 	</section>
 
-	<section class="editor-subtab-panel" data-subtab-panel="documents"<?= $activeSection === 'documents' ? '' : ' hidden' ?>>
+	<section class="editor-subtab-panel" data-subtab-panel="documents" <?php if (!$isArchivedMonitor): ?>data-document-drop-zone data-drop-uploading="<?= e__('documents.drop.uploading') ?>" data-drop-failed="<?= e__('documents.drop.failed') ?>" data-drop-edit="<?= e__('monitors.documents.list.edit') ?>"<?php endif; ?><?= $activeSection === 'documents' ? '' : ' hidden' ?>>
 		<?php if (!$isArchivedMonitor): ?>
 			<div class="section-heading document-library-heading">
 				<div>
@@ -225,6 +226,10 @@ ob_start();
 				</form>
 			</div>
 		<?php endif; ?>
+		<?php if (!$isArchivedMonitor): ?>
+		<p class="form-hint document-drop-hint"><?= e__('documents.drop.hint') ?></p>
+		<div data-drop-status role="status" aria-live="polite"></div>
+		<?php endif; ?>
 		<form method="post" action="<?= e($base_url) ?>/monitors/recipients/update" class="stack" data-recipient-documents-assignment-form data-unsaved-confirm="<?= e__('recipients.documents.unsaved_confirm') ?>">
 			<fieldset class="recipient-readonly-fieldset"<?= $isArchivedMonitor ? ' disabled' : '' ?>>
 			<?= csrf_field() ?>
@@ -236,7 +241,7 @@ ob_start();
 				<?php if ($documents === []): ?>
 					<p><?= e__('recipients.documents.none') ?></p>
 				<?php else: ?>
-					<div class="recipient-document-checklist">
+					<div class="recipient-document-checklist" data-drop-list>
 						<?php foreach ($documents as $document): ?>
 							<div class="recipient-document-row">
 								<label class="recipient-document-selection">

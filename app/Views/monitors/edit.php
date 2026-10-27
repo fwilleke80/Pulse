@@ -422,7 +422,7 @@ ob_start();
 		</div>
 	</section>
 
-	<section id="monitor-tab-documents" class="monitor-tab-panel<?= $activeTab === 'documents' ? ' is-active' : '' ?>" role="tabpanel" data-tab-panel="documents"<?= $activeTab === 'documents' ? '' : ' hidden' ?>>
+	<section id="monitor-tab-documents" class="monitor-tab-panel<?= $activeTab === 'documents' ? ' is-active' : '' ?>" role="tabpanel" data-tab-panel="documents" <?php if (!$isArchived): ?>data-document-drop-zone data-drop-uploading="<?= e__('documents.drop.uploading') ?>" data-drop-failed="<?= e__('documents.drop.failed') ?>" data-drop-edit="<?= e__('monitors.documents.list.edit') ?>"<?php endif; ?><?= $activeTab === 'documents' ? '' : ' hidden' ?>>
 		<div class="section-heading document-library-heading">
 			<div>
 				<h2><?= e__('monitors.tabs.documents') ?></h2>
@@ -465,10 +465,15 @@ ob_start();
 			<?= e__('monitors.documents.assignment_hint') ?>
 		</div>
 
+
+		<?php if (!$isArchived): ?>
+		<p class="form-hint document-drop-hint"><?= e__('documents.drop.hint') ?></p>
+		<div data-drop-status role="status" aria-live="polite"></div>
+		<?php endif; ?>
 		<?php if ($documents === []): ?>
 			<p><?= e__('monitors.documents.none') ?></p>
 		<?php else: ?>
-			<div class="document-library-list">
+			<div class="document-library-list" data-drop-list>
 				<?php foreach ($documents as $document): ?>
 					<?php
 					$isTextDocument = (string)$document['storage_type'] === 'text';
@@ -923,7 +928,6 @@ ob_start();
 
 <?php if (!$isArchived): ?>
 	<div class="editor-save-bar" data-settings-save-bar data-settings-tabs="details,schedule,recipients,escalation,messages,review"<?= in_array($activeTab, ['details', 'schedule', 'recipients', 'escalation', 'messages', 'review'], true) ? '' : ' hidden' ?>>
-		<span><?= e__('monitors.edit.save_hint') ?></span>
 		<div class="editor-save-actions">
 			<a href="<?= e($base_url) ?>/monitors" class="button-link editor-cancel-button"><?= e__('monitors.edit.cancel') ?></a>
 			<button type="submit" form="monitor-settings-form" class="btn-primary"><?= e__('monitors.edit.submit') ?></button>

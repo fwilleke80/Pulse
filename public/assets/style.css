@@ -4154,7 +4154,8 @@ footer
 	margin: 0;
 }
 
-button.row-action-menu-item
+button.row-action-menu-item,
+a.row-action-menu-item
 {
 	display: block;
 	width: 100%;
@@ -4169,7 +4170,8 @@ button.row-action-menu-item
 	text-align: left;
 }
 
-button.row-action-menu-item:hover
+button.row-action-menu-item:hover,
+a.row-action-menu-item:hover
 {
 	border: 0;
 	background: var(--surface-subtle);
@@ -4182,7 +4184,8 @@ button.row-action-menu-item:disabled:hover
 	color: var(--muted);
 }
 
-button.row-action-menu-danger
+button.row-action-menu-danger,
+a.row-action-menu-danger
 {
 	color: var(--danger);
 }
@@ -5927,23 +5930,51 @@ button.portal-map-details-close
 	margin: 0.4rem 0 0;
 }
 
-/* Emergency controls remain conspicuous but distinct from ordinary check-in. */
+/* Equal-width primary actions retain a clear separation. */
+.dashboard-primary-actions
+{
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 1.5rem;
+	margin-top: 1.5rem;
+}
+.dashboard-primary-actions .global-check-in-card
+{
+	margin-top: 0;
+	flex-direction: column;
+	align-items: stretch;
+	justify-content: flex-start;
+}
+.dashboard-primary-actions .global-check-in-card > form:first-of-type
+{
+	margin-top: auto;
+}
+.dashboard-primary-actions button
+{
+	width: 100%;
+}
 .emergency-card
 {
-	border: 1px solid #bd4545;
+	border-color: color-mix(in srgb, #a92c34 42%, var(--border));
+	background: color-mix(in srgb, #a92c34 7%, var(--surface));
 }
-.btn-emergency-stop
+.btn-check-in.btn-emergency-stop
 {
-	min-height: 3.1rem;
-	width: 100%;
 	background: #a92c34;
-	color: #fff;
-	font-weight: 700;
-	border-color: #8b2028;
+	border-color: #a92c34;
+	box-shadow: 0 6px 16px rgba(169, 44, 52, 0.22);
 }
-.btn-emergency-stop:hover
+.btn-check-in.btn-emergency-stop:hover
 {
 	background: #881f2a;
+	border-color: #881f2a;
+}
+@media (max-width: 700px)
+{
+	.dashboard-primary-actions
+	{
+		grid-template-columns: minmax(0, 1fr);
+	}
 }
 
 /* Measure the portal content, not just the viewport, when collapsing cards. */
@@ -5953,4 +5984,27 @@ button.portal-map-details-close
 	{
 		grid-template-columns: minmax(0, 1fr);
 	}
+}
+
+/* File drops keep editor fields and recipient assignments in place. */
+[data-document-drop-zone].is-dragging
+{
+	outline: 2px dashed var(--accent, #397aa8);
+	outline-offset: 6px;
+}
+.document-drop-hint
+{
+	padding: 1rem;
+	border: 1px dashed currentColor;
+	border-radius: .5rem;
+}
+[data-drop-status] .upload-error
+{
+	color: #b42318;
+}
+
+a.row-action-menu-item
+{
+	box-sizing: border-box;
+	text-decoration: none;
 }

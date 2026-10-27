@@ -119,6 +119,11 @@ final class AdministrationController extends BaseController
 	private function RenderSection(string $section): string
 	{
 		$user = $this->RequireAdministrator();
+		if (in_array($section, ['backups', 'updates'], true))
+		{
+			$user = $this->RequireSuperUser();
+		}
+		$isSuperUser = in_array($user['is_super_user'] ?? null, [true, 1, '1'], true);
 		$activeTab = $this->NormalizeTab($this->_request->QueryString('tab', 32));
 		$settings = $this->CurrentSettings();
 		$availableTimezones = DateTimeZone::listIdentifiers();
@@ -139,6 +144,7 @@ final class AdministrationController extends BaseController
 			'user' => $user,
 			'activeTab' => $activeTab,
 			'section' => $section,
+			'isSuperUser' => $isSuperUser,
 			'settings' => $settings,
 			'availableLocales' => $this->_availableLocales,
 			'availableTimezones' => $availableTimezones,
@@ -148,7 +154,7 @@ final class AdministrationController extends BaseController
 			'configurationIssues' => $issues,
 			'mailEnabled' => $this->_mailEnabled,
 			'mailQueueCounts' => $this->_mailQueueRepository->CountByStatus(),
-			'mailQueueEntries' => $this->_mailQueueRepository->FindRecent(50),
+			'mailQueueEntries' => $this->_mailQueueRepository->FindRecentForUser((int)$user['id'], 50),
 			'latestTestNotification' => $this->_mailQueueRepository->FindLatestTestForUser((int)$user['id']),
 			'debugEnabled' => $this->_debugEnabled,
 			'databaseConfig' => $this->_databaseConfig,
@@ -160,9 +166,9 @@ final class AdministrationController extends BaseController
 				? $this->_systemStatusRepository->DatabaseSummary(dirname(__DIR__, 2) . '/database/migrations')
 				: null,
 			'maintenancePaused' => is_file(dirname(__DIR__, 2) . '/storage/maintenance.lock'),
-			'maintenanceCanResume' => $this->MayResumeMaintenance(),
-			'updatePreflight' => $this->PreviewMaintenancePreflight('update', (int)$user['id']),
-			'restorePreflight' => $this->PreviewMaintenancePreflight('restore', (int)$user['id']),
+			'maintenanceCanResume' => $isSuperUser && $this->MayResumeMaintenance(),
+			'updatePreflight' => $isSuperUser ? $this->PreviewMaintenancePreflight('update', (int)$user['id']) : null,
+			'restorePreflight' => $isSuperUser ? $this->PreviewMaintenancePreflight('restore', (int)$user['id']) : null,
 		]);
 	}
 
@@ -547,7 +553,7 @@ final class AdministrationController extends BaseController
 		$this->ValidateInteger($values, 'PULSE_LOGIN_MAX_ATTEMPTS', 2, 50);
 		$this->ValidateInteger($values, 'PULSE_LOGIN_WINDOW_SECONDS', 60, null);
 		$this->ValidateInteger($values, 'PULSE_LOGIN_BLOCK_SECONDS', 60, null);
-		$this->ValidateInteger($values, 'PULSE_PASSWORD_MINIMUM_LENGTH', 8, 128);
+		$this->ValidateInteger($values, 'PULSE_PASSWORD_MINIMUM_LENGTH', 8, 72);
 		$this->ValidateInteger($values, 'PULSE_UPLOAD_MAXIMUM_BYTES', 1024, null);
 
 		if ((string)$values['PULSE_UPLOAD_ALLOWED_MIME_TYPES'] === '')

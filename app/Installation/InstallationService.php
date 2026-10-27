@@ -473,8 +473,8 @@ final class InstallationService
 
 		$statement = $connection->prepare('
 			INSERT INTO users
-			(email, password_hash, display_name, role, notification_locale, website_locale, is_active)
-			VALUES (:email, :password_hash, :display_name, \'administrator\', :notification_locale, :website_locale, 1)
+			(email, password_hash, display_name, role, notification_locale, website_locale, is_active, is_super_user, email_verified_at, approved_at)
+			VALUES (:email, :password_hash, :display_name, \'administrator\', :notification_locale, :website_locale, 1, 1, UTC_TIMESTAMP(), UTC_TIMESTAMP())
 		');
 		$statement->execute([
 			'email' => $email,

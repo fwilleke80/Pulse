@@ -240,6 +240,25 @@ final class MailQueueRepository
 	{
 		$mailType = (string)$job['mail_type'];
 
+		// A claimed job can be cancelled by account deletion or link replacement.
+		$claim = $this->_database->GetConnection()->prepare('SELECT COUNT(*) FROM mail_queue WHERE id = :id AND status = \'processing\' AND lease_token = :lease');
+		$claim->execute(['id' => (int)$job['id'], 'lease' => (string)($job['lease_token'] ?? '')]);
+		if ((int)$claim->fetchColumn() !== 1)
+		{
+			return false;
+		}
+		if (in_array($mailType, ['account_verify', 'account_invite', 'account_password_reset'], true))
+		{
+			$statement = $this->_database->GetConnection()->prepare(
+				'SELECT COUNT(*) FROM account_tokens t INNER JOIN users u ON u.id = t.user_id
+				WHERE t.token_hash = :hash AND t.user_id = :user_id AND t.used_at IS NULL
+				AND t.revoked_at IS NULL AND t.expires_at > UTC_TIMESTAMP()
+				AND t.email = u.email AND u.is_active = 1'
+			);
+			$statement->execute(['hash' => substr((string)$job['idempotency_key'], 8), 'user_id' => (int)$job['user_id']]);
+			return (int)$statement->fetchColumn() === 1;
+		}
+
 		if (in_array($mailType, ['owner_due_notice', 'owner_reminder'], true))
 		{
 			$statement = $this->_database->GetConnection()->prepare('
@@ -248,7 +267,7 @@ final class MailQueueRepository
 				INNER JOIN monitors m ON m.id = cc.monitor_id
 				WHERE cc.id = :cycle_id
 					AND cc.status = \'awaiting\'
-					AND m.is_paused = 0
+					AND m.is_paused = 0 AND m.emergency_stopped_at IS NULL
 					AND m.is_archived = 0
 				LIMIT 1
 			');
@@ -278,7 +297,7 @@ final class MailQueueRepository
 				WHERE scr.id = :request_id
 					AND scr.status = \'pending\'
 					AND cc.status = \'safety_pending\'
-					AND m.is_paused = 0
+					AND m.is_paused = 0 AND m.emergency_stopped_at IS NULL
 					AND m.is_archived = 0
 			');
 			$statement->execute(['request_id' => (int)$job['safety_request_id']]);
@@ -312,7 +331,7 @@ final class MailQueueRepository
 					AND rrd.status IN (\'queued\', \'sent\', \'failed\')
 					AND rr.status IN (\'pending\', \'partial\', \'sent\', \'failed\')
 					AND cc.status IN (\'overdue\', \'escalated\')
-					AND m.is_paused = 0
+					AND m.is_paused = 0 AND m.emergency_stopped_at IS NULL
 			');
 			$statement->execute(['delivery_id' => (int)$job['recipient_delivery_id']]);
 
@@ -374,7 +393,8 @@ final class MailQueueRepository
 						WHEN mail_type IN (\'safety_invitation\', \'safety_reminder\') THEN \'[Safety link redacted after delivery]\'
 						WHEN mail_type = \'owner_release_warning\' THEN \'[Emergency link redacted after delivery]\'
 						WHEN mail_type = \'recipient_notification\' THEN \'[Recipient portal link redacted after delivery]\'
-						WHEN mail_type = \'recipient_access_code\' THEN \'[Access code redacted after delivery]\'
+						WHEN mail_type IN (\'account_verify\', \'account_invite\', \'account_password_reset\') THEN \'[Account link redacted]\'
+					WHEN mail_type = \'recipient_access_code\' THEN \'[Access code redacted after delivery]\'
 						ELSE body_text
 					END,
 					sent_at = :sent_at,
@@ -511,6 +531,7 @@ final class MailQueueRepository
 					WHEN mail_type IN (\'safety_invitation\', \'safety_reminder\') THEN \'[Safety link redacted after cancellation]\'
 					WHEN mail_type = \'owner_release_warning\' THEN \'[Emergency link redacted after cancellation]\'
 					WHEN mail_type = \'recipient_notification\' THEN \'[Recipient portal link redacted after cancellation]\'
+					WHEN mail_type IN (\'account_verify\', \'account_invite\', \'account_password_reset\') THEN \'[Account link redacted]\'
 					WHEN mail_type = \'recipient_access_code\' THEN \'[Access code redacted after cancellation]\'
 					ELSE body_text
 				END,
@@ -538,6 +559,7 @@ final class MailQueueRepository
 					WHEN mail_type IN (\'safety_invitation\', \'safety_reminder\') THEN \'[Safety link redacted after cancellation]\'
 					WHEN mail_type = \'owner_release_warning\' THEN \'[Emergency link redacted after cancellation]\'
 					WHEN mail_type = \'recipient_notification\' THEN \'[Recipient portal link redacted after cancellation]\'
+					WHEN mail_type IN (\'account_verify\', \'account_invite\', \'account_password_reset\') THEN \'[Account link redacted]\'
 					WHEN mail_type = \'recipient_access_code\' THEN \'[Access code redacted after cancellation]\'
 					ELSE body_text
 				END,

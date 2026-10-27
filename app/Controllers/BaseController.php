@@ -110,6 +110,32 @@ abstract class BaseController
 	}
 
 	/**
+	 * @brief Requires an administrator explicitly trusted with operational archives and updates.
+	 * @return array<string, mixed>
+	 */
+	protected function RequireSuperUser(): array
+	{
+		$user = $this->RequireAdministrator();
+
+		// Accept only database boolean representations; missing or malformed flags deny access.
+		if (!in_array($user['is_super_user'] ?? null, [true, 1, '1'], true))
+		{
+			$this->_logger->Warning('Superuser-only route rejected', [
+				'user_id' => (int)$user['id'],
+				'path' => $this->_request->Path(),
+			]);
+			http_response_code(403);
+			echo $this->_view->Render('home.error', [
+				'heading' => __('administration.forbidden.heading'),
+				'message' => __('administration.forbidden.message'),
+			]);
+			exit;
+		}
+
+		return $user;
+	}
+
+	/**
 	 * @brief Stores a flash message.
 	 * @param string $type Message type.
 	 * @param string $message Message text.

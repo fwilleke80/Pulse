@@ -46,6 +46,11 @@ ob_start();
 </div>
 
 <?php
+if (!empty($publicRegistrationEnabled)):
+?>
+<p><a href="<?= e($base_url) ?>/register"><?= e__('accounts.register') ?></a></p>
+<?php
+endif;
 $content = ob_get_clean();
 $title = e__('login.title');
 require __DIR__ . '/../layouts/main.php';

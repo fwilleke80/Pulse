@@ -1,4 +1,4 @@
--- Pulse 1.0 baseline reference schema
+-- Pulse 1.5.0 reference schema
 -- MySQL 8+ / MariaDB 10.6+
 -- The installer applies database/migrations automatically. This file is reference documentation only.
 
@@ -26,12 +26,42 @@ CREATE TABLE users
 	password_hash VARCHAR(255) NOT NULL,
 	display_name VARCHAR(255) NOT NULL,
 	role ENUM('user','administrator') NOT NULL DEFAULT 'user',
+	is_super_user TINYINT(1) NOT NULL DEFAULT 0,
+	email_verified_at DATETIME NULL,
+	approved_at DATETIME NULL,
+	totp_required TINYINT(1) NOT NULL DEFAULT 0,
+	password_change_required TINYINT(1) NOT NULL DEFAULT 0,
+	auth_version BIGINT UNSIGNED NOT NULL DEFAULT 1,
+	super_user_slot TINYINT GENERATED ALWAYS AS (CASE WHEN is_super_user = 1 THEN 1 ELSE NULL END) STORED,
+	UNIQUE KEY uq_users_super_user (super_user_slot),
 	notification_locale VARCHAR(10) NULL,
 	website_locale VARCHAR(10) NULL,
 	is_active TINYINT(1) NOT NULL DEFAULT 1,
 	last_login_at DATETIME NULL,
 	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE account_write_lock
+(
+ id TINYINT UNSIGNED NOT NULL PRIMARY KEY
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+INSERT INTO account_write_lock (id) VALUES (1);
+
+CREATE TABLE account_tokens
+(
+ id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+ user_id BIGINT UNSIGNED NOT NULL,
+ purpose ENUM('verify','invite','password_reset') NOT NULL,
+ token_hash CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+ email VARCHAR(255) NOT NULL,
+ expires_at DATETIME NOT NULL,
+ used_at DATETIME NULL,
+ revoked_at DATETIME NULL,
+ created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ UNIQUE KEY uq_account_token_hash (token_hash),
+ INDEX idx_account_token_user (user_id, purpose),
+ FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE user_security_profiles
@@ -638,3 +668,11 @@ CREATE TABLE login_attempts
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 SET FOREIGN_KEY_CHECKS = 1;
+
+CREATE TABLE account_settings
+(
+ id TINYINT UNSIGNED NOT NULL PRIMARY KEY,
+ registration_enabled TINYINT(1) NOT NULL DEFAULT 0,
+ registration_requires_approval TINYINT(1) NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+INSERT INTO account_settings (id) VALUES (1);

@@ -47,7 +47,7 @@ final class EmergencyStopService
 			INNER JOIN check_cycles cc ON cc.id = rw.check_cycle_id
 			INNER JOIN users u ON u.id = rw.user_id
 			WHERE rw.token_hash = :hash AND rw.stopped_at IS NULL
-				AND rw.expires_at > UTC_TIMESTAMP() AND u.is_active = 1
+				AND rw.expires_at > UTC_TIMESTAMP()
 				AND m.emergency_stopped_at IS NULL
 				AND cc.status IN (\'overdue\',\'escalated\')
 			LIMIT 1
@@ -123,7 +123,7 @@ final class EmergencyStopService
 				INNER JOIN users u ON u.id = rw.user_id
 				WHERE rw.token_hash = :hash AND rw.user_id = :user_id
 					AND rw.monitor_id = :monitor_id AND rw.stopped_at IS NULL
-					AND rw.expires_at > UTC_TIMESTAMP() AND u.is_active = 1
+					AND rw.expires_at > UTC_TIMESTAMP()
 					AND cc.status IN (\'overdue\',\'escalated\')
 				FOR UPDATE
 			');
@@ -161,47 +161,13 @@ final class EmergencyStopService
 		$restarted = 0;
 		foreach (is_array($rows) ? $rows : [] as $row)
 		{
-			$monitorId = (int)$row['id'];
-			$update = $connection->prepare('
-				UPDATE monitors
-				SET emergency_stopped_at = NULL, emergency_was_paused = 0, updated_at = UTC_TIMESTAMP()
-				WHERE id = :id AND user_id = :user_id AND emergency_stopped_at IS NOT NULL
-			');
-			$update->execute(['id' => $monitorId, 'user_id' => $userId]);
-			if ((int)$row['emergency_was_paused'] === 0)
+			if ($this->_execution->ResumeMonitorForUser((int)$row['id'], $userId, true))
 			{
-				try
-				{
-					if ($this->_execution->ResumeMonitorForUser($monitorId, $userId))
-					{
-						$restarted++;
-					}
-					else
-					{
-						$this->RestoreEmergencyFlag($connection, $monitorId, $userId);
-					}
-				}
-				catch (Throwable $error)
-				{
-					$this->RestoreEmergencyFlag($connection, $monitorId, $userId);
-					throw $error;
-				}
+				$restarted++;
 			}
 		}
 		$this->_logger->Info('Emergency suspension reactivated by authenticated owner', ['user_id' => $userId, 'restarted' => $restarted]);
 		return $restarted;
-	}
-
-	/**
-	 * @brief Keeps a failed reactivation safely suspended so that it can be retried.
-	 * @param PDO $connection Active database connection.
-	 * @param int $monitorId Monitor to protect.
-	 * @param int $userId Owner of that monitor.
-	 */
-	private function RestoreEmergencyFlag(PDO $connection, int $monitorId, int $userId): void
-	{
-		$statement = $connection->prepare('UPDATE monitors SET emergency_stopped_at = UTC_TIMESTAMP(), emergency_was_paused = 0, is_paused = 1, updated_at = UTC_TIMESTAMP() WHERE id = :id AND user_id = :user_id AND is_paused = 1');
-		$statement->execute(['id' => $monitorId, 'user_id' => $userId]);
 	}
 
 	/**

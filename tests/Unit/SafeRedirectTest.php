@@ -29,6 +29,7 @@ class SafeRedirectTest extends TestCase
 		];
 	}
 
+	/** @dataProvider Targets */
 	#[DataProvider('Targets')]
 	public function testNormalize(string $target, string $expected): void
 	{
