@@ -105,6 +105,29 @@ document.addEventListener('DOMContentLoaded', function ()
 							throw new Error(result.message || zone.dataset.dropFailed);
 						}
 						message.textContent = result.message;
+						if (zone.querySelector('[data-recipient-document-manager]'))
+						{
+							await window.pulseRefreshRecipientDocuments();
+							continue;
+						}
+						const monitorList = zone.querySelector('[data-monitor-document-list]');
+						if (monitorList)
+						{
+							const refreshed = await fetch(monitorList.dataset.refreshUrl, { credentials: 'same-origin', cache: 'no-store' });
+							if (!refreshed.ok || refreshed.redirected)
+							{
+								throw new Error(zone.dataset.dropFailed);
+							}
+							const page = new DOMParser().parseFromString(await refreshed.text(), 'text/html');
+							const updatedList = page.querySelector('[data-monitor-document-list]');
+							if (!updatedList)
+							{
+								throw new Error(zone.dataset.dropFailed);
+							}
+							monitorList.replaceChildren(...Array.from(updatedList.childNodes));
+							document.dispatchEvent(new Event('pulse:documents-refreshed'));
+							continue;
+						}
 						let list = zone.querySelector('[data-drop-list]');
 						const assignment = zone.querySelector('[data-recipient-documents-assignment-form]');
 						if (!list)
@@ -191,16 +214,14 @@ document.addEventListener('DOMContentLoaded', function ()
 		});
 	}
 
-	for (const form of document.querySelectorAll('form[data-confirm]'))
+	document.addEventListener('submit', function (event)
 	{
-		form.addEventListener('submit', function (event)
+		const form = event.target;
+		if (form.matches('form[data-confirm]') && !window.confirm(form.dataset.confirm || 'Are you sure?'))
 		{
-			if (!window.confirm(form.dataset.confirm || 'Are you sure?'))
-			{
-				event.preventDefault();
-			}
-		});
-	}
+			event.preventDefault();
+		}
+	});
 
 	for (const form of document.querySelectorAll('[data-document-dirty-guard]'))
 	{
@@ -1279,8 +1300,16 @@ document.addEventListener('DOMContentLoaded', function ()
 		panel.style.visibility = '';
 	};
 
+	const bindMenus = function ()
+	{
+	menus.splice(0, menus.length, ...document.querySelectorAll('[data-row-action-menu]'));
 	for (const menu of menus)
 	{
+		if (menu.dataset.menuBound)
+		{
+			continue;
+		}
+		menu.dataset.menuBound = 'true';
 		menu.addEventListener('toggle', function ()
 		{
 			const panel = menu.querySelector('[data-row-action-menu-panel]');
@@ -1299,6 +1328,10 @@ document.addEventListener('DOMContentLoaded', function ()
 			}
 		});
 	}
+
+	};
+	bindMenus();
+	document.addEventListener('pulse:documents-refreshed', bindMenus);
 
 	document.addEventListener('click', function (event)
 	{
@@ -2991,4 +3024,321 @@ document.addEventListener('DOMContentLoaded', function ()
 			});
 		}
 	}
+});
+
+/** @brief Refreshes only document assignments so other editor drafts remain untouched. */
+document.addEventListener('DOMContentLoaded', function ()
+{
+	const manager = document.querySelector('[data-recipient-document-manager]');
+	if (!manager)
+	{
+		return;
+	}
+	const dialog = manager.querySelector('[data-assign-dialog]');
+	const status = manager.querySelector('[data-assignment-status]');
+	let busy = false;
+	window.pulseRefreshRecipientDocuments = async function ()
+	{
+		const response = await fetch(manager.dataset.refreshUrl, { credentials: 'same-origin', cache: 'no-store' });
+		if (!response.ok || response.redirected)
+		{
+			throw new Error(manager.dataset.error);
+		}
+		const page = new DOMParser().parseFromString(await response.text(), 'text/html');
+		for (const selector of ['[data-assigned-documents]', '[data-unassigned-documents]'])
+		{
+			const target = manager.querySelector(selector);
+			const source = page.querySelector(selector);
+			if (target && source)
+			{
+				target.replaceChildren(...Array.from(source.childNodes));
+			}
+			else if (target)
+			{
+				throw new Error(manager.dataset.error);
+			}
+		}
+		document.dispatchEvent(new Event('pulse:documents-refreshed'));
+		if (dialog)
+		{
+			dialog.querySelector('[data-assign-search]').dispatchEvent(new Event('input', { bubbles: true }));
+		}
+	};
+	manager.addEventListener('click', function (event)
+	{
+		if (event.target.closest('[data-assign-open]'))
+		{
+			dialog.showModal();
+			dialog.querySelector('[data-assign-search]').focus();
+		}
+		if (event.target.closest('[data-assign-close]') && !busy)
+		{
+			dialog.close();
+		}
+	});
+	manager.addEventListener('input', function ()
+	{
+		const query = dialog.querySelector('[data-assign-search]').value.toLocaleLowerCase().trim();
+		let visible = 0;
+		for (const choice of dialog.querySelectorAll('[data-assign-choice]'))
+		{
+			choice.hidden = !choice.textContent.toLocaleLowerCase().includes(query);
+			if (!choice.hidden)
+			{
+				visible++;
+			}
+		}
+		dialog.querySelector('[data-assign-no-results]').hidden = visible > 0 || !query;
+		dialog.querySelector('[data-assign-submit]').disabled = busy || !dialog.querySelector('input[name="document_ids[]"]:checked');
+	});
+	manager.addEventListener('submit', async function (event)
+	{
+		const form = event.target.closest('[data-document-assignment]');
+		if (!form)
+		{
+			return;
+		}
+		event.preventDefault();
+		if (busy)
+		{
+			return;
+		}
+		busy = true;
+		const body = new FormData(form);
+		body.set('ajax', '1');
+		const submit = form.querySelector('button[type="submit"]');
+		submit.disabled = true;
+		try
+		{
+			const response = await fetch(form.action, { method: 'POST', body, credentials: 'same-origin', headers: { Accept: 'application/json' } });
+			if (response.redirected || !response.headers.get('content-type')?.includes('application/json'))
+			{
+				throw new Error(manager.dataset.error);
+			}
+			const result = await response.json();
+			if (!response.ok || !result.ok)
+			{
+				throw new Error(result.message || manager.dataset.error);
+			}
+			dialog?.close();
+			await window.pulseRefreshRecipientDocuments();
+			status.textContent = result.message;
+			if (dialog)
+			{
+				dialog.querySelector('[data-assign-search]').value = '';
+				dialog.querySelector('[data-assign-submit]').disabled = true;
+				dialog.querySelector('[data-assign-no-results]').hidden = true;
+			}
+		}
+		catch (error)
+		{
+			status.textContent = error.message || manager.dataset.error;
+			dialog?.close();
+		}
+		finally
+		{
+			busy = false;
+			submit.disabled = form.querySelector('[name="document_action"]').value === 'assign' && !form.querySelector('input[name="document_ids[]"]:checked');
+		}
+	});
+});
+
+/** @brief Reveals exact editor fields and marks saveable mail drafts without native validity blockers. */
+document.addEventListener('DOMContentLoaded', function ()
+{
+	/** @brief Opens enclosing main/sub/language tabs and disclosures before focusing a field. */
+	const reveal = function (field)
+	{
+		const main = field.closest('[data-tab-panel]');
+		if (main)
+		{
+			main.closest('[data-monitor-tabs]')?.querySelector('[data-tab-target="' + main.dataset.tabPanel + '"]')?.click();
+		}
+		const sub = field.closest('[data-subtab-panel]');
+		if (sub)
+		{
+			sub.closest('[data-editor-subtabs]')?.querySelector('[data-subtab-target="' + sub.dataset.subtabPanel + '"]')?.click();
+		}
+		const language = field.closest('[data-language-panel]');
+		if (language)
+		{
+			language.closest('[data-language-tabs]')?.querySelector('[data-language-target="' + language.dataset.languagePanel + '"]')?.click();
+		}
+		for (let parent = field.parentElement; parent; parent = parent.parentElement)
+		{
+			if (parent.tagName === 'DETAILS')
+			{
+				parent.open = true;
+			}
+		}
+		field.closest('[data-markdown-editor]')?.querySelector('[data-markdown-edit-tab]')?.click();
+		field.scrollIntoView?.({ block: 'center', behavior: 'auto' });
+		field.focus({ preventScroll: true });
+	};
+	const fieldName = new URL(window.location.href).searchParams.get('field');
+	if (fieldName)
+	{
+		const field = document.getElementById(fieldName);
+		if (field && /^(INPUT|TEXTAREA|SELECT)$/.test(field.tagName))
+		{
+			reveal(field);
+		}
+	}
+	// Ordinary schema/file constraints still block submission, but cannot hide in another tab.
+	let nativeErrorNumber = 0;
+	let firstInvalid = null;
+	const markNativeTabs = function ()
+	{
+		document.querySelectorAll('.native-issue-marker').forEach(marker => marker.remove());
+		const tabs = new Set();
+		for (const field of document.querySelectorAll('[data-native-error-id][aria-invalid="true"]'))
+		{
+			for (const [panelSelector, key, target] of [['[data-tab-panel]', 'tabPanel', 'tab-target'], ['[data-subtab-panel]', 'subtabPanel', 'subtab-target']])
+			{
+				const panel = field.closest(panelSelector);
+				const tab = panel?.parentElement.querySelector('[data-' + target + '="' + panel.dataset[key] + '"]');
+				if (tab) { tabs.add(tab); }
+			}
+		}
+		for (const tab of tabs)
+		{
+			const marker = document.createElement('span');
+			marker.className = 'tab-warning-indicator native-issue-marker';
+			marker.textContent = '!';
+			tab.append(marker);
+		}
+	};
+	document.addEventListener('invalid', function (event)
+	{
+		const field = event.target;
+		if (!(field instanceof HTMLElement))
+		{
+			return;
+		}
+		event.preventDefault();
+		field.setAttribute('aria-invalid', 'true');
+		const id = field.dataset.nativeErrorId || 'native-validation-error-' + (++nativeErrorNumber);
+		field.dataset.nativeErrorId = id;
+		let message = document.getElementById(id);
+		if (!message)
+		{
+			message = document.createElement('p');
+			message.id = id;
+			message.className = 'field-validation-error';
+			field.insertAdjacentElement('afterend', message);
+			field.setAttribute('aria-describedby', [field.getAttribute('aria-describedby'), id].filter(Boolean).join(' '));
+		}
+		message.textContent = field.validationMessage;
+		message.hidden = false;
+		markNativeTabs();
+		if (!firstInvalid)
+		{
+			firstInvalid = field;
+			setTimeout(function ()
+			{
+				reveal(firstInvalid);
+				firstInvalid = null;
+			}, 0);
+		}
+	}, true);
+	document.addEventListener('input', function (event)
+	{
+		const field = event.target;
+		if (field.validity?.valid && field.dataset.nativeErrorId && !field.dataset.mailDraftField)
+		{
+			field.removeAttribute('aria-invalid');
+			const message = document.getElementById(field.dataset.nativeErrorId);
+			if (message) { message.hidden = true; }
+			markNativeTabs();
+		}
+	});
+	const config = document.querySelector('[data-mail-diagnostics]');
+	if (!config)
+	{
+		return;
+	}
+	const groups = JSON.parse(config.dataset.groups);
+	const labels = JSON.parse(config.dataset.labels);
+	/** @brief Recomputes live markers while the saved Overview summary remains unchanged. */
+	const update = function ()
+	{
+		document.querySelectorAll('.mail-issue-marker').forEach(marker => marker.remove());
+		const markedTabs = new Set();
+		for (const group of groups)
+		{
+			const subject = document.getElementById(group.subject);
+			const body = document.getElementById(group.body);
+			if (!subject || !body)
+			{
+				// An inherited invalid default lives in the monitor editor, but affects this recipient tab.
+				const toggle = document.querySelector('[data-message-override-toggle]');
+				if (toggle && !toggle.checked && group.section === 'notification' && group.subject.startsWith('recipient_default_'))
+				{
+					const a = group.valueSubject.trim();
+					const b = group.valueBody.trim();
+					if (Boolean(a) !== Boolean(b) || (b && !b.includes('{url}')) || a.includes('{url}'))
+					{
+						const tab = document.querySelector('[data-subtab-target="notification"]');
+						if (tab) { markedTabs.add(tab); }
+					}
+				}
+				continue;
+			}
+			const enabled = !group.toggle || Boolean(document.querySelector(group.toggle)?.checked);
+			const a = subject.value.trim();
+			const b = body.value.trim();
+			const errors = {};
+			if (enabled)
+			{
+				if (!a && b) { errors.subject = 'subject_missing'; }
+				if (a && !b) { errors.body = 'body_missing'; }
+				if (group.requireUrl && b && !b.includes('{url}')) { errors.body = 'url_missing'; }
+				if (group.requireUrl && a.includes('{url}')) { errors.subject = 'url_subject'; }
+			}
+			for (const [name, field] of [['subject', subject], ['body', body]])
+			{
+				field.dataset.mailDraftField = 'true';
+				const errorId = field.id + '-draft-error';
+				let message = document.getElementById(errorId);
+				if (!message)
+				{
+					message = document.createElement('p');
+					message.id = errorId;
+					message.className = 'field-validation-error';
+					message.setAttribute('aria-live', 'polite');
+					field.insertAdjacentElement('afterend', message);
+					field.setAttribute('aria-describedby', [field.getAttribute('aria-describedby'), errorId].filter(Boolean).join(' '));
+				}
+				message.textContent = errors[name] ? labels[errors[name]] : '';
+				message.hidden = !errors[name];
+				field.setAttribute('aria-invalid', errors[name] ? 'true' : 'false');
+			}
+			if (Object.keys(errors).length)
+			{
+				for (const [panelSelector, key, target] of [['[data-tab-panel]', 'tabPanel', 'tab-target'], ['[data-subtab-panel]', 'subtabPanel', 'subtab-target'], ['[data-language-panel]', 'languagePanel', 'language-target']])
+				{
+					const panel = subject.closest(panelSelector);
+					if (panel)
+					{
+						const scope = target === 'language-target' ? panel.closest('[data-language-tabs]') : panel.parentElement;
+						const tab = scope?.querySelector('[data-' + target + '="' + panel.dataset[key] + '"]');
+						if (tab) { markedTabs.add(tab); }
+					}
+				}
+			}
+		}
+		// Replace the old generic Messages warning with current draft-specific markers.
+		document.querySelector('[data-tab-target="messages"] .tab-warning-indicator')?.setAttribute('hidden', '');
+		for (const tab of markedTabs)
+		{
+			const marker = document.createElement('span');
+			marker.className = 'tab-warning-indicator mail-issue-marker';
+			marker.textContent = '!';
+			marker.setAttribute('aria-label', config.dataset.warningLabel);
+			tab.append(marker);
+		}
+	};
+	document.addEventListener('input', update);
+	document.addEventListener('change', update);
+	update();
 });

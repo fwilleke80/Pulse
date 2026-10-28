@@ -143,7 +143,7 @@ class DocumentController extends BaseController
 		]);
 	}
 
-	/** @brief Serves one owner-authenticated inline preview of an uploaded monitor document. */
+	/** @brief Serves one owner-authenticated inline preview of a text or uploaded monitor document. */
 	public function Preview(): void
 	{
 		$user = $this->RequireUser();
@@ -152,7 +152,7 @@ class DocumentController extends BaseController
 
 		try
 		{
-			$download = $this->_documentService->PrepareDownloadForUser(
+			$download = $this->_documentService->PreparePreviewForUser(
 				(int)$user['id'],
 				$monitorId,
 				$documentId
@@ -164,7 +164,7 @@ class DocumentController extends BaseController
 		}
 
 		$document = $download['document'];
-		$path = (string)$download['path'];
+		$path = $download['path'];
 
 		if (!$this->_documentPreviewService->IsViewable($document))
 		{
@@ -193,7 +193,7 @@ class DocumentController extends BaseController
 
 		$contentType = $this->_documentPreviewService->RawContentType($document);
 
-		if ($contentType === null)
+		if ($contentType === null || $path === null)
 		{
 			$this->PreviewNotFound();
 		}

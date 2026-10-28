@@ -87,6 +87,9 @@ class PrivacyDocuments extends Pulse\Services\DocumentService
 {
 	public array $received = [];
 	public function __construct() {}
+	public function PreparePreviewForUser(int $userId, int $monitorId, int $documentId): array {
+		return $this->PrepareDownloadForUser($userId, $monitorId, $documentId);
+	}
 	public function PrepareDownloadForUser(int $userId, int $monitorId, int $documentId): array {
 		$this->received = [$userId, $monitorId, $documentId];
 		throw new PrivacyDenied();

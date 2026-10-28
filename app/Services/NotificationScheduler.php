@@ -103,6 +103,10 @@ final class NotificationScheduler
 				if ($scheduledAt <= $now)
 				{
 					$cycle = $this->PrepareOwnerMailCycle($cycle, 'owner_reminder');
+					if (!$this->OwnerTemplateValid($cycle, 'owner_reminder'))
+					{
+						continue;
+					}
 					$content = $this->_composer->ComposeOwnerReminder($cycle, $reminderNumber);
 					$queued = $this->QueueOwnerMessages(
 						$cycle,
@@ -321,6 +325,10 @@ final class NotificationScheduler
 	private function EnqueueDueNotice(array $cycle, DateTimeImmutable $availableAt): ?int
 	{
 		$cycle = $this->PrepareOwnerMailCycle($cycle, 'owner_due_notice');
+		if (!$this->OwnerTemplateValid($cycle, 'owner_due_notice'))
+		{
+			return null;
+		}
 		$content = $this->_composer->ComposeOwnerDueNotice($cycle);
 		$ids = $this->QueueOwnerMessages(
 			$cycle,
@@ -393,6 +401,13 @@ final class NotificationScheduler
 			? $this->_quickCheckIn->CreateUrl((int)$cycle['user_id'], (int)$cycle['id'])
 			: null;
 		return $cycle;
+	}
+
+	/** @brief Incomplete saved drafts must not silently fall back when staging owner mail. */
+	private function OwnerTemplateValid(array $cycle, string $key): bool
+	{
+		$template = $cycle['mail_templates'][$key]['owner'] ?? [];
+		return TemplateDiagnostics::Fields((string)($template['subject'] ?? ''), (string)($template['body_text'] ?? '')) === [];
 	}
 
 	/** @brief Calculates the scheduled time of a one-based reminder. */

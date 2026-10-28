@@ -188,7 +188,7 @@ class MonitorController extends BaseController
 		$this->_monitorRepository->ReplaceContactsForMonitor($monitorId, (int)$user['id'], $contactIds);
 		$this->_logger->Info('Monitor created', ['user_id' => (int)$user['id'], 'monitor_id' => $monitorId]);
 		$this->Flash('success', __('monitors.add.flash.created', ['name' => $values['name']]));
-		$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=documents');
+		$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=overview');
 	}
 
 	/** @brief Displays the monitor editor and related document metadata. @return string */
@@ -244,6 +244,11 @@ class MonitorController extends BaseController
 		unset($document);
 
 		$monitorContacts = $this->_monitorRepository->FindMonitorContactsByMonitorIdForUser($monitorId, (int)$user['id']);
+		foreach ($monitorContacts as &$contact)
+		{
+			$contact['notification_locale'] = $this->_notificationComposer->ResolveLocale($contact['notification_locale'] ?? null);
+		}
+		unset($contact);
 		$recipientConfigurationIssues = $this->RecipientConfigurationIssues(array_values(array_filter(
 			$monitorContacts, static fn (array $contact): bool => (int)$contact['is_assigned'] === 1
 		)), $messageOverrides, $mailTemplates);
@@ -340,7 +345,7 @@ class MonitorController extends BaseController
 
 		if ($this->_request->PostBool('message_save_warning'))
 		{
-			$this->Flash('warning', __('monitors.messages.flash.saved_with_warnings'));
+			$this->Flash('warning', __('validation.saved_draft'));
 		}
 		else
 		{
@@ -438,13 +443,8 @@ class MonitorController extends BaseController
 			$validationError = $this->TemplatePairError($dueTemplate, 'monitors.messages.owner_due_incomplete')
 				?? $this->TemplatePairError($reminderTemplate, 'monitors.messages.owner_reminder_incomplete');
 
-			if ($asyncSave && $validationError !== null)
-			{
-				return $this->MessageSaveJson(false, false, $validationError);
-			}
+			$hasDraftIssues = $validationError !== null;
 
-			$this->ValidateTemplatePair($dueTemplate, 'monitors.messages.owner_due_incomplete', $redirect);
-			$this->ValidateTemplatePair($reminderTemplate, 'monitors.messages.owner_reminder_incomplete', $redirect);
 			$this->_messageRepository->ReplaceOwnerTemplateForMonitor($monitorId, $userId, 'owner_due_notice', $dueTemplate);
 			$this->_messageRepository->ReplaceOwnerTemplateForMonitor($monitorId, $userId, 'owner_reminder', $reminderTemplate);
 		}
@@ -472,15 +472,7 @@ class MonitorController extends BaseController
 			$safetyTemplates = $this->LocalizedSafetyTemplateInput();
 			$validationError = $this->LocalizedSafetyTemplateError($safetyTemplates);
 
-			if ($asyncSave && $validationError !== null)
-			{
-				return $this->MessageSaveJson(false, false, $validationError);
-			}
-
-			if (!$this->ValidateLocalizedSafetyTemplates($safetyTemplates, '/monitors/edit?id=' . $monitorId . '&tab=messages&section=safety'))
-			{
-				return null;
-			}
+			$hasDraftIssues = $validationError !== null;
 
 			$this->_messageRepository->ReplaceLocalizedTemplatesForMonitor($monitorId, $userId, 'safety_invitation', $safetyTemplates['safety_invitation']);
 			$this->_messageRepository->ReplaceLocalizedTemplatesForMonitor($monitorId, $userId, 'safety_reminder', $safetyTemplates['safety_reminder']);
@@ -524,13 +516,13 @@ class MonitorController extends BaseController
 			return $this->MessageSaveJson(
 				true,
 				$hasDraftIssues,
-				__($hasDraftIssues ? 'monitors.messages.flash.saved_with_warnings' : 'monitors.messages.flash.updated')
+				__($hasDraftIssues ? 'validation.saved_draft' : 'monitors.messages.flash.updated')
 			);
 		}
 
 		$this->Flash(
 			$hasDraftIssues ? 'warning' : 'success',
-			__($hasDraftIssues ? 'monitors.messages.flash.saved_with_warnings' : 'monitors.messages.flash.updated')
+			__($hasDraftIssues ? 'validation.saved_draft' : 'monitors.messages.flash.updated')
 		);
 		$this->Redirect('/monitors/edit?id=' . $monitorId . '&tab=messages&section=' . $returnSection);
 		return null;
@@ -571,7 +563,8 @@ class MonitorController extends BaseController
 		$result = $this->_monitorExecutionService->CheckInAllActiveForUser(
 			(int)$user['id'],
 			'manual',
-			CheckInLocation::FromRequest($this->_request)
+			CheckInLocation::FromRequest($this->_request),
+			$this->_request->PostInt('monitor_id') > 0 ? $this->_request->PostInt('monitor_id') : null
 		);
 
 		if ($result['updated'] === 0)
@@ -915,7 +908,7 @@ class MonitorController extends BaseController
 		foreach ($monitorContacts as $monitorContact)
 		{
 			$assignmentId = (int)$monitorContact['id'];
-			$locale = (string)($monitorContact['notification_locale'] ?? 'en');
+			$locale = $this->_notificationComposer->ResolveLocale(isset($monitorContact['notification_locale']) ? (string)$monitorContact['notification_locale'] : null);
 			$override = $messageOverrides[$assignmentId] ?? null;
 			$source = is_array($override) ? 'personal' : 'default';
 			$template = is_array($override)
@@ -936,6 +929,7 @@ class MonitorController extends BaseController
 				$result[$assignmentId] = [
 					'source' => $source,
 					'locale' => $locale,
+					'field' => array_key_first(\Pulse\Services\TemplateDiagnostics::Fields((string)($template['subject'] ?? ''), (string)($template['body_text'] ?? ''), true)) ?? 'subject',
 					'issues' => array_values(array_unique($issues)),
 				];
 			}
@@ -1211,7 +1205,11 @@ class MonitorController extends BaseController
 	private function PostedEditorTab(): string
 	{
 		$tab = $this->_request->PostString('active_tab', 20);
-		return in_array($tab, ['status', 'details', 'schedule', 'documents', 'recipients', 'escalation', 'messages', 'review'], true) ? $tab : 'details';
+		if (in_array($tab, ['status', 'review'], true))
+		{
+			return 'overview';
+		}
+		return in_array($tab, ['overview', 'details', 'schedule', 'documents', 'recipients', 'escalation', 'messages'], true) ? $tab : 'overview';
 	}
 
 	/** @brief Returns a whitelisted Messages & content subsection posted by its form. */
@@ -1289,7 +1287,7 @@ class MonitorController extends BaseController
 			return $target;
 		}
 
-		return preg_match('/^\/monitors\/edit\?id=\d+&tab=review$/', $target) === 1 ? $target : '/monitors';
+		return preg_match('/^\/monitors\/edit\?id=\d+&tab=(?:overview|review|status)$/', $target) === 1 ? $target : '/monitors';
 	}
 
 	/** @brief Returns a supported monitor editor tab from the query. @return string */
@@ -1297,6 +1295,10 @@ class MonitorController extends BaseController
 	{
 		$tab = $this->_request->QueryString('tab', 20);
 
-		return in_array($tab, ['status', 'details', 'schedule', 'documents', 'recipients', 'escalation', 'messages', 'review'], true) ? $tab : 'details';
+		if (in_array($tab, ['status', 'review'], true))
+		{
+			return 'overview';
+		}
+		return in_array($tab, ['overview', 'details', 'schedule', 'documents', 'recipients', 'escalation', 'messages'], true) ? $tab : 'overview';
 	}
 }

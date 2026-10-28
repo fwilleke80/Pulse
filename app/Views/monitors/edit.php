@@ -31,6 +31,7 @@ declare(strict_types=1);
 /** @var string $base_url */
 /** @var int $uploadMaximumBytes */
 
+$assignedRecipientCount = count(array_filter($monitorContacts, static fn (array $contact): bool => !empty($contact['is_assigned'])));
 $uncheckedContactCount = count(array_filter(
 	$monitorContacts,
 	static fn (array $contact): bool => (int)$contact['is_assigned'] === 1 && !\Pulse\Core\EmailAddressCollection::HasChecked($contact)
@@ -68,15 +69,15 @@ foreach ($recipientConfigurationIssues as $configurationIssue)
 $hasCompleteMessageCoverage = $recipientMessageWarningCount === 0;
 $uploadSizeMegabytes = max(0.1, $uploadMaximumBytes / 1048576);
 $uploadSizeLabel = number_format($uploadSizeMegabytes, $uploadSizeMegabytes >= 10 || floor($uploadSizeMegabytes) === $uploadSizeMegabytes ? 0 : 1) . ' MB';
+require __DIR__ . '/../partials/mail-diagnostic-data.php';
 $tabDefinitions = [
-	'status' => 'monitors.tabs.status',
+	'overview' => 'monitors.tabs.overview',
 	'details' => 'monitors.tabs.details',
 	'schedule' => 'monitors.tabs.schedule',
 	'documents' => 'monitors.tabs.documents',
 	'recipients' => 'monitors.tabs.recipients',
 	'escalation' => 'monitors.tabs.escalation',
 	'messages' => 'monitors.tabs.messages_content',
-	'review' => 'monitors.tabs.review',
 ];
 $messageSections = [
 	'owner' => 'monitors.messages.sections.owner',
@@ -160,7 +161,7 @@ ob_start();
 		<h1><?= e__('monitors.edit.heading') ?></h1>
 		<p class="form-hint"><?= e__('monitors.edit.intro') ?></p>
 	</div>
-	<span class="status-badge status-<?= e($currentStatus) ?>"><?= e__('monitors.status.' . $currentStatus) ?></span>
+	<span class="status-badge status-<?= e($currentStatus) ?>"><?= e__(!$isArchived && !empty($monitor['emergency_stopped_at']) ? 'monitors.overview.emergency' : 'monitors.status.' . $currentStatus) ?></span>
 </div>
 
 <?php if ($isArchived): ?>
@@ -183,9 +184,9 @@ ob_start();
 			$tabNumber++;
 			$isActiveTab = $activeTab === $tabName;
 			$tabHasWarning = ($tabName === 'recipients' && $recipientConfigurationWarningCount > 0)
-				|| ($tabName === 'messages' && $recipientMessageWarningCount > 0)
+				|| ($tabName === 'messages' && $savedMailIssues !== [])
 				|| ($tabName === 'escalation' && $safetyConfigurationWarning)
-				|| ($tabName === 'review' && ($recipientConfigurationWarningCount > 0 || $safetyConfigurationWarning));
+				|| ($tabName === 'overview' && ($savedMailIssues !== [] || $recipientConfigurationWarningCount > 0 || $safetyConfigurationWarning));
 			?>
 			<a
 				href="<?= e($base_url) ?>/monitors/edit?id=<?= (int)$monitor['id'] ?>&amp;tab=<?= e($tabName) ?>"
@@ -206,10 +207,16 @@ ob_start();
 	</div>
 
 	<fieldset class="monitor-readonly-fieldset"<?= $isArchived ? ' disabled' : '' ?>>
-	<section id="monitor-tab-status" class="monitor-tab-panel<?= $activeTab === 'status' ? ' is-active' : '' ?>" role="tabpanel" data-tab-panel="status"<?= $activeTab === 'status' ? '' : ' hidden' ?>>
+	<section id="monitor-tab-overview" class="monitor-tab-panel<?= $activeTab === 'overview' ? ' is-active' : '' ?>" role="tabpanel" data-tab-panel="overview"<?= $activeTab === 'overview' ? '' : ' hidden' ?>>
+		<?php require __DIR__ . '/../partials/mail-diagnostic-summary.php'; ?>
+		<div class="review-warnings">
+			<?php if ($assignedRecipientCount === 0): ?><a class="review-warning" href="<?= e($base_url) ?>/monitors/edit?id=<?= (int)$monitor['id'] ?>&amp;tab=recipients"><?= e__('monitors.review.warning.no_recipients') ?></a><?php endif; ?>
+			<?php if ($uncheckedContactCount > 0 && empty($monitor['is_paused'])): ?><a class="review-warning" href="<?= e($base_url) ?>/monitors/edit?id=<?= (int)$monitor['id'] ?>&amp;tab=recipients"><?= e__('monitors.review.warning.unchecked', ['count' => $uncheckedContactCount]) ?></a><?php endif; ?>
+			<?php if ((string)$monitor['escalation_policy'] === 'safety_contact' && $safetyContactIds === []): ?><a class="review-warning" href="<?= e($base_url) ?>/monitors/edit?id=<?= (int)$monitor['id'] ?>&amp;tab=escalation"><?= e__('monitors.review.warning.no_safety_contacts') ?></a><?php elseif ($safetyConfigurationWarning): ?><a class="review-warning" href="<?= e($base_url) ?>/monitors/edit?id=<?= (int)$monitor['id'] ?>&amp;tab=escalation"><?= e__('monitors.review.warning.safety_confirmations', ['required' => $safetyRequiredConfirmations, 'available' => $eligibleSafetyContactCount]) ?></a><?php endif; ?>
+		</div>
 		<div class="section-heading">
-			<h2><?= e__('monitors.status.heading') ?></h2>
-			<p><?= e__('monitors.status.hint') ?></p>
+			<h2><?= e__('monitors.tabs.overview') ?></h2>
+			<p><?= e__('monitors.overview.hint') ?></p>
 		</div>
 
 		<?php
@@ -217,7 +224,7 @@ ob_start();
 		$statusIssues = is_array($operationalStatus['issues'] ?? null) ? $operationalStatus['issues'] : [];
 		$nextAction = is_array($operationalStatus['next_action'] ?? null) ? $operationalStatus['next_action'] : ['type' => 'none', 'at' => null];
 		$futurePlan = is_array($operationalStatus['plan'] ?? null) ? $operationalStatus['plan'] : [];
-		$needsAttention = $statusIssues !== [];
+		$needsAttention = $savedMailIssues !== [] || $statusIssues !== [] || $assignedRecipientCount === 0 || $recipientConfigurationWarningCount > 0 || $safetyConfigurationWarning || !$hasCompleteMessageCoverage;
 		$lastEventTranslationKey = is_array($lastMonitorEvent)
 			? ($statusHistoryTranslationKeys[(string)($lastMonitorEvent['event_type'] ?? '')] ?? null)
 			: null;
@@ -236,10 +243,49 @@ ob_start();
 		<?php endif; ?>
 
 
+		<?php if (!$isArchived && empty($monitor['is_paused']) && empty($monitor['emergency_stopped_at']) && $currentStatus !== 'escalated'): ?>
+		<form method="post" action="<?= e($base_url) ?>/monitors/check-in"<?= !empty($monitor['location_check_in_enabled']) ? ' ' . check_in_location_attributes($locationReverseGeocodeUrl, $locale) : '' ?>>
+			<?= csrf_field() ?><input type="hidden" name="monitor_id" value="<?= (int)$monitor['id'] ?>"><input type="hidden" name="redirect" value="/monitors/edit?id=<?= (int)$monitor['id'] ?>&amp;tab=overview">
+			<?php if (!empty($monitor['location_check_in_enabled'])): ?><?php require __DIR__ . '/../partials/check-in-location.php'; ?><?php endif; ?>
+			<button type="submit" class="btn-primary"><?= e__('monitors.check_in.submit') ?></button>
+		</form>
+		<?php endif; ?>
+		<div class="activation-card">
+			<?php if ($currentStatus === 'escalated'): ?>
+				<div><h3><?= e__('monitors.activation.heading') ?></h3><p><?= e__('monitors.activation.escalated_hint') ?></p></div>
+				<div class="table-actions">
+					<form method="post" action="<?= e($base_url) ?>/monitors/reset-reactivate" data-confirm="<?= e__('monitors.reset.confirm') ?>">
+						<?= csrf_field() ?>
+						<input type="hidden" name="id" value="<?= (int)$monitor['id'] ?>">
+						<button type="submit" class="btn-primary"><?= e__('monitors.reset.submit') ?></button>
+					</form>
+					<form method="post" action="<?= e($base_url) ?>/monitors/archive" data-confirm="<?= e__('monitors.archive.confirm') ?>">
+						<?= csrf_field() ?>
+						<input type="hidden" name="id" value="<?= (int)$monitor['id'] ?>">
+						<button type="submit"><?= e__('monitors.archive.submit') ?></button>
+					</form>
+				</div>
+			<?php elseif ($currentStatus === 'archived'): ?>
+				<div><h3><?= e__('monitors.activation.heading') ?></h3><p><?= e__('monitors.activation.archived_hint') ?></p></div>
+				<form method="post" action="<?= e($base_url) ?>/monitors/reset-reactivate" data-confirm="<?= e__('monitors.reset.confirm') ?>">
+					<?= csrf_field() ?>
+					<input type="hidden" name="id" value="<?= (int)$monitor['id'] ?>">
+					<button type="submit" class="btn-primary"><?= e__('monitors.reset.submit') ?></button>
+				</form>
+			<?php else: ?>
+				<div><h3><?= e__('monitors.activation.heading') ?></h3><p><?= e__($currentStatus === 'paused' ? 'monitors.activation.paused_hint' : 'monitors.activation.active_hint') ?></p></div>
+				<form method="post" action="<?= e($base_url) ?>/monitors/<?= $currentStatus === 'paused' ? 'resume' : 'pause' ?>">
+					<?= csrf_field() ?>
+					<input type="hidden" name="id" value="<?= (int)$monitor['id'] ?>">
+					<input type="hidden" name="redirect" value="/monitors/edit?id=<?= (int)$monitor['id'] ?>&amp;tab=overview">
+					<button type="submit" class="<?= $currentStatus === 'paused' ? 'btn-primary' : '' ?>"><?= e__($currentStatus === 'paused' ? 'monitors.resume.submit' : 'monitors.pause.submit') ?></button>
+				</form>
+			<?php endif; ?>
+		</div>
 		<div class="monitor-status-summary-grid">
 			<div class="review-stat">
 				<span class="monitor-status-card-label"><?= e__('monitors.status.current') ?></span>
-				<strong><span class="status-badge status-<?= e($currentStatus) ?>"><?= e__('monitors.status.' . $currentStatus) ?></span></strong>
+				<strong><span class="status-badge status-<?= e($currentStatus) ?>"><?= e__(!$isArchived && !empty($monitor['emergency_stopped_at']) ? 'monitors.overview.emergency' : 'monitors.status.' . $currentStatus) ?></span></strong>
 			</div>
 			<div class="review-stat monitor-status-last-event">
 				<span class="monitor-status-card-label"><?= e__('monitors.status.last_event') ?></span>
@@ -265,6 +311,20 @@ ob_start();
 				'remaining' => max(0, $safetyLimit - (int)($monitor['consecutive_safety_postponements'] ?? 0)),
 			]) ?></p>
 		<?php endif; ?>
+		<h3><?= e__('monitors.overview.configuration') ?></h3>
+		<div class="review-grid">
+			<a class="review-stat overview-summary-link" href="<?= e($base_url) ?>/monitors/edit?id=<?= (int)$monitor['id'] ?>&amp;tab=recipients"><strong><?= $assignedRecipientCount ?></strong><span><?= e__('monitors.review.recipients') ?></span></a>
+			<a class="review-stat overview-summary-link" href="<?= e($base_url) ?>/monitors/edit?id=<?= (int)$monitor['id'] ?>&amp;tab=recipients"><strong><?= $messageOverrideCount ?></strong><span><?= e__('monitors.review.overrides') ?></span></a>
+			<a class="review-stat overview-summary-link" href="<?= e($base_url) ?>/monitors/edit?id=<?= (int)$monitor['id'] ?>&amp;tab=documents"><strong><?= count($documents) ?></strong><span><?= e__('monitors.review.documents') ?></span></a>
+			<a class="review-stat overview-summary-link" href="<?= e($base_url) ?>/monitors/edit?id=<?= (int)$monitor['id'] ?>&amp;tab=escalation"><strong><?= e__('monitors.escalation.policy.' . (string)$monitor['escalation_policy']) ?></strong><span><?= e__('monitors.review.escalation') ?></span></a>
+			<a class="review-stat overview-summary-link" href="<?= e($base_url) ?>/monitors/edit?id=<?= (int)$monitor['id'] ?>&amp;tab=schedule"><strong><?= (int)$monitor['check_interval_days'] ?></strong><span><?= e__('monitors.overview.interval') ?></span></a>
+		</div>
+
+		<div class="review-grid">
+		<a class="review-stat overview-summary-link" href="<?= e($base_url) ?>/monitors/edit?id=<?= (int)$monitor['id'] ?>&amp;tab=schedule"><strong><?= (int)$monitor['max_reminders'] ?></strong><span><?= e__('monitors.overview.reminders') ?></span></a>
+		<a class="review-stat overview-summary-link" href="<?= e($base_url) ?>/monitors/edit?id=<?= (int)$monitor['id'] ?>&amp;tab=escalation"><strong><?= count($safetyContactIds) ?></strong><span><?= e__('monitors.overview.safety_contacts') ?></span></a>
+		</div>
+
 		<section class="configuration-block monitor-status-plan">
 			<h3><?= e__('monitors.status.next.heading') ?></h3>
 			<p class="form-hint"><?= e__('monitors.status.next.hint') ?></p>
@@ -470,48 +530,19 @@ ob_start();
 		<p class="form-hint document-drop-hint"><?= e__('documents.drop.hint') ?></p>
 		<div data-drop-status role="status" aria-live="polite"></div>
 		<?php endif; ?>
+		<div data-monitor-document-list data-refresh-url="<?= e($base_url) ?>/monitors/edit?id=<?= (int)$monitor['id'] ?>&amp;tab=documents">
 		<?php if ($documents === []): ?>
 			<p><?= e__('monitors.documents.none') ?></p>
 		<?php else: ?>
-			<div class="document-library-list" data-drop-list>
-				<?php foreach ($documents as $document): ?>
-					<?php
-					$isTextDocument = (string)$document['storage_type'] === 'text';
-					$textContent = (string)($document['text_content'] ?? '');
-					$textLength = strlen(preg_replace('/[\x80-\xBF]/', '', $textContent) ?? $textContent);
-					?>
-					<article class="document-library-item">
-						<div class="document-library-main">
-							<span class="document-type-badge"><?= e__('monitors.documents.type.' . (string)$document['storage_type']) ?></span>
-							<div>
-								<h3><?= e((string)$document['title']) ?></h3>
-								<div class="document-library-meta">
-									<span><?= e__('monitors.documents.list.modified') ?>: <?= e(format_datetime((string)$document['updated_at'])) ?></span>
-									<?php if ($isTextDocument): ?>
-										<span><?= e__('monitors.documents.list.text_size', ['count' => number_format($textLength)]) ?></span>
-									<?php else: ?>
-										<span><?= e((string)($document['original_filename'] ?? '')) ?></span>
-										<span><?= e__('monitors.documents.list.file_size', ['count' => number_format((int)($document['file_size_bytes'] ?? 0))]) ?></span>
-									<?php endif; ?>
-								</div>
-							</div>
-						</div>
-						<div class="document-library-actions">
-							<a href="<?= e($base_url) ?>/monitors/documents/edit?monitor_id=<?= (int)$monitor['id'] ?>&amp;document_id=<?= (int)$document['id'] ?>" class="button-link"><?= e__('monitors.documents.list.edit') ?></a>
-							<?php if (!$isTextDocument): ?>
-								<a href="<?= e($base_url) ?>/monitors/documents/download?monitor_id=<?= (int)$monitor['id'] ?>&amp;document_id=<?= (int)$document['id'] ?>" class="button-link"><?= e__('monitors.documents.download.submit') ?></a>
-							<?php endif; ?>
-							<form method="post" action="<?= e($base_url) ?>/monitors/documents/delete" data-confirm="<?= e__('monitors.documents.flash.delete_confirm') ?>" class="document-delete-form">
-								<?= csrf_field() ?>
-								<input type="hidden" name="monitor_id" value="<?= (int)$monitor['id'] ?>">
-								<input type="hidden" name="document_id" value="<?= (int)$document['id'] ?>">
-								<button type="submit" class="btn-danger"><?= e__('monitors.documents.delete.submit') ?></button>
-							</form>
-						</div>
-					</article>
-				<?php endforeach; ?>
-			</div>
+			<?php
+			$tableDocuments = $documents;
+			$tableMonitorId = (int)$monitor['id'];
+			$tableRecipientId = 0;
+			$tableArchived = $isArchived;
+			require __DIR__ . '/../partials/document-table.php';
+			?>
 		<?php endif; ?>
+		</div>
 	</section>
 
 	<section id="monitor-tab-recipients" class="monitor-tab-panel<?= $activeTab === 'recipients' ? ' is-active' : '' ?>" role="tabpanel" data-tab-panel="recipients"<?= $activeTab === 'recipients' ? '' : ' hidden' ?>>
@@ -590,7 +621,11 @@ ob_start();
 
 							<?php if (is_array($configurationIssue)): ?>
 								<div class="recipient-overview-warning" role="alert">
-									<?php foreach ((array)$configurationIssue['issues'] as $issueCode): ?>
+									<?php if (array_diff((array)$configurationIssue['issues'], ['unchecked_recipient']) !== []): ?>
+<?php $issueField = ($configurationIssue['field'] ?? 'subject') === 'body' ? 'body' : 'subject'; ?>
+<a href="<?= e((string)$configurationIssue['source'] === 'personal' ? $base_url . '/monitors/recipients/edit?id=' . (int)$monitorContact['id'] . '&section=notification&field=message_' . $issueField . '#message_' . $issueField : $base_url . '/monitors/edit?id=' . (int)$monitor['id'] . '&tab=messages&section=recipient&language=' . rawurlencode((string)$configurationIssue['locale']) . '&field=recipient_default_' . $issueField . '_' . language_field_suffix((string)$configurationIssue['locale']) . '#recipient_default_' . $issueField . '_' . language_field_suffix((string)$configurationIssue['locale'])) ?>"><?= e__('validation.edit_source') ?> · <?= e(notification_language_name((string)$configurationIssue['locale'])) ?> · <?= e__((string)$configurationIssue['source'] === 'personal' ? 'recipients.overview.personal' : 'recipients.overview.default') ?></a>
+<?php endif; ?>
+<?php foreach ((array)$configurationIssue['issues'] as $issueCode): ?>
 										<?php if ($issueCode === 'recipient_portal_url_missing'): ?>
 											<span><?= e__((string)$configurationIssue['source'] === 'personal' ? 'recipients.overview.issue.url_missing.personal' : 'recipients.overview.issue.url_missing.default', ['language' => notification_language_name((string)$configurationIssue['locale'])]) ?></span>
 										<?php elseif ($issueCode === 'unchecked_recipient'): ?>
@@ -767,11 +802,6 @@ ob_start();
 								<input type="text" id="recipient_default_subject_<?= e($templateFieldLocale) ?>" name="recipient_default_subject_<?= e($templateFieldLocale) ?>" value="<?= e((string)$recipientTemplate['subject']) ?>">
 								<label for="recipient_default_body_<?= e($templateFieldLocale) ?>"><?= e__('monitors.messages.body') ?></label>
 								<?= markdown_editor($base_url, 'recipient_default_body_' . $templateFieldLocale, 'recipient_default_body_' . $templateFieldLocale, (string)$recipientTemplate['body_text'], 9, 'email', ['data-recipient-template-body' => true]) ?>
-								<div class="template-validation-warning" role="alert" data-recipient-url-warning<?= $recipientTemplateUrlMissing ? '' : ' hidden' ?>>
-									<strong><?= e__('mail.validation.portal_url_missing.heading') ?></strong>
-									<?= e__('monitors.messages.portal_url_missing_warning', ['language' => notification_language_name($templateLocale)]) ?>
-									<?php if ($recipientTemplateUsers !== []): ?><small><?= e__('monitors.messages.portal_url_missing_recipients', ['recipients' => implode(', ', $recipientTemplateUsers)]) ?></small><?php endif; ?>
-								</div>
 								<p class="form-hint placeholder-help"><?= e__('monitors.messages.placeholders') ?> <code>{name}</code> — <?= e__('mail.placeholders.name') ?>; <code>{owner}</code> — <?= e__('mail.placeholders.owner') ?>; <code>{monitor}</code> — <?= e__('mail.placeholders.monitor') ?>; <code>{url}</code> — <?= e__('mail.placeholders.recipient_url') ?>.</p>
 								<p class="form-hint"><?= e__('mail.templates.empty_uses_default') ?></p>
 								<details class="mail-default-disclosure"><summary><?= e__('mail.templates.show_default') ?></summary><div class="mail-default-template"><div><strong><?= e__('monitors.messages.subject') ?>:</strong> <?= e((string)$recipientDefault['subject']) ?></div><div class="markdown-preview-email markdown-content"><?= markdown_html((string)$recipientDefault['body_text']) ?></div></div></details>
@@ -869,65 +899,10 @@ ob_start();
 
 	</fieldset>
 
-	<section id="monitor-tab-review" class="monitor-tab-panel<?= $activeTab === 'review' ? ' is-active' : '' ?>" role="tabpanel" data-tab-panel="review"<?= $activeTab === 'review' ? '' : ' hidden' ?>>
-		<div class="section-heading">
-			<h2><?= e__('monitors.tabs.review') ?></h2>
-			<p><?= e__('monitors.review.hint') ?></p>
-		</div>
-
-		<div class="review-grid">
-			<div class="review-stat"><strong><?= count($monitorContacts) ?></strong><span><?= e__('monitors.review.recipients') ?></span></div>
-			<div class="review-stat"><strong><?= $messageOverrideCount ?></strong><span><?= e__('monitors.review.overrides') ?></span></div>
-			<div class="review-stat"><strong><?= count($documents) ?></strong><span><?= e__('monitors.review.documents') ?></span></div>
-			<div class="review-stat"><strong><?= e__('monitors.escalation.policy.' . (string)$monitor['escalation_policy']) ?></strong><span><?= e__('monitors.review.escalation') ?></span></div>
-			<div class="review-stat"><strong><?= e(format_datetime((string)($monitor['next_check_due_at'] ?? ''))) ?></strong><span><?= e__('monitors.review.next_due') ?></span></div>
-		</div>
-
-		<div class="review-warnings">
-			<?php if ($monitorContacts === []): ?><div class="review-warning"><?= e__('monitors.review.warning.no_recipients') ?></div><?php endif; ?>
-			<?php if ($uncheckedContactCount > 0 && empty($monitor['is_paused'])): ?><div class="review-warning"><?= e__('monitors.review.warning.unchecked', ['count' => $uncheckedContactCount]) ?></div><?php endif; ?>
-			<?php if ($recipientMessageWarningCount > 0): ?><div class="review-warning"><?= e__('monitors.review.warning.recipient_configuration', ['count' => $recipientMessageWarningCount]) ?></div><?php endif; ?>
-			<?php if (!$hasCompleteMessageCoverage): ?><div class="review-warning"><?= e__('monitors.review.warning.no_message') ?></div><?php endif; ?>
-			<?php if ((string)$monitor['escalation_policy'] === 'safety_contact' && $safetyContactIds === []): ?><div class="review-warning"><?= e__('monitors.review.warning.no_safety_contacts') ?></div><?php elseif ($safetyConfigurationWarning): ?><div class="review-warning"><?= e__('monitors.review.warning.safety_confirmations', ['required' => $safetyRequiredConfirmations, 'available' => $eligibleSafetyContactCount]) ?></div><?php endif; ?>
-		</div>
-
-		<div class="activation-card">
-			<?php if ($currentStatus === 'escalated'): ?>
-				<div><h3><?= e__('monitors.activation.heading') ?></h3><p><?= e__('monitors.activation.escalated_hint') ?></p></div>
-				<div class="table-actions">
-					<form method="post" action="<?= e($base_url) ?>/monitors/reset-reactivate" data-confirm="<?= e__('monitors.reset.confirm') ?>">
-						<?= csrf_field() ?>
-						<input type="hidden" name="id" value="<?= (int)$monitor['id'] ?>">
-						<button type="submit" class="btn-primary"><?= e__('monitors.reset.submit') ?></button>
-					</form>
-					<form method="post" action="<?= e($base_url) ?>/monitors/archive" data-confirm="<?= e__('monitors.archive.confirm') ?>">
-						<?= csrf_field() ?>
-						<input type="hidden" name="id" value="<?= (int)$monitor['id'] ?>">
-						<button type="submit"><?= e__('monitors.archive.submit') ?></button>
-					</form>
-				</div>
-			<?php elseif ($currentStatus === 'archived'): ?>
-				<div><h3><?= e__('monitors.activation.heading') ?></h3><p><?= e__('monitors.activation.archived_hint') ?></p></div>
-				<form method="post" action="<?= e($base_url) ?>/monitors/reset-reactivate" data-confirm="<?= e__('monitors.reset.confirm') ?>">
-					<?= csrf_field() ?>
-					<input type="hidden" name="id" value="<?= (int)$monitor['id'] ?>">
-					<button type="submit" class="btn-primary"><?= e__('monitors.reset.submit') ?></button>
-				</form>
-			<?php else: ?>
-				<div><h3><?= e__('monitors.activation.heading') ?></h3><p><?= e__($currentStatus === 'paused' ? 'monitors.activation.paused_hint' : 'monitors.activation.active_hint') ?></p></div>
-				<form method="post" action="<?= e($base_url) ?>/monitors/<?= $currentStatus === 'paused' ? 'resume' : 'pause' ?>">
-					<?= csrf_field() ?>
-					<input type="hidden" name="id" value="<?= (int)$monitor['id'] ?>">
-					<input type="hidden" name="redirect" value="/monitors/edit?id=<?= (int)$monitor['id'] ?>&amp;tab=review">
-					<button type="submit" class="<?= $currentStatus === 'paused' ? 'btn-primary' : '' ?>"><?= e__($currentStatus === 'paused' ? 'monitors.resume.submit' : 'monitors.pause.submit') ?></button>
-				</form>
-			<?php endif; ?>
-		</div>
-	</section>
 </div>
 
 <?php if (!$isArchived): ?>
-	<div class="editor-save-bar" data-settings-save-bar data-settings-tabs="details,schedule,recipients,escalation,messages,review"<?= in_array($activeTab, ['details', 'schedule', 'recipients', 'escalation', 'messages', 'review'], true) ? '' : ' hidden' ?>>
+	<div class="editor-save-bar" data-settings-save-bar data-settings-tabs="details,schedule,recipients,escalation,messages"<?= in_array($activeTab, ['details', 'schedule', 'recipients', 'escalation', 'messages'], true) ? '' : ' hidden' ?>>
 		<div class="editor-save-actions">
 			<a href="<?= e($base_url) ?>/monitors" class="button-link editor-cancel-button"><?= e__('monitors.edit.cancel') ?></a>
 			<button type="submit" form="monitor-settings-form" class="btn-primary"><?= e__('monitors.edit.submit') ?></button>
@@ -935,6 +910,7 @@ ob_start();
 	</div>
 <?php endif; ?>
 
+<?php require __DIR__ . '/../partials/mail-diagnostic-config.php'; ?>
 <?php
 $content = ob_get_clean();
 $title = __('monitors.edit.browser_title', ['name' => (string)$monitor['name']]);

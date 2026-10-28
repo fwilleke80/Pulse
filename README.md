@@ -1,3 +1,19 @@
+## Pulse 1.5.5 — Recipient document fixes
+
+Unified monitor/recipient document tables, readable sizes and working previews for Pulse text documents. No new database migration.
+
+## Pulse 1.5.4 — Saveable mail drafts and precise warnings
+
+Incomplete email templates can be saved consistently. Fields, subsections and language tabs show specific warnings; Overview links directly to the saved problem. Sending safeguards prevent invalid templates from being used. Native validation also reveals hidden fields in tabbed editors, including document Edit/Preview panels.
+
+No new database migration is required. See [the validation audit](docs/VALIDATION_AUDIT_1.5.4.md) for scope and test limits.
+
+## Pulse 1.5.3 — Portal sections and simpler editors
+
+Portal documents are grouped by type and sorted by displayed title. Recipient document management now shows assigned documents only, with a searchable assignment dialog and immediate assign/unassign actions. The monitor editor starts with a single Overview combining status, readiness and activation controls. Old Status and Review links still work.
+
+No new database migration is required. See [CHANGELOG.md](CHANGELOG.md) for behavior and validation details.
+
 ## Pulse 1.5.2 — Simplified navigation
 
 User accounts is now reached through Administration → User accounts. The duplicate main-menu entry is removed; administrator permissions are unchanged. No new database migration is required.
@@ -34,7 +50,7 @@ This version adds database migration `010_release_emergency_safeguards.sql`. Upg
 
 # Pulse
 
-**Current release: 1.5.2**
+**Current release: 1.5.5**
 
 Pulse is a private, self-hosted check-in and notification system for situations in which something could happen to you and the people who need to know might otherwise not be informed for some time. You might use it to make sure family, friends, or other trusted people are contacted if you die or become seriously ill, or as an additional safety measure while travelling alone, going on an expedition, or spending time somewhere where help may be difficult to reach.
 

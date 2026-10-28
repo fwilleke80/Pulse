@@ -75,6 +75,20 @@ final class EmergencyResumeTest extends TestCase
 	{
 		$db->exec("INSERT INTO monitors (id,user_id,name,check_interval_days,response_window_days,reminder_interval_days,max_reminders,escalation_policy,safety_response_window_days,safety_reminder_interval_days,safety_max_reminders,safety_required_confirmations,safety_confirmation_days,is_paused,is_archived,emergency_stopped_at,emergency_was_paused,created_at) VALUES ($id,1,'Monitor',7,2,1,3,'direct',3,1,1,1,7,$paused,0,'2026-01-01 00:00:00',$wasPaused,'2026-01-01 00:00:00')");
 	}
+	/** @brief Editor check-in touches only its owned active monitor, preserving global check-in semantics. */
+	public function testScopedCheckIn(): void
+	{
+		[$db, $execution] = $this->Fixture();
+		$this->Monitor($db, 1, 1);
+		$this->Monitor($db, 2, 1);
+		$execution->ResumeMonitorForUser(1, 1);
+		$execution->ResumeMonitorForUser(2, 1);
+		self::assertSame(0, $execution->CheckInAllActiveForUser(99, 'manual', null, 1)['updated']);
+		self::assertSame(1, $execution->CheckInAllActiveForUser(1, 'manual', null, 1)['updated']);
+		self::assertSame(0, (int)$db->query("SELECT COUNT(*) FROM check_cycles WHERE monitor_id=2 AND status='confirmed'")->fetchColumn());
+		self::assertSame(2, $execution->CheckInAllActiveForUser(1)['updated']);
+	}
+
 	/** @brief Normal Resume recovers both fully stopped and mixed historical states exactly once. */
 	public function testExplicitResumeClearsBothFlagsAndSchedulesOneFreshCycle(): void
 	{

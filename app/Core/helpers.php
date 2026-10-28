@@ -557,3 +557,18 @@ function monitor_action_condition_label(array $action): string
 		default => '',
 	};
 }
+
+/** @brief Formats a byte count using decimal B, KB, MB, GB or TB units. */
+function format_file_size(int $bytes): string
+{
+	$size = (float)max(0, $bytes);
+	$units = ['B', 'KB', 'MB', 'GB', 'TB'];
+	$unit = 0;
+	while ($size >= 1000 && $unit < count($units) - 1)
+	{
+		$size /= 1000;
+		++$unit;
+	}
+	$number = $unit === 0 ? number_format($size, 0) : rtrim(rtrim(number_format($size, 1, '.', ','), '0'), '.');
+	return $number . ' ' . $units[$unit];
+}

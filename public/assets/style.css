@@ -6008,3 +6008,78 @@ a.row-action-menu-item
 	box-sizing: border-box;
 	text-decoration: none;
 }
+
+/* Assignment picker and portal groups keep large document collections readable. */
+.assign-documents-dialog
+{
+	width: min(42rem, calc(100vw - 2rem));
+	max-height: 85vh;
+	overflow: auto;
+	padding: 1.5rem;
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	color: var(--text);
+	background: var(--surface);
+}
+.assign-documents-dialog::backdrop
+{
+	background: rgba(0, 0, 0, .45);
+}
+.assign-document-choice
+{
+	display: flex;
+	align-items: center;
+	gap: .75rem;
+	padding: .65rem 0;
+	border-bottom: 1px solid var(--border);
+}
+.assign-document-choice[hidden]
+{
+	display: none;
+}
+.assign-document-choice small
+{
+	margin-left: auto;
+}
+.portal-document-section
+{
+	margin-top: 1.5rem;
+}
+.overview-summary-link
+{
+	color: inherit;
+	text-decoration: none;
+}
+.overview-summary-link:hover
+{
+	border-color: var(--accent);
+}
+.review-warnings a.review-warning
+{
+	display: block;
+}
+
+/* Draft warnings explain fields without preventing the draft from being saved. */
+.field-validation-error
+{
+	color: var(--danger);
+	font-size: .9rem;
+	margin: .35rem 0 .8rem;
+}
+[aria-invalid="true"]
+{
+	border-color: var(--danger);
+	outline-color: var(--danger);
+}
+.mail-readiness-summary
+{
+	border-left: 4px solid var(--danger);
+}
+.mail-readiness-summary small
+{
+	display: block;
+}
+.mail-issue-marker
+{
+	margin-inline-start: .4rem;
+}

@@ -108,8 +108,10 @@ ob_start();
 			<p><?= e__('portal.documents.none') ?></p>
 		</div>
 	<?php else: ?>
+		<?php foreach (\Pulse\Services\PortalDocumentSections::Group($documents) as $documentGroup => $groupDocuments): ?>
+		<section class="portal-document-section"><h3><?= e__('portal.documents.section.' . $documentGroup) ?></h3>
 		<div class="portal-document-grid">
-			<?php foreach ($documents as $document): ?>
+			<?php foreach ($groupDocuments as $document): ?>
 				<?php
 				$viewUrl = $previewMode ? '' : $base_url . '/portal/document/view?token=' . rawurlencode($token) . '&document=' . (int)$document['id'];
 				$downloadUrl = $previewMode ? '' : $base_url . '/portal/document/download?token=' . rawurlencode($token) . '&document=' . (int)$document['id'];
@@ -200,7 +202,8 @@ ob_start();
 					</div>
 				</article>
 			<?php endforeach; ?>
-		</div>
+		</div></section>
+		<?php endforeach; ?>
 	<?php endif; ?>
 
 	<?php if ($availableDocumentCount > 0 && $totalDownloadBytes >= 536870912): ?>

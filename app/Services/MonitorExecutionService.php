@@ -157,9 +157,10 @@ final class MonitorExecutionService
 	 * @param int $userId Owner user ID.
 	 * @param string $source Authentication/action source recorded in audit context.
 	 * @param array{latitude: float, longitude: float, accuracy_meters: float, address_label: string|null}|null $location Optional validated browser location.
+	 * @param int|null $onlyMonitorId Optional owned monitor restriction for editor check-in.
 	 * @return array{updated: int}
 	 */
-	public function CheckInAllActiveForUser(int $userId, string $source = 'manual', ?array $location = null): array
+	public function CheckInAllActiveForUser(int $userId, string $source = 'manual', ?array $location = null, ?int $onlyMonitorId = null): array
 	{
 		$connection = $this->_database->GetConnection();
 		$connection->beginTransaction();
@@ -169,6 +170,10 @@ final class MonitorExecutionService
 			$now = $this->UtcNow();
 			$nowValue = $this->FormatUtc($now);
 			$monitors = $this->LockActiveMonitorsForUser($connection, $userId);
+			if ($onlyMonitorId !== null)
+			{
+				$monitors = array_filter($monitors, static fn (array $monitor): bool => (int)$monitor['id'] === $onlyMonitorId);
+			}
 			$updated = 0;
 
 			foreach ($monitors as $monitor)

@@ -424,6 +424,7 @@ $router->Get('/monitors/recipients/edit', [$recipientController, 'Edit']);
 $router->Get('/monitors/recipients/portal-preview', [$recipientController, 'PortalPreview']);
 $router->Get('/monitors/recipients/portal-preview/asset', [$recipientController, 'PortalPreviewAsset']);
 $router->Post('/monitors/recipients/add', [$recipientController, 'Add']);
+$router->Post('/monitors/recipients/documents', [$recipientController, 'ChangeDocuments']);
 $router->Post('/monitors/recipients/update', [$recipientController, 'Update']);
 $router->Post('/monitors/recipients/portal/revoke', [$recipientController, 'RevokePortal']);
 $router->Post('/monitors/recipients/delivery/portal/update', [$recipientController, 'UpdateReleasedPortal']);

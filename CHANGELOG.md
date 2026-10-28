@@ -1,3 +1,49 @@
+## 1.5.5 - 2026-10-28
+
+- Unify monitor and recipient document lists through one shared, alphabetically sorted Name / Type / Size / Actions table. Keep Delete monitor-only and Unassign recipient-only; refresh the monitor table after drops without replacing unsaved editor fields.
+- Clarify that recipient assignments, unassignments and uploads save immediately; no additional recipient configuration save is needed.
+- Show document sizes in readable B, KB, MB, GB or TB units (decimal, at most one decimal place).
+- Fix Preview for Pulse text documents: load the owned database document and render it through the existing safe Markdown preview instead of requiring an uploaded file.
+- Preserve ownership checks, private response headers and uploaded-file preview validation. No database migration.
+
+## 1.5.4 - 2026-10-28
+
+### Saveable drafts and precise validation
+- Save incomplete owner, recipient and safety-contact mail templates consistently as drafts with a warning. Both fields empty remains the valid built-in fallback. Invalid saved templates are not staged for sending.
+- Add inline subject/body explanations and live main-tab, subsection and language markers. Correcting a draft clears its live markers without claiming the saved monitor configuration is fixed.
+- Put saved template problems near the top of Overview, grouped by source template and language, with affected recipients and exact field links. Links open the enclosing tabs/disclosures and focus the field. Remove the misleading no-custom-message warning and duplicate aggregate template counts.
+- Explain and link recipient warnings to either the personal template or the appropriate localized default. Personal and inherited template issues are also shown in the recipient editor.
+- Use the same language resolver for diagnostics and sending when a contact has no explicit notification language. Personal overrides remain independent.
+
+### Editor audit and delivery safeguards
+- Owner draft checks stop invalid messages from being queued; safety gates reject invalid invitation/reminder configurations before progressing. Existing recipient release validation remains fail-closed. Valid already-staged snapshots are unchanged.
+- Reveal and mark native invalid fields across tabbed editors and document Markdown Edit/Preview panels, preserving the current form. Hard constraints (required names, numeric bounds, file eligibility and authorization) still prevent invalid writes.
+- Allow an empty optional personal portal message consistently with portal rendering. Document draft recovery and per-file upload rejection behavior remain intact.
+- See `docs/VALIDATION_AUDIT_1.5.4.md` for the audit scope and verification limits. No database migration or Markdown shorthand was added.
+
+## 1.5.3 - 2026-10-28
+
+### Portal document sections
+- Group documents into Text documents, PDFs, Images, Videos, Audio and Other files; omit empty sections. Sort by displayed title, case-insensitively with natural numeric order and a stable ID tie-breaker.
+- Share grouping between live recipient portals and owner preview; retain card expansion animation, previews, downloads and immutable released content.
+
+### Recipient document management
+- Show only assigned documents in a compact Name / Type / Size / Actions table, without description excerpts.
+- Add a searchable Assign documents dialog with multi-selection of currently unassigned monitor documents. Assignment and unassignment save immediately; no separate Save assignments step is needed.
+- Row menus provide Edit, Preview and Unassign. Unassign removes the relationship, not the document. Uploaded and newly created documents retain automatic recipient assignment.
+- Apply additive/removal deltas transactionally, with ownership, monitor membership and archived-monitor checks. Changes do not rewrite recipient messages or already-released snapshots.
+- Refresh only assignment lists after changes/uploads, retaining unrelated unsaved editor fields. Reinitialize dynamically inserted action menus.
+
+### Monitor Overview
+- Merge Status and Review & activation into a first/default Overview tab: operational summary, next action, last event, state controls, linked configuration summary, readiness warnings, escalation timeline and history.
+- Overview Check-in affects only the current owned active monitor. Dashboard Check-in still covers all active owned monitors. Location consent behavior is retained.
+- Keep old Status/Review tab URLs working through aliases. Newly created monitors open Overview after saving. Existing pause/resume, emergency stop and archived-state protections remain in force.
+
+### Validation
+- 68 focused PHP tests / 132 assertions passed, including transactional assignment deltas, cross-user/monitor rejection, archived protection, rollback, portal grouping, scoped check-in, authentication/privacy and emergency resume.
+- Actual recipient-table and Overview templates rendered with PHP warnings treated as errors. DOM checks cover assigned-only display, picker search, immediate save, unrelated draft preservation, upload behavior, and portal animations/reduced motion.
+- PHP and JavaScript syntax checks passed. No new database migration. Validation used PHP 8.3; supported deployment remains PHP 8.4+. Full browser and live-server integration validation remains outstanding. The previously documented full-suite source-assertion failures are not claimed resolved by this release.
+
 ## 1.5.2 - 2026-10-27
 
 ### Navigation

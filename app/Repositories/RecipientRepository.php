@@ -95,6 +95,15 @@ final class RecipientRepository
 		return is_array($row) ? $row : null;
 	}
 
+	/** @brief Reads a localized default only through an owned monitor. */
+	public function FindDefaultMailForUser(int $monitorId, int $userId, string $locale): array
+	{
+		$query = $this->_database->GetConnection()->prepare('SELECT t.subject, t.body_text FROM monitor_mail_templates t INNER JOIN monitors m ON m.id = t.monitor_id WHERE m.id = :monitor AND m.user_id = :user AND t.locale = :locale AND t.template_key = \'recipient_default\'');
+		$query->execute(['monitor' => $monitorId, 'user' => $userId, 'locale' => $locale]);
+		$row = $query->fetch(PDO::FETCH_ASSOC);
+		return is_array($row) ? $row : [];
+	}
+
 	/**
 	 * @brief Adds an existing owned contact as a monitor recipient.
 	 * @return int Monitor-contact assignment ID.
@@ -229,7 +238,7 @@ final class RecipientRepository
 				$deleteMessage->execute(['id' => $monitorContactId]);
 			}
 
-			if (trim($portalBodyText) !== '')
+			if ($usePortalOverride || trim($portalBodyText) !== '')
 			{
 				$upsertPortal = $connection->prepare('
 					INSERT INTO contact_portal_messages (monitor_contact_id, body_text, is_enabled)
@@ -279,6 +288,49 @@ final class RecipientRepository
 		{
 			$connection->rollBack();
 			throw $throwable;
+		}
+	}
+
+	/** @brief Applies an assignment delta under the recipient lock; never replaces unrelated assignments or content. */
+	public function ChangeDocumentsForUser(int $recipientId, int $userId, array $documentIds, bool $assign): void
+	{
+		$connection = $this->_database->GetConnection();
+		$connection->beginTransaction();
+		try
+		{
+			$lock = $connection->prepare('SELECT mc.monitor_id FROM monitor_contacts mc INNER JOIN monitors m ON m.id = mc.monitor_id WHERE mc.id = :id AND m.user_id = :user AND m.is_archived = 0 FOR UPDATE');
+			$lock->execute(['id' => $recipientId, 'user' => $userId]);
+			$monitorId = $lock->fetchColumn();
+			if ($monitorId === false)
+			{
+				throw new RuntimeException('Owned editable recipient not found.');
+			}
+			$allowed = $connection->prepare('SELECT id FROM documents WHERE monitor_id = :monitor');
+			$allowed->execute(['monitor' => (int)$monitorId]);
+			$allowedIds = array_map('intval', $allowed->fetchAll(PDO::FETCH_COLUMN));
+			foreach (array_unique(array_map('intval', $documentIds)) as $id)
+			{
+				if (!in_array($id, $allowedIds, true))
+				{
+					throw new RuntimeException('Document does not belong to this monitor.');
+				}
+				if ($assign)
+				{
+					$query = $connection->prepare('INSERT INTO document_monitor_contacts (document_id, monitor_contact_id) SELECT :document, :recipient WHERE NOT EXISTS (SELECT 1 FROM document_monitor_contacts WHERE document_id = :existing_document AND monitor_contact_id = :existing_recipient)');
+					$query->execute(['document' => $id, 'recipient' => $recipientId, 'existing_document' => $id, 'existing_recipient' => $recipientId]);
+				}
+				else
+				{
+					$query = $connection->prepare('DELETE FROM document_monitor_contacts WHERE document_id = :document AND monitor_contact_id = :recipient');
+					$query->execute(['document' => $id, 'recipient' => $recipientId]);
+				}
+			}
+			$connection->commit();
+		}
+		catch (Throwable $error)
+		{
+			$connection->rollBack();
+			throw $error;
 		}
 	}
 

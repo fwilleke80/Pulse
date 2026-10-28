@@ -94,6 +94,18 @@ final class EscalationService
 				}
 			}
 
+			foreach ($contacts as $contact)
+			{
+				foreach (['invitation', 'reminder'] as $kind)
+				{
+					if (TemplateDiagnostics::Fields((string)($contact['safety_' . $kind . '_subject'] ?? ''), (string)($contact['safety_' . $kind . '_body'] ?? ''), true) !== [])
+					{
+						$this->WriteAudit($connection, $cycle, 'monitor.safety_blocked', ['reason' => 'invalid_message']);
+						$connection->commit();
+						return 0;
+					}
+				}
+			}
 			$this->_stateMachine->AssertTransition(MonitorStateMachine::AWAITING, MonitorStateMachine::SAFETY_PENDING);
 			$now = $this->Now();
 			$update = $connection->prepare('
@@ -904,7 +916,7 @@ final class EscalationService
 		$statement->execute(['monitor_id' => $monitorId]);
 		$rows = $statement->fetchAll(PDO::FETCH_ASSOC);
 
-		return is_array($rows) ? $rows : [];
+		return $this->ResolveContactTemplateLocales($connection, is_array($rows) ? $rows : [], $monitorId, true);
 	}
 
 	/** @return array<int, array<string, mixed>> @brief Returns safety requests for one cycle. */
@@ -954,6 +966,11 @@ final class EscalationService
 				return false;
 			}
 
+			if (TemplateDiagnostics::Fields((string)($current['reminder_subject'] ?? ''), (string)($current['reminder_body'] ?? ''), true) !== [])
+			{
+				$connection->commit();
+				return false;
+			}
 			$rawToken = bin2hex(random_bytes(32));
 			$this->InsertSafetyToken(
 				$connection,
@@ -1163,6 +1180,7 @@ final class EscalationService
 				c.email_2, c.email_2_checked_at, c.email_3, c.email_3_checked_at, c.email_4, c.email_4_checked_at,
 				c.notification_locale,
 				m.recipient_portal_expiry_days AS portal_availability_days,
+				cm.id AS personal_message_id,
 				COALESCE(cm.subject, mmt.subject) AS message_subject,
 				COALESCE(cm.body_text, mmt.body_text) AS message_body,
 				cpm.body_text AS portal_message_override,
@@ -1186,7 +1204,53 @@ final class EscalationService
 		$statement->execute(['monitor_id' => $monitorId]);
 		$rows = $statement->fetchAll(PDO::FETCH_ASSOC);
 
-		return is_array($rows) ? $rows : [];
+		return $this->ResolveContactTemplateLocales($connection, is_array($rows) ? $rows : [], $monitorId, false);
+	}
+
+	/** @brief Uses the sending locale for inherited templates when a contact has no stored language. */
+	private function ResolveContactTemplateLocales(PDO $connection, array $rows, int $monitorId, bool $safety): array
+	{
+		foreach ($rows as &$row)
+		{
+			$stored = $row['notification_locale'] ?? null;
+			$locale = $this->_composer->ResolveLocale($stored);
+			$row['notification_locale'] = $locale;
+			if ($stored === $locale)
+			{
+				continue;
+			}
+			if ($safety)
+			{
+				foreach (['safety_invitation', 'safety_reminder'] as $key)
+				{
+					$row[$key . '_subject'] = null;
+					$row[$key . '_body'] = null;
+				}
+			}
+			elseif (empty($row['personal_message_id']))
+			{
+				$row['message_subject'] = null;
+				$row['message_body'] = null;
+			}
+			$templates = $connection->prepare('SELECT template_key, subject, body_text FROM monitor_mail_templates WHERE monitor_id = :monitor AND locale = :locale');
+			$templates->execute(['monitor' => $monitorId, 'locale' => $locale]);
+			foreach ($templates->fetchAll(PDO::FETCH_ASSOC) as $template)
+			{
+				$key = (string)$template['template_key'];
+				if ($safety && in_array($key, ['safety_invitation', 'safety_reminder'], true))
+				{
+					$row[$key . '_subject'] = $template['subject'];
+					$row[$key . '_body'] = $template['body_text'];
+				}
+				elseif (!$safety && $key === 'recipient_default' && empty($row['personal_message_id']))
+				{
+					$row['message_subject'] = $template['subject'];
+					$row['message_body'] = $template['body_text'];
+				}
+			}
+		}
+		unset($row);
+		return $rows;
 	}
 
 	/**

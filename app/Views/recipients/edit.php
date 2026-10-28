@@ -38,6 +38,7 @@ $sections = [
 	'history' => 'recipients.tabs.history',
 ];
 
+require __DIR__ . '/../partials/mail-diagnostic-data.php';
 ob_start();
 ?>
 
@@ -58,11 +59,12 @@ ob_start();
 <div class="editor-subtabs recipient-editor-tabs" data-editor-subtabs data-active-subtab="<?= e($activeSection) ?>" data-query-key="section">
 	<div class="monitor-tabs editor-subtab-list" role="tablist" aria-label="<?= e__('recipients.tabs.label') ?>">
 		<?php foreach ($sections as $sectionName => $translationKey): ?>
-			<a href="<?= e($base_url) ?>/monitors/recipients/edit?id=<?= (int)$recipient['id'] ?>&amp;section=<?= e($sectionName) ?>" class="monitor-tab-link editor-subtab-link<?= $activeSection === $sectionName ? ' is-active' : '' ?>" role="tab" data-subtab-target="<?= e($sectionName) ?>" aria-selected="<?= $activeSection === $sectionName ? 'true' : 'false' ?>"><?= e__($translationKey) ?></a>
+			<a href="<?= e($base_url) ?>/monitors/recipients/edit?id=<?= (int)$recipient['id'] ?>&amp;section=<?= e($sectionName) ?>" class="monitor-tab-link editor-subtab-link<?= $activeSection === $sectionName ? ' is-active' : '' ?>" role="tab" data-subtab-target="<?= e($sectionName) ?>" aria-selected="<?= $activeSection === $sectionName ? 'true' : 'false' ?>"><?= e__($translationKey) ?><?php if ($sectionName === 'overview' && $savedMailIssues !== []): ?><span class="tab-warning-indicator">!</span><?php endif; ?></a>
 		<?php endforeach; ?>
 	</div>
 
 	<section class="editor-subtab-panel" data-subtab-panel="overview"<?= $activeSection === 'overview' ? '' : ' hidden' ?>>
+		<?php require __DIR__ . '/../partials/mail-diagnostic-summary.php'; ?>
 		<section class="configuration-block recipient-contact-summary">
 			<h2><?= e__('recipients.contact.heading') ?></h2>
 			<dl class="recipient-summary-list">
@@ -104,13 +106,14 @@ ob_start();
 	</section>
 
 	<section class="editor-subtab-panel" data-subtab-panel="notification"<?= $activeSection === 'notification' ? '' : ' hidden' ?>>
+		<?php require __DIR__ . '/../partials/mail-diagnostic-summary.php'; ?>
 
 		<form method="post" action="<?= e($base_url) ?>/monitors/recipients/update" class="stack">
 			<fieldset class="recipient-readonly-fieldset"<?= $isArchivedMonitor ? ' disabled' : '' ?>>
 			<?= csrf_field() ?>
 			<input type="hidden" name="id" value="<?= (int)$recipient['id'] ?>">
 			<input type="hidden" name="recipient_section" value="notification">
-			<section class="configuration-block" data-message-override data-recipient-template-validation data-empty-valid="false">
+			<section class="configuration-block" data-message-override data-recipient-template-validation data-empty-valid="true">
 				<h2><?= e__('recipients.message.heading') ?></h2>
 				<label class="compact-check"><input type="checkbox" name="use_message_override" value="1" data-message-override-toggle <?= $hasOverride ? 'checked' : '' ?>> <?= e__('recipients.message.use_override') ?></label>
 				<p class="form-hint"><?= e__('recipients.message.default_hint') ?></p>
@@ -119,7 +122,6 @@ ob_start();
 					<input type="text" id="message_subject" name="message_subject" value="<?= e((string)($recipient['override_subject'] ?? '')) ?>">
 					<label for="message_body"><?= e__('monitors.messages.body') ?></label>
 					<?= markdown_editor($base_url, 'message_body', 'message_body', (string)($recipient['override_body'] ?? ''), 11, 'email', ['data-recipient-template-body' => true]) ?>
-					<div class="template-validation-warning" role="alert" data-recipient-url-warning<?= ($hasOverride && in_array('recipient_portal_url_missing', $messageIssues, true)) ? '' : ' hidden' ?>><strong><?= e__('mail.validation.portal_url_missing.heading') ?></strong> <?= e__('recipients.message.portal_url_missing_warning') ?></div>
 					<p class="form-hint placeholder-help"><?= e__('recipients.message.placeholders') ?> <code>{name}</code> — <?= e__('mail.placeholders.name') ?>; <code>{owner}</code> — <?= e__('mail.placeholders.owner') ?>; <code>{monitor}</code> — <?= e__('mail.placeholders.monitor') ?>; <code>{url}</code> — <?= e__('mail.placeholders.recipient_url') ?>.</p>
 					<p class="form-hint"><?= e__('recipients.message.custom_hint') ?></p>
 				</div>
@@ -130,9 +132,7 @@ ob_start();
 						<div class="markdown-preview-email markdown-content"><?= markdown_html((string)$defaultTemplate['body_text']) ?></div>
 					</div>
 				</details>
-				<?php if (in_array('recipient_portal_url_missing', $defaultMessageIssues, true)): ?>
-					<div class="template-validation-warning" role="alert"><strong><?= e__('mail.validation.portal_url_missing.heading') ?></strong> <?= e__('recipients.message.default_portal_url_missing_warning', ['language' => notification_language_name((string)$recipient['notification_locale'])]) ?> <a href="<?= e($base_url) ?>/monitors/edit?id=<?= (int)$recipient['monitor_id'] ?>&amp;tab=messages&amp;section=recipient"><?= e__('recipients.message.edit_default') ?></a></div>
-				<?php endif; ?>
+
 			</section>
 			<button type="submit" class="btn-primary"><?= e__('recipients.edit.submit') ?></button>
 			</fieldset>
@@ -230,35 +230,7 @@ ob_start();
 		<p class="form-hint document-drop-hint"><?= e__('documents.drop.hint') ?></p>
 		<div data-drop-status role="status" aria-live="polite"></div>
 		<?php endif; ?>
-		<form method="post" action="<?= e($base_url) ?>/monitors/recipients/update" class="stack" data-recipient-documents-assignment-form data-unsaved-confirm="<?= e__('recipients.documents.unsaved_confirm') ?>">
-			<fieldset class="recipient-readonly-fieldset"<?= $isArchivedMonitor ? ' disabled' : '' ?>>
-			<?= csrf_field() ?>
-			<input type="hidden" name="id" value="<?= (int)$recipient['id'] ?>">
-			<input type="hidden" name="recipient_section" value="documents">
-			<section class="configuration-block">
-				<h2><?= e__('recipients.documents.heading') ?></h2>
-				<p class="form-hint"><?= e__('recipients.documents.hint') ?></p>
-				<?php if ($documents === []): ?>
-					<p><?= e__('recipients.documents.none') ?></p>
-				<?php else: ?>
-					<div class="recipient-document-checklist" data-drop-list>
-						<?php foreach ($documents as $document): ?>
-							<div class="recipient-document-row">
-								<label class="recipient-document-selection">
-									<input type="checkbox" name="document_ids[]" value="<?= (int)$document['id'] ?>" <?= in_array((int)$document['id'], $assignedDocumentIds, true) ? 'checked' : '' ?>>
-									<span class="recipient-document-content"><strong><?= e((string)$document['title']) ?></strong><small><?= e__('monitors.documents.type.' . (string)$document['storage_type']) ?></small><?php if (trim((string)($document['description'] ?? '')) !== ''): ?><small><?= e((string)$document['description']) ?></small><?php endif; ?></span>
-								</label>
-								<?php if (!$isArchivedMonitor): ?>
-									<a class="button-link" data-recipient-document-navigate href="<?= e($base_url) ?>/monitors/documents/edit?monitor_id=<?= (int)$recipient['monitor_id'] ?>&amp;document_id=<?= (int)$document['id'] ?>&amp;recipient_id=<?= (int)$recipient['id'] ?>"><?= e__('monitors.documents.list.edit') ?></a>
-								<?php endif; ?>
-							</div>
-						<?php endforeach; ?>
-					</div>
-				<?php endif; ?>
-			</section>
-			<button type="submit" class="btn-primary"><?= e__('recipients.documents.save') ?></button>
-			</fieldset>
-		</form>
+		<?php require __DIR__ . '/documents.php'; ?>
 
 		<?php if (is_array($activeDelivery)): ?>
 			<section class="configuration-block active-delivery-editor">
@@ -372,6 +344,7 @@ ob_start();
 	</section>
 </div>
 
+<?php require __DIR__ . '/../partials/mail-diagnostic-config.php'; ?>
 <?php
 $content = ob_get_clean();
 $title = __('recipients.edit.browser_title', ['name' => (string)$recipient['name']]);

@@ -92,6 +92,14 @@ final class RecipientController extends BaseController
 			$this->Redirect('/monitors');
 		}
 
+		$resolvedLocale = $this->_composer->ResolveLocale($recipient['notification_locale'] ?? null);
+		if (($recipient['notification_locale'] ?? null) !== $resolvedLocale)
+		{
+			$template = $this->_recipientRepository->FindDefaultMailForUser((int)$recipient['monitor_id'], (int)$user['id'], $resolvedLocale);
+			$recipient['default_message_subject'] = $template['subject'] ?? '';
+			$recipient['default_message_body'] = $template['body_text'] ?? '';
+		}
+		$recipient['notification_locale'] = $resolvedLocale;
 		$hasOverride = !empty($recipient['override_message_id']);
 		$effectiveSubject = $hasOverride
 			? (string)($recipient['override_subject'] ?? '')
@@ -115,9 +123,14 @@ final class RecipientController extends BaseController
 			'message_subject' => (string)($recipient['default_message_subject'] ?? ''),
 			'message_body' => (string)($recipient['default_message_body'] ?? ''),
 		]);
+		if (RecipientMessageValidator::Validate($effectiveSubject, $effectiveBody) !== [])
+		{
+			// Show the saved draft, not a misleading built-in fallback preview.
+			$preview = ['subject' => $effectiveSubject, 'body_text' => $effectiveBody];
+		}
 		$defaultTemplateSubject = (string)($recipient['default_message_subject'] ?? '');
 		$defaultTemplateBody = (string)($recipient['default_message_body'] ?? '');
-		$defaultTemplate = trim($defaultTemplateSubject) !== '' && trim($defaultTemplateBody) !== ''
+		$defaultTemplate = trim($defaultTemplateSubject) !== '' || trim($defaultTemplateBody) !== ''
 			? ['subject' => $defaultTemplateSubject, 'body_text' => $defaultTemplateBody]
 			: $this->_composer->BuiltInTemplate('recipient_default', (string)$recipient['notification_locale']);
 
@@ -300,6 +313,38 @@ final class RecipientController extends BaseController
 		$this->Redirect('/monitors/recipients/edit?id=' . $monitorContactId . '&section=overview');
 	}
 
+	/** @brief Immediately assigns or unassigns documents without changing messages or released snapshots. */
+	public function ChangeDocuments(): string
+	{
+		$user = $this->RequireUser();
+		$id = $this->_request->PostInt('id');
+		$ok = false;
+		try
+		{
+			$action = $this->_request->PostString('document_action', 16);
+			if (!in_array($action, ['assign', 'unassign'], true))
+			{
+				throw new \RuntimeException('Invalid assignment action.');
+			}
+			$this->_recipientRepository->ChangeDocumentsForUser($id, (int)$user['id'], $this->_request->PostIntArray('document_ids'), $action === 'assign');
+			$ok = true;
+		}
+		catch (\Throwable $error)
+		{
+			$this->_logger->Warning('Document assignment rejected', ['user_id' => (int)$user['id'], 'recipient_id' => $id]);
+		}
+		$message = __($ok ? 'recipients.documents.changed' : 'recipients.documents.failed');
+		if ($this->_request->PostBool('ajax'))
+		{
+			header('Content-Type: application/json; charset=utf-8');
+			header('Cache-Control: no-store, private');
+			http_response_code($ok ? 200 : 422);
+			return (string)json_encode(['ok' => $ok, 'message' => $message], JSON_THROW_ON_ERROR);
+		}
+		$this->Flash($ok ? 'success' : 'error', $message);
+		$this->Redirect('/monitors/recipients/edit?id=' . $id . '&section=documents');
+	}
+
 	/** @brief Saves one recipient's monitor-specific message and documents. */
 	public function Update(): void
 	{
@@ -342,11 +387,6 @@ final class RecipientController extends BaseController
 			$portalBody = (string)($recipient['portal_override_body'] ?? '');
 		}
 
-		if ($returnSection === 'portal' && $usePortalOverride && trim($portalBody) === '')
-		{
-			$this->Flash('error', __('recipients.portal_message.flash.body_required'));
-			$this->Redirect('/monitors/recipients/edit?id=' . $monitorContactId . '&section=portal');
-		}
 		$documentIds = $returnSection === 'documents'
 			? $this->_request->PostIntArray('document_ids')
 			: $this->_recipientRepository->FindAssignedDocumentIdsForUser($monitorContactId, $userId);
@@ -369,7 +409,7 @@ final class RecipientController extends BaseController
 		$issues = $returnSection === 'notification' && $useOverride ? RecipientMessageValidator::Validate($subject, $body) : [];
 		$this->Flash(
 			$issues !== [] ? 'warning' : 'success',
-			__($issues !== [] ? 'recipients.flash.saved_with_warnings' : 'recipients.flash.updated')
+			__($issues !== [] ? 'validation.saved_draft' : 'recipients.flash.updated')
 		);
 		$this->Redirect('/monitors/recipients/edit?id=' . $monitorContactId . '&section=' . $returnSection);
 	}

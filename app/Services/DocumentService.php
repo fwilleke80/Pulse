@@ -426,6 +426,27 @@ class DocumentService
 	}
 
 	/**
+	 * @brief Prepares an owned text or uploaded document for inline preview.
+	 * @return array{document: array<string, mixed>, path: string|null}
+	 */
+	public function PreparePreviewForUser(int $userId, int $monitorId, int $documentId): array
+	{
+		$document = $this->_documentRepository->FindByIdForMonitorAndUser($documentId, $monitorId, $userId);
+
+		if ($document === null)
+		{
+			throw new DocumentException('monitors.documents.flash.document_not_found');
+		}
+
+		if ((string)$document['storage_type'] === 'text')
+		{
+			return ['document' => $document, 'path' => null];
+		}
+
+		return $this->PrepareDownloadForUser($userId, $monitorId, $documentId);
+	}
+
+	/**
 	 * @brief Resolves one immutable portal snapshot to a downloadable file path when it represents an uploaded file.
 	 * @param array<string, mixed> $snapshot Recipient-delivery document snapshot.
 	 * @return string|null Absolute private path, or null for missing/non-file snapshots.
