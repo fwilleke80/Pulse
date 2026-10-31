@@ -70,6 +70,60 @@ final class ApplicationLogReaderTest extends TestCase
 		self::assertStringContainsString('e($entry[\'message\'])', $view);
 	}
 
+	/** @brief Truncation retains the same file and allows subsequent log writes. */
+	public function testClearingLogKeepsItAvailableAndReusable(): void
+	{
+		file_put_contents($this->_path, "2026-10-31T12:00:00+00:00 [ERROR] Previous failure\n");
+		$before = stat($this->_path);
+		$reader = new ApplicationLogReader($this->_path);
+
+		self::assertTrue($reader->Clear());
+		clearstatcache(true, $this->_path);
+		self::assertSame($before['ino'], stat($this->_path)['ino']);
+		self::assertSame('', file_get_contents($this->_path));
+		self::assertSame([], $reader->Read()['entries']);
+
+		file_put_contents($this->_path, "2026-10-31T13:00:00+00:00 [INFO] Cron healthy\n", FILE_APPEND | LOCK_EX);
+		self::assertCount(1, $reader->Read('INFO')['entries']);
+	}
+
+	/** @brief Missing logs and symbolic links must never be cleared via this utility. */
+	public function testClearingMissingLogIsHarmlessAndSymlinksAreRejected(): void
+	{
+		$reader = new ApplicationLogReader($this->_path);
+		unlink($this->_path);
+		self::assertFalse($reader->Clear());
+
+		$other = tempnam(sys_get_temp_dir(), 'pulse-target-');
+		self::assertIsString($other);
+		try
+		{
+			file_put_contents($other, 'Important unrelated file');
+			if (!symlink($other, $this->_path))
+			{
+				self::markTestSkipped('Symbolic links are unavailable on this filesystem.');
+			}
+			try
+			{
+				$reader->Clear();
+				self::fail('Clearing a symbolic link must be rejected.');
+			}
+			catch (\RuntimeException $exception)
+			{
+				self::assertStringContainsString('symbolic-link', $exception->getMessage());
+			}
+			self::assertSame('Important unrelated file', file_get_contents($other));
+		}
+		finally
+		{
+			if (is_link($this->_path))
+			{
+				unlink($this->_path);
+			}
+			unlink($other);
+		}
+	}
+
 	/** @brief A stale or never-successful cron cannot be classified as healthy. */
 	public function testCronHealthUsesSameThresholdAcrossSurfaces(): void
 	{

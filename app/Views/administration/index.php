@@ -597,6 +597,10 @@ ob_start();
 				<button type="button" class="button-link" data-log-refresh><?= e__('administration.logs.refresh') ?></button>
 				<a class="button-link" href="<?= e($base_url) ?>/administration/maintenance/logs/download"><?= e__('administration.logs.download') ?></a>
 			</form>
+			<form method="post" action="<?= e($base_url) ?>/administration/maintenance/logs/clear" data-confirm="<?= e__('administration.logs.clear_confirm') ?>" class="administration-log-clear">
+				<?= csrf_field() ?>
+				<button type="submit" class="btn-danger"><?= e__('administration.logs.clear') ?></button>
+			</form>
 			<div data-log-results aria-live="polite">
 				<?php require __DIR__ . '/log-results.php'; ?>
 			</div>

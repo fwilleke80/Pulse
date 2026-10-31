@@ -76,7 +76,7 @@ $maintenance = ['ExportTextDocuments', 'CreateBackup', 'PreflightRestore', 'Rest
 foreach ([['id' => 1, 'role' => 'user', 'is_super_user' => 1],
 	['id' => 1, 'role' => 'administrator'], ['id' => 1, 'role' => 'administrator', 'is_super_user' => 0]] as $user) {
 	foreach ($maintenance as $action) { denied(controller(Pulse\Controllers\MaintenanceController::class, $user), $action); }
-	foreach (['Backups', 'Updates'] as $action) { denied(controller(Pulse\Controllers\AdministrationController::class, $user), $action); }
+	foreach (['Backups', 'Updates', 'Logs', 'DownloadLog', 'ClearLog'] as $action) { denied(controller(Pulse\Controllers\AdministrationController::class, $user), $action); }
 }
 foreach (['Index', 'Configuration', 'Update', 'SendTestNotification', 'RetryFailedNotifications', 'ClearNotificationQueue'] as $action) {
 	denied(controller(Pulse\Controllers\AdministrationController::class, ['id' => 1, 'role' => 'user']), $action);

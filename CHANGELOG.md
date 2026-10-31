@@ -1,3 +1,9 @@
+## 1.5.9 - 2026-10-31
+
+- Fix the development-only "Expire safety contact window now" action: skip the active test cycle's remaining safety reminders, cancel undelivered safety-reminder mail, and move its deadline into the past. The regular scheduler then expires the gate (after safety invitations are actually delivered) and follows existing recipient-release safeguards. No production escalation rules or monitor configuration are changed.
+- Add a superuser-only, CSRF-protected Clear log action under Administration → Maintenance → Logs, requiring explicit confirmation. It truncates the existing log under an exclusive lock, preserving the file and its write permissions. Log downloads remain available for preserving evidence before clearing.
+- Extend the existing test suite with regression coverage for the debug expiry and log clearing. No database migration.
+
 ## 1.5.8 - 2026-10-31
 
 - Remove redundant “Next due” from Monitors: “Next action” already shows the check-in deadline while scheduled and the relevant reminder/escalation deadline afterward. Show the original missed check-in deadline within the monitor Overview for context when a cycle is awaiting or escalated.

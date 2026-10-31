@@ -122,6 +122,24 @@ final class AdministrationController extends BaseController
 		return $this->RenderSection('logs');
 	}
 
+	/** @brief Clears the application log at a superuser's confirmed request. CSRF is enforced by the router. */
+	public function ClearLog(): void
+	{
+		$this->RequireSuperUser();
+
+		try
+		{
+			$cleared = (new ApplicationLogReader(dirname(__DIR__, 2) . '/storage/logs/app.log'))->Clear();
+			$this->Flash('success', __($cleared ? 'administration.logs.cleared' : 'administration.logs.already_empty'));
+		}
+		catch (RuntimeException $exception)
+		{
+			$this->Flash('error', __('administration.logs.clear_failed'));
+		}
+
+		$this->Redirect('/administration/maintenance/logs');
+	}
+
 	/** @brief Streams the raw application log to a superuser without exposing its filesystem path. */
 	public function DownloadLog(): void
 	{

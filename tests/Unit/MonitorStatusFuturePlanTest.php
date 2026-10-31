@@ -132,4 +132,24 @@ final class MonitorStatusFuturePlanTest extends TestCase
 		self::assertSame('2026-11-05 18:51:00', $status['next_action']['at']);
 	}
 
+	/** @brief Debug-expired safety rounds show timeout, never a future reminder. */
+	public function testDebugExpiredSafetyGateShowsExpiryAsNextAction(): void
+	{
+		$reflection = new ReflectionClass(MonitorStatusService::class);
+		$service = $reflection->newInstanceWithoutConstructor();
+		$action = $reflection->getMethod('NextAction')->invoke($service, [
+			'is_paused' => 0,
+			'is_archived' => 0,
+			'cycle_status' => 'safety_pending',
+			'safety_gate_started_at' => '2026-10-31 18:51:00',
+			'safety_gate_deadline_at' => '2026-10-31 19:00:00',
+			'safety_pending_request_count' => 3,
+			'safety_min_reminders_sent' => 0,
+			'safety_max_reminders' => 0,
+		]);
+
+		self::assertSame('safety_expiry', $action['type']);
+		self::assertSame('2026-10-31 19:00:00', $action['at']);
+	}
+
 }

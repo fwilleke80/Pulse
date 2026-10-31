@@ -23,6 +23,55 @@ final class ApplicationLogReader
 		$this->_path = $path;
 	}
 
+
+	/**
+	 * @brief Safely truncates the private application log while coordinating with active writers.
+	 * @return bool True if an existing log was cleared; false if no log exists.
+	 */
+	public function Clear(): bool
+	{
+		if (is_link($this->_path))
+		{
+			throw new RuntimeException('Refusing to clear a symbolic-link log.');
+		}
+
+		if (!is_file($this->_path))
+		{
+			return false;
+		}
+
+		$handle = @fopen($this->_path, 'c+b');
+		if ($handle === false)
+		{
+			throw new RuntimeException('Application log is not writable.');
+		}
+
+		try
+		{
+			if (!flock($handle, LOCK_EX))
+			{
+				throw new RuntimeException('Unable to lock the application log.');
+			}
+			try
+			{
+				if (!ftruncate($handle, 0) || !fflush($handle))
+				{
+					throw new RuntimeException('Unable to truncate the application log.');
+				}
+			}
+			finally
+			{
+				flock($handle, LOCK_UN);
+			}
+		}
+		finally
+		{
+			fclose($handle);
+		}
+
+		return true;
+	}
+
 	/**
 	 * @brief Returns a page of the newest matching log messages.
 	 * @param string $level Empty string for every level, otherwise an allowed severity.

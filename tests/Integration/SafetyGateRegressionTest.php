@@ -86,6 +86,48 @@ final class SafetyGateRegressionTest extends TestCase
 		self::assertSame(3, (int)$this->_connection?->query('SELECT COUNT(*) FROM mail_queue')->fetchColumn());
 	}
 
+	/** @brief Debug timeout skips reminders and expires a delivered gate on the next normal run. */
+	public function testDebugExpirySkipsRemindersAndNormalSchedulerExpiresGate(): void
+	{
+		self::assertInstanceOf(EscalationService::class, $this->_escalation);
+		self::assertSame(3, $this->_escalation->StartSafetyGate(1));
+		self::assertFalse($this->_escalation->ExpireDebugSafetyWindowForUser(1, 987));
+		self::assertSame(1, (int)$this->_connection?->query('SELECT safety_max_reminders FROM check_cycles WHERE id = 1')->fetchColumn());
+
+		$this->_connection?->exec("UPDATE mail_queue SET status = 'sent', sent_at = UTC_TIMESTAMP() WHERE mail_type = 'safety_invitation'");
+		$this->_connection?->exec('UPDATE safety_contact_requests SET invitation_sent_at = UTC_TIMESTAMP()');
+		// A previously queued reminder must not be delivered after debug expiry.
+		$this->_connection?->exec(<<<'SQL'
+			INSERT INTO mail_queue (user_id, check_cycle_id, monitor_id, contact_id,
+				safety_request_id, mail_type, idempotency_key, reminder_number,
+				recipient_email, subject, body_text, status)
+			SELECT user_id, check_cycle_id, monitor_id, contact_id,
+				safety_request_id, 'safety_reminder', 'debug-test-reminder', 1,
+				recipient_email, subject, body_text, 'queued'
+			FROM mail_queue WHERE mail_type = 'safety_invitation' LIMIT 1
+		SQL);
+
+		self::assertTrue($this->_escalation->ExpireDebugSafetyWindowForUser(1, 1));
+		self::assertSame(0, (int)$this->_connection?->query('SELECT safety_max_reminders FROM check_cycles WHERE id = 1')->fetchColumn());
+		self::assertSame('cancelled', $this->_connection?->query("SELECT status FROM mail_queue WHERE mail_type = 'safety_reminder'")->fetchColumn());
+		self::assertSame('safety_pending', $this->_connection?->query('SELECT status FROM check_cycles WHERE id = 1')->fetchColumn());
+		self::assertSame(['reminders_ready' => 0, 'expired' => 1], $this->_escalation->RunSafetyGates());
+		self::assertSame('overdue', $this->_connection?->query('SELECT status FROM check_cycles WHERE id = 1')->fetchColumn());
+		self::assertSame(3, (int)$this->_connection?->query("SELECT COUNT(*) FROM safety_contact_requests WHERE status = 'expired'")->fetchColumn());
+		self::assertSame(0, (int)$this->_connection?->query("SELECT COUNT(*) FROM mail_queue WHERE mail_type = 'recipient_notification'")->fetchColumn());
+		self::assertSame(['reminders_ready' => 0, 'expired' => 0], $this->_escalation->RunSafetyGates());
+	}
+
+	/** @brief Debug expiry still cannot bypass undelivered safety invitations. */
+	public function testDebugExpiryDoesNotBypassUnsentInvitations(): void
+	{
+		self::assertInstanceOf(EscalationService::class, $this->_escalation);
+		self::assertSame(3, $this->_escalation->StartSafetyGate(1));
+		self::assertTrue($this->_escalation->ExpireDebugSafetyWindowForUser(1, 1));
+		self::assertSame(['reminders_ready' => 0, 'expired' => 0], $this->_escalation->RunSafetyGates());
+		self::assertSame('safety_pending', $this->_connection?->query('SELECT status FROM check_cycles WHERE id = 1')->fetchColumn());
+	}
+
 	/** @brief Install only actual production-schema tables used by the safety-gate method. */
 	private function CreateFixture(): void
 	{

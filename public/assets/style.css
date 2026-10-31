@@ -6122,6 +6122,11 @@ a.row-action-menu-item
 {
 	width: 100%;
 }
+/* The destructive action stays visually separate from the read-only log filters. */
+.administration-log-clear
+{
+	margin-block: -.35rem 1.25rem;
+}
 .administration-log-list
 {
 	list-style: none;

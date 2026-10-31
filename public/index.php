@@ -391,6 +391,7 @@ $router->Get('/administration/maintenance/backups', [$administrationController, 
 $router->Get('/administration/maintenance/updates', [$administrationController, 'Updates']);
 $router->Get('/administration/maintenance/logs', [$administrationController, 'Logs']);
 $router->Get('/administration/maintenance/logs/download', [$administrationController, 'DownloadLog']);
+$router->Post('/administration/maintenance/logs/clear', [$administrationController, 'ClearLog']);
 $router->Post('/administration/text-documents/export', [$maintenanceController, 'ExportTextDocuments']);
 $router->Post('/administration/backup/create', [$maintenanceController, 'CreateBackup']);
 $router->Post('/administration/backup/preflight', [$maintenanceController, 'PreflightRestore']);

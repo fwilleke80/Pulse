@@ -700,8 +700,8 @@ final class EscalationService
 	}
 
 	/**
-	 * @brief Moves one owned active safety-contact deadline into the past for timeout testing.
-	 * @return bool True when a current safety-contact gate was adjusted.
+	 * @brief Debug-only: skips outstanding safety reminders and expires the current gate for the normal scheduler.
+	 * @return bool True when the active safety-contact gate was adjusted.
 	 */
 	public function ExpireDebugSafetyWindowForUser(int $monitorId, int $userId): bool
 	{
@@ -737,9 +737,14 @@ final class EscalationService
 			$now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
 			$deadline = $now->modify('-1 second')->format('Y-m-d H:i:s');
 			$updatedAt = $now->format('Y-m-d H:i:s');
+			// Only alter this running test cycle. Setting the remaining reminder count to zero
+			// allows the unchanged production timeout guard to require delivered invitations
+			// without waiting for (or falsely recording) reminders that were never sent.
 			$update = $connection->prepare('
 				UPDATE check_cycles
-				SET safety_gate_deadline_at = :deadline, updated_at = :updated_at
+				SET safety_gate_deadline_at = :deadline,
+					safety_max_reminders = 0,
+					updated_at = :updated_at
 				WHERE id = :id
 			');
 			$update->execute([
@@ -747,8 +752,23 @@ final class EscalationService
 				'updated_at' => $updatedAt,
 				'id' => (int)$cycle['id'],
 			]);
+			// Stale unsent reminders must not arrive after the test stage has expired.
+			// Do not cancel initial invitations: the real expiry guard still requires
+			// successful delivery to every safety contact.
+			$cancel = $connection->prepare('
+				UPDATE mail_queue
+				SET status = \'cancelled\',
+					body_text = \'[Safety link redacted after cancellation]\',
+					cancelled_at = :cancelled_at,
+					updated_at = :updated_at
+				WHERE check_cycle_id = :cycle_id
+					AND mail_type = \'safety_reminder\'
+					AND status IN (\'queued\', \'retrying\', \'failed\')
+			');
+			$cancel->execute(['cancelled_at' => $updatedAt, 'updated_at' => $updatedAt, 'cycle_id' => (int)$cycle['id']]);
 			$this->WriteAudit($connection, $cycle, 'monitor.debug_safety_window_expired', [
 				'cycle_id' => (int)$cycle['id'],
+				'skipped_remaining_reminders' => true,
 			]);
 			$connection->commit();
 			return true;
@@ -943,6 +963,21 @@ final class EscalationService
 
 		try
 		{
+			// Revalidate under the cycle lock: a debug-expiry may have skipped
+			// reminders after RunSafetyGates() loaded its earlier snapshot.
+			$cycleLock = $connection->prepare('
+				SELECT status, safety_max_reminders
+				FROM check_cycles WHERE id = :id FOR UPDATE
+			');
+			$cycleLock->execute(['id' => (int)$cycle['id']]);
+			$currentCycle = $cycleLock->fetch(PDO::FETCH_ASSOC);
+			if (!is_array($currentCycle) || (string)$currentCycle['status'] !== MonitorStateMachine::SAFETY_PENDING
+				|| $number > (int)$currentCycle['safety_max_reminders'])
+			{
+				$connection->commit();
+				return false;
+			}
+
 			$key = 'safety-reminder:' . (int)$request['id'] . ':' . $number;
 			$existing = $connection->prepare('SELECT id FROM mail_queue WHERE idempotency_key = :key LIMIT 1');
 			$existing->execute(['key' => $key]);

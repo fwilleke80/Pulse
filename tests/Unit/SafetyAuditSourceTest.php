@@ -14,8 +14,8 @@ use PHPUnit\Framework\TestCase;
 
 final class SafetyAuditSourceTest extends TestCase
 {
-	/** @brief Ensures debug timeout testing uses the real safety deadline rather than forcing Overdue directly. */
-	public function testSafetyTimeoutDebugActionOnlyMovesTheDeadline(): void
+	/** @brief Ensures debug timeout testing skips reminders but leaves the normal scheduler responsible for expiration. */
+	public function testSafetyTimeoutDebugActionSkipsRemindersWithoutDirectRelease(): void
 	{
 		$root = dirname(__DIR__, 2);
 		$service = (string)file_get_contents($root . '/app/Services/EscalationService.php');
@@ -25,6 +25,8 @@ final class SafetyAuditSourceTest extends TestCase
 
 		self::assertStringContainsString('ExpireDebugSafetyWindowForUser', $service);
 		self::assertStringContainsString('SET safety_gate_deadline_at = :deadline', $service);
+		self::assertStringContainsString('safety_max_reminders = 0', $service);
+		self::assertStringContainsString("AND mail_type = \'safety_reminder\'", $service);
 		self::assertStringNotContainsString("monitor.debug_safety_window_expired');\n\t\t\t\t\$this->_stateMachine", $service);
 		self::assertStringContainsString('ExpireSafetyContactWindow', $controller);
 		self::assertStringContainsString("Post('/monitors/expire-safety-contact-window'", $routes);

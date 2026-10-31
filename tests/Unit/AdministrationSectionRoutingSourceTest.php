@@ -41,6 +41,20 @@ final class AdministrationSectionRoutingSourceTest extends TestCase
         self::assertStringContainsString('administration.logs.heading', $view);
     }
 
+    /** @brief Clearing the log is a guarded, CSRF-checked POST action rather than a GET link. */
+    public function testLogClearIsExplicitAndSuperuserOnly(): void
+    {
+        $root = dirname(__DIR__, 2);
+        $routes = (string)file_get_contents($root . '/public/index.php');
+        $controller = (string)file_get_contents($root . '/app/Controllers/AdministrationController.php');
+        $view = (string)file_get_contents($root . '/app/Views/administration/index.php');
+        self::assertStringContainsString("Post('/administration/maintenance/logs/clear'", $routes);
+        self::assertStringNotContainsString("Get('/administration/maintenance/logs/clear'", $routes);
+        self::assertMatchesRegularExpression('/function ClearLog\(\): void.*?\$this->RequireSuperUser\(\)/s', $controller);
+        self::assertStringContainsString('administration.logs.clear_confirm', $view);
+        self::assertStringContainsString('csrf_field()', $view);
+    }
+
     /** @brief Configuration saves only from the configuration branch. */
     public function testSaveFormIsConfinedToConfiguration(): void
     {
