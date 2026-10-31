@@ -11,6 +11,7 @@ declare(strict_types=1);
 namespace Pulse\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
+use Pulse\Core\MarkdownRenderer;
 use Pulse\Core\NotificationLanguage;
 use Pulse\Services\NotificationComposer;
 
@@ -67,7 +68,7 @@ class NotificationComposerTest extends TestCase
 		]);
 
 		self::assertStringContainsString("Hallo Frank,\n\nfür den Monitor", $message['body_text']);
-		self::assertStringContainsString("„Jetzt bestätigen“:\nhttps://pulse.example.com/login\n\n", $message['body_text']);
+		self::assertStringContainsString("„Jetzt bestätigen“:\n[https://pulse.example.com/login](https://pulse.example.com/login)\n\n", $message['body_text']);
 		self::assertStringContainsString('innerhalb von 2 Tagen', $message['body_text']);
 		self::assertStringContainsString('bis zu 3 weitere Erinnerungen', $message['body_text']);
 	}
@@ -242,6 +243,52 @@ class NotificationComposerTest extends TestCase
 		self::assertNotSame($english['body_text'], $german['body_text']);
 	}
 
+
+	/** @brief All built-in mail actions use Markdown links, including the no-reminder owner variant. */
+	public function testBuiltInActionUrlsUseMarkdownLinksInEverySupportedLanguage(): void
+	{
+		$composer = new NotificationComposer(
+			new NotificationLanguage(['en', 'de', 'fr', 'it'], 'en'),
+			dirname(__DIR__, 2) . '/app/Lang',
+			[
+				'name' => 'Pulse',
+				'base_url' => 'https://pulse.example.com',
+				'display_timezone' => 'Europe/Berlin',
+			]
+		);
+
+		foreach (['en', 'de', 'fr', 'it'] as $locale)
+		{
+			foreach (['owner_due_notice', 'owner_reminder', 'safety_invitation', 'safety_reminder', 'recipient_default'] as $key)
+			{
+				$template = $composer->BuiltInTemplate($key, $locale);
+				self::assertStringContainsString('[{url}]({url})', $template['body_text'], $locale . '/' . $key);
+				self::assertStringNotContainsString("\n{url}\n", $template['body_text'], $locale . '/' . $key);
+			}
+
+			$noReminders = $composer->BuiltInTemplate('owner_due_notice', $locale, ['max_reminders' => 0]);
+			self::assertStringContainsString('[{url}]({url})', $noReminders['body_text'], $locale . '/owner_due_notice_no_reminders');
+		}
+	}
+
+	/** @brief Composed links render as clickable HTML and a clean URL-only plain-text fallback. */
+	public function testDefaultSafetyInvitationUrlRendersInBothMailFormats(): void
+	{
+		$composer = $this->Composer();
+		$message = $composer->ComposeSafetyInvitation([
+			'contact_name' => 'Safety',
+			'owner_name' => 'Owner',
+			'monitor_name' => 'Monitor',
+			'notification_locale' => 'en',
+		], str_repeat('a', 64));
+		$url = 'https://pulse.example.com/safety/confirm?token=' . str_repeat('a', 64) . '&lang=en';
+		self::assertStringContainsString('[' . $url . '](' . $url . ')', $message['body_text']);
+
+		$renderer = new MarkdownRenderer();
+		self::assertStringContainsString('href="' . htmlspecialchars($url, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '"', $renderer->ToEmailHtml($message['body_text']));
+		self::assertStringContainsString($url, $renderer->ToPlainText($message['body_text']));
+		self::assertStringNotContainsString('](', $renderer->ToPlainText($message['body_text']));
+	}
 
 	/** @brief Ensures a custom owner template is one literal override rather than a localized variant. */
 	public function testCustomOwnerDueTemplateIsUsedExactlyAsWritten(): void

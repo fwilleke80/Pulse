@@ -15,6 +15,7 @@ declare(strict_types=1);
 /** @var array<int, array<string, mixed>> $recentActivity */
 /** @var bool $mailEnabled */
 /** @var bool $debugEnabled */
+/** @var string $cronStatus */
 /** @var string $base_url */
 /** @var string $openStreetMapUrl */
 /** @var string $locationReverseGeocodeUrl */
@@ -65,6 +66,15 @@ ob_start();
 <h1><?= e__('dashboard.heading') ?></h1>
 <p><?= e__('dashboard.message.1', ['name' => $user['display_name']]) ?></p>
 <p><?= e__('dashboard.message.2') ?></p>
+
+<?php if ($cronStatus !== 'recent'): ?>
+	<section class="dashboard-system-warning" role="alert">
+		<div><strong><?= e__('operations.cron.' . $cronStatus . '.heading') ?></strong><p><?= e__('operations.cron.message') ?></p></div>
+		<?php if ((string)($user['role'] ?? 'user') === 'administrator'): ?>
+			<a href="<?= e($base_url) ?>/administration/configuration?tab=cron" class="button-link"><?= e__('operations.cron.action') ?></a>
+		<?php endif; ?>
+	</section>
+<?php endif; ?>
 
 <?php if (!$mailEnabled): ?>
 	<section class="dashboard-system-warning" role="alert">

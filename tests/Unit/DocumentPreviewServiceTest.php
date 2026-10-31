@@ -52,6 +52,17 @@ final class DocumentPreviewServiceTest extends TestCase
 		self::assertFalse($preview['truncated']);
 	}
 
+	/** @brief Descriptive types do not make active or office formats previewable. */
+	public function testDisplayTypes(): void
+	{
+		foreach ([['note.txt','text/plain','text'], ['guide.pdf','application/pdf','pdf'], ['image.png','image/png','image'], ['sound.mp3','audio/mpeg','audio'], ['clip.mp4','video/mp4','video'], ['data.csv','text/csv','csv'], ['data.json','application/json','json'], ['letter.docx','application/octet-stream','document'], ['unknown.bin','application/octet-stream','file'], ['drawing.svg','image/svg+xml','image']] as [$name,$mime,$expected])
+		{
+			self::assertSame($expected, $this->_service->DisplayType($this->File($name,$mime)));
+		}
+		self::assertFalse($this->_service->IsViewable($this->File('letter.docx','application/octet-stream')));
+		self::assertFalse($this->_service->IsViewable($this->File('drawing.svg','image/svg+xml')));
+	}
+
 	/** @return array<string, string> @brief Creates the stored metadata used by classification checks. */
 	private function File(string $filename, string $mimeType): array
 	{

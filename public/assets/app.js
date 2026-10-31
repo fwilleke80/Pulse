@@ -3342,3 +3342,127 @@ document.addEventListener('DOMContentLoaded', function ()
 	document.addEventListener('change', update);
 	update();
 });
+
+/** @brief Sorts document tables and retains their selection across upload/assignment refreshes. */
+document.addEventListener('DOMContentLoaded', function ()
+{
+	const states = new Map();
+	const collator = new Intl.Collator(document.documentElement.lang || undefined, { numeric: true, sensitivity: 'base' });
+	function sortTable(table)
+	{
+		const state = states.get(table.dataset.documentTable) || { key: 'name', direction: 1 };
+		const rows = Array.from(table.tBodies[0].rows);
+		rows.sort(function (a, b)
+		{
+			const comparison = state.key === 'size'
+				? Number(a.dataset.documentSize) - Number(b.dataset.documentSize)
+				: collator.compare(a.getAttribute('data-document-' + state.key), b.getAttribute('data-document-' + state.key));
+			return comparison * state.direction || collator.compare(a.dataset.documentName, b.dataset.documentName) || Number(a.dataset.documentId) - Number(b.dataset.documentId);
+		});
+		table.tBodies[0].append(...rows);
+		for (const button of table.querySelectorAll('[data-document-sort]'))
+		{
+			const selected = button.dataset.documentSort === state.key;
+			button.closest('th').setAttribute('aria-sort', selected ? (state.direction === 1 ? 'ascending' : 'descending') : 'none');
+			button.querySelector('[data-sort-indicator]').textContent = selected ? (state.direction === 1 ? '↑' : '↓') : '↕';
+		}
+	}
+	function refresh()
+	{
+		document.querySelectorAll('[data-document-table]').forEach(sortTable);
+	}
+	document.addEventListener('click', function (event)
+	{
+		const button = event.target.closest('[data-document-sort]');
+		if (!button) return;
+		const table = button.closest('[data-document-table]');
+		const previous = states.get(table.dataset.documentTable) || { key: 'name', direction: 1 };
+		states.set(table.dataset.documentTable, { key: button.dataset.documentSort, direction: previous.key === button.dataset.documentSort ? -previous.direction : 1 });
+		sortTable(table);
+	});
+	document.addEventListener('pulse:documents-refreshed', refresh);
+	refresh();
+});
+
+// Refresh the Maintenance log entries without navigating away from the current filters.
+document.addEventListener('click', async (event) =>
+{
+	const button = event.target.closest('[data-log-refresh]');
+	if (!button || button.disabled)
+	{
+		return;
+	}
+	const target = document.querySelector('[data-log-results]');
+	if (!target)
+	{
+		return;
+	}
+	button.disabled = true;
+	try
+	{
+		const response = await fetch(window.location.href, {credentials: 'same-origin', cache: 'no-store'});
+		if (!response.ok)
+		{
+			throw new Error('Log refresh failed');
+		}
+		const parsed = new DOMParser().parseFromString(await response.text(), 'text/html');
+		const updated = parsed.querySelector('[data-log-results]');
+		if (!updated)
+		{
+			throw new Error('Log results missing');
+		}
+		target.replaceChildren(...Array.from(updated.childNodes).map((node) => document.importNode(node, true)));
+	}
+	catch (error)
+	{
+		window.location.reload();
+	}
+	finally
+	{
+		button.disabled = false;
+	}
+});
+
+// Sort Monitor columns without changing lifecycle state or issuing requests.
+document.addEventListener('click', (event) =>
+{
+	const button = event.target.closest('[data-sort-column]');
+	if (!button)
+	{
+		return;
+	}
+	const table = button.closest('[data-sort-table]');
+	const body = table?.tBodies[0];
+	if (!body)
+	{
+		return;
+	}
+	const column = Number(button.dataset.sortColumn);
+	const descending = button.dataset.sortDirection === 'ascending';
+	const kind = button.dataset.sortKind || 'text';
+	const rows = Array.from(body.rows);
+	const value = (row) => row.cells[column]?.dataset.sortValue ?? row.cells[column]?.textContent.trim() ?? '';
+	rows.sort((a, b) =>
+	{
+		const left = value(a);
+		const right = value(b);
+		if (!left && right) return 1;
+		if (left && !right) return -1;
+		const comparison = kind === 'date' ? left.localeCompare(right) : left.localeCompare(right, undefined, {sensitivity: 'base', numeric: true});
+		return descending ? -comparison : comparison;
+	});
+	for (const row of rows)
+	{
+		body.append(row);
+	}
+	for (const header of table.querySelectorAll('th'))
+	{
+		header.removeAttribute('aria-sort');
+	}
+	for (const control of table.querySelectorAll('[data-sort-column]'))
+	{
+		control.dataset.sortDirection = '';
+	}
+	button.dataset.sortDirection = descending ? 'descending' : 'ascending';
+	button.closest('th')?.setAttribute('aria-sort', button.dataset.sortDirection);
+});

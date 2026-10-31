@@ -24,6 +24,7 @@ declare(strict_types=1);
 /** @var array<int, string> $availableLocales */
 /** @var string $locale */
 /** @var array<string, mixed> $monitor */
+/** @var string $cronStatus */
 /** @var array<string, mixed>|null $monitorStatus */
 /** @var array<int, array<string, mixed>> $monitorHistory */
 /** @var string $activeTab */
@@ -37,6 +38,10 @@ $uncheckedContactCount = count(array_filter(
 	static fn (array $contact): bool => (int)$contact['is_assigned'] === 1 && !\Pulse\Core\EmailAddressCollection::HasChecked($contact)
 ));
 $currentStatus = monitor_status($monitor);
+$activeSafetyCycle = (string)($monitorStatus['cycle_status'] ?? '') === 'safety_pending'
+	&& empty($monitor['is_paused']) && empty($monitor['is_archived'])
+	&& is_array($monitorStatus['cycle'] ?? null)
+	? $monitorStatus['cycle'] : null;
 $isArchived = !empty($monitor['is_archived']);
 $messageOverrideCount = count($messageOverrides);
 $portalExpiryDays = isset($monitor['recipient_portal_expiry_days']) ? (int)$monitor['recipient_portal_expiry_days'] : null;
@@ -224,12 +229,15 @@ ob_start();
 		$statusIssues = is_array($operationalStatus['issues'] ?? null) ? $operationalStatus['issues'] : [];
 		$nextAction = is_array($operationalStatus['next_action'] ?? null) ? $operationalStatus['next_action'] : ['type' => 'none', 'at' => null];
 		$futurePlan = is_array($operationalStatus['plan'] ?? null) ? $operationalStatus['plan'] : [];
-		$needsAttention = $savedMailIssues !== [] || $statusIssues !== [] || $assignedRecipientCount === 0 || $recipientConfigurationWarningCount > 0 || $safetyConfigurationWarning || !$hasCompleteMessageCoverage;
+		$needsAttention = $cronStatus !== 'recent' || $savedMailIssues !== [] || $statusIssues !== [] || $assignedRecipientCount === 0 || $recipientConfigurationWarningCount > 0 || $safetyConfigurationWarning || !$hasCompleteMessageCoverage;
 		$lastEventTranslationKey = is_array($lastMonitorEvent)
 			? ($statusHistoryTranslationKeys[(string)($lastMonitorEvent['event_type'] ?? '')] ?? null)
 			: null;
 		?>
 
+		<?php if ($cronStatus !== 'recent'): ?>
+			<div class="dashboard-system-warning" role="alert"><div><strong><?= e__('operations.cron.' . $cronStatus . '.heading') ?></strong><p><?= e__('operations.cron.message') ?></p></div></div>
+		<?php endif; ?>
 		<?php if (!$needsAttention): ?>
 			<div class="monitor-health-banner monitor-health-ok" role="status">
 				<strong><?= e__('monitors.status.health.ok.heading') ?></strong>
@@ -300,6 +308,9 @@ ob_start();
 				<span class="monitor-status-card-label"><?= e__('monitors.status.next_action') ?></span>
 				<strong><?= e(monitor_action_label($nextAction)) ?></strong>
 				<span><?= e(monitor_action_time_label($nextAction)) ?></span>
+				<?php if (in_array($currentStatus, ['awaiting', 'safety-pending', 'overdue', 'escalated'], true) && !empty($operationalStatus['cycle']['due_at'])): ?>
+					<small class="monitor-original-due"><?= e__('monitors.status.original_check_in_due') ?>: <?= e(format_datetime((string)$operationalStatus['cycle']['due_at'])) ?></small>
+				<?php endif; ?>
 			</div>
 		</div>
 
@@ -699,6 +710,17 @@ ob_start();
 
 			<div class="configuration-block">
 				<h3><?= e__('monitors.escalation.timing.heading') ?></h3>
+				<?php if ($activeSafetyCycle !== null): ?>
+					<div class="monitor-safety-schedule-notice" role="note">
+						<strong><?= e__('monitors.escalation.active_timing.heading') ?></strong>
+						<p><?= e__('monitors.escalation.active_timing.message') ?></p>
+						<p><?= e__('monitors.escalation.active_timing.snapshot', [
+							'response' => (int)$activeSafetyCycle['safety_response_window_days'],
+							'interval' => (int)$activeSafetyCycle['safety_reminder_interval_days'],
+							'maximum' => (int)$activeSafetyCycle['safety_max_reminders'],
+						]) ?></p>
+					</div>
+				<?php endif; ?>
 				<div class="field-grid field-grid-four">
 					<label><?= e__('monitors.escalation.response_window') ?><input type="number" name="safety_response_window_days" form="monitor-settings-form" min="1" max="365" value="<?= (int)$monitor['safety_response_window_days'] ?>" required><small><?= e__('monitors.escalation.response_window_hint') ?></small></label>
 					<label><?= e__('monitors.escalation.reminder_interval') ?><input type="number" name="safety_reminder_interval_days" form="monitor-settings-form" min="1" max="365" value="<?= (int)$monitor['safety_reminder_interval_days'] ?>" required><small><?= e__('monitors.escalation.reminder_interval_hint') ?></small></label>

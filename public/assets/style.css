@@ -5802,8 +5802,8 @@ button.portal-map-details-close
 .administration-section-nav
 {
 	display: grid;
-	grid-template-columns: repeat(3, minmax(0, 1fr));
-	gap: .55rem;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: .4rem;
 	margin-block: 1rem 1.35rem;
 }
 .administration-section-link
@@ -5811,7 +5811,9 @@ button.portal-map-details-close
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	padding: .65rem .9rem;
+	padding: .55rem .35rem;
+	min-width: 0;
+	font-size: .93rem;
 	border: 1px solid var(--border);
 	border-radius: .5rem;
 	text-decoration: none;
@@ -5830,7 +5832,7 @@ button.portal-map-details-close
 }
 .administration-maintenance-tabs
 {
-	grid-template-columns: repeat(2, minmax(0, 1fr));
+	grid-template-columns: repeat(3, minmax(0, 1fr));
 	margin-bottom: 1.25rem;
 }
 .administration-status-grid
@@ -5887,7 +5889,7 @@ button.portal-map-details-close
 }
 @media (max-width: 680px)
 {
-	.administration-section-nav { grid-template-columns: 1fr; }
+	.administration-section-nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 	.administration-status-grid { grid-template-columns: 1fr; }
 }
 
@@ -6082,4 +6084,131 @@ a.row-action-menu-item
 .mail-issue-marker
 {
 	margin-inline-start: .4rem;
+}
+
+.document-sort-button {
+	background: transparent;
+	color: inherit;
+	border: 0;
+	box-shadow: none;
+	padding: 0.3rem 0;
+	font: inherit;
+	font-weight: inherit;
+	display: inline-flex;
+	align-items: center;
+	gap: 0.5rem;
+	cursor: pointer;
+}
+.document-sort-button:hover { background: transparent; text-decoration: underline; }
+.document-sort-button:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+.document-sort-button [data-sort-indicator] { font-size: 0.85em; }
+
+/* Pulse 1.5.7: bounded Maintenance log and sortable operational monitor index. */
+.administration-log-filters
+{
+	display: flex;
+	align-items: end;
+	flex-wrap: wrap;
+	gap: .75rem;
+	margin-block: .8rem 1.1rem;
+}
+.administration-log-filters label
+{
+	flex: 1 1 11rem;
+	min-width: 0;
+}
+.administration-log-filters input,
+.administration-log-filters select
+{
+	width: 100%;
+}
+.administration-log-list
+{
+	list-style: none;
+	padding: 0;
+	margin: 0;
+	display: grid;
+	gap: .6rem;
+}
+.administration-log-entry
+{
+	min-width: 0;
+	border: 1px solid var(--border);
+	border-radius: .45rem;
+	padding: .65rem .8rem;
+}
+.administration-log-entry-header
+{
+	display: flex;
+	gap: .75rem;
+	align-items: center;
+	margin-bottom: .3rem;
+	font-size: .85rem;
+}
+.administration-log-entry pre
+{
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	margin: 0;
+	font-size: .84rem;
+}
+.administration-log-entry[data-level="ERROR"]
+{
+	border-inline-start: .3rem solid var(--danger, #b3261e);
+}
+.administration-log-pagination
+{
+	display: flex;
+	justify-content: space-between;
+	gap: .7rem;
+	margin-block: 1rem;
+}
+.table-sort-button
+{
+	font: inherit;
+	font-weight: inherit;
+	background: transparent;
+	border: 0;
+	color: inherit;
+	padding: 0;
+	cursor: pointer;
+	text-align: left;
+}
+.table-sort-button:hover
+{
+	text-decoration: underline;
+}
+.table-sort-button[data-sort-direction="ascending"]::after
+{
+	content: " ▲";
+}
+.table-sort-button[data-sort-direction="descending"]::after
+{
+	content: " ▼";
+}
+@media (max-width: 440px)
+{
+	.administration-section-nav { grid-template-columns: 1fr; }
+}
+
+/* Show the immutable timing snapshot during an active safety-contact round. */
+.monitor-safety-schedule-notice
+{
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	padding: 0.75rem 1rem;
+	margin-bottom: 1rem;
+	background: var(--surface, transparent);
+}
+
+.monitor-safety-schedule-notice p
+{
+	margin: 0.35rem 0 0;
+}
+
+.monitor-original-due
+{
+	display: block;
+	margin-top: 0.5rem;
+	color: var(--muted);
 }

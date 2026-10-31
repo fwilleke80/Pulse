@@ -200,7 +200,8 @@ $homeController = new HomeController(
 	$contactRepository,
 	$monitorRepository,
 	$monitorExecutionService,
-	$monitorStatusService
+	$monitorStatusService,
+	$container['systemStatusRepository']
 );
 $authController = new AuthController(
 	$view,
@@ -288,7 +289,8 @@ $monitorController = new MonitorController(
 	$notificationComposer,
 	(array)$config['available_locales'],
 	(bool)$config['debug'],
-	(bool)$config['mail']['enabled']
+	(bool)$config['mail']['enabled'],
+	$container['systemStatusRepository']
 );
 $documentController = new DocumentController(
 	$view,
@@ -387,6 +389,8 @@ $router->Get('/administration', [$administrationController, 'Index']);
 $router->Get('/administration/configuration', [$administrationController, 'Configuration']);
 $router->Get('/administration/maintenance/backups', [$administrationController, 'Backups']);
 $router->Get('/administration/maintenance/updates', [$administrationController, 'Updates']);
+$router->Get('/administration/maintenance/logs', [$administrationController, 'Logs']);
+$router->Get('/administration/maintenance/logs/download', [$administrationController, 'DownloadLog']);
 $router->Post('/administration/text-documents/export', [$maintenanceController, 'ExportTextDocuments']);
 $router->Post('/administration/backup/create', [$maintenanceController, 'CreateBackup']);
 $router->Post('/administration/backup/preflight', [$maintenanceController, 'PreflightRestore']);

@@ -161,6 +161,9 @@ catch (\Throwable $exception)
 	$recordFailure($container, 'execution_error', $requestMethod, null, false);
 	$container['logger']->Error('Web cron notification run failed', [
 		'error' => $exception->getMessage(),
+		'exception' => get_class($exception),
+		'file' => basename($exception->getFile()),
+		'line' => $exception->getLine(),
 	]);
 	http_response_code(500);
 	echo "Pulse cron run failed.\n";

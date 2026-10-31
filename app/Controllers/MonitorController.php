@@ -21,6 +21,8 @@ use Pulse\Repositories\DocumentRepository;
 use Pulse\Repositories\MessageRepository;
 use Pulse\Repositories\MonitorRepository;
 use Pulse\Services\AuthService;
+use Pulse\Services\CronHealth;
+use Pulse\Repositories\SystemStatusRepository;
 use Pulse\Services\DocumentService;
 use Pulse\Services\EscalationService;
 use Pulse\Services\MailQueueWorker;
@@ -42,6 +44,7 @@ class MonitorController extends BaseController
 	private DocumentService $_documentService;
 	private MonitorExecutionService $_monitorExecutionService;
 	private MonitorStatusService $_monitorStatusService;
+	private SystemStatusRepository $_systemStatusRepository;
 	private NotificationScheduler $_notificationScheduler;
 	private MailQueueWorker $_mailQueueWorker;
 	private EscalationService $_escalationService;
@@ -92,7 +95,8 @@ class MonitorController extends BaseController
 		NotificationComposer $notificationComposer,
 		array $availableLocales,
 		bool $debugEnabled,
-		bool $mailEnabled
+		bool $mailEnabled,
+		SystemStatusRepository $systemStatusRepository
 	)
 	{
 		parent::__construct($view, $session, $auth, $logger, $request);
@@ -110,6 +114,7 @@ class MonitorController extends BaseController
 		$this->_availableLocales = array_values(array_filter($availableLocales, 'is_string'));
 		$this->_debugEnabled = $debugEnabled;
 		$this->_mailEnabled = $mailEnabled;
+		$this->_systemStatusRepository = $systemStatusRepository;
 	}
 
 	/** @brief Displays the runtime-oriented monitor list. @return string */
@@ -121,10 +126,12 @@ class MonitorController extends BaseController
 		$userId = (int)$user['id'];
 		$showArchived = $this->_request->QueryString('view', 20) === 'archived';
 		$monitors = $this->_monitorRepository->FindAllByUserId($userId, $showArchived);
+		$statuses = $this->_monitorStatusService->FindAllForUser($userId);
 
 		foreach ($monitors as &$monitor)
 		{
 			$monitorId = (int)$monitor['id'];
+			$monitor['operational_status'] = $statuses[$monitorId] ?? null;
 			$monitorContacts = $this->_monitorRepository->FindMonitorContactsByMonitorIdForUser($monitorId, $userId);
 			$messageOverrides = $this->_messageRepository->FindByMonitorIdForUser($monitorId, $userId);
 			$mailTemplates = $this->_messageRepository->FindLocalizedTemplatesForMonitor($monitorId, $userId);
@@ -142,6 +149,7 @@ class MonitorController extends BaseController
 			'debugEnabled' => $this->_debugEnabled,
 			'mailEnabled' => $this->_mailEnabled,
 			'showArchived' => $showArchived,
+			'cronStatus' => CronHealth::Status($this->_systemStatusRepository->LastSuccessfulCronRun()),
 		]);
 	}
 
@@ -272,6 +280,7 @@ class MonitorController extends BaseController
 			'availableLocales' => $this->_availableLocales,
 			'monitorStatus' => $this->_monitorStatusService->FindForMonitorForUser($monitorId, (int)$user['id']),
 			'monitorHistory' => $this->_monitorStatusService->FindHistoryForMonitorForUser($monitorId, (int)$user['id'], 100),
+			'cronStatus' => CronHealth::Status($this->_systemStatusRepository->LastSuccessfulCronRun()),
 			'activeTab' => $this->ActiveEditorTab(),
 			'activeMessageSection' => $this->ActiveMessageSection(),
 		]);

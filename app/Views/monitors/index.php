@@ -12,6 +12,7 @@ declare(strict_types=1);
 /** @var string $base_url */
 /** @var bool $debugEnabled */
 /** @var bool $mailEnabled */
+/** @var string $cronStatus */
 /** @var bool $showArchived */
 /** @var string $locationReverseGeocodeUrl */
 /** @var string $locale */
@@ -30,6 +31,9 @@ ob_start();
 ?>
 
 <h1><?= e__('monitors.index.heading') ?></h1>
+<?php if ($cronStatus !== 'recent'): ?>
+	<div class="dashboard-system-warning" role="alert"><div><strong><?= e__('operations.cron.' . $cronStatus . '.heading') ?></strong><p><?= e__('operations.cron.message') ?></p></div></div>
+<?php endif; ?>
 <p><?= e__($showArchived ? 'monitors.index.archived.message' : 'monitors.index.message') ?></p>
 
 <nav class="monitor-view-tabs" aria-label="<?= e__('monitors.index.view.label') ?>">
@@ -55,14 +59,14 @@ ob_start();
 	<p><?= e__($showArchived ? 'monitors.index.no_archived' : 'monitors.index.no_monitors') ?></p>
 <?php else: ?>
 	<div class="table-scroll">
-		<table class="monitor-table">
+		<table class="monitor-table monitor-list-table" data-sort-table>
 			<thead>
 				<tr>
-					<th><?= e__('monitors.index.table.name') ?></th>
+					<th><button type="button" class="table-sort-button" data-sort-column="0"><?= e__('monitors.index.table.name') ?></button></th>
 					<th><?= e__('monitors.index.table.description') ?></th>
-					<th><?= e__('monitors.index.table.status') ?></th>
-					<th><?= e__('monitors.index.table.last_confirmed') ?></th>
-					<th><?= e__('monitors.index.table.next_due') ?></th>
+					<th><button type="button" class="table-sort-button" data-sort-column="2"><?= e__('monitors.index.table.status') ?></button></th>
+					<th><button type="button" class="table-sort-button" data-sort-column="3" data-sort-kind="date"><?= e__('monitors.index.table.last_confirmed') ?></button></th>
+					<th><button type="button" class="table-sort-button" data-sort-column="4" data-sort-kind="date"><?= e__('monitors.index.table.next_action') ?></button></th>
 					<th><?= e__('monitors.index.table.actions') ?></th>
 				</tr>
 			</thead>
@@ -78,7 +82,7 @@ ob_start();
 					$cycleEscalationPolicy = (string)($monitor['latest_escalation_policy'] ?? $monitor['escalation_policy'] ?? 'direct');
 					?>
 					<tr class="monitor-row monitor-row-<?= e($statusClass) ?>">
-						<td class="monitor-name">
+						<td class="monitor-name" data-sort-value="<?= e((string)$monitor['name']) ?>">
 							<a href="<?= e($base_url) ?>/monitors/edit?id=<?= (int)$monitor['id'] ?>">
 								<strong><?= e(abbrev((string)$monitor['name'], 60)) ?></strong>
 							</a>
@@ -86,7 +90,7 @@ ob_start();
 						<td class="monitor-description">
 							<?= !empty($monitor['description']) ? e(abbrev((string)$monitor['description'], 120)) : '<span aria-hidden="true">—</span>' ?>
 						</td>
-						<td class="monitor-status-cell">
+						<td class="monitor-status-cell" data-sort-value="<?= e__($statusKey) ?>">
 							<span class="status-badge status-<?= e($statusClass) ?>"><?= e__($statusKey) ?></span>
 							<?php if ($failedNotificationCount > 0): ?>
 								<small class="table-warning table-warning-critical"><?= e__('monitors.notifications.delivery_failed_short') ?></small>
@@ -106,8 +110,15 @@ ob_start();
 								) ?></small>
 							<?php endif; ?>
 						</td>
-						<td class="monitor-datetime"><?= e(format_datetime(isset($monitor['last_confirmed_at']) ? (string)$monitor['last_confirmed_at'] : null)) ?></td>
-						<td class="monitor-datetime"><?= e(format_datetime(isset($monitor['next_check_due_at']) ? (string)$monitor['next_check_due_at'] : null)) ?></td>
+						<td class="monitor-datetime" data-sort-value="<?= e((string)($monitor['last_confirmed_at'] ?? '')) ?>"><?= e(format_datetime(isset($monitor['last_confirmed_at']) ? (string)$monitor['last_confirmed_at'] : null)) ?></td>
+						<?php
+						$operationalStatus = is_array($monitor['operational_status'] ?? null) ? $monitor['operational_status'] : [];
+						$nextAction = is_array($operationalStatus['next_action'] ?? null) ? $operationalStatus['next_action'] : ['type' => 'none', 'at' => null];
+						?>
+						<td class="monitor-datetime monitor-next-action" data-sort-value="<?= e((string)($nextAction['at'] ?? '')) ?>">
+							<strong><?= e(monitor_action_time_label($nextAction)) ?></strong>
+							<small><?= e(monitor_action_label($nextAction)) ?></small>
+						</td>
 						<td class="monitor-actions-cell">
 							<?php
 							$actionStatus = $statusClass;

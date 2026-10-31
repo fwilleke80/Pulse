@@ -12,6 +12,6 @@ $sections['users'] = ['accounts.heading', '/administration/users'];
 ?>
 <nav class="administration-section-nav" aria-label="<?= e__('administration.sections.label') ?>">
 	<?php foreach ($sections as $sectionKey => $item): ?>
-		<a href="<?= e($base_url . $item[1]) ?>" class="administration-section-link<?= ($section === $sectionKey || ($section === 'updates' && $sectionKey === 'backups')) ? ' is-active' : '' ?>"<?= ($section === $sectionKey) ? ' aria-current="page"' : '' ?>><?= e__($item[0]) ?></a>
+		<a href="<?= e($base_url . $item[1]) ?>" class="administration-section-link<?= ($section === $sectionKey || (in_array($section, ['updates', 'logs'], true) && $sectionKey === 'backups')) ? ' is-active' : '' ?>"<?= ($section === $sectionKey) ? ' aria-current="page"' : '' ?>><?= e__($item[0]) ?></a>
 	<?php endforeach; ?>
 </nav>

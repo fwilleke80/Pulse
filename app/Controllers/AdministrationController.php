@@ -10,7 +10,6 @@ declare(strict_types=1);
 
 namespace Pulse\Controllers;
 
-use DateTimeImmutable;
 use DateTimeZone;
 use Pulse\Core\Environment;
 use Pulse\Core\EnvironmentFile;
@@ -21,6 +20,8 @@ use Pulse\Core\UploadMimeTypePolicy;
 use Pulse\Core\View;
 use Pulse\Repositories\MailQueueRepository;
 use Pulse\Repositories\SystemStatusRepository;
+use Pulse\Services\ApplicationLogReader;
+use Pulse\Services\CronHealth;
 use Pulse\Services\AuthService;
 use Pulse\Services\TestNotificationService;
 use RuntimeException;
@@ -115,11 +116,34 @@ final class AdministrationController extends BaseController
 		return $this->RenderSection('updates');
 	}
 
+	/** @brief Displays the protected, read-only application log under Maintenance. */
+	public function Logs(): string
+	{
+		return $this->RenderSection('logs');
+	}
+
+	/** @brief Streams the raw application log to a superuser without exposing its filesystem path. */
+	public function DownloadLog(): void
+	{
+		$this->RequireSuperUser();
+		$path = dirname(__DIR__, 2) . '/storage/logs/app.log';
+		if (!is_file($path) || !is_readable($path))
+		{
+			http_response_code(404);
+			return;
+		}
+		header('Content-Type: text/plain; charset=utf-8');
+		header('Content-Disposition: attachment; filename="pulse-app.log"');
+		header('Cache-Control: no-store, private');
+		header('X-Content-Type-Options: nosniff');
+		readfile($path);
+	}
+
 	/** @brief Render one independently routed Administration section. */
 	private function RenderSection(string $section): string
 	{
 		$user = $this->RequireAdministrator();
-		if (in_array($section, ['backups', 'updates'], true))
+		if (in_array($section, ['backups', 'updates', 'logs'], true))
 		{
 			$user = $this->RequireSuperUser();
 		}
@@ -137,7 +161,7 @@ final class AdministrationController extends BaseController
 		$lastSuccessfulCronRun = $this->_systemStatusRepository->LastSuccessfulCronRun();
 		$cronTokenChangedAt = $this->_systemStatusRepository->CronTokenChangedAt();
 		$failedCronCalls = $this->_systemStatusRepository->RecentFailedCronCalls(20);
-		$cronStatus = $this->CronStatus($lastSuccessfulCronRun);
+		$cronStatus = CronHealth::Status($lastSuccessfulCronRun);
 		$issues = $this->ConfigurationIssues($settings, $processOverrides, $cronStatus);
 
 		return $this->_view->Render('administration.index', [
@@ -169,6 +193,14 @@ final class AdministrationController extends BaseController
 			'maintenanceCanResume' => $isSuperUser && $this->MayResumeMaintenance(),
 			'updatePreflight' => $isSuperUser ? $this->PreviewMaintenancePreflight('update', (int)$user['id']) : null,
 			'restorePreflight' => $isSuperUser ? $this->PreviewMaintenancePreflight('restore', (int)$user['id']) : null,
+			'logLevel' => $section === 'logs' ? $this->NormalizeLogLevel($this->_request->QueryString('level', 16)) : '',
+			'logSearch' => $section === 'logs' ? $this->_request->QueryString('search', 200) : '',
+			'logPage' => $section === 'logs' ? max(1, min(100, $this->_request->QueryInt('page', 1))) : 1,
+			'logResult' => $section === 'logs' ? (new ApplicationLogReader(dirname(__DIR__, 2) . '/storage/logs/app.log'))->Read(
+				$this->NormalizeLogLevel($this->_request->QueryString('level', 16)),
+				$this->_request->QueryString('search', 200),
+				$this->_request->QueryInt('page', 1)
+			) : null,
 		]);
 	}
 
@@ -711,29 +743,10 @@ final class AdministrationController extends BaseController
 		return $issues;
 	}
 
-	/**
-	 * @brief Classifies the latest successful combined cron run without assuming a short cadence.
-	 * @param string|null $lastSuccessfulCronRun UTC database timestamp.
-	 * @return string One of never, recent, or stale.
-	 */
-	private function CronStatus(?string $lastSuccessfulCronRun): string
+	/** @brief Restricts the log severity filter to known logger levels. */
+	private function NormalizeLogLevel(string $level): string
 	{
-		if ($lastSuccessfulCronRun === null || trim($lastSuccessfulCronRun) === '')
-		{
-			return 'never';
-		}
-
-		try
-		{
-			$lastRun = new DateTimeImmutable($lastSuccessfulCronRun, new DateTimeZone('UTC'));
-			$now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
-
-			return ($now->getTimestamp() - $lastRun->getTimestamp()) > 86400 ? 'stale' : 'recent';
-		}
-		catch (\Throwable)
-		{
-			return 'never';
-		}
+		return in_array($level, ['ERROR', 'WARNING', 'INFO', 'DEBUG'], true) ? $level : '';
 	}
 
 	/**

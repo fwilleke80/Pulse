@@ -10,6 +10,8 @@ use Pulse\Core\View;
 use Pulse\Core\Logger;
 use Pulse\Core\Request;
 use Pulse\Services\AuthService;
+use Pulse\Services\CronHealth;
+use Pulse\Repositories\SystemStatusRepository;
 use Pulse\Services\MonitorExecutionService;
 use Pulse\Services\MonitorStatusService;
 
@@ -27,6 +29,7 @@ class HomeController extends BaseController
 	private \Pulse\Repositories\MonitorRepository $_monitorRepository;
 	private MonitorExecutionService $_monitorExecutionService;
 	private MonitorStatusService $_monitorStatusService;
+	private SystemStatusRepository $_systemStatusRepository;
 
 	/**
 	 * @brief Constructs the home controller.
@@ -53,7 +56,8 @@ class HomeController extends BaseController
 		\Pulse\Repositories\ContactRepository $contactRepository,
 		\Pulse\Repositories\MonitorRepository $monitorRepository,
 		MonitorExecutionService $monitorExecutionService,
-		MonitorStatusService $monitorStatusService
+		MonitorStatusService $monitorStatusService,
+		SystemStatusRepository $systemStatusRepository
 	)
 	{
 		parent::__construct($view, $session, $auth, $logger, $request);
@@ -63,6 +67,7 @@ class HomeController extends BaseController
 		$this->_monitorRepository = $monitorRepository;
 		$this->_monitorExecutionService = $monitorExecutionService;
 		$this->_monitorStatusService = $monitorStatusService;
+		$this->_systemStatusRepository = $systemStatusRepository;
 	}
 
 	/**
@@ -94,6 +99,7 @@ class HomeController extends BaseController
 			'recentActivity' => $this->_monitorExecutionService->FindRecentActivityForUser((int)$user['id'], 5),
 			'mailEnabled' => (bool)($this->_config['mail']['enabled'] ?? false),
 			'debugEnabled' => (bool)($this->_config['debug'] ?? false),
+			'cronStatus' => CronHealth::Status($this->_systemStatusRepository->LastSuccessfulCronRun()),
 		]);
 	}
 

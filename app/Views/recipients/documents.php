@@ -32,7 +32,7 @@ require __DIR__ . '/../partials/document-table.php';
 <div data-unassigned-documents>
 <?php if ($unassignedDocuments === []): ?><p><?= e__('recipients.documents.all_assigned') ?></p><?php endif; ?>
 <?php foreach ($unassignedDocuments as $document): ?>
-<label class="assign-document-choice" data-assign-choice><input type="checkbox" name="document_ids[]" value="<?= (int)$document['id'] ?>"><span><?= e((string)$document['title']) ?></span><small><?= e__('monitors.documents.type.' . (string)$document['storage_type']) ?></small></label>
+<label class="assign-document-choice" data-assign-choice><input type="checkbox" name="document_ids[]" value="<?= (int)$document['id'] ?>"><span><?= e((string)$document['title']) ?></span><small><?= e__('documents.type.' . (new \Pulse\Services\DocumentPreviewService())->DisplayType($document)) ?></small></label>
 <?php endforeach; ?>
 </div>
 <p data-assign-no-results hidden><?= e__('recipients.documents.no_results') ?></p>

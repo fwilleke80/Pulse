@@ -120,6 +120,37 @@ final class DocumentPreviewService
 		return self::KIND_DOWNLOAD;
 	}
 
+	/** @brief Returns a descriptive list label without changing preview eligibility. */
+	public function DisplayType(array $document): string
+	{
+		$kind = $this->Kind($document);
+		if (in_array($kind, [self::KIND_MARKDOWN, self::KIND_TEXT], true))
+		{
+			return 'text';
+		}
+		if ($kind !== self::KIND_DOWNLOAD)
+		{
+			return $kind;
+		}
+		$mime = $this->MimeType($document);
+		foreach (['image', 'audio', 'video'] as $type)
+		{
+			if (str_starts_with($mime, $type . '/'))
+			{
+				return $type;
+			}
+		}
+		$extension = strtolower(pathinfo((string)($document['original_filename'] ?? ''), PATHINFO_EXTENSION));
+		if (in_array($extension, ['doc', 'docx', 'odt', 'rtf', 'xls', 'xlsx', 'ods', 'ppt', 'pptx', 'odp'], true)
+			|| in_array($mime, ['application/msword', 'application/rtf', 'text/rtf', 'application/vnd.ms-excel', 'application/vnd.ms-powerpoint'], true)
+			|| str_starts_with($mime, 'application/vnd.openxmlformats-officedocument.')
+			|| str_starts_with($mime, 'application/vnd.oasis.opendocument.'))
+		{
+			return 'document';
+		}
+		return 'file';
+	}
+
 	/** @brief Returns whether a document has a safe direct portal representation. */
 	public function IsViewable(array $document): bool
 	{

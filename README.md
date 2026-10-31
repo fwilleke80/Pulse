@@ -1,3 +1,11 @@
+## Pulse 1.5.7 — Operational visibility and safety verification
+
+Administration → Maintenance → Logs provides read-only access to the private application log for superusers. The Dashboard and monitor Overview warn when cron has not run successfully within 24 hours. The Monitors table now shows sortable Next action information. The escalation hotfix from 1.5.6 is included. No database migration is required.
+
+## Pulse 1.5.6 — Sortable document tables
+
+Click Name, Type or Size to sort either document table. More specific file types also appear in the assignment picker. No new database migration.
+
 ## Pulse 1.5.5 — Recipient document fixes
 
 Unified monitor/recipient document tables, readable sizes and working previews for Pulse text documents. No new database migration.
@@ -50,7 +58,7 @@ This version adds database migration `010_release_emergency_safeguards.sql`. Upg
 
 # Pulse
 
-**Current release: 1.5.5**
+**Current release: 1.5.6**
 
 Pulse is a private, self-hosted check-in and notification system for situations in which something could happen to you and the people who need to know might otherwise not be informed for some time. You might use it to make sure family, friends, or other trusted people are contacted if you die or become seriously ill, or as an additional safety measure while travelling alone, going on an expedition, or spending time somewhere where help may be difficult to reach.
 

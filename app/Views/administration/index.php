@@ -32,6 +32,10 @@ declare(strict_types=1);
 /** @var array<string,mixed>|null $restorePreflight */
 /** @var bool $maintenanceCanResume */
 /** @var string $base_url */
+/** @var string $logLevel */
+/** @var string $logSearch */
+/** @var int $logPage */
+/** @var array<string,mixed>|null $logResult */
 
 /** @var string $section One of overview, configuration, backups, updates. */
 /** @var array{server:string,applied:int,total:int,current:bool}|null $databaseSummary */
@@ -47,7 +51,7 @@ foreach ($configurationIssues as $issue)
 {
 	$issueTabs[(string)$issue['tab']] = true;
 }
-$sectionHeading = $section === 'backups' || $section === 'updates' ? 'administration.section.maintenance' :
+$sectionHeading = $section === 'backups' || $section === 'updates' || $section === 'logs' ? 'administration.section.maintenance' :
 	($section === 'configuration' ? 'administration.section.configuration' : 'administration.heading');
 ob_start();
 ?>
@@ -507,10 +511,11 @@ ob_start();
 	<span><?= e__('administration.save_hint') ?></span>
 	<div class="editor-save-actions"><button type="submit" form="administration-settings-form"><?= e__('administration.save') ?></button></div>
 </div>
-<?php elseif (!empty($isSuperUser) && ($section === 'backups' || $section === 'updates')): ?>
+<?php elseif (!empty($isSuperUser) && in_array($section, ['backups', 'updates', 'logs'], true)): ?>
 <nav class="monitor-tabs administration-maintenance-tabs" aria-label="<?= e__('administration.section.maintenance') ?>">
 	<a class="monitor-tab-link<?= $section === 'backups' ? ' is-active' : '' ?>" href="<?= e($base_url) ?>/administration/maintenance/backups"<?= $section === 'backups' ? ' aria-current="page"' : '' ?>><?= e__('administration.tabs.backup') ?></a>
 	<a class="monitor-tab-link<?= $section === 'updates' ? ' is-active' : '' ?>" href="<?= e($base_url) ?>/administration/maintenance/updates"<?= $section === 'updates' ? ' aria-current="page"' : '' ?>><?= e__('administration.tabs.updates') ?></a>
+	<a class="monitor-tab-link<?= $section === 'logs' ? ' is-active' : '' ?>" href="<?= e($base_url) ?>/administration/maintenance/logs"<?= $section === 'logs' ? ' aria-current="page"' : '' ?>><?= e__('administration.logs.tab') ?></a>
 </nav>
 <?php if ($section === 'backups'): ?>
 	<section class="administration-page-panel">
@@ -575,6 +580,28 @@ ob_start();
 		<?php endif; ?>
 	</section>
 
+<?php elseif ($section === 'logs'): ?>
+	<section class="administration-page-panel">
+		<div class="section-heading"><h2><?= e__('administration.logs.heading') ?></h2><p><?= e__('administration.logs.intro') ?></p></div>
+		<div class="configuration-block">
+			<form class="administration-log-filters" action="<?= e($base_url) ?>/administration/maintenance/logs" method="get">
+				<label><?= e__('administration.logs.level') ?>
+					<select name="level">
+						<?php foreach (['' => 'administration.logs.all', 'ERROR' => 'ERROR', 'WARNING' => 'WARNING', 'INFO' => 'INFO', 'DEBUG' => 'DEBUG'] as $value => $caption): ?>
+							<option value="<?= e($value) ?>"<?= $logLevel === $value ? ' selected' : '' ?>><?= $value === '' ? e__($caption) : e($caption) ?></option>
+						<?php endforeach; ?>
+					</select>
+				</label>
+				<label><?= e__('administration.logs.search') ?><input type="search" name="search" value="<?= e($logSearch) ?>" maxlength="200"></label>
+				<button type="submit" class="button-link"><?= e__('administration.logs.filter') ?></button>
+				<button type="button" class="button-link" data-log-refresh><?= e__('administration.logs.refresh') ?></button>
+				<a class="button-link" href="<?= e($base_url) ?>/administration/maintenance/logs/download"><?= e__('administration.logs.download') ?></a>
+			</form>
+			<div data-log-results aria-live="polite">
+				<?php require __DIR__ . '/log-results.php'; ?>
+			</div>
+		</div>
+	</section>
 <?php else: ?>
 	<section class="administration-page-panel">
 		<div class="section-heading"><h2><?= e__('administration.updates.heading') ?></h2><p><?= e__('administration.updates.intro') ?></p></div>

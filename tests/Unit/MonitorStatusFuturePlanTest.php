@@ -85,4 +85,51 @@ final class MonitorStatusFuturePlanTest extends TestCase
 		self::assertSame('2026-10-14 09:00:00', $plan[4]['at']);
 		self::assertArrayNotHasKey('relative_safety_days', $plan[1]);
 	}
+	/** @brief A scheduled monitor needs no separate next-due column. */
+	public function testScheduledMonitorNextActionIsTheCheckInDeadline(): void
+	{
+		$reflection = new ReflectionClass(MonitorStatusService::class);
+		$service = $reflection->newInstanceWithoutConstructor();
+		$method = $reflection->getMethod('NextAction');
+		$action = $method->invoke($service, [
+			'is_paused' => 0,
+			'is_archived' => 0,
+			'cycle_status' => 'scheduled',
+			'due_at' => '2026-11-10 12:00:00',
+		]);
+
+		self::assertSame('check_due', $action['type']);
+		self::assertSame('2026-11-10 12:00:00', $action['at']);
+	}
+
+	/** @brief The status read model exposes the active stage's immutable timing values. */
+	public function testActiveSafetyGateRetainsItsSavedReminderSchedule(): void
+	{
+		$reflection = new ReflectionClass(MonitorStatusService::class);
+		$service = $reflection->newInstanceWithoutConstructor();
+		$method = $reflection->getMethod('BuildStatus');
+		$status = $method->invoke($service, [
+			'monitor_id' => 1,
+			'cycle_id' => 2,
+			'is_paused' => 0,
+			'is_archived' => 0,
+			'cycle_status' => 'safety_pending',
+			'due_at' => '2026-10-28 12:56:00',
+			'safety_gate_started_at' => '2026-10-31 18:51:00',
+			'safety_gate_deadline_at' => '2026-11-10 18:51:00',
+			'safety_min_reminders_sent' => 0,
+			'safety_pending_request_count' => 3,
+			'safety_response_window_days' => 5,
+			'safety_reminder_interval_days' => 1,
+			'safety_max_reminders' => 5,
+		]);
+
+		self::assertSame('2026-10-28 12:56:00', $status['cycle']['due_at']);
+		self::assertSame(5, $status['cycle']['safety_response_window_days']);
+		self::assertSame(1, $status['cycle']['safety_reminder_interval_days']);
+		self::assertSame(5, $status['cycle']['safety_max_reminders']);
+		self::assertSame('safety_reminder', $status['next_action']['type']);
+		self::assertSame('2026-11-05 18:51:00', $status['next_action']['at']);
+	}
+
 }

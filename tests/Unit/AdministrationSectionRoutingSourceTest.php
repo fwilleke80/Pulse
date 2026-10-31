@@ -19,7 +19,7 @@ final class AdministrationSectionRoutingSourceTest extends TestCase
         $root = dirname(__DIR__, 2);
         $routes = (string)file_get_contents($root . '/public/index.php');
         $controller = (string)file_get_contents($root . '/app/Controllers/AdministrationController.php');
-        foreach (['configuration', 'maintenance/backups', 'maintenance/updates'] as $suffix)
+        foreach (['configuration', 'maintenance/backups', 'maintenance/updates', 'maintenance/logs'] as $suffix)
         {
             self::assertStringContainsString("/administration/" . $suffix, $routes);
         }
@@ -38,14 +38,15 @@ final class AdministrationSectionRoutingSourceTest extends TestCase
         self::assertStringNotContainsString('administration-overview-card', $view);
         self::assertStringContainsString('administration-configuration-tabs', $view);
         self::assertStringContainsString('administration-maintenance-tabs', $view);
+        self::assertStringContainsString('administration.logs.heading', $view);
     }
 
     /** @brief Configuration saves only from the configuration branch. */
     public function testSaveFormIsConfinedToConfiguration(): void
     {
         $view = (string)file_get_contents(dirname(__DIR__, 2) . '/app/Views/administration/index.php');
-        $configuration = explode("<?php elseif (\$section === 'backups' || \$section === 'updates'): ?>", $view, 2)[0];
-        $maintenance = explode("<?php elseif (\$section === 'backups' || \$section === 'updates'): ?>", $view, 2)[1] ?? '';
+        $configuration = explode("<?php elseif (!empty(\$isSuperUser) && in_array(\$section, ['backups', 'updates', 'logs'], true)): ?>", $view, 2)[0];
+        $maintenance = explode("<?php elseif (!empty(\$isSuperUser) && in_array(\$section, ['backups', 'updates', 'logs'], true)): ?>", $view, 2)[1] ?? '';
         self::assertStringContainsString('administration-settings-form', $configuration);
         self::assertStringContainsString('data-settings-save-bar', $configuration);
         self::assertStringNotContainsString('administration-settings-form', $maintenance);

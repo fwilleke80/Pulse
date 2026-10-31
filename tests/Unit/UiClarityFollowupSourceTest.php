@@ -83,4 +83,25 @@ final class UiClarityFollowupSourceTest extends TestCase
 		self::assertStringContainsString('.cron-token-generator .form-hint', $styles);
 		self::assertStringContainsString('display: block;', $styles);
 	}
+	/** @brief Keep the list focused on the actual next operation and explain frozen safety timing. */
+	public function testMonitorListHasOneNextDeadlineAndSafetyEditorExplainsActiveTiming(): void
+	{
+		$root = dirname(__DIR__, 2);
+		$list = (string)file_get_contents($root . '/app/Views/monitors/index.php');
+		$editor = (string)file_get_contents($root . '/app/Views/monitors/edit.php');
+		self::assertStringNotContainsString('monitors.index.table.next_due', $list);
+		self::assertStringNotContainsString('data-sort-column="5"', $list);
+		self::assertStringContainsString('data-sort-column="4" data-sort-kind="date"', $list);
+		self::assertStringContainsString('monitors.index.table.next_action', $list);
+		self::assertStringContainsString('monitors.escalation.active_timing.snapshot', $editor);
+		self::assertStringContainsString('monitors.status.original_check_in_due', $editor);
+		foreach (['en', 'de', 'fr', 'it'] as $locale)
+		{
+			$catalog = (string)file_get_contents($root . '/app/Lang/' . $locale . '.php');
+			self::assertStringContainsString('monitors.escalation.active_timing.message', $catalog);
+			self::assertStringContainsString('monitors.escalation.active_timing.snapshot', $catalog);
+			self::assertStringContainsString('monitors.status.original_check_in_due', $catalog);
+		}
+	}
+
 }

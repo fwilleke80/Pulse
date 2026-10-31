@@ -1,3 +1,27 @@
+## 1.5.8 - 2026-10-31
+
+- Remove redundant “Next due” from Monitors: “Next action” already shows the check-in deadline while scheduled and the relevant reminder/escalation deadline afterward. Show the original missed check-in deadline within the monitor Overview for context when a cycle is awaiting or escalated.
+- When safety-contact verification is active, show an explanation and the current cycle’s immutable response/reminder settings beside the editable configuration. Changing monitor settings does not silently reschedule existing invitations, reminders, or expiration.
+- Add focused regressions for the Monitors table and saved safety timing. No database migration.
+
+## 1.5.7 - 2026-10-31
+
+- Fix a safety-critical cron regression: `EscalationService::LockCycle()` now retrieves both postponement fields required to start safety-contact verification. No change to the live escalation configuration is required.
+- Add a read-only, superuser-only application log viewer under Administration → Maintenance → Logs, with reverse-order paging, severity filtering, literal search, in-place refresh, and raw log download. Log lines are HTML-escaped; browsing is bounded and does not load the full log into memory.
+- Make the four Administration sections fit in one desktop row with responsive wrapping at smaller sizes.
+- Bring Monitor list reporting up to the Dashboard standard: include Next action with its due time and description and add interactive sorting to Name, Status, Last check-in, Next due, and Next action.
+- Warn when cron is stale or has never completed successfully on the Dashboard, the Monitors list, and monitor Overview; no unqualified green operational-health banner while cron is unhealthy.
+- Log cron exception class, source filename, and line alongside the existing message. Public cron endpoint responses remain opaque.
+- Extend the existing PHPUnit suite with a real MySQL safety-gate regression and log inspection/health tests; do not introduce a new test pipeline.
+- Render actionable URLs in all four languages’ built-in owner, safety-contact, and recipient email templates as Markdown links (`[{url}]({url})`), preserving custom templates and a clean plain-text mail alternative. Add template/renderer regression coverage.
+- No database migration.
+
+## 1.5.6 - 2026-10-28
+
+- Sort both document tables by Name, Type or Size using keyboard-accessible header buttons. Click again to reverse the direction; size sorts by bytes, names use natural locale-aware sorting. Keep the chosen ordering through upload/assignment refreshes.
+- Display Text, PDF, Image, Audio, Video, Document, CSV, JSON or Other file in both tables and the assignment picker. Descriptive labels do not expand safe-preview eligibility.
+- No database migration.
+
 ## 1.5.5 - 2026-10-28
 
 - Unify monitor and recipient document lists through one shared, alphabetically sorted Name / Type / Size / Actions table. Keep Delete monitor-only and Unassign recipient-only; refresh the monitor table after drops without replacing unsaved editor fields.
