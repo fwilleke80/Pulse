@@ -873,6 +873,7 @@ final class EscalationService
 		$statement = $connection->prepare('
 			SELECT cc.*, m.user_id, m.name AS monitor_name, m.is_paused,
 				m.emergency_stopped_at, m.release_grace_hours,
+				m.safety_postponement_limit, m.consecutive_safety_postponements,
 				m.safety_invitation_subject, m.safety_invitation_body,
 				m.safety_reminder_subject, m.safety_reminder_body, u.display_name AS owner_name,
 				u.email, u.email_checked_at, u.email_2, u.email_2_checked_at,
